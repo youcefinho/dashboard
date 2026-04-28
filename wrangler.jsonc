@@ -1,0 +1,17 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "intralys-dashboard",
+  "main": "src/worker.ts",
+  "compatibility_date": "2025-04-01",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "intralys-crm",
+      "database_id": "À_REMPLIR_APRÈS_CRÉATION"
+    }
+  ]
+}
