@@ -454,6 +454,23 @@ async function routeApi(request: Request, env: Env, url: URL): Promise<Response>
   // ── SMS envoi direct ────────────────────────────────────
   if (path === '/api/sms/send' && method === 'POST') return handleSendSms(request, env, auth);
 
+  // ── 2FA TOTP ────────────────────────────────────────────
+  if (path === '/api/auth/totp/setup' && method === 'POST') return handleTotpSetup(env, auth);
+  if (path === '/api/auth/totp/verify' && method === 'POST') return handleTotpVerify(request, env, auth);
+  if (path === '/api/auth/totp/disable' && method === 'POST') return handleTotpDisable(request, env, auth);
+
+  // ── Bulk CSV import ─────────────────────────────────────
+  if (path === '/api/leads/import' && method === 'POST') return handleCsvImport(request, env, auth);
+
+  // ── Reports avancés ─────────────────────────────────────
+  if (path === '/api/reports/overview' && method === 'GET') return handleReportsOverview(env, auth, url);
+  if (path === '/api/reports/sources' && method === 'GET') return handleReportsSources(env, auth, url);
+  if (path === '/api/reports/conversion' && method === 'GET') return handleReportsConversion(env, auth, url);
+
+  // ── Email broadcast ─────────────────────────────────────
+  if (path === '/api/broadcast' && method === 'POST') return handleEmailBroadcast(request, env, auth);
+  if (path === '/api/broadcast/history' && method === 'GET') return handleBroadcastHistory(env, auth, url);
+
   // ── Debug (à retirer avant prod) ────────────────────────
   if (path === '/api/debug/run-cron' && method === 'GET') {
     if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
@@ -2574,4 +2591,654 @@ async function handleDeletePipelineStage(
   await env.DB.prepare('DELETE FROM pipeline_stages WHERE id = ?').bind(stageId).run();
   await audit(env, auth.userId, 'stage.delete', 'pipeline_stage', stageId);
   return json({ data: { success: true } });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ██  P2 — FEATURES AVANCÉES
+// ═══════════════════════════════════════════════════════════════
+
+// ── 2FA TOTP — Setup ────────────────────────────────────────
+// Implémentation TOTP RFC 6238 avec Web Crypto API (pas de dépendance)
+
+function base32Encode(buffer: Uint8Array): string {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let result = '';
+  let bits = 0;
+  let value = 0;
+  for (const byte of buffer) {
+    value = (value << 8) | byte;
+    bits += 8;
+    while (bits >= 5) {
+      result += alphabet[(value >>> (bits - 5)) & 31];
+      bits -= 5;
+    }
+  }
+  if (bits > 0) {
+    result += alphabet[(value << (5 - bits)) & 31];
+  }
+  return result;
+}
+
+function base32Decode(encoded: string): Uint8Array {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  const cleaned = encoded.toUpperCase().replace(/[^A-Z2-7]/g, '');
+  const bytes: number[] = [];
+  let bits = 0;
+  let value = 0;
+  for (const char of cleaned) {
+    const idx = alphabet.indexOf(char);
+    if (idx === -1) continue;
+    value = (value << 5) | idx;
+    bits += 5;
+    if (bits >= 8) {
+      bytes.push((value >>> (bits - 8)) & 0xff);
+      bits -= 8;
+    }
+  }
+  return new Uint8Array(bytes);
+}
+
+async function generateTotp(secret: string, timeStep = 30): Promise<string> {
+  const key = base32Decode(secret);
+  const time = Math.floor(Date.now() / 1000 / timeStep);
+  const timeBuffer = new ArrayBuffer(8);
+  const timeView = new DataView(timeBuffer);
+  timeView.setUint32(4, time, false);
+
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw', key, { name: 'HMAC', hash: 'SHA-1' }, false, ['sign']
+  );
+  const hmac = await crypto.subtle.sign('HMAC', cryptoKey, timeBuffer);
+  const hmacArray = new Uint8Array(hmac);
+
+  const offset = hmacArray[hmacArray.length - 1]! & 0x0f;
+  const code = (
+    ((hmacArray[offset]! & 0x7f) << 24) |
+    ((hmacArray[offset + 1]! & 0xff) << 16) |
+    ((hmacArray[offset + 2]! & 0xff) << 8) |
+    (hmacArray[offset + 3]! & 0xff)
+  ) % 1_000_000;
+
+  return code.toString().padStart(6, '0');
+}
+
+async function verifyTotp(secret: string, token: string): Promise<boolean> {
+  // Fenêtre de tolérance : -1, 0, +1 (90 secondes total)
+  for (const offset of [-1, 0, 1]) {
+    const time = Math.floor(Date.now() / 1000 / 30) + offset;
+    const timeBuffer = new ArrayBuffer(8);
+    const timeView = new DataView(timeBuffer);
+    timeView.setUint32(4, time, false);
+
+    const key = base32Decode(secret);
+    const cryptoKey = await crypto.subtle.importKey(
+      'raw', key, { name: 'HMAC', hash: 'SHA-1' }, false, ['sign']
+    );
+    const hmac = await crypto.subtle.sign('HMAC', cryptoKey, timeBuffer);
+    const hmacArray = new Uint8Array(hmac);
+
+    const off = hmacArray[hmacArray.length - 1]! & 0x0f;
+    const code = (
+      ((hmacArray[off]! & 0x7f) << 24) |
+      ((hmacArray[off + 1]! & 0xff) << 16) |
+      ((hmacArray[off + 2]! & 0xff) << 8) |
+      (hmacArray[off + 3]! & 0xff)
+    ) % 1_000_000;
+
+    if (code.toString().padStart(6, '0') === token) return true;
+  }
+  return false;
+}
+
+async function handleTotpSetup(
+  env: Env, auth: { userId: string; role: string }
+): Promise<Response> {
+  // Générer un secret aléatoire de 20 bytes
+  const secretBytes = crypto.getRandomValues(new Uint8Array(20));
+  const secret = base32Encode(secretBytes);
+
+  // Stocker le secret (pas encore activé)
+  await env.DB.prepare(
+    "UPDATE users SET totp_secret = ? WHERE id = ?"
+  ).bind(secret, auth.userId).run();
+
+  // Récupérer l'email pour le QR code
+  const user = await env.DB.prepare(
+    'SELECT email FROM users WHERE id = ?'
+  ).bind(auth.userId).first() as { email: string } | null;
+
+  const email = user?.email || 'admin';
+  const otpauthUrl = `otpauth://totp/Intralys:${encodeURIComponent(email)}?secret=${secret}&issuer=Intralys&algorithm=SHA1&digits=6&period=30`;
+
+  await audit(env, auth.userId, 'totp.setup', 'user', auth.userId);
+  return json({ data: { secret, otpauth_url: otpauthUrl } });
+}
+
+async function handleTotpVerify(
+  request: Request, env: Env, auth: { userId: string; role: string }
+): Promise<Response> {
+  const body = await request.json() as { token?: string };
+  if (!body.token || body.token.length !== 6) {
+    return json({ error: 'Code TOTP à 6 chiffres requis' }, 400);
+  }
+
+  const user = await env.DB.prepare(
+    'SELECT totp_secret FROM users WHERE id = ?'
+  ).bind(auth.userId).first() as { totp_secret: string } | null;
+
+  if (!user?.totp_secret) {
+    return json({ error: 'TOTP non configuré. Faites /setup d\'abord.' }, 400);
+  }
+
+  const valid = await verifyTotp(user.totp_secret, body.token);
+  if (!valid) {
+    return json({ error: 'Code invalide' }, 401);
+  }
+
+  // Activer le 2FA
+  await env.DB.prepare(
+    "UPDATE users SET totp_enabled = 1 WHERE id = ?"
+  ).bind(auth.userId).run();
+
+  await audit(env, auth.userId, 'totp.enable', 'user', auth.userId);
+  return json({ data: { enabled: true } });
+}
+
+async function handleTotpDisable(
+  request: Request, env: Env, auth: { userId: string; role: string }
+): Promise<Response> {
+  const body = await request.json() as { token?: string; password?: string };
+
+  // Vérifier le mot de passe OU un code TOTP valide
+  const user = await env.DB.prepare(
+    'SELECT password_hash, totp_secret, totp_enabled FROM users WHERE id = ?'
+  ).bind(auth.userId).first() as { password_hash: string; totp_secret: string; totp_enabled: number } | null;
+
+  if (!user || !user.totp_enabled) {
+    return json({ error: '2FA non activé' }, 400);
+  }
+
+  if (body.password) {
+    const ok = await verifyPassword(body.password, user.password_hash);
+    if (!ok) return json({ error: 'Mot de passe incorrect' }, 401);
+  } else if (body.token) {
+    const ok = await verifyTotp(user.totp_secret, body.token);
+    if (!ok) return json({ error: 'Code TOTP invalide' }, 401);
+  } else {
+    return json({ error: 'Mot de passe ou code TOTP requis' }, 400);
+  }
+
+  await env.DB.prepare(
+    "UPDATE users SET totp_enabled = 0, totp_secret = '' WHERE id = ?"
+  ).bind(auth.userId).run();
+
+  await audit(env, auth.userId, 'totp.disable', 'user', auth.userId);
+  return json({ data: { enabled: false } });
+}
+
+// ── Bulk CSV Import ─────────────────────────────────────────
+
+async function handleCsvImport(
+  request: Request, env: Env, auth: { userId: string; role: string }
+): Promise<Response> {
+  if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
+
+  const body = await request.json() as {
+    client_id?: string;
+    csv_data?: string;
+    field_mapping?: Record<string, string>;
+  };
+
+  if (!body.client_id || !body.csv_data) {
+    return json({ error: 'client_id et csv_data requis' }, 400);
+  }
+
+  // Vérifier le client
+  const client = await env.DB.prepare(
+    'SELECT id FROM clients WHERE id = ? AND is_active = 1'
+  ).bind(body.client_id).first();
+  if (!client) return json({ error: 'Client introuvable' }, 404);
+
+  // Parser le CSV
+  const lines = body.csv_data.trim().split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  if (lines.length < 2) return json({ error: 'CSV doit contenir au moins un en-tête + une ligne' }, 400);
+
+  const headerLine = lines[0]!;
+  const headers = parseCsvLine(headerLine).map(h => h.toLowerCase().trim());
+
+  // Mapping des colonnes (automatique ou personnalisé)
+  const mapping = body.field_mapping || autoDetectMapping(headers);
+
+  const results = {
+    total: 0,
+    imported: 0,
+    skipped: 0,
+    errors: [] as Array<{ line: number; error: string }>,
+  };
+
+  for (let i = 1; i < lines.length; i++) {
+    results.total++;
+    try {
+      const values = parseCsvLine(lines[i]!);
+      const record: Record<string, string> = {};
+      headers.forEach((h, idx) => {
+        if (values[idx] !== undefined) record[h] = values[idx]!;
+      });
+
+      const name = sanitizeInput(record[mapping.name || 'name'] || record[mapping.nom || 'nom'] || '', 100);
+      const email = sanitizeInput(record[mapping.email || 'email'] || '', 200).toLowerCase();
+      const phone = sanitizeInput(record[mapping.phone || 'phone'] || record[mapping.telephone || 'telephone'] || '', 30);
+
+      if (!name && !email) {
+        results.skipped++;
+        results.errors.push({ line: i + 1, error: 'Nom et email vides' });
+        continue;
+      }
+
+      // Vérifier doublon par email
+      if (email) {
+        const existing = await env.DB.prepare(
+          'SELECT id FROM leads WHERE LOWER(email) = ? AND client_id = ?'
+        ).bind(email, body.client_id).first();
+        if (existing) {
+          results.skipped++;
+          results.errors.push({ line: i + 1, error: `Email "${email}" déjà existant` });
+          continue;
+        }
+      }
+
+      const id = crypto.randomUUID();
+      const type = sanitizeInput(record[mapping.type || 'type'] || '', 10);
+      const source = sanitizeInput(record[mapping.source || 'source'] || 'csv_import', 50);
+      const message = sanitizeInput(record[mapping.message || 'message'] || record[mapping.note || 'note'] || '', 2000);
+
+      await env.DB.prepare(
+        `INSERT INTO leads (id, client_id, name, email, phone, type, source, message, status, pipeline_id, stage_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'new', 'pipeline-default', 'stage-new')`
+      ).bind(id, body.client_id, name, email, phone,
+        ['buy', 'sell'].includes(type) ? type : 'buy',
+        source, message).run();
+
+      results.imported++;
+    } catch (err) {
+      results.errors.push({ line: i + 1, error: String(err) });
+    }
+  }
+
+  await audit(env, auth.userId, 'leads.csv_import', 'client', body.client_id, {
+    total: results.total, imported: results.imported, skipped: results.skipped
+  });
+
+  return json({ data: results });
+}
+
+function parseCsvLine(line: string): string[] {
+  const result: string[] = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i]!;
+    if (inQuotes) {
+      if (char === '"' && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else if (char === '"') {
+        inQuotes = false;
+      } else {
+        current += char;
+      }
+    } else {
+      if (char === '"') {
+        inQuotes = true;
+      } else if (char === ',' || char === ';') {
+        result.push(current.trim());
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+  }
+  result.push(current.trim());
+  return result;
+}
+
+function autoDetectMapping(headers: string[]): Record<string, string> {
+  const mapping: Record<string, string> = {};
+  const namePatterns = ['name', 'nom', 'full_name', 'fullname', 'prenom', 'first_name'];
+  const emailPatterns = ['email', 'courriel', 'e-mail', 'mail'];
+  const phonePatterns = ['phone', 'telephone', 'tel', 'cell', 'mobile', 'cellulaire'];
+  const typePatterns = ['type', 'projet', 'project_type'];
+  const sourcePatterns = ['source', 'origine', 'canal', 'channel'];
+  const messagePatterns = ['message', 'note', 'notes', 'commentaire', 'comment'];
+
+  for (const h of headers) {
+    if (namePatterns.includes(h)) mapping.name = h;
+    if (emailPatterns.includes(h)) mapping.email = h;
+    if (phonePatterns.includes(h)) mapping.phone = h;
+    if (typePatterns.includes(h)) mapping.type = h;
+    if (sourcePatterns.includes(h)) mapping.source = h;
+    if (messagePatterns.includes(h)) mapping.message = h;
+  }
+  return mapping;
+}
+
+// ── Reports Avancés ─────────────────────────────────────────
+
+async function handleReportsOverview(
+  env: Env, auth: { role: string }, url: URL
+): Promise<Response> {
+  if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
+
+  const days = parseInt(url.searchParams.get('days') || '30');
+  const clientId = url.searchParams.get('client_id') || null;
+  const since = new Date(Date.now() - days * 86400000).toISOString();
+
+  let clientFilter = '';
+  const params: string[] = [since];
+  if (clientId) {
+    clientFilter = ' AND client_id = ?';
+    params.push(clientId);
+  }
+
+  // KPIs globaux
+  const totalLeads = await env.DB.prepare(
+    `SELECT COUNT(*) as count FROM leads WHERE created_at >= ?${clientFilter}`
+  ).bind(...params).first() as { count: number };
+
+  const convertedLeads = await env.DB.prepare(
+    `SELECT COUNT(*) as count FROM leads WHERE status IN ('signed','closed') AND created_at >= ?${clientFilter}`
+  ).bind(...params).first() as { count: number };
+
+  const lostLeads = await env.DB.prepare(
+    `SELECT COUNT(*) as count FROM leads WHERE status = 'lost' AND created_at >= ?${clientFilter}`
+  ).bind(...params).first() as { count: number };
+
+  // Temps moyen de conversion (signed/closed vs created_at)
+  const avgConversion = await env.DB.prepare(
+    `SELECT AVG(JULIANDAY(updated_at) - JULIANDAY(created_at)) as avg_days
+     FROM leads WHERE status IN ('signed','closed') AND created_at >= ?${clientFilter}`
+  ).bind(...params).first() as { avg_days: number | null };
+
+  // Leads par jour (pour graphe)
+  const { results: dailyLeads } = await env.DB.prepare(
+    `SELECT DATE(created_at) as date, COUNT(*) as count
+     FROM leads WHERE created_at >= ?${clientFilter}
+     GROUP BY DATE(created_at) ORDER BY date ASC`
+  ).bind(...params).all();
+
+  // Leads par statut
+  const { results: byStatus } = await env.DB.prepare(
+    `SELECT status, COUNT(*) as count
+     FROM leads WHERE created_at >= ?${clientFilter}
+     GROUP BY status ORDER BY count DESC`
+  ).bind(...params).all();
+
+  // Leads par type
+  const { results: byType } = await env.DB.prepare(
+    `SELECT type, COUNT(*) as count
+     FROM leads WHERE created_at >= ?${clientFilter}
+     GROUP BY type`
+  ).bind(...params).all();
+
+  const total = totalLeads?.count || 0;
+  const converted = convertedLeads?.count || 0;
+  const conversionRate = total > 0 ? (converted / total * 100) : 0;
+
+  return json({
+    data: {
+      period_days: days,
+      kpis: {
+        total_leads: total,
+        converted_leads: converted,
+        lost_leads: lostLeads?.count || 0,
+        conversion_rate: Math.round(conversionRate * 10) / 10,
+        avg_conversion_days: avgConversion?.avg_days ? Math.round(avgConversion.avg_days * 10) / 10 : null,
+      },
+      charts: {
+        daily_leads: dailyLeads || [],
+        by_status: byStatus || [],
+        by_type: byType || [],
+      },
+    },
+  });
+}
+
+async function handleReportsSources(
+  env: Env, auth: { role: string }, url: URL
+): Promise<Response> {
+  if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
+
+  const days = parseInt(url.searchParams.get('days') || '30');
+  const since = new Date(Date.now() - days * 86400000).toISOString();
+
+  // Leads par source avec taux de conversion (CPL simulé)
+  const { results: sources } = await env.DB.prepare(
+    `SELECT
+       source,
+       COUNT(*) as total_leads,
+       SUM(CASE WHEN status IN ('signed','closed') THEN 1 ELSE 0 END) as converted,
+       SUM(CASE WHEN status = 'lost' THEN 1 ELSE 0 END) as lost,
+       ROUND(SUM(CASE WHEN status IN ('signed','closed') THEN 1.0 ELSE 0 END) / COUNT(*) * 100, 1) as conversion_rate
+     FROM leads WHERE created_at >= ?
+     GROUP BY source ORDER BY total_leads DESC`
+  ).bind(since).all();
+
+  return json({ data: { period_days: days, sources: sources || [] } });
+}
+
+async function handleReportsConversion(
+  env: Env, auth: { role: string }, url: URL
+): Promise<Response> {
+  if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
+
+  const days = parseInt(url.searchParams.get('days') || '90');
+  const since = new Date(Date.now() - days * 86400000).toISOString();
+
+  // Funnel de conversion : new → contacted → meeting → signed/closed
+  const funnel = [];
+  const stages = [
+    { status: 'new', label: 'Nouveaux' },
+    { status: 'contacted', label: 'Contactés' },
+    { status: 'meeting', label: 'Rendez-vous' },
+    { status: 'signed', label: 'Signés' },
+    { status: 'closed', label: 'Fermés' },
+  ];
+
+  // Compter les leads qui ont atteint CHAQUE étape (pas seulement le status actuel)
+  const totalLeads = await env.DB.prepare(
+    'SELECT COUNT(*) as count FROM leads WHERE created_at >= ?'
+  ).bind(since).first() as { count: number };
+
+  for (const stage of stages) {
+    // Un lead "a atteint" un stage s'il est actuellement à ce stage ou plus loin
+    const stageIndex = stages.findIndex(s => s.status === stage.status);
+    const reachedStatuses = stages.slice(stageIndex).map(s => `'${s.status}'`).join(',');
+
+    const count = await env.DB.prepare(
+      `SELECT COUNT(*) as count FROM leads WHERE status IN (${reachedStatuses}) AND created_at >= ?`
+    ).bind(since).first() as { count: number };
+
+    funnel.push({
+      stage: stage.status,
+      label: stage.label,
+      count: count?.count || 0,
+      percentage: totalLeads?.count ? Math.round((count?.count || 0) / totalLeads.count * 100) : 0,
+    });
+  }
+
+  // Temps moyen par étape (via activity log si disponible)
+  const { results: avgTimes } = await env.DB.prepare(
+    `SELECT
+       action,
+       AVG(JULIANDAY(created_at) - JULIANDAY(
+         (SELECT MIN(a2.created_at) FROM activity_log a2 WHERE a2.lead_id = activity_log.lead_id)
+       )) as avg_days_from_creation
+     FROM activity_log
+     WHERE action LIKE 'status_%' AND created_at >= ?
+     GROUP BY action`
+  ).bind(since).all();
+
+  return json({
+    data: {
+      period_days: days,
+      total_leads: totalLeads?.count || 0,
+      funnel,
+      avg_stage_times: avgTimes || [],
+    },
+  });
+}
+
+// ── Email Broadcast ─────────────────────────────────────────
+
+async function handleEmailBroadcast(
+  request: Request, env: Env, auth: { userId: string; role: string }
+): Promise<Response> {
+  if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
+
+  const body = await request.json() as {
+    subject?: string;
+    body_html?: string;
+    body_text?: string;
+    template_id?: string;
+    client_id?: string;
+    filters?: {
+      status?: string[];
+      type?: string[];
+      source?: string[];
+      tags?: string[];
+    };
+  };
+
+  if (!body.subject) return json({ error: 'Sujet requis' }, 400);
+
+  // Construire le contenu
+  let htmlContent = body.body_html || '';
+  let textContent = body.body_text || '';
+
+  // Si template_id, charger le template
+  if (body.template_id) {
+    const tpl = await env.DB.prepare(
+      'SELECT subject, body_html, body_text FROM email_templates WHERE id = ?'
+    ).bind(body.template_id).first() as { subject: string; body_html: string; body_text: string } | null;
+    if (tpl) {
+      htmlContent = htmlContent || tpl.body_html;
+      textContent = textContent || tpl.body_text;
+    }
+  }
+
+  if (!htmlContent && !textContent) {
+    return json({ error: 'Contenu email requis (body_html ou body_text)' }, 400);
+  }
+
+  // Récupérer les leads cibles
+  let query = "SELECT id, name, email FROM leads WHERE email != '' AND email IS NOT NULL";
+  const params: string[] = [];
+
+  if (body.client_id) {
+    query += ' AND client_id = ?';
+    params.push(body.client_id);
+  }
+  if (body.filters?.status?.length) {
+    const placeholders = body.filters.status.map(() => '?').join(',');
+    query += ` AND status IN (${placeholders})`;
+    params.push(...body.filters.status);
+  }
+  if (body.filters?.type?.length) {
+    const placeholders = body.filters.type.map(() => '?').join(',');
+    query += ` AND type IN (${placeholders})`;
+    params.push(...body.filters.type);
+  }
+
+  query += ' LIMIT 500'; // Limite de sécurité
+
+  const stmt = env.DB.prepare(query);
+  const { results: leads } = params.length > 0 ? await stmt.bind(...params).all() : await stmt.all();
+
+  if (!leads || leads.length === 0) {
+    return json({ error: 'Aucun lead correspondant aux filtres' }, 400);
+  }
+
+  // Créer un enregistrement de broadcast
+  const broadcastId = crypto.randomUUID();
+  await env.DB.prepare(
+    `INSERT INTO audit_log (user_id, action, resource_type, resource_id, details)
+     VALUES (?, 'broadcast.send', 'broadcast', ?, ?)`
+  ).bind(auth.userId, broadcastId, JSON.stringify({
+    subject: body.subject,
+    recipient_count: leads.length,
+    filters: body.filters || {},
+    client_id: body.client_id || 'all',
+  })).run();
+
+  // Envoyer les emails
+  let sent = 0;
+  let failed = 0;
+  const errors: Array<{ email: string; error: string }> = [];
+
+  if (env.RESEND_API_KEY) {
+    const resend = new Resend(env.RESEND_API_KEY);
+
+    for (const lead of leads as Array<{ id: string; name: string; email: string }>) {
+      try {
+        // Interpoler les variables basiques
+        const personalizedHtml = htmlContent
+          .replace(/\{\{nom\}\}/g, lead.name || '')
+          .replace(/\{\{name\}\}/g, lead.name || '')
+          .replace(/\{\{email\}\}/g, lead.email || '');
+
+        await resend.emails.send({
+          from: env.NOTIFICATION_EMAIL || 'noreply@intralys.com',
+          to: [lead.email],
+          subject: body.subject!.replace(/\{\{nom\}\}/g, lead.name || ''),
+          html: personalizedHtml,
+          text: textContent.replace(/\{\{nom\}\}/g, lead.name || ''),
+        });
+        sent++;
+      } catch (err) {
+        failed++;
+        errors.push({ email: lead.email, error: String(err) });
+      }
+    }
+  } else {
+    return json({ error: 'RESEND_API_KEY non configurée' }, 500);
+  }
+
+  await audit(env, auth.userId, 'broadcast.complete', 'broadcast', broadcastId, {
+    sent, failed, total: leads.length
+  });
+
+  return json({
+    data: {
+      broadcast_id: broadcastId,
+      total_recipients: leads.length,
+      sent,
+      failed,
+      errors: errors.slice(0, 10), // Max 10 erreurs retournées
+    },
+  });
+}
+
+async function handleBroadcastHistory(
+  env: Env, auth: { role: string }, url: URL
+): Promise<Response> {
+  if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
+
+  const limit = Math.min(parseInt(url.searchParams.get('limit') || '20'), 100);
+
+  const { results } = await env.DB.prepare(
+    `SELECT resource_id as broadcast_id, details, created_at, user_id
+     FROM audit_log
+     WHERE action IN ('broadcast.send', 'broadcast.complete')
+     ORDER BY created_at DESC LIMIT ?`
+  ).bind(limit).all();
+
+  // Parser les détails JSON
+  const history = ((results || []) as Array<Record<string, unknown>>).map(row => {
+    let details: Record<string, unknown> = {};
+    try { details = JSON.parse(row.details as string); } catch { /* */ }
+    return { ...row, details };
+  });
+
+  return json({ data: history });
 }

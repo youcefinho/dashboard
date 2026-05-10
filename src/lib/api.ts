@@ -576,3 +576,129 @@ export async function deletePipelineStage(pipelineId: string, stageId: string): 
     method: 'DELETE',
   });
 }
+
+// ── 2FA TOTP ────────────────────────────────────────────────
+
+export async function totpSetup(): Promise<ApiResponse<{ secret: string; otpauth_url: string }>> {
+  return apiFetch<{ secret: string; otpauth_url: string }>('/auth/totp/setup', {
+    method: 'POST',
+  });
+}
+
+export async function totpVerify(token: string): Promise<ApiResponse<{ enabled: boolean }>> {
+  return apiFetch<{ enabled: boolean }>('/auth/totp/verify', {
+    method: 'POST',
+    body: JSON.stringify({ token }),
+  });
+}
+
+export async function totpDisable(params: { token?: string; password?: string }): Promise<ApiResponse<{ enabled: boolean }>> {
+  return apiFetch<{ enabled: boolean }>('/auth/totp/disable', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
+}
+
+// ── Bulk CSV Import ─────────────────────────────────────────
+
+export interface CsvImportResult {
+  total: number;
+  imported: number;
+  skipped: number;
+  errors: Array<{ line: number; error: string }>;
+}
+
+export async function importLeadsCsv(
+  clientId: string, csvData: string, fieldMapping?: Record<string, string>
+): Promise<ApiResponse<CsvImportResult>> {
+  return apiFetch<CsvImportResult>('/leads/import', {
+    method: 'POST',
+    body: JSON.stringify({ client_id: clientId, csv_data: csvData, field_mapping: fieldMapping }),
+  });
+}
+
+// ── Reports ─────────────────────────────────────────────────
+
+export interface ReportsOverview {
+  period_days: number;
+  kpis: {
+    total_leads: number;
+    converted_leads: number;
+    lost_leads: number;
+    conversion_rate: number;
+    avg_conversion_days: number | null;
+  };
+  charts: {
+    daily_leads: Array<{ date: string; count: number }>;
+    by_status: Array<{ status: string; count: number }>;
+    by_type: Array<{ type: string; count: number }>;
+  };
+}
+
+export async function getReportsOverview(days?: number, clientId?: string): Promise<ApiResponse<ReportsOverview>> {
+  const params = new URLSearchParams();
+  if (days) params.set('days', String(days));
+  if (clientId) params.set('client_id', clientId);
+  return apiFetch<ReportsOverview>(`/reports/overview?${params.toString()}`);
+}
+
+export interface SourceReport {
+  source: string;
+  total_leads: number;
+  converted: number;
+  lost: number;
+  conversion_rate: number;
+}
+
+export async function getReportsSources(days?: number): Promise<ApiResponse<{ period_days: number; sources: SourceReport[] }>> {
+  const params = new URLSearchParams();
+  if (days) params.set('days', String(days));
+  return apiFetch<{ period_days: number; sources: SourceReport[] }>(`/reports/sources?${params.toString()}`);
+}
+
+export interface ConversionFunnel {
+  period_days: number;
+  total_leads: number;
+  funnel: Array<{ stage: string; label: string; count: number; percentage: number }>;
+  avg_stage_times: Array<{ action: string; avg_days_from_creation: number }>;
+}
+
+export async function getReportsConversion(days?: number): Promise<ApiResponse<ConversionFunnel>> {
+  const params = new URLSearchParams();
+  if (days) params.set('days', String(days));
+  return apiFetch<ConversionFunnel>(`/reports/conversion?${params.toString()}`);
+}
+
+// ── Email Broadcast ─────────────────────────────────────────
+
+export interface BroadcastResult {
+  broadcast_id: string;
+  total_recipients: number;
+  sent: number;
+  failed: number;
+  errors: Array<{ email: string; error: string }>;
+}
+
+export async function sendBroadcast(params: {
+  subject: string;
+  body_html?: string;
+  body_text?: string;
+  template_id?: string;
+  client_id?: string;
+  filters?: {
+    status?: string[];
+    type?: string[];
+    source?: string[];
+  };
+}): Promise<ApiResponse<BroadcastResult>> {
+  return apiFetch<BroadcastResult>('/broadcast', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
+}
+
+export async function getBroadcastHistory(limit?: number): Promise<ApiResponse<Array<Record<string, unknown>>>> {
+  const params = new URLSearchParams();
+  if (limit) params.set('limit', String(limit));
+  return apiFetch<Array<Record<string, unknown>>>(`/broadcast/history?${params.toString()}`);
+}
