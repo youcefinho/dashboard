@@ -227,7 +227,9 @@ async function migrateCustomFields(
     const resp = await ghlFetch<GhlCustomField[]>(
       `/locations/${locationId}/customFields`, pitToken
     );
-    const fields = Array.isArray(resp) ? resp : (resp.data || []);
+    // GHL retourne { customFields: [...] } — pas sous .data
+    const rawResp = resp as unknown as Record<string, unknown>;
+    const fields = (rawResp.customFields || resp.data || []) as GhlCustomField[];
 
     for (const field of fields) {
       await new Promise(r => setTimeout(r, RATE_LIMIT_DELAY));
@@ -244,13 +246,14 @@ async function migrateCustomFields(
 
         // INSERT OR IGNORE — idempotent
         const fieldId = crypto.randomUUID();
+        // Générer un slug à partir du nom
+        const slug = field.name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
         const result = await env.DB.prepare(
-          `INSERT OR IGNORE INTO custom_field_defs (id, client_id, field_name, field_type, options, placeholder, position, is_active)
-           VALUES (?, ?, ?, ?, ?, ?, ?, 1)`
+          `INSERT OR IGNORE INTO custom_field_defs (id, client_id, name, slug, field_type, options, sort_order)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`
         ).bind(
-          fieldId, clientId, sanitizeInput(field.name, 200), fieldType,
+          fieldId, clientId, sanitizeInput(field.name, 200), slug, fieldType,
           field.picklistOptions ? JSON.stringify(field.picklistOptions) : '[]',
-          sanitizeInput(field.placeholder || '', 200),
           field.position || 0
         ).run();
 
@@ -363,8 +366,8 @@ async function migrateContacts(
                 const targetFieldId = cfMap.get(cf.id);
                 if (targetFieldId && cf.value !== null && cf.value !== undefined) {
                   await env.DB.prepare(
-                    'INSERT OR IGNORE INTO custom_field_values (id, lead_id, field_id, value) VALUES (?, ?, ?, ?)'
-                  ).bind(crypto.randomUUID(), leadId, targetFieldId, String(cf.value)).run();
+                    'INSERT OR IGNORE INTO custom_field_values (lead_id, field_id, value) VALUES (?, ?, ?)'
+                  ).bind(leadId, targetFieldId, String(cf.value)).run();
                 }
               }
             }
