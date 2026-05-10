@@ -169,3 +169,29 @@ export async function createNotification(
     ).bind(crypto.randomUUID(), userId, clientId, icon, title, description, link).run();
   } catch { /* best-effort */ }
 }
+
+// ── DND (Do Not Disturb) helper ─────────────────────────────
+
+export type DndChannel = 'email' | 'sms' | 'call' | 'webchat';
+
+/**
+ * Vérifie si un lead a activé DND pour un canal donné.
+ * Retourne true si l'envoi est BLOQUÉ.
+ */
+export async function isLeadDnd(env: Env, leadId: string, channel: DndChannel): Promise<boolean> {
+  const lead = await env.DB.prepare(
+    'SELECT dnd, dnd_settings FROM leads WHERE id = ?'
+  ).bind(leadId).first() as { dnd: number; dnd_settings: string } | null;
+  if (!lead || !lead.dnd) return false;
+  try {
+    const settings = JSON.parse(lead.dnd_settings || '{}') as Record<string, boolean>;
+    // Si le canal spécifique est désactivé dans les settings, pas de blocage
+    if (settings[channel] === false) return false;
+    // Si DND global activé et le canal n'est pas explicitement exclu → bloqué
+    return true;
+  } catch {
+    // Si dnd_settings invalide mais dnd = 1 → bloquer par défaut
+    return true;
+  }
+}
+

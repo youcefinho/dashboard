@@ -15,7 +15,7 @@ export async function handleEmailBroadcast(request: Request, env: Env, auth: { u
     if (tpl) { htmlContent = htmlContent || tpl.body_html; textContent = textContent || tpl.body_text; }
   }
   if (!htmlContent && !textContent) return json({ error: 'Contenu email requis' }, 400);
-  let query = "SELECT id, name, email FROM leads WHERE email != '' AND email IS NOT NULL";
+  let query = "SELECT id, name, email FROM leads WHERE email != '' AND email IS NOT NULL AND (dnd = 0 OR dnd IS NULL OR json_extract(dnd_settings, '$.email') = 0)";
   const params: string[] = [];
   if (body.client_id) { query += ' AND client_id = ?'; params.push(body.client_id); }
   if (body.filters?.status?.length) { const ph = body.filters.status.map(() => '?').join(','); query += ` AND status IN (${ph})`; params.push(...body.filters.status); }

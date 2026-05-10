@@ -1,7 +1,8 @@
 // ── Module Messages — Intralys CRM ──────────────────────────
 import { Resend } from 'resend';
 import type { Env } from './types';
-import { sanitizeInput, json, audit, sendSms, createNotification } from './helpers';
+import { sanitizeInput, json, audit, sendSms, createNotification, isLeadDnd } from './helpers';
+import type { DndChannel } from './helpers';
 
 export async function handleGetLeadMessages(
   env: Env,
@@ -45,6 +46,14 @@ export async function handleSendMessage(
   const lead = await env.DB.prepare('SELECT * FROM leads WHERE id = ?').bind(leadId).first() as Record<string, unknown> | null;
   if (!lead) {
     return json({ error: 'Lead introuvable' }, 404);
+  }
+
+  // Vérification DND avant envoi (sauf notes internes)
+  if (channel !== 'internal_note') {
+    const dndBlocked = await isLeadDnd(env, leadId, channel as DndChannel);
+    if (dndBlocked) {
+      return json({ error: `Envoi bloqué : le lead a activé DND pour le canal ${channel}` }, 403);
+    }
   }
 
   const messageId = crypto.randomUUID();

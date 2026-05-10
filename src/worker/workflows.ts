@@ -1,7 +1,7 @@
 // ── Module Workflows — Intralys CRM ─────────────────────────
 import { Resend } from 'resend';
 import type { Env } from './types';
-import { sanitizeInput, json, sendSms } from './helpers';
+import { sanitizeInput, json, sendSms, isLeadDnd } from './helpers';
 
 export async function handleGetWorkflows(
   env: Env,
@@ -338,6 +338,9 @@ async function executeStep(env: Env, step: Record<string, unknown>, lead: Record
 
     case 'send_email': {
       if (!env.RESEND_API_KEY) return;
+      // Vérification DND email
+      const emailDnd = await isLeadDnd(env, lead.id as string, 'email');
+      if (emailDnd) return;
       const tplId = config.template_id as string;
       const tpl = tplId
         ? await env.DB.prepare('SELECT subject, body_html FROM email_templates WHERE id = ?').bind(tplId).first() as { subject: string; body_html: string } | null
@@ -367,6 +370,9 @@ async function executeStep(env: Env, step: Record<string, unknown>, lead: Record
 
     case 'send_sms': {
       if (!lead.phone) return;
+      // Vérification DND SMS
+      const smsDnd = await isLeadDnd(env, lead.id as string, 'sms');
+      if (smsDnd) return;
       const smsBody = config.message ? interpolate(config.message as string) : `Bonjour ${lead.name}, merci pour votre intérêt !`;
       try {
         const result = await sendSms(env, lead.phone as string, smsBody);

@@ -212,6 +212,37 @@ export async function handlePatchLead(
     }
   }
 
+  // Q.1 — DND (Do Not Disturb)
+  if (body.dnd !== undefined) {
+    updates.push('dnd = ?');
+    params.push(body.dnd ? 1 : 0);
+    activities.push({ action: 'dnd_changed', details: JSON.stringify({ dnd: body.dnd }) });
+  }
+  if (body.dnd_settings !== undefined) {
+    const dndStr = typeof body.dnd_settings === 'string' ? body.dnd_settings : JSON.stringify(body.dnd_settings);
+    updates.push('dnd_settings = ?');
+    params.push(sanitizeInput(dndStr, 500));
+  }
+
+  // Q.5 — Champs contact étendus
+  if (body.additional_emails !== undefined) {
+    const emailsStr = typeof body.additional_emails === 'string' ? body.additional_emails : JSON.stringify(body.additional_emails);
+    updates.push('additional_emails = ?');
+    params.push(sanitizeInput(emailsStr, 2000));
+  }
+  if (body.date_of_birth !== undefined) {
+    updates.push('date_of_birth = ?');
+    params.push(sanitizeInput(body.date_of_birth as string, 20));
+  }
+  if (body.country !== undefined) {
+    updates.push('country = ?');
+    params.push(sanitizeInput(body.country as string, 10));
+  }
+  if (body.timezone !== undefined) {
+    updates.push('timezone = ?');
+    params.push(sanitizeInput(body.timezone as string, 50));
+  }
+
   if (updates.length === 0) {
     return json({ error: 'Aucune modification' }, 400);
   }
