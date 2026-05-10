@@ -28,8 +28,9 @@ CREATE TABLE IF NOT EXISTS pipeline_stages (
 CREATE INDEX IF NOT EXISTS idx_pipeline_stages_pipeline ON pipeline_stages(pipeline_id);
 
 -- ── Ajouter pipeline_id + stage_id aux leads ────────────────
--- Note : SQLite ne supporte pas ADD COLUMN IF NOT EXISTS
--- Ces colonnes seront NULL pour les leads existants (migration douce)
+-- ⚠️ ATTENTION : SQLite ne supporte PAS ADD COLUMN IF NOT EXISTS
+-- Ne jamais exécuter cette migration 2 fois sur la même DB !
+-- Si la migration échoue ici, c'est que les colonnes existent déjà → OK, ignorer l'erreur.
 
 ALTER TABLE leads ADD COLUMN pipeline_id TEXT DEFAULT NULL;
 ALTER TABLE leads ADD COLUMN stage_id TEXT DEFAULT NULL;

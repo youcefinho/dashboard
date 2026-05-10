@@ -2,7 +2,7 @@
 // Routes API + assets statiques servis par Cloudflare
 
 import { Resend } from 'resend';
-import { validate, loginSchema, changePasswordSchema, patchLeadSchema, bulkLeadsSchema, webhookLeadSchema, createClientSchema, createTaskSchema, createTemplateSchema, createAppointmentSchema } from './lib/schemas';
+import { validate, loginSchema, changePasswordSchema } from './lib/schemas';
 
 // ── Types Worker ────────────────────────────────────────────
 
@@ -813,7 +813,7 @@ async function handleGetClients(env: Env, auth: { role: string }): Promise<Respo
 
 // ── POST /api/clients ───────────────────────────────────────
 
-async function handleCreateClient(request: Request, env: Env, auth: { role: string }): Promise<Response> {
+async function handleCreateClient(request: Request, env: Env, auth: { role: string; userId: string }): Promise<Response> {
   if (auth.role !== 'admin') {
     return json({ error: 'Accès réservé aux administrateurs' }, 403);
   }
