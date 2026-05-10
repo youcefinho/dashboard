@@ -1,9 +1,10 @@
-// ── Page Lead Detail — Fiche individuelle d'un lead ─────────
+// ── Page Lead Detail — Fiche individuelle d'un lead (Sprint Design) ──
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, Button, Badge, Skeleton, EmptyState } from '@/components/ui';
+import { Avatar } from '@/components/ui/Avatar';
 import { getLeadDetail, updateLead, addTag, removeTag, getAppointments, getTasks, updateTask, getLeadNotes, createLeadNote, deleteLeadNote, getLeadScores, getLeadCustomFields } from '@/lib/api';
 import { ConversationPanel } from '@/components/conversations/ConversationPanel';
 import {
@@ -15,6 +16,7 @@ import {
   type LeadDetail, type LeadStatus, type ActivityType, type Appointment, type Task,
   type LeadNote, type LeadScore, type CustomFieldValue, type LifecycleStage,
 } from '@/lib/types';
+import { ArrowLeft, Star, Phone, Mail, CalendarPlus, CheckSquare } from 'lucide-react';
 
 export function LeadDetailPage() {
   const { leadId } = useParams({ strict: false }) as { leadId: string };
@@ -132,9 +134,7 @@ export function LeadDetailPage() {
     void loadLead();
   };
 
-  // Couleur dynamique avatar basée sur le nom
-  const avatarColors = ['#6366f1','#8b5cf6','#ec4899','#14b8a6','#f59e0b','#ef4444','#3b82f6','#10b981'];
-  const avatarColor = avatarColors[lead.name.charCodeAt(0) % avatarColors.length];
+  // Avatar géré par le composant Avatar
 
   // Probabilité par stage
   const stageProbability: Record<string, number> = { new: 10, contacted: 25, meeting: 50, signed: 90, closed: 100, lost: 0 };
@@ -144,8 +144,8 @@ export function LeadDetailPage() {
     <AppLayout title={lead.name}>
       {/* Bouton retour */}
       <button onClick={() => void navigate({ to: '/leads' })}
-        className="text-sm text-[var(--color-text-muted)] hover:text-[var(--color-accent)] mb-4 flex items-center gap-1 cursor-pointer">
-        ← Retour aux leads
+        className="text-sm text-[var(--text-muted)] hover:text-[var(--brand-primary)] mb-4 flex items-center gap-1.5 cursor-pointer transition-colors">
+        <ArrowLeft size={16} /> Retour aux leads
       </button>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 max-w-6xl">
@@ -155,13 +155,11 @@ export function LeadDetailPage() {
           <Card className="p-5">
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3">
-                <div className="w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold text-white shadow-lg" style={{ background: avatarColor }}>
-                  {lead.name.charAt(0).toUpperCase()}
-                </div>
+                <Avatar name={lead.name} size="lg" />
                 <div>
-                  <h2 className="text-lg font-bold">{lead.name}</h2>
-                  <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)]">
-                    <button onClick={() => void navigate({ to: `/clients/${lead.client_id}` })} className="hover:text-[var(--color-accent)] cursor-pointer transition-colors">{lead.client_name}</button>
+                  <h2 className="text-lg font-bold text-[var(--text-primary)]">{lead.name}</h2>
+                  <div className="flex items-center gap-2 text-sm text-[var(--text-muted)]">
+                    <button onClick={() => void navigate({ to: `/clients/${lead.client_id}` })} className="hover:text-[var(--brand-primary)] cursor-pointer transition-colors">{lead.client_name}</button>
                     <span>·</span>
                     <span>{SOURCE_LABELS[lead.source] || lead.source}</span>
                     <span>·</span>
@@ -171,10 +169,10 @@ export function LeadDetailPage() {
               </div>
               <div className="flex items-center gap-2">
                 <button onClick={async () => { await updateLead(leadId, { favorite: lead.favorite ? 0 : 1 } as Record<string, unknown>); void loadLead(); }}
-                  className="text-lg cursor-pointer hover:scale-125 transition-transform" title={lead.favorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}>
-                  {lead.favorite ? '⭐' : '☆'}
+                  className="p-1 cursor-pointer hover:scale-110 transition-transform" title={lead.favorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}>
+                  <Star size={18} className={lead.favorite ? 'fill-[var(--warning)] text-[var(--warning)]' : 'text-[var(--text-muted)]'} />
                 </button>
-                <Badge color={lead.type === 'buy' ? 'var(--color-accent)' : 'var(--color-warning)'}>
+                <Badge color={lead.type === 'buy' ? 'var(--brand-primary)' : 'var(--accent-orange)'}>
                   {TYPE_LABELS[lead.type]}
                 </Badge>
                 <Badge color={STATUS_COLORS[lead.status]}>{STATUS_LABELS[lead.status]}</Badge>
@@ -188,20 +186,20 @@ export function LeadDetailPage() {
             </div>
 
             {/* Actions rapides */}
-            <div className="flex flex-wrap gap-2 mb-4 pb-4 border-b border-[var(--color-border-subtle)]">
+            <div className="flex flex-wrap gap-2 mb-4 pb-4 border-b border-[var(--border-subtle)]">
               {lead.phone && (
-                <a href={`tel:${lead.phone}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-[var(--radius-md)] bg-[var(--color-bg-hover)] text-[var(--color-text-secondary)] hover:bg-[var(--color-accent)] hover:text-white transition-colors cursor-pointer">
-                  📞 Appeler
+                <a href={`tel:${lead.phone}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-[var(--radius-sm)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] hover:bg-[var(--brand-primary)] hover:text-white transition-colors cursor-pointer">
+                  <Phone size={13} /> Appeler
                 </a>
               )}
-              <a href={`mailto:${lead.email}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-[var(--radius-md)] bg-[var(--color-bg-hover)] text-[var(--color-text-secondary)] hover:bg-[var(--color-accent)] hover:text-white transition-colors cursor-pointer">
-                📧 Email
+              <a href={`mailto:${lead.email}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-[var(--radius-sm)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] hover:bg-[var(--brand-primary)] hover:text-white transition-colors cursor-pointer">
+                <Mail size={13} /> Email
               </a>
-              <button onClick={() => void navigate({ to: '/calendar' })} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-[var(--radius-md)] bg-[var(--color-bg-hover)] text-[var(--color-text-secondary)] hover:bg-[var(--color-accent)] hover:text-white transition-colors cursor-pointer">
-                📅 Planifier RDV
+              <button onClick={() => void navigate({ to: '/calendar' })} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-[var(--radius-sm)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] hover:bg-[var(--brand-primary)] hover:text-white transition-colors cursor-pointer">
+                <CalendarPlus size={13} /> Planifier RDV
               </button>
-              <button onClick={() => void navigate({ to: '/tasks' })} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-[var(--radius-md)] bg-[var(--color-bg-hover)] text-[var(--color-text-secondary)] hover:bg-[var(--color-accent)] hover:text-white transition-colors cursor-pointer">
-                ✅ Créer tâche
+              <button onClick={() => void navigate({ to: '/tasks' })} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-[var(--radius-sm)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] hover:bg-[var(--brand-primary)] hover:text-white transition-colors cursor-pointer">
+                <CheckSquare size={13} /> Créer tâche
               </button>
             </div>
 
@@ -242,14 +240,13 @@ export function LeadDetailPage() {
           </Card>
 
           {/* Onglets */}
-          <div className="flex gap-1 border-b border-[var(--color-border-subtle)] overflow-x-auto">
-            {([['details', '📋 Détails'], ['notes', `📝 Notes (${leadNotes.length})`], ['conversations', '💬 Conversations'], ['scores', `📊 Scores`], ['activity', '📜 Activité']] as const).map(([key, label]) => (
+          <div className="flex gap-1 border-b border-[var(--border-subtle)] overflow-x-auto">
+            {([['details', 'Détails'], ['notes', `Notes (${leadNotes.length})`], ['conversations', 'Conversations'], ['scores', 'Scores'], ['activity', 'Activité']] as const).map(([key, label]) => (
               <button key={key} onClick={() => setActiveTab(key as typeof activeTab)}
-                className={`px-4 py-2.5 text-sm font-medium transition-colors cursor-pointer border-b-2 -mb-px whitespace-nowrap ${
-                  activeTab === key ? 'border-[var(--color-accent)] text-[var(--color-accent)]' : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
+                className={`px-4 py-2.5 text-[13px] font-medium transition-colors cursor-pointer border-b-2 -mb-px whitespace-nowrap ${
+                  activeTab === key ? 'border-[var(--brand-primary)] text-[var(--brand-primary)]' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]'
                 }`}>{label}</button>
             ))}
-
           </div>
 
           {/* Contenu par onglet */}
