@@ -928,3 +928,30 @@ export async function executeSmartList(listId: string, params?: { limit?: number
   if (params?.offset) search.set('offset', params.offset.toString());
   return apiFetch<Array<Record<string, unknown>>>(`/smart-lists/${listId}/execute?${search.toString()}`);
 }
+
+// ── AI Features (P3.6) ──────────────────────────────────────
+
+export async function aiScoreLead(leadId: string): Promise<ApiResponse<{ score: number; reason: string }>> {
+  return apiFetch<{ score: number; reason: string }>(`/ai/score/${leadId}`, { method: 'POST' });
+}
+
+export async function aiGenerate(data: {
+  action: 'email_followup' | 'centris_description' | 'social_post' | 'objection_handler' | 'sms_followup';
+  context?: Record<string, unknown>;
+  lead_id?: string;
+  client_id?: string;
+}): Promise<ApiResponse<Record<string, unknown>>> {
+  return apiFetch<Record<string, unknown>>('/ai/generate', {
+    method: 'POST', body: JSON.stringify(data),
+  });
+}
+
+export async function aiSuggestWorkflow(description: string): Promise<ApiResponse<{
+  name: string;
+  trigger_type: string;
+  steps: Array<Record<string, unknown>>;
+}>> {
+  return apiFetch<{ name: string; trigger_type: string; steps: Array<Record<string, unknown>> }>('/ai/suggest-workflow', {
+    method: 'POST', body: JSON.stringify({ description }),
+  });
+}

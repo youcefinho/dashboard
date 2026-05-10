@@ -16,6 +16,7 @@ export interface Env {
   GOOGLE_CLIENT_SECRET: string;
   GOOGLE_REDIRECT_URI: string;
   GBP_API_KEY: string;
+  ANTHROPIC_API_KEY: string;
 }
 
 export interface AuthContext {

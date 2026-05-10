@@ -405,6 +405,12 @@ async function routeApi(request: Request, env: Env, url: URL): Promise<Response>
   const slExecMatch = path.match(/^\/api\/smart-lists\/([^/]+)\/execute$/);
   if (slExecMatch && method === 'GET') return handleExecuteSmartList(env, auth, slExecMatch[1] as string, url);
 
+  // ── AI features (P3.6) ──────────────────────────────────
+  const aiScoreMatch = path.match(/^\/api\/ai\/score\/([^/]+)$/);
+  if (aiScoreMatch && method === 'POST') return handleAiScore(env, auth, aiScoreMatch[1] as string);
+  if (path === '/api/ai/generate' && method === 'POST') return handleAiGenerate(request, env, auth);
+  if (path === '/api/ai/suggest-workflow' && method === 'POST') return handleAiSuggestWorkflow(request, env, auth);
+
   // ── Debug (à retirer avant prod) ────────────────────────
   if (path === '/api/debug/run-cron' && method === 'GET') {
     if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
@@ -4325,4 +4331,211 @@ async function handleExecuteSmartList(
     total: countResult?.total || 0,
     filters,
   });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ██  P3.6 — AI FEATURES (Claude Haiku 4.5)
+// ═══════════════════════════════════════════════════════════════
+
+// ── Helper Anthropic API ────────────────────────────────────
+
+async function callClaude(
+  env: Env,
+  systemPrompt: string,
+  userMessage: string,
+  maxTokens = 500
+): Promise<string> {
+  // Utilise ANTHROPIC_API_KEY si dispo, sinon OPENAI_API_KEY en fallback
+  const apiKey = env.ANTHROPIC_API_KEY || env.OPENAI_API_KEY;
+  if (!apiKey) throw new Error('ANTHROPIC_API_KEY non configurée');
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: maxTokens,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userMessage }],
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Anthropic API ${res.status}: ${err}`);
+  }
+
+  const data = await res.json() as {
+    content: Array<{ type: string; text: string }>;
+  };
+
+  return data.content?.[0]?.text || '';
+}
+
+// ── POST /api/ai/score/:leadId ──────────────────────────────
+
+async function handleAiScore(
+  env: Env, auth: { userId: string; role: string }, leadId: string
+): Promise<Response> {
+  const lead = await env.DB.prepare(
+    'SELECT * FROM leads WHERE id = ?'
+  ).bind(leadId).first() as Record<string, unknown> | null;
+
+  if (!lead) return json({ error: 'Lead non trouvé' }, 404);
+
+  // Récupérer l'historique des messages
+  const { results: messages } = await env.DB.prepare(
+    'SELECT direction, body, channel FROM messages WHERE lead_id = ? ORDER BY sent_at DESC LIMIT 10'
+  ).bind(leadId).all();
+
+  const systemPrompt = `Tu es un expert en qualification de leads immobiliers au Québec.
+Score le lead de 0 à 100 basé sur : timeline d'achat, budget, source d'acquisition, engagement (nombre de réponses), complétude du profil.
+Réponds UNIQUEMENT avec un JSON valide : {"score": <number>, "reason": "<explication courte en français>"}
+Ne mets rien d'autre dans ta réponse.`;
+
+  const userMessage = `Lead: ${JSON.stringify({
+    name: lead.name, type: lead.type, source: lead.source,
+    budget: lead.budget, timeline: lead.timeline, status: lead.status,
+    created_at: lead.created_at, property_type: lead.property_type,
+  })}
+Messages (${(messages || []).length}): ${JSON.stringify((messages || []).slice(0, 5).map((m: Record<string, unknown>) => ({
+    direction: m.direction, channel: m.channel, body: (m.body as string || '').slice(0, 100)
+  })))}`;
+
+  try {
+    const result = await callClaude(env, systemPrompt, userMessage, 200);
+    const parsed = JSON.parse(result) as { score: number; reason: string };
+
+    // Sauvegarder le score
+    await env.DB.prepare(
+      "UPDATE leads SET score = ?, updated_at = datetime('now') WHERE id = ?"
+    ).bind(String(parsed.score), leadId).run();
+
+    await audit(env, auth.userId, 'ai.score', 'lead', leadId, { score: parsed.score });
+    return json({ data: { score: parsed.score, reason: parsed.reason } });
+  } catch (err) {
+    console.error('AI scoring erreur:', err);
+    return json({ error: 'Erreur lors du scoring AI', details: String(err) }, 500);
+  }
+}
+
+// ── POST /api/ai/generate ───────────────────────────────────
+
+async function handleAiGenerate(
+  request: Request, env: Env, auth: { userId: string; role: string }
+): Promise<Response> {
+  const body = await request.json() as {
+    action: string;
+    context?: Record<string, unknown>;
+    lead_id?: string;
+    client_id?: string;
+  };
+
+  const allowedActions = ['email_followup', 'centris_description', 'social_post', 'objection_handler', 'sms_followup'];
+  if (!body.action || !allowedActions.includes(body.action)) {
+    return json({ error: `action requise. Valeurs : ${allowedActions.join(', ')}` }, 400);
+  }
+
+  // Récupérer le brand_voice du client si dispo
+  let brandVoice = 'Ton professionnel mais chaleureux, naturel québécois. Tutoiement. Pas de vente agressive.';
+  if (body.client_id) {
+    const client = await env.DB.prepare(
+      'SELECT name FROM clients WHERE id = ?'
+    ).bind(body.client_id).first() as { name: string } | null;
+    if (client) {
+      brandVoice += ` Client : ${client.name}.`;
+    }
+  }
+
+  // Récupérer les infos du lead si fourni
+  let leadContext = '';
+  if (body.lead_id) {
+    const lead = await env.DB.prepare(
+      'SELECT name, type, budget, timeline, property_type, source FROM leads WHERE id = ?'
+    ).bind(body.lead_id).first() as Record<string, unknown> | null;
+    if (lead) leadContext = `\nLead: ${JSON.stringify(lead)}`;
+  }
+
+  const prompts: Record<string, { system: string; user: string; tokens: number }> = {
+    email_followup: {
+      system: `Tu rédiges des emails de suivi pour courtiers immobiliers QC. ${brandVoice} Email court (3-5 phrases), objet inclus. Format: {"subject": "...", "body": "..."}`,
+      user: `Rédige un email de suivi pour relancer ce lead.${leadContext}\n${body.context ? JSON.stringify(body.context) : ''}`,
+      tokens: 400,
+    },
+    centris_description: {
+      system: `Tu rédiges des descriptions de propriétés pour Centris (MLS Québec). ${brandVoice} Description vendeuse mais factuelle, 150-200 mots. Format: {"description": "..."}`,
+      user: `Rédige une description Centris pour cette propriété :\n${JSON.stringify(body.context || {})}`,
+      tokens: 500,
+    },
+    social_post: {
+      system: `Tu rédiges des posts réseaux sociaux pour courtiers immo QC. ${brandVoice} Post engageant avec emojis, 2-3 phrases + CTA. Format: {"post": "...", "hashtags": ["..."]}`,
+      user: `Rédige un post social media :\n${JSON.stringify(body.context || {})}`,
+      tokens: 300,
+    },
+    objection_handler: {
+      system: `Tu aides les courtiers QC à répondre aux objections de clients. ${brandVoice} Réponse empathique, 3-4 phrases. Format: {"response": "...", "tip": "..."}`,
+      user: `Le client dit : "${body.context?.objection || 'Je vais y penser'}"\n${leadContext}`,
+      tokens: 300,
+    },
+    sms_followup: {
+      system: `Tu rédiges des SMS courts de suivi pour courtiers QC. ${brandVoice} Max 160 caractères. Format: {"sms": "..."}`,
+      user: `Rédige un SMS de suivi pour ce lead.${leadContext}\n${body.context ? JSON.stringify(body.context) : ''}`,
+      tokens: 100,
+    },
+  };
+
+  const prompt = prompts[body.action]!;
+
+  try {
+    const result = await callClaude(env, prompt.system, prompt.user, prompt.tokens);
+    const parsed = JSON.parse(result);
+    await audit(env, auth.userId, `ai.generate.${body.action}`, 'ai', '', { lead_id: body.lead_id });
+    return json({ data: parsed });
+  } catch (err) {
+    console.error('AI generate erreur:', err);
+    return json({ error: 'Erreur lors de la génération AI', details: String(err) }, 500);
+  }
+}
+
+// ── POST /api/ai/suggest-workflow ───────────────────────────
+
+async function handleAiSuggestWorkflow(
+  request: Request, env: Env, auth: { userId: string; role: string }
+): Promise<Response> {
+  const body = await request.json() as { description: string };
+
+  if (!body.description) return json({ error: 'description requise' }, 400);
+
+  const systemPrompt = `Tu es un expert en automatisation CRM pour courtiers immobiliers QC.
+L'utilisateur décrit un workflow en langage naturel. Tu le convertis en JSON de workflow steps.
+Format de sortie STRICT :
+{
+  "name": "Nom du workflow",
+  "trigger_type": "lead_created|status_change|tag_added|manual",
+  "steps": [
+    {"step_order": 1, "action_type": "send_email|send_sms|wait|add_tag|update_status|create_task", "config": {...}, "delay_minutes": 0}
+  ]
+}
+Actions possibles et leur config :
+- send_email: {"subject": "...", "body_html": "..."}
+- send_sms: {"message": "..."}
+- wait: {} (le delay_minutes indique combien de temps attendre)
+- add_tag: {"tag": "..."}
+- update_status: {"status": "new|contacted|qualified|proposal|negotiation|signed|lost"}
+- create_task: {"title": "...", "description": "..."}
+Réponds UNIQUEMENT avec le JSON, rien d'autre.`;
+
+  try {
+    const result = await callClaude(env, systemPrompt, body.description, 800);
+    const parsed = JSON.parse(result);
+    await audit(env, auth.userId, 'ai.suggest_workflow', 'ai', '', { description: body.description.slice(0, 100) });
+    return json({ data: parsed });
+  } catch (err) {
+    console.error('AI suggest-workflow erreur:', err);
+    return json({ error: 'Erreur lors de la suggestion AI', details: String(err) }, 500);
+  }
 }
