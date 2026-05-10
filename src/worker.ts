@@ -13,6 +13,9 @@ interface Env {
   WEBHOOK_SECRET: string;
   NOTIFICATION_EMAIL: string;
   ALLOWED_ORIGINS: string;
+  TWILIO_ACCOUNT_SID: string;
+  TWILIO_AUTH_TOKEN: string;
+  TWILIO_PHONE_NUMBER: string;
 }
 
 // ── Constantes ──────────────────────────────────────────────
@@ -133,6 +136,43 @@ async function audit(
   } catch { /* non critique — ne jamais bloquer l'action principale */ }
 }
 
+// ── Twilio SMS helper ───────────────────────────────────────
+
+async function sendSms(
+  env: Env, to: string, body: string
+): Promise<{ success: boolean; sid?: string; error?: string }> {
+  if (!env.TWILIO_ACCOUNT_SID || !env.TWILIO_AUTH_TOKEN || !env.TWILIO_PHONE_NUMBER) {
+    return { success: false, error: 'Twilio non configuré' };
+  }
+
+  try {
+    const url = `https://api.twilio.com/2010-04-01/Accounts/${env.TWILIO_ACCOUNT_SID}/Messages.json`;
+    const auth = btoa(`${env.TWILIO_ACCOUNT_SID}:${env.TWILIO_AUTH_TOKEN}`);
+    const params = new URLSearchParams({
+      To: to,
+      From: env.TWILIO_PHONE_NUMBER,
+      Body: body,
+    });
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${auth}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: params.toString(),
+    });
+
+    const data = await res.json() as { sid?: string; message?: string; code?: number };
+    if (!res.ok) {
+      return { success: false, error: data.message || `Twilio ${res.status}` };
+    }
+    return { success: true, sid: data.sid };
+  } catch (err) {
+    return { success: false, error: String(err) };
+  }
+}
+
 // ── Auth helpers ────────────────────────────────────────────
 
 function extractToken(request: Request): string | null {
@@ -175,6 +215,24 @@ export default {
     // CORS preflight
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: corsHeaders() });
+    }
+
+    // Webhooks inbound (pas d'auth CRM, validation par signature)
+    if (url.pathname === '/api/webhook/sms' && request.method === 'POST') {
+      try {
+        return await handleInboundSms(request, env);
+      } catch (err) {
+        console.error('Webhook SMS erreur:', err);
+        return json({ error: 'Erreur webhook' }, 500);
+      }
+    }
+    if (url.pathname === '/api/webhook/email' && request.method === 'POST') {
+      try {
+        return await handleInboundEmail(request, env);
+      } catch (err) {
+        console.error('Webhook email erreur:', err);
+        return json({ error: 'Erreur webhook' }, 500);
+      }
     }
 
     // Routage API
@@ -377,6 +435,24 @@ async function routeApi(request: Request, env: Env, url: URL): Promise<Response>
   if (path === '/api/notifications/read-all' && method === 'POST') return handleReadAllNotifications(env, auth);
   const notifMatch = path.match(/^\/api\/notifications\/([^/]+)\/read$/);
   if (notifMatch && method === 'PATCH') return handleReadNotification(env, auth, notifMatch[1] as string);
+
+  // ── Pipelines ────────────────────────────────────────────
+  if (path === '/api/pipelines' && method === 'GET') return handleGetPipelines(env, auth);
+  if (path === '/api/pipelines' && method === 'POST') return handleCreatePipeline(request, env, auth);
+  const pipelinePatchMatch = path.match(/^\/api\/pipelines\/([^/]+)$/);
+  if (pipelinePatchMatch && method === 'PATCH') return handleUpdatePipeline(request, env, auth, pipelinePatchMatch[1] as string);
+  if (pipelinePatchMatch && method === 'DELETE') return handleDeletePipeline(env, auth, pipelinePatchMatch[1] as string);
+
+  // Stages d'un pipeline
+  const stagesMatch = path.match(/^\/api\/pipelines\/([^/]+)\/stages$/);
+  if (stagesMatch && method === 'GET') return handleGetPipelineStages(env, auth, stagesMatch[1] as string);
+  if (stagesMatch && method === 'POST') return handleCreatePipelineStage(request, env, auth, stagesMatch[1] as string);
+  const stageMatch = path.match(/^\/api\/pipelines\/([^/]+)\/stages\/([^/]+)$/);
+  if (stageMatch && method === 'PATCH') return handleUpdatePipelineStage(request, env, auth, stageMatch[1] as string, stageMatch[2] as string);
+  if (stageMatch && method === 'DELETE') return handleDeletePipelineStage(env, auth, stageMatch[1] as string, stageMatch[2] as string);
+
+  // ── SMS envoi direct ────────────────────────────────────
+  if (path === '/api/sms/send' && method === 'POST') return handleSendSms(request, env, auth);
 
   // ── Debug (à retirer avant prod) ────────────────────────
   if (path === '/api/debug/run-cron' && method === 'GET') {
@@ -2115,9 +2191,27 @@ async function executeStep(env: Env, step: Record<string, unknown>, lead: Record
       return;
     }
 
-    case 'send_sms':
-      // TODO P1 quand Twilio sera branché
+    case 'send_sms': {
+      if (!lead.phone) return;
+      const smsBody = config.message ? interpolate(config.message as string) : `Bonjour ${lead.name}, merci pour votre intérêt !`;
+      try {
+        const result = await sendSms(env, lead.phone as string, smsBody);
+        if (result.success) {
+          await env.DB.prepare(
+            `INSERT INTO messages (id, lead_id, client_id, direction, channel, body, status, sent_by, external_id)
+             VALUES (?, ?, ?, 'outbound', 'sms', ?, 'sent', 'workflow', ?)`
+          ).bind(crypto.randomUUID(), lead.id as string, lead.client_id as string, smsBody, result.sid || '').run();
+        } else {
+          await env.DB.prepare(
+            `INSERT INTO workflow_execution_log (enrollment_id, step_id, status, result)
+             VALUES (?, ?, 'failed', ?)`
+          ).bind(_enrollmentId, step.id as string, JSON.stringify({ error: result.error })).run();
+        }
+      } catch (err) {
+        console.error('Workflow send_sms failed:', err);
+      }
       return;
+    }
 
     case 'add_tag':
       if (config.tag) {
@@ -2194,4 +2288,290 @@ async function autoEnroll(env: Env, workflowId: string, leadId: string): Promise
     `INSERT INTO workflow_enrollments (id, workflow_id, lead_id, current_step_id, status, next_action_at)
      VALUES (?, ?, ?, ?, 'active', ?)`
   ).bind(crypto.randomUUID(), workflowId, leadId, firstStep.id, nextAt).run();
+}
+
+// ── POST /api/sms/send (envoi direct) ───────────────────────
+
+async function handleSendSms(
+  request: Request, env: Env, auth: { userId: string; role: string }
+): Promise<Response> {
+  if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
+
+  const body = await request.json() as { lead_id?: string; to?: string; message?: string };
+  if (!body.message || body.message.length < 1) return json({ error: 'Message requis' }, 400);
+
+  let to = body.to || '';
+  let leadId = body.lead_id || '';
+  let clientId = '';
+
+  if (leadId) {
+    const lead = await env.DB.prepare('SELECT phone, client_id FROM leads WHERE id = ?').bind(leadId).first() as { phone: string; client_id: string } | null;
+    if (!lead || !lead.phone) return json({ error: 'Lead introuvable ou sans téléphone' }, 404);
+    to = lead.phone;
+    clientId = lead.client_id;
+  }
+
+  if (!to) return json({ error: 'Numéro de téléphone requis' }, 400);
+
+  const result = await sendSms(env, to, sanitizeInput(body.message, 1600));
+  if (!result.success) return json({ error: result.error || 'Échec envoi SMS' }, 500);
+
+  // Logger le message
+  const msgId = crypto.randomUUID();
+  if (leadId) {
+    await env.DB.prepare(
+      `INSERT INTO messages (id, lead_id, client_id, direction, channel, body, status, sent_by, external_id)
+       VALUES (?, ?, ?, 'outbound', 'sms', ?, 'sent', ?, ?)`
+    ).bind(msgId, leadId, clientId, sanitizeInput(body.message, 1600), auth.userId, result.sid || '').run();
+  }
+
+  await audit(env, auth.userId, 'sms.send', 'message', msgId, { to, lead_id: leadId });
+  return json({ data: { success: true, sid: result.sid } });
+}
+
+// ── POST /api/webhook/sms (inbound Twilio) ──────────────────
+
+async function handleInboundSms(request: Request, env: Env): Promise<Response> {
+  // Twilio envoie en application/x-www-form-urlencoded
+  const formData = await request.formData();
+  const from = formData.get('From') as string || '';
+  const body = formData.get('Body') as string || '';
+  const sid = formData.get('MessageSid') as string || '';
+
+  if (!from || !body) {
+    return new Response('<Response></Response>', { headers: { 'Content-Type': 'text/xml' } });
+  }
+
+  // Chercher le lead par téléphone
+  const cleanPhone = from.replace(/\D/g, '').slice(-10);
+  const lead = await env.DB.prepare(
+    "SELECT id, client_id, name FROM leads WHERE REPLACE(REPLACE(REPLACE(phone, '-', ''), ' ', ''), '+', '') LIKE ?"
+  ).bind(`%${cleanPhone}`).first() as { id: string; client_id: string; name: string } | null;
+
+  if (lead) {
+    // Sauvegarder le message inbound
+    await env.DB.prepare(
+      `INSERT INTO messages (id, lead_id, client_id, direction, channel, body, status, sent_by, external_id)
+       VALUES (?, ?, ?, 'inbound', 'sms', ?, 'delivered', ?, ?)`
+    ).bind(crypto.randomUUID(), lead.id, lead.client_id, sanitizeInput(body, 1600), from, sid).run();
+
+    // Notifier les admins
+    const { results: admins } = await env.DB.prepare(
+      "SELECT id FROM users WHERE role = 'admin' AND is_active = 1"
+    ).all();
+    for (const admin of (admins || []) as Array<{ id: string }>) {
+      await createNotification(env, admin.id, '📱 SMS reçu', `${lead.name}: "${body.substring(0, 80)}"`, '📱', `/leads/${lead.id}`, lead.client_id);
+    }
+  }
+
+  // Réponse TwiML vide (pas de réponse auto)
+  return new Response('<Response></Response>', { headers: { 'Content-Type': 'text/xml' } });
+}
+
+// ── POST /api/webhook/email (inbound Resend) ────────────────
+
+async function handleInboundEmail(request: Request, env: Env): Promise<Response> {
+  // Resend envoie le webhook en JSON
+  const payload = await request.json() as {
+    type?: string;
+    data?: {
+      from?: string;
+      to?: string[];
+      subject?: string;
+      text?: string;
+      html?: string;
+      headers?: Array<{ name: string; value: string }>;
+    };
+  };
+
+  if (payload.type !== 'email.received' || !payload.data) {
+    return json({ received: true });
+  }
+
+  const data = payload.data;
+  const fromEmail = (data.from || '').toLowerCase();
+  const subject = sanitizeInput(data.subject || '(sans sujet)', 500);
+  const bodyText = sanitizeInput(data.text || data.html || '', 10000);
+
+  if (!fromEmail) return json({ received: true });
+
+  // Chercher le lead par email
+  const lead = await env.DB.prepare(
+    'SELECT id, client_id, name FROM leads WHERE LOWER(email) = ?'
+  ).bind(fromEmail).first() as { id: string; client_id: string; name: string } | null;
+
+  if (lead) {
+    await env.DB.prepare(
+      `INSERT INTO messages (id, lead_id, client_id, direction, channel, subject, body, status, sent_by)
+       VALUES (?, ?, ?, 'inbound', 'email', ?, ?, 'delivered', ?)`
+    ).bind(crypto.randomUUID(), lead.id, lead.client_id, subject, bodyText, fromEmail).run();
+
+    // Notifier les admins
+    const { results: admins } = await env.DB.prepare(
+      "SELECT id FROM users WHERE role = 'admin' AND is_active = 1"
+    ).all();
+    for (const admin of (admins || []) as Array<{ id: string }>) {
+      await createNotification(env, admin.id, '📧 Email reçu', `${lead.name}: ${subject.substring(0, 80)}`, '📧', `/leads/${lead.id}`, lead.client_id);
+    }
+  }
+
+  return json({ received: true });
+}
+
+// ── Pipelines CRUD ──────────────────────────────────────────
+
+async function handleGetPipelines(env: Env, auth: { role: string }): Promise<Response> {
+  if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
+  const { results: pipelines } = await env.DB.prepare(
+    'SELECT * FROM pipelines ORDER BY position ASC'
+  ).all();
+
+  // Charger les stages pour chaque pipeline
+  const pipelinesWithStages = [];
+  for (const p of (pipelines || []) as Array<Record<string, unknown>>) {
+    const { results: stages } = await env.DB.prepare(
+      'SELECT * FROM pipeline_stages WHERE pipeline_id = ? ORDER BY position ASC'
+    ).bind(p.id as string).all();
+
+    // Compter les leads par stage
+    const stagesWithCount = [];
+    for (const s of (stages || []) as Array<Record<string, unknown>>) {
+      const count = await env.DB.prepare(
+        'SELECT COUNT(*) as count FROM leads WHERE stage_id = ?'
+      ).bind(s.id as string).first() as { count: number } | null;
+      stagesWithCount.push({ ...s, lead_count: count?.count || 0 });
+    }
+
+    pipelinesWithStages.push({ ...p, stages: stagesWithCount });
+  }
+
+  return json({ data: pipelinesWithStages });
+}
+
+async function handleCreatePipeline(
+  request: Request, env: Env, auth: { role: string; userId: string }
+): Promise<Response> {
+  if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
+  const body = await request.json() as { name?: string; description?: string };
+  if (!body.name) return json({ error: 'Nom requis' }, 400);
+
+  const id = crypto.randomUUID();
+  const maxPos = await env.DB.prepare('SELECT MAX(position) as max_pos FROM pipelines').first() as { max_pos: number | null } | null;
+  const position = (maxPos?.max_pos ?? -1) + 1;
+
+  await env.DB.prepare(
+    "INSERT INTO pipelines (id, name, description, position) VALUES (?, ?, ?, ?)"
+  ).bind(id, sanitizeInput(body.name, 200), sanitizeInput(body.description || '', 500), position).run();
+
+  await audit(env, auth.userId, 'pipeline.create', 'pipeline', id, { name: body.name });
+  return json({ data: { id, success: true } }, 201);
+}
+
+async function handleUpdatePipeline(
+  request: Request, env: Env, auth: { role: string; userId: string }, pipelineId: string
+): Promise<Response> {
+  if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
+  const body = await request.json() as { name?: string; description?: string; position?: number };
+  const updates: string[] = [];
+  const params: (string | number)[] = [];
+
+  if (body.name) { updates.push('name = ?'); params.push(sanitizeInput(body.name, 200)); }
+  if (body.description !== undefined) { updates.push('description = ?'); params.push(sanitizeInput(body.description, 500)); }
+  if (body.position !== undefined) { updates.push('position = ?'); params.push(body.position); }
+
+  if (updates.length === 0) return json({ error: 'Aucune modification' }, 400);
+  updates.push("updated_at = datetime('now')");
+  params.push(pipelineId);
+
+  await env.DB.prepare(`UPDATE pipelines SET ${updates.join(', ')} WHERE id = ?`).bind(...params).run();
+  await audit(env, auth.userId, 'pipeline.update', 'pipeline', pipelineId);
+  return json({ data: { success: true } });
+}
+
+async function handleDeletePipeline(
+  env: Env, auth: { role: string; userId: string }, pipelineId: string
+): Promise<Response> {
+  if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
+
+  // Empêcher la suppression du pipeline par défaut
+  const pipeline = await env.DB.prepare('SELECT is_default FROM pipelines WHERE id = ?').bind(pipelineId).first() as { is_default: number } | null;
+  if (!pipeline) return json({ error: 'Pipeline introuvable' }, 404);
+  if (pipeline.is_default) return json({ error: 'Impossible de supprimer le pipeline par défaut' }, 400);
+
+  // Migrer les leads orphelins vers le pipeline par défaut
+  const defaultPipeline = await env.DB.prepare("SELECT id FROM pipelines WHERE is_default = 1").first() as { id: string } | null;
+  if (defaultPipeline) {
+    await env.DB.prepare('UPDATE leads SET pipeline_id = ? WHERE pipeline_id = ?').bind(defaultPipeline.id, pipelineId).run();
+  }
+
+  await env.DB.prepare('DELETE FROM pipeline_stages WHERE pipeline_id = ?').bind(pipelineId).run();
+  await env.DB.prepare('DELETE FROM pipelines WHERE id = ?').bind(pipelineId).run();
+  await audit(env, auth.userId, 'pipeline.delete', 'pipeline', pipelineId);
+  return json({ data: { success: true } });
+}
+
+// ── Pipeline Stages ─────────────────────────────────────────
+
+async function handleGetPipelineStages(
+  env: Env, auth: { role: string }, pipelineId: string
+): Promise<Response> {
+  if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
+  const { results } = await env.DB.prepare(
+    'SELECT * FROM pipeline_stages WHERE pipeline_id = ? ORDER BY position ASC'
+  ).bind(pipelineId).all();
+  return json({ data: results || [] });
+}
+
+async function handleCreatePipelineStage(
+  request: Request, env: Env, auth: { role: string; userId: string }, pipelineId: string
+): Promise<Response> {
+  if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
+  const body = await request.json() as { name?: string; slug?: string; color?: string; is_win_stage?: boolean; is_loss_stage?: boolean };
+  if (!body.name || !body.slug) return json({ error: 'Nom et slug requis' }, 400);
+
+  const id = crypto.randomUUID();
+  const maxPos = await env.DB.prepare('SELECT MAX(position) as max_pos FROM pipeline_stages WHERE pipeline_id = ?').bind(pipelineId).first() as { max_pos: number | null } | null;
+  const position = (maxPos?.max_pos ?? -1) + 1;
+
+  await env.DB.prepare(
+    "INSERT INTO pipeline_stages (id, pipeline_id, name, slug, color, position, is_win_stage, is_loss_stage) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+  ).bind(id, pipelineId, sanitizeInput(body.name, 100), sanitizeInput(body.slug, 50), body.color || '#6366f1', position, body.is_win_stage ? 1 : 0, body.is_loss_stage ? 1 : 0).run();
+
+  await audit(env, auth.userId, 'stage.create', 'pipeline_stage', id, { name: body.name, pipeline_id: pipelineId });
+  return json({ data: { id, success: true } }, 201);
+}
+
+async function handleUpdatePipelineStage(
+  request: Request, env: Env, auth: { role: string; userId: string }, _pipelineId: string, stageId: string
+): Promise<Response> {
+  if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
+  const body = await request.json() as { name?: string; slug?: string; color?: string; position?: number; is_win_stage?: boolean; is_loss_stage?: boolean };
+  const updates: string[] = [];
+  const params: (string | number)[] = [];
+
+  if (body.name) { updates.push('name = ?'); params.push(sanitizeInput(body.name, 100)); }
+  if (body.slug) { updates.push('slug = ?'); params.push(sanitizeInput(body.slug, 50)); }
+  if (body.color) { updates.push('color = ?'); params.push(sanitizeInput(body.color, 20)); }
+  if (body.position !== undefined) { updates.push('position = ?'); params.push(body.position); }
+  if (body.is_win_stage !== undefined) { updates.push('is_win_stage = ?'); params.push(body.is_win_stage ? 1 : 0); }
+  if (body.is_loss_stage !== undefined) { updates.push('is_loss_stage = ?'); params.push(body.is_loss_stage ? 1 : 0); }
+
+  if (updates.length === 0) return json({ error: 'Aucune modification' }, 400);
+  params.push(stageId);
+
+  await env.DB.prepare(`UPDATE pipeline_stages SET ${updates.join(', ')} WHERE id = ?`).bind(...params).run();
+  await audit(env, auth.userId, 'stage.update', 'pipeline_stage', stageId);
+  return json({ data: { success: true } });
+}
+
+async function handleDeletePipelineStage(
+  env: Env, auth: { role: string; userId: string }, _pipelineId: string, stageId: string
+): Promise<Response> {
+  if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
+
+  // Remettre les leads de ce stage à NULL
+  await env.DB.prepare('UPDATE leads SET stage_id = NULL WHERE stage_id = ?').bind(stageId).run();
+  await env.DB.prepare('DELETE FROM pipeline_stages WHERE id = ?').bind(stageId).run();
+  await audit(env, auth.userId, 'stage.delete', 'pipeline_stage', stageId);
+  return json({ data: { success: true } });
 }

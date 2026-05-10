@@ -906,14 +906,14 @@ Set en prod via : `npx wrangler secret put <NAME>`.
 | P0.2 | Auth PBKDF2 + change-password | ✅ done | 8434753 |
 | P0.3 | Routes /api/tasks | ✅ done | 8434753 |
 | P0.4 | Workflow engine cron | ✅ done | 8434753 |
-| P1.1 | Twilio SMS bidirectionnel | ⬜ todo | — |
-| P1.2 | Email inbound webhook | ⬜ todo | — |
+| P1.1 | Twilio SMS bidirectionnel | ✅ done | — |
+| P1.2 | Email inbound webhook | ✅ done | — |
 | P1.3 | Validation Zod | ✅ done | f635d54 |
 | P1.4 | Notifications réelles | ✅ done | 8434753 |
 | P1.5 | Pagination cursor | ✅ done | ff02fb9 |
 | P1.6 | Audit log middleware | ✅ done | c51b78d |
 | P1.7 | Bulk actions Leads | ✅ done | c0f34b2 |
-| P1.8 | Multi-pipelines | ⬜ todo | — |
+| P1.8 | Multi-pipelines | ✅ done | — |
 
 Mets `🟡 in-progress` quand tu démarres, `✅ done` quand commit poussé. Mets le hash court du commit dans la dernière colonne.
 

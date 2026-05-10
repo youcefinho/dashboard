@@ -500,3 +500,79 @@ export async function bulkLeads(ids: string[], action: string, value?: string): 
     body: JSON.stringify({ ids, action, value }),
   });
 }
+
+// ── SMS ─────────────────────────────────────────────────────
+
+export async function sendSms(leadId: string, message: string): Promise<ApiResponse<{ success: boolean; sid?: string }>> {
+  return apiFetch<{ success: boolean; sid?: string }>('/sms/send', {
+    method: 'POST',
+    body: JSON.stringify({ lead_id: leadId, message }),
+  });
+}
+
+// ── Pipelines ───────────────────────────────────────────────
+
+export interface Pipeline {
+  id: string;
+  name: string;
+  description: string;
+  is_default: number;
+  position: number;
+  stages: PipelineStage[];
+}
+
+export interface PipelineStage {
+  id: string;
+  pipeline_id: string;
+  name: string;
+  slug: string;
+  color: string;
+  position: number;
+  is_win_stage: number;
+  is_loss_stage: number;
+  lead_count: number;
+}
+
+export async function getPipelines(): Promise<ApiResponse<Pipeline[]>> {
+  return apiFetch<Pipeline[]>('/pipelines');
+}
+
+export async function createPipeline(name: string, description?: string): Promise<ApiResponse<{ id: string; success: boolean }>> {
+  return apiFetch<{ id: string; success: boolean }>('/pipelines', {
+    method: 'POST',
+    body: JSON.stringify({ name, description }),
+  });
+}
+
+export async function updatePipeline(id: string, data: Partial<Pipeline>): Promise<ApiResponse<{ success: boolean }>> {
+  return apiFetch<{ success: boolean }>(`/pipelines/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deletePipeline(id: string): Promise<ApiResponse<{ success: boolean }>> {
+  return apiFetch<{ success: boolean }>(`/pipelines/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function createPipelineStage(pipelineId: string, data: { name: string; slug: string; color?: string }): Promise<ApiResponse<{ id: string; success: boolean }>> {
+  return apiFetch<{ id: string; success: boolean }>(`/pipelines/${pipelineId}/stages`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updatePipelineStage(pipelineId: string, stageId: string, data: Partial<PipelineStage>): Promise<ApiResponse<{ success: boolean }>> {
+  return apiFetch<{ success: boolean }>(`/pipelines/${pipelineId}/stages/${stageId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deletePipelineStage(pipelineId: string, stageId: string): Promise<ApiResponse<{ success: boolean }>> {
+  return apiFetch<{ success: boolean }>(`/pipelines/${pipelineId}/stages/${stageId}`, {
+    method: 'DELETE',
+  });
+}
