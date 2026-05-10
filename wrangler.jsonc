@@ -11,7 +11,13 @@
     {
       "binding": "DB",
       "database_name": "intralys-crm",
-      "database_id": "À_REMPLIR_APRÈS_CRÉATION"
+      "database_id": "ee9da52c-0e09-4d03-8819-dfc5b033cd18"
     }
-  ]
+  ],
+  "vars": {
+    "ALLOWED_ORIGINS": "https://crm.intralys.com,https://intralys-dashboard.pages.dev"
+  },
+  "triggers": {
+    "crons": ["*/5 * * * *"]
+  }
 }

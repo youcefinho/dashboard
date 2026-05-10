@@ -1,4 +1,4 @@
-// ── Page Login ──────────────────────────────────────────────
+// ── Page Login — Connexion ──────────────────────────────────
 
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from '@tanstack/react-router';
@@ -31,12 +31,19 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-[var(--color-bg-primary)]">
-      <div className="w-full max-w-sm animate-fade-in">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-[var(--color-bg-primary)] relative overflow-hidden">
+      {/* Cercles décoratifs animés */}
+      <div className="absolute w-[500px] h-[500px] rounded-full opacity-[0.03] -top-48 -right-48"
+        style={{ background: 'radial-gradient(circle, oklch(0.72 0.19 160), transparent)' }} />
+      <div className="absolute w-[400px] h-[400px] rounded-full opacity-[0.04] -bottom-32 -left-32"
+        style={{ background: 'radial-gradient(circle, oklch(0.70 0.15 240), transparent)' }} />
+
+      <div className="w-full max-w-sm animate-fade-in relative z-10">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="w-14 h-14 rounded-[var(--radius-xl)] bg-[var(--color-accent)] flex items-center justify-center mx-auto mb-4">
-            <span className="text-white font-bold text-xl">I</span>
+          <div className="w-16 h-16 rounded-[var(--radius-xl)] bg-[var(--color-accent)] flex items-center justify-center mx-auto mb-4 shadow-[var(--shadow-glow)]"
+            style={{ animation: 'pulse-glow 3s ease-in-out infinite' }}>
+            <span className="text-white font-bold text-2xl">I</span>
           </div>
           <h1 className="text-2xl font-bold tracking-tight">Intralys CRM</h1>
           <p className="text-sm text-[var(--color-text-secondary)] mt-1">Connectez-vous à votre espace</p>
@@ -67,7 +74,7 @@ export function LoginPage() {
           />
 
           {error && (
-            <div className="p-3 rounded-[var(--radius-md)] bg-[color-mix(in_oklch,var(--color-danger)_10%,transparent)] border border-[color-mix(in_oklch,var(--color-danger)_30%,transparent)] text-sm text-[var(--color-danger)]">
+            <div className="p-3 rounded-[var(--radius-md)] bg-[color-mix(in_oklch,var(--color-danger)_10%,transparent)] border border-[color-mix(in_oklch,var(--color-danger)_30%,transparent)] text-sm text-[var(--color-danger)] animate-fade-in">
               {error}
             </div>
           )}
@@ -77,7 +84,16 @@ export function LoginPage() {
           </Button>
         </form>
 
-        <p className="text-center text-xs text-[var(--color-text-muted)] mt-6">
+        {/* Badges statut */}
+        <div className="flex items-center justify-center gap-4 mt-6 text-[10px] text-[var(--color-text-muted)]">
+          <span className="flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-success)]" />
+            Système en ligne
+          </span>
+          <span>v2.0</span>
+        </div>
+
+        <p className="text-center text-xs text-[var(--color-text-muted)] mt-4">
           © {new Date().getFullYear()} Intralys — Tous droits réservés
         </p>
       </div>

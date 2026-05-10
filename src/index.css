@@ -5,6 +5,7 @@
   /* ── Couleurs Dark Mode Premium ─────────────────────────── */
   --color-bg-primary: oklch(0.13 0.01 260);
   --color-bg-secondary: oklch(0.17 0.015 260);
+  --color-bg-tertiary: oklch(0.15 0.012 260);
   --color-bg-card: oklch(0.19 0.015 260);
   --color-bg-hover: oklch(0.22 0.018 260);
   --color-bg-input: oklch(0.15 0.012 260);
@@ -44,6 +45,32 @@
   --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* ── Light Mode ────────────────────────────────────────────── */
+
+[data-theme="light"] {
+  --color-bg-primary: oklch(0.97 0.005 260);
+  --color-bg-secondary: oklch(1.0 0 0);
+  --color-bg-tertiary: oklch(0.96 0.003 260);
+  --color-bg-card: oklch(1.0 0 0);
+  --color-bg-hover: oklch(0.94 0.005 260);
+  --color-bg-input: oklch(0.97 0.003 260);
+
+  --color-border: oklch(0.85 0.01 260);
+  --color-border-subtle: oklch(0.90 0.005 260);
+
+  --color-text-primary: oklch(0.15 0.01 260);
+  --color-text-secondary: oklch(0.40 0.01 260);
+  --color-text-muted: oklch(0.55 0.01 260);
+
+  --color-accent: oklch(0.55 0.22 160);
+  --color-accent-hover: oklch(0.48 0.22 160);
+  --color-muted: oklch(0.70 0.02 260);
+
+  --shadow-card: 0 1px 3px oklch(0 0 0 / 0.08), 0 1px 2px oklch(0 0 0 / 0.04);
+  --shadow-card-hover: 0 4px 12px oklch(0 0 0 / 0.12), 0 2px 4px oklch(0 0 0 / 0.06);
+  --shadow-glow: 0 0 20px oklch(0.55 0.22 160 / 0.1);
+}
+
 /* ── Reset & Base ───────────────────────────────────────────── */
 
 *,
@@ -65,6 +92,7 @@ body {
   color: var(--color-text-primary);
   min-height: 100vh;
   line-height: 1.6;
+  transition: background-color 0.3s, color 0.3s;
 }
 
 /* ── Scrollbar personnalisée ────────────────────────────────── */
@@ -109,12 +137,21 @@ body {
   100% { background-position: 200% 0; }
 }
 
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 .animate-fade-in {
   animation: fadeIn var(--transition-base) ease-out;
 }
 
 .animate-slide-in {
   animation: slideInLeft var(--transition-base) ease-out;
+}
+
+.animate-slide-down {
+  animation: slideDown var(--transition-fast) ease-out;
 }
 
 /* ── Composants utilitaires ─────────────────────────────────── */
@@ -124,7 +161,7 @@ body {
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
-  transition: box-shadow var(--transition-base), border-color var(--transition-base), transform var(--transition-base);
+  transition: box-shadow var(--transition-base), border-color var(--transition-base), transform var(--transition-base), background-color 0.3s;
 }
 
 .card:hover {
@@ -141,6 +178,10 @@ body {
   background: oklch(0.19 0.015 260 / 0.7);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+}
+
+[data-theme="light"] .glass {
+  background: oklch(1 0 0 / 0.7);
 }
 
 .skeleton {
@@ -162,4 +203,131 @@ body {
 ::selection {
   background: oklch(0.72 0.19 160 / 0.3);
   color: var(--color-text-primary);
+}
+
+/* ── Animations supplémentaires ─────────────────────────────── */
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-scale-in {
+  animation: scaleIn var(--transition-base) ease-out;
+}
+
+.animate-slide-up {
+  animation: slideUp var(--transition-base) ease-out;
+}
+
+/* ── Lignes de tableau avec stagger ─────────────────────────── */
+
+tbody tr {
+  animation: slideUp var(--transition-base) ease-out both;
+}
+
+/* ── Gradient subtil sur le body ────────────────────────────── */
+
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 300px;
+  background: radial-gradient(
+    ellipse 80% 200px at 50% -50px,
+    oklch(0.72 0.19 160 / 0.04),
+    transparent
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+[data-theme="light"] body::before {
+  background: radial-gradient(
+    ellipse 80% 200px at 50% -50px,
+    oklch(0.55 0.22 160 / 0.06),
+    transparent
+  );
+}
+
+#root {
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Amélioration des selects ──────────────────────────────── */
+
+select {
+  cursor: pointer;
+}
+
+select option {
+  background: var(--color-bg-card);
+  color: var(--color-text-primary);
+}
+
+/* ── Badges animés ─────────────────────────────────────────── */
+
+.badge-pulse {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* ── Command Palette Overlay ───────────────────────────────── */
+
+.cmd-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 15vh;
+  background: oklch(0 0 0 / 0.5);
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.15s ease-out;
+}
+
+.cmd-palette {
+  width: 100%;
+  max-width: 560px;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 25px 50px oklch(0 0 0 / 0.5);
+  overflow: hidden;
+  animation: slideDown 0.2s ease-out;
+}
+
+/* ── Responsive mobile ─────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  table {
+    font-size: 12px;
+  }
+  
+  th, td {
+    padding: 8px 10px;
+  }
+
+  .card {
+    border-radius: var(--radius-md);
+  }
+}
+
+/* ── Transition douce pour le thème ────────────────────────── */
+
+*, *::before, *::after {
+  transition-property: background-color, border-color, box-shadow;
+  transition-duration: 0s;
+}
+
+[data-transitioning] *, [data-transitioning] *::before, [data-transitioning] *::after {
+  transition-duration: 0.3s !important;
 }

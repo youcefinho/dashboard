@@ -6,8 +6,20 @@ import { LoginPage } from '@/pages/Login';
 import { DashboardPage } from '@/pages/Dashboard';
 import { ClientsPage } from '@/pages/Clients';
 import { ClientLeadsPage } from '@/pages/ClientLeads';
+import { LeadsPage } from '@/pages/Leads';
+import { LeadDetailPage } from '@/pages/LeadDetail';
 import { PipelinePage } from '@/pages/Pipeline';
 import { SettingsPage } from '@/pages/Settings';
+import { InboxPage } from '@/pages/Inbox';
+import { TemplatesPage } from '@/pages/Templates';
+import { WorkflowsPage } from '@/pages/Workflows';
+import { WorkflowDetailPage } from '@/pages/WorkflowDetail';
+import { WorkflowBuilderPage } from '@/pages/WorkflowBuilder';
+import { CalendarPage } from '@/pages/Calendar';
+import { IntegrationsPage } from '@/pages/Integrations';
+import { ReportsPage } from '@/pages/Reports';
+import { TasksPage } from '@/pages/Tasks';
+import { ChangePasswordPage } from '@/pages/ChangePassword';
 import type { ReactNode } from 'react';
 
 // ── Auth Guard ──────────────────────────────────────────────
@@ -54,6 +66,22 @@ const clientLeadsRoute = createRoute({
   ),
 });
 
+const leadsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/leads',
+  component: () => (
+    <AuthGuard><LeadsPage /></AuthGuard>
+  ),
+});
+
+const leadDetailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/leads/$leadId',
+  component: () => (
+    <AuthGuard><LeadDetailPage /></AuthGuard>
+  ),
+});
+
 const pipelineRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/pipeline',
@@ -76,15 +104,107 @@ const indexRoute = createRoute({
   component: () => <Navigate to="/dashboard" />,
 });
 
+const inboxRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/conversations',
+  component: () => (
+    <AuthGuard><InboxPage /></AuthGuard>
+  ),
+});
+
+const templatesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/templates',
+  component: () => (
+    <AuthGuard><TemplatesPage /></AuthGuard>
+  ),
+});
+
+const workflowsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/workflows',
+  component: () => (
+    <AuthGuard><WorkflowsPage /></AuthGuard>
+  ),
+});
+
+const workflowDetailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/workflows/$workflowId',
+  component: () => (
+    <AuthGuard><WorkflowDetailPage /></AuthGuard>
+  ),
+});
+
+const workflowNewRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/workflows/new',
+  component: () => (
+    <AuthGuard><WorkflowBuilderPage /></AuthGuard>
+  ),
+});
+
+const calendarRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/calendar',
+  component: () => (
+    <AuthGuard><CalendarPage /></AuthGuard>
+  ),
+});
+
+const integrationsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/integrations',
+  component: () => (
+    <AuthGuard><IntegrationsPage /></AuthGuard>
+  ),
+});
+
+const reportsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/reports',
+  component: () => (
+    <AuthGuard><ReportsPage /></AuthGuard>
+  ),
+});
+
+const tasksRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/tasks',
+  component: () => (
+    <AuthGuard><TasksPage /></AuthGuard>
+  ),
+});
+
+const changePasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/change-password',
+  component: () => (
+    <AuthGuard><ChangePasswordPage /></AuthGuard>
+  ),
+});
+
 // ── Router ──────────────────────────────────────────────────
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
   dashboardRoute,
+  leadsRoute,
+  leadDetailRoute,
   clientsRoute,
   clientLeadsRoute,
   pipelineRoute,
+  inboxRoute,
+  templatesRoute,
+  workflowNewRoute,
+  workflowDetailRoute,
+  workflowsRoute,
+  calendarRoute,
+  integrationsRoute,
+  reportsRoute,
+  tasksRoute,
+  changePasswordRoute,
   settingsRoute,
 ]);
 

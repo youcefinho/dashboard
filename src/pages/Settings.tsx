@@ -1,53 +1,371 @@
-// ── Page Settings — Configuration ───────────────────────────
+// ── Page Settings — Configuration enrichie ──────────────────
 
+import { useState } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card } from '@/components/ui';
+import { Card, Button, Badge, Input } from '@/components/ui';
 import { useAuth } from '@/lib/auth';
+import { getLeads } from '@/lib/api';
+
+type SettingsTab = 'profil' | 'notifications' | 'securite' | 'apparence' | 'webhook' | 'raccourcis' | 'systeme';
+
+const TABS: { id: SettingsTab; icon: string; label: string; adminOnly?: boolean }[] = [
+  { id: 'profil', icon: '👤', label: 'Profil' },
+  { id: 'notifications', icon: '🔔', label: 'Notifications' },
+  { id: 'securite', icon: '🔒', label: 'Sécurité' },
+  { id: 'apparence', icon: '🎨', label: 'Apparence' },
+  { id: 'webhook', icon: '🔗', label: 'Webhook', adminOnly: true },
+  { id: 'raccourcis', icon: '⌨️', label: 'Raccourcis' },
+  { id: 'systeme', icon: '⚙️', label: 'Système' },
+];
 
 export function SettingsPage() {
   const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
+  const [activeTab, setActiveTab] = useState<SettingsTab>('profil');
+  const [webhookCopied, setWebhookCopied] = useState(false);
+  const [testStatus, setTestStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [exportStatus, setExportStatus] = useState<'idle' | 'loading' | 'done'>('idle');
+  const [saveMsg, setSaveMsg] = useState('');
+
+  // Profil éditable
+  const [profileName, setProfileName] = useState(user?.name || 'Admin');
+  const [profileEmail, setProfileEmail] = useState(user?.email || '');
+  const [profilePhone, setProfilePhone] = useState('');
+  const [profileCompany, setProfileCompany] = useState('Intralys');
+
+  const webhookUrl = `${window.location.origin}/api/webhook/lead`;
+
+  const copyWebhookUrl = () => {
+    void navigator.clipboard.writeText(webhookUrl);
+    setWebhookCopied(true);
+    setTimeout(() => setWebhookCopied(false), 2000);
+  };
+
+  const testWebhook = async () => {
+    setTestStatus('loading');
+    try {
+      const res = await fetch('/api/webhook/lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Webhook-Secret': 'dev-webhook-secret-123', 'X-Client-Id': 'gatineau' },
+        body: JSON.stringify({ name: 'Test Lead', email: `test-${Date.now()}@intralys.com`, phone: '819-555-0000', message: 'Lead de test', type: 'buy' }),
+      });
+      setTestStatus(res.ok ? 'success' : 'error');
+    } catch { setTestStatus('error'); }
+    setTimeout(() => setTestStatus('idle'), 3000);
+  };
+
+  const exportCSV = async () => {
+    setExportStatus('loading');
+    const result = await getLeads();
+    if (result.data && result.data.length > 0) {
+      const headers = ['Nom', 'Email', 'Téléphone', 'Type', 'Statut', 'Source', 'Client', 'Créé le'];
+      const rows = result.data.map(l => [l.name, l.email, l.phone || '', l.type, l.status, l.source, l.client_name || l.client_id, l.created_at]);
+      const csv = [headers.join(','), ...rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))].join('\n');
+      const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = `intralys-leads-${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+      URL.revokeObjectURL(url);
+    }
+    setExportStatus('done');
+    setTimeout(() => setExportStatus('idle'), 2000);
+  };
+
+  const flashSave = () => { setSaveMsg('✓ Enregistré'); setTimeout(() => setSaveMsg(''), 2000); };
+
+  const visibleTabs = TABS.filter(t => !t.adminOnly || isAdmin);
 
   return (
     <AppLayout title="Paramètres">
-      <div className="max-w-2xl space-y-4">
-        {/* Profil */}
-        <Card className="p-5">
-          <h3 className="text-sm font-semibold mb-4">Profil</h3>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between py-2 border-b border-[var(--color-border-subtle)]">
-              <span className="text-sm text-[var(--color-text-secondary)]">Nom</span>
-              <span className="text-sm font-medium">{user?.name || '—'}</span>
-            </div>
-            <div className="flex items-center justify-between py-2 border-b border-[var(--color-border-subtle)]">
-              <span className="text-sm text-[var(--color-text-secondary)]">Email</span>
-              <span className="text-sm font-medium">{user?.email || '—'}</span>
-            </div>
-            <div className="flex items-center justify-between py-2">
-              <span className="text-sm text-[var(--color-text-secondary)]">Rôle</span>
-              <span className="text-sm font-medium">{user?.role === 'admin' ? 'Administrateur' : 'Courtier'}</span>
-            </div>
-          </div>
-        </Card>
+      {/* Mobile tabs — au dessus du contenu */}
+      <div className="md:hidden flex gap-1.5 overflow-x-auto pb-3 mb-4 -mx-1 px-1">
+        {visibleTabs.map(tab => (
+          <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer border whitespace-nowrap shrink-0 transition-all ${activeTab === tab.id ? 'bg-[var(--color-accent)] text-white border-[var(--color-accent)]' : 'border-[var(--color-border-subtle)] text-[var(--color-text-muted)]'}`}>
+            {tab.icon} {tab.label}
+          </button>
+        ))}
+      </div>
 
-        {/* Infos système */}
-        <Card className="p-5">
-          <h3 className="text-sm font-semibold mb-4">Système</h3>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between py-2 border-b border-[var(--color-border-subtle)]">
-              <span className="text-sm text-[var(--color-text-secondary)]">Version</span>
-              <span className="text-sm font-medium text-[var(--color-text-muted)]">1.0.0 — Phase 1 MVP</span>
-            </div>
-            <div className="flex items-center justify-between py-2 border-b border-[var(--color-border-subtle)]">
-              <span className="text-sm text-[var(--color-text-secondary)]">Hébergement</span>
-              <span className="text-sm font-medium text-[var(--color-text-muted)]">Cloudflare Workers + D1</span>
-            </div>
-            <div className="flex items-center justify-between py-2">
-              <span className="text-sm text-[var(--color-text-secondary)]">Base de données</span>
-              <span className="text-sm font-medium text-[var(--color-text-muted)]">intralys-crm</span>
-            </div>
-          </div>
-        </Card>
+      <div className="flex gap-6 max-w-5xl">
+        {/* Sidebar navigation — desktop only */}
+        <nav className="hidden md:block w-48 shrink-0 space-y-1">
+          {visibleTabs.map(tab => (
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+              className={`w-full flex items-center gap-2 px-3 py-2 rounded-[var(--radius-md)] text-sm text-left cursor-pointer transition-colors ${activeTab === tab.id ? 'bg-[var(--color-accent)]/10 text-[var(--color-accent)] font-medium' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-hover)]'}`}>
+              <span>{tab.icon}</span> {tab.label}
+            </button>
+          ))}
+        </nav>
+
+        {/* Content */}
+        <div className="flex-1 space-y-5 min-w-0">
+          {/* Profil */}
+          {activeTab === 'profil' && (
+            <>
+              <Card className="p-5">
+                <div className="flex items-center gap-4 mb-5">
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[var(--color-accent)] to-[var(--color-info)] flex items-center justify-center text-2xl font-bold text-white shadow-lg">
+                    {profileName.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <h3 className="text-base font-semibold">{profileName}</h3>
+                    <p className="text-sm text-[var(--color-text-muted)]">{profileEmail || '—'}</p>
+                    <Badge color={isAdmin ? 'var(--color-accent)' : 'var(--color-info)'}>{isAdmin ? 'Administrateur' : 'Courtier'}</Badge>
+                  </div>
+                  {saveMsg && <span className="ml-auto text-sm text-[var(--color-success)]">{saveMsg}</span>}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-medium text-[var(--color-text-muted)] mb-1 block">Nom complet</label>
+                    <Input value={profileName} onChange={e => setProfileName(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-[var(--color-text-muted)] mb-1 block">Courriel</label>
+                    <Input value={profileEmail} onChange={e => setProfileEmail(e.target.value)} type="email" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-[var(--color-text-muted)] mb-1 block">Téléphone</label>
+                    <Input value={profilePhone} onChange={e => setProfilePhone(e.target.value)} placeholder="+1 819 555-0000" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-[var(--color-text-muted)] mb-1 block">Entreprise</label>
+                    <Input value={profileCompany} onChange={e => setProfileCompany(e.target.value)} />
+                  </div>
+                </div>
+                <div className="flex justify-end mt-4">
+                  <Button onClick={flashSave}>💾 Enregistrer</Button>
+                </div>
+              </Card>
+            </>
+          )}
+
+          {/* Notifications */}
+          {activeTab === 'notifications' && (
+            <Card className="p-5">
+              <h3 className="text-sm font-semibold mb-4">🔔 Notifications</h3>
+              <div className="space-y-1">
+                {[
+                  { label: 'Email nouveau lead', desc: 'Recevoir un email quand un nouveau lead arrive', on: true },
+                  { label: 'Rappel RDV', desc: 'Rappel 1h avant chaque rendez-vous', on: true },
+                  { label: 'Lead score élevé', desc: 'Notification quand un lead atteint un score ≥ 70', on: false },
+                  { label: 'Résumé hebdomadaire', desc: 'Résumé des leads et performances chaque lundi', on: false },
+                  { label: 'Workflow terminé', desc: 'Notification quand un lead termine un workflow', on: true },
+                  { label: 'Tâche en retard', desc: 'Alerte quand une tâche dépasse sa date limite', on: true },
+                ].map(n => (
+                  <div key={n.label} className="flex items-center justify-between py-3 border-b border-[var(--color-border-subtle)] last:border-0">
+                    <div>
+                      <p className="text-sm">{n.label}</p>
+                      <p className="text-xs text-[var(--color-text-muted)]">{n.desc}</p>
+                    </div>
+                    <ToggleSwitch defaultChecked={n.on} />
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {/* Sécurité */}
+          {activeTab === 'securite' && (
+            <>
+              <Card className="p-5">
+                <h3 className="text-sm font-semibold mb-4">🔒 Changer le mot de passe</h3>
+                <div className="space-y-3 max-w-md">
+                  <div>
+                    <label className="text-xs font-medium text-[var(--color-text-muted)] mb-1 block">Mot de passe actuel</label>
+                    <Input type="password" placeholder="••••••••" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-[var(--color-text-muted)] mb-1 block">Nouveau mot de passe</label>
+                    <Input type="password" placeholder="Minimum 8 caractères" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-[var(--color-text-muted)] mb-1 block">Confirmer</label>
+                    <Input type="password" placeholder="Répétez le mot de passe" />
+                  </div>
+                  <Button onClick={flashSave}>🔐 Mettre à jour</Button>
+                </div>
+              </Card>
+              <Card className="p-5">
+                <h3 className="text-sm font-semibold mb-3">📋 Sessions actives</h3>
+                <div className="space-y-2">
+                  {[
+                    { device: '💻 Chrome · Windows', ip: '192.168.1.x', time: 'Maintenant', current: true },
+                    { device: '📱 Safari · iPhone', ip: '10.0.0.x', time: 'Il y a 2h', current: false },
+                  ].map(s => (
+                    <div key={s.device} className="flex items-center justify-between py-2 px-3 bg-[var(--color-bg-tertiary)] rounded-[var(--radius-md)]">
+                      <div>
+                        <p className="text-sm">{s.device} {s.current && <Badge color="var(--color-success)">Active</Badge>}</p>
+                        <p className="text-[10px] text-[var(--color-text-muted)]">{s.ip} · {s.time}</p>
+                      </div>
+                      {!s.current && <button className="text-xs text-[var(--color-danger)] hover:underline cursor-pointer">Déconnecter</button>}
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </>
+          )}
+
+          {/* Apparence */}
+          {activeTab === 'apparence' && (
+            <Card className="p-5">
+              <h3 className="text-sm font-semibold mb-4">🎨 Apparence</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-medium text-[var(--color-text-muted)] mb-2 block">Thème</label>
+                  <div className="flex gap-3">
+                    {[
+                      { id: 'dark', label: '🌙 Sombre', active: true },
+                      { id: 'light', label: '☀️ Clair', active: false },
+                      { id: 'auto', label: '🖥️ Système', active: false },
+                    ].map(t => (
+                      <button key={t.id}
+                        className={`px-4 py-3 rounded-[var(--radius-md)] border text-sm cursor-pointer transition-all ${t.active ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/10 text-[var(--color-accent)]' : 'border-[var(--color-border-subtle)] text-[var(--color-text-muted)] hover:border-[var(--color-accent)]'}`}>
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-[var(--color-text-muted)] mb-2 block">Couleur d'accent</label>
+                  <div className="flex gap-2">
+                    {['oklch(0.72 0.19 160)', 'oklch(0.65 0.20 260)', 'oklch(0.70 0.20 30)', 'oklch(0.65 0.20 330)', 'oklch(0.70 0.15 80)'].map(c => (
+                      <button key={c} className="w-8 h-8 rounded-full border-2 border-transparent hover:border-white cursor-pointer transition-all hover:scale-110" style={{ backgroundColor: c }} />
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-[var(--color-text-muted)] mb-2 block">Sidebar</label>
+                  <div className="flex gap-3">
+                    <button className="px-4 py-2 rounded-[var(--radius-md)] border border-[var(--color-accent)] bg-[var(--color-accent)]/10 text-[var(--color-accent)] text-xs cursor-pointer">📌 Épinglée</button>
+                    <button className="px-4 py-2 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] text-[var(--color-text-muted)] text-xs cursor-pointer">📁 Rétractable</button>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {/* Webhook */}
+          {activeTab === 'webhook' && isAdmin && (
+            <Card className="p-5">
+              <h3 className="text-sm font-semibold mb-1">Webhook — Réception des leads</h3>
+              <p className="text-xs text-[var(--color-text-muted)] mb-4">Configurez vos sites clients pour envoyer les leads vers cette URL.</p>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs text-[var(--color-text-muted)] mb-1 block">URL du webhook</label>
+                  <div className="flex gap-2">
+                    <div className="flex-1 px-3 py-2.5 text-sm bg-[var(--color-bg-input)] border border-[var(--color-border-subtle)] rounded-[var(--radius-md)] text-[var(--color-text-secondary)] font-mono truncate">{webhookUrl}</div>
+                    <Button variant="secondary" size="sm" onClick={copyWebhookUrl}>{webhookCopied ? '✓ Copié' : 'Copier'}</Button>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-[var(--color-text-muted)] mb-2 block">Headers requis</label>
+                  <div className="bg-[var(--color-bg-primary)] rounded-[var(--radius-md)] p-3 space-y-1.5 font-mono text-xs">
+                    <div className="flex"><span className="text-[var(--color-accent)] w-40">Content-Type</span><span className="text-[var(--color-text-secondary)]">application/json</span></div>
+                    <div className="flex"><span className="text-[var(--color-accent)] w-40">X-Webhook-Secret</span><span className="text-[var(--color-text-muted)]">votre-secret-webhook</span></div>
+                    <div className="flex"><span className="text-[var(--color-accent)] w-40">X-Client-Id</span><span className="text-[var(--color-text-muted)]">id-du-client</span></div>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-[var(--color-text-muted)] mb-2 block">Corps de la requête (JSON)</label>
+                  <pre className="bg-[var(--color-bg-primary)] rounded-[var(--radius-md)] p-3 font-mono text-xs text-[var(--color-text-secondary)] overflow-x-auto">{`{
+  "name": "Nom du lead",
+  "email": "email@example.com",
+  "phone": "819-555-0000",
+  "message": "Message optionnel",
+  "type": "buy"
+}`}</pre>
+                </div>
+                <div className="flex items-center gap-3 pt-2 border-t border-[var(--color-border-subtle)]">
+                  <Button variant="secondary" size="sm" onClick={() => void testWebhook()} isLoading={testStatus === 'loading'}>🧪 Tester le webhook</Button>
+                  {testStatus === 'success' && <span className="text-xs text-[var(--color-success)]">✓ Lead de test créé !</span>}
+                  {testStatus === 'error' && <span className="text-xs text-[var(--color-danger)]">✗ Erreur — vérifiez le worker</span>}
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {/* Raccourcis clavier */}
+          {activeTab === 'raccourcis' && (
+            <Card className="p-5">
+              <h3 className="text-sm font-semibold mb-4">⌨️ Raccourcis clavier</h3>
+              <div className="space-y-1">
+                {[
+                  { keys: '⌘ K', desc: 'Recherche globale' },
+                  { keys: '⌘ /', desc: 'Aide' },
+                  { keys: 'G → D', desc: 'Aller au Dashboard' },
+                  { keys: 'G → L', desc: 'Aller aux Leads' },
+                  { keys: 'G → P', desc: 'Aller au Pipeline' },
+                  { keys: 'G → C', desc: 'Aller au Calendrier' },
+                  { keys: 'G → T', desc: 'Aller aux Tâches' },
+                  { keys: 'G → R', desc: 'Aller aux Rapports' },
+                  { keys: 'Esc', desc: 'Fermer le dialogue actif' },
+                  { keys: '↑ ↓', desc: 'Naviguer dans les listes' },
+                  { keys: '↵', desc: 'Ouvrir l\'élément sélectionné' },
+                ].map(s => (
+                  <div key={s.keys} className="flex items-center justify-between py-2.5 border-b border-[var(--color-border-subtle)] last:border-0">
+                    <span className="text-sm text-[var(--color-text-secondary)]">{s.desc}</span>
+                    <div className="flex gap-1">
+                      {s.keys.split(' ').map((k, i) => (
+                        k === '→' ? <span key={i} className="text-[var(--color-text-muted)] text-xs">→</span> :
+                        <kbd key={i} className="px-2 py-0.5 bg-[var(--color-bg-tertiary)] border border-[var(--color-border-subtle)] rounded text-xs font-mono text-[var(--color-text-muted)]">{k}</kbd>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {/* Système */}
+          {activeTab === 'systeme' && (
+            <>
+              <Card className="p-5">
+                <h3 className="text-sm font-semibold mb-4">⚙️ Informations système</h3>
+                <div className="space-y-0">
+                  {[
+                    ['Version', '2.0.0 — Phase 6'],
+                    ['Hébergement', 'Cloudflare Workers + D1'],
+                    ['Base de données', 'intralys-crm (SQLite)'],
+                    ['Frontend', 'React + TypeScript + Tailwind v4'],
+                    ['Graphiques', 'Recharts'],
+                    ['Router', 'TanStack Router'],
+                    ['Modules', 'CRM · Inbox · Workflows · Calendrier · Intégrations · Rapports'],
+                  ].map(([label, value]) => (
+                    <div key={label} className="flex items-center justify-between py-2.5 border-b border-[var(--color-border-subtle)] last:border-0">
+                      <span className="text-sm text-[var(--color-text-secondary)]">{label}</span>
+                      <span className="text-sm font-medium text-[var(--color-text-muted)]">{value}</span>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+              {isAdmin && (
+                <Card className="p-5 border-[var(--color-danger)]/30">
+                  <h3 className="text-sm font-semibold text-[var(--color-danger)] mb-2">⚠️ Zone dangereuse</h3>
+                  <p className="text-xs text-[var(--color-text-muted)] mb-3">Actions sensibles. Procédez avec prudence.</p>
+                  <div className="flex gap-2">
+                    <Button variant="ghost" size="sm" onClick={() => void exportCSV()} isLoading={exportStatus === 'loading'}>
+                      {exportStatus === 'done' ? '✓ Exporté' : '📥 Exporter leads (CSV)'}
+                    </Button>
+                  </div>
+                </Card>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </AppLayout>
+  );
+}
+
+// ── Toggle Switch ───────────────────────────────────────────
+
+function ToggleSwitch({ defaultChecked = false }: { defaultChecked?: boolean }) {
+  const [checked, setChecked] = useState(defaultChecked);
+  return (
+    <button type="button" onClick={() => setChecked(!checked)}
+      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ${checked ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-bg-hover)]'}`}>
+      <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform duration-200 mt-0.5 ${checked ? 'translate-x-4 ml-0.5' : 'translate-x-0.5'}`} />
+    </button>
   );
 }

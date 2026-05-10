@@ -5,6 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:worker": "wrangler dev src/worker.ts --local --port 8787",
+    "db:init": "wrangler d1 execute intralys-crm --local --file=schema.sql && wrangler d1 execute intralys-crm --local --file=seed.sql",
+    "db:migrate": "wrangler d1 execute intralys-crm --local --file=migration-phase1.sql",
+    "db:migrate:phase2": "wrangler d1 execute intralys-crm --local --file=migration-phase2.sql",
+    "db:migrate:phase3": "wrangler d1 execute intralys-crm --local --file=migration-phase3.sql",
+    "db:migrate:phase4": "wrangler d1 execute intralys-crm --local --file=migration-phase4.sql",
+    "db:migrate:phase5": "wrangler d1 execute intralys-crm --local --file=migration-phase5.sql",
     "build": "tsc && vite build",
     "preview": "vite preview"
   },
