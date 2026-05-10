@@ -248,6 +248,11 @@ async function routeApi(request: Request, env: Env, url: URL): Promise<Response>
     return handleGetLeads(env, auth, url);
   }
 
+  // Bulk actions leads
+  if (path === '/api/leads/bulk' && method === 'POST') {
+    return handleBulkLeads(request, env, auth);
+  }
+
   // Export CSV
   if (path === '/api/leads/export' && method === 'GET') {
     return handleExportCsv(env, auth, url);
@@ -981,6 +986,96 @@ async function handlePatchLead(
 
   await audit(env, auth.userId, 'lead.update', 'lead', leadId, body as Record<string, unknown>);
   return json({ success: true });
+}
+
+// ── POST /api/leads/bulk ────────────────────────────────────
+
+async function handleBulkLeads(
+  request: Request, env: Env, auth: { role: string; userId: string }
+): Promise<Response> {
+  if (auth.role !== 'admin') {
+    return json({ error: 'Accès réservé aux administrateurs' }, 403);
+  }
+
+  const body = await request.json() as {
+    ids?: string[];
+    action?: string;
+    value?: string;
+  };
+
+  if (!body.ids || !Array.isArray(body.ids) || body.ids.length === 0 || body.ids.length > 100) {
+    return json({ error: 'Liste de IDs requise (max 100)' }, 400);
+  }
+  if (!body.action) {
+    return json({ error: 'Action requise' }, 400);
+  }
+
+  const validActions = ['change_status', 'add_tag', 'remove_tag', 'assign', 'delete'];
+  if (!validActions.includes(body.action)) {
+    return json({ error: 'Action invalide' }, 400);
+  }
+
+  const ids = body.ids.map(id => sanitizeInput(id, 100)).filter(Boolean);
+  let affected = 0;
+
+  switch (body.action) {
+    case 'change_status': {
+      const validStatuses = ['new', 'contacted', 'meeting', 'signed', 'closed', 'lost'];
+      if (!body.value || !validStatuses.includes(body.value)) {
+        return json({ error: 'Statut invalide' }, 400);
+      }
+      const placeholders = ids.map(() => '?').join(',');
+      await env.DB.prepare(
+        `UPDATE leads SET status = ?, updated_at = datetime('now') WHERE id IN (${placeholders})`
+      ).bind(body.value, ...ids).run();
+      affected = ids.length;
+      break;
+    }
+
+    case 'add_tag': {
+      if (!body.value) return json({ error: 'Tag requis' }, 400);
+      const tag = sanitizeInput(body.value, 50).toLowerCase();
+      for (const id of ids) {
+        await env.DB.prepare('INSERT OR IGNORE INTO lead_tags (lead_id, tag) VALUES (?, ?)').bind(id, tag).run();
+      }
+      affected = ids.length;
+      break;
+    }
+
+    case 'remove_tag': {
+      if (!body.value) return json({ error: 'Tag requis' }, 400);
+      const tag = sanitizeInput(body.value, 50).toLowerCase();
+      const placeholders = ids.map(() => '?').join(',');
+      await env.DB.prepare(
+        `DELETE FROM lead_tags WHERE lead_id IN (${placeholders}) AND tag = ?`
+      ).bind(...ids, tag).run();
+      affected = ids.length;
+      break;
+    }
+
+    case 'assign': {
+      if (!body.value) return json({ error: 'Assigné requis' }, 400);
+      const placeholders = ids.map(() => '?').join(',');
+      await env.DB.prepare(
+        `UPDATE leads SET assigned_to = ?, updated_at = datetime('now') WHERE id IN (${placeholders})`
+      ).bind(sanitizeInput(body.value, 100), ...ids).run();
+      affected = ids.length;
+      break;
+    }
+
+    case 'delete': {
+      const placeholders = ids.map(() => '?').join(',');
+      await env.DB.prepare(`DELETE FROM leads WHERE id IN (${placeholders})`).bind(...ids).run();
+      // Nettoyage cascade
+      await env.DB.prepare(`DELETE FROM lead_tags WHERE lead_id IN (${placeholders})`).bind(...ids).run();
+      await env.DB.prepare(`DELETE FROM activity_log WHERE lead_id IN (${placeholders})`).bind(...ids).run();
+      affected = ids.length;
+      break;
+    }
+  }
+
+  await audit(env, auth.userId, `lead.bulk.${body.action}`, 'lead', 'bulk', { ids, value: body.value, affected });
+  return json({ data: { success: true, affected } });
 }
 
 // ── GET /api/pipeline ───────────────────────────────────────

@@ -491,3 +491,12 @@ export async function markNotificationRead(id: string): Promise<ApiResponse<{ su
 export async function markAllNotificationsRead(): Promise<ApiResponse<{ success: boolean }>> {
   return apiFetch<{ success: boolean }>('/notifications/read-all', { method: 'POST' });
 }
+
+// ── Bulk actions ────────────────────────────────────────────
+
+export async function bulkLeads(ids: string[], action: string, value?: string): Promise<ApiResponse<{ success: boolean; affected: number }>> {
+  return apiFetch<{ success: boolean; affected: number }>('/leads/bulk', {
+    method: 'POST',
+    body: JSON.stringify({ ids, action, value }),
+  });
+}
