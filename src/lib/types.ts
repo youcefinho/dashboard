@@ -11,8 +11,12 @@ export const USER_ROLES = ['admin', 'broker'] as const;
 export type UserRole = typeof USER_ROLES[number];
 
 // Sources de leads
-export const LEAD_SOURCES = ['website', 'facebook', 'google', 'referral', 'phone', 'walkin', 'other'] as const;
+export const LEAD_SOURCES = ['website', 'facebook', 'google', 'referral', 'phone', 'walkin', 'ghl_import', 'other'] as const;
 export type LeadSource = typeof LEAD_SOURCES[number];
+
+// Lifecycle stages
+export const LIFECYCLE_STAGES = ['lead', 'mql', 'sql', 'opportunity', 'customer', 'lost'] as const;
+export type LifecycleStage = typeof LIFECYCLE_STAGES[number];
 
 // Types d'activité
 export const ACTIVITY_TYPES = [
@@ -63,6 +67,27 @@ export interface Lead {
   score: number;
   created_at: string;
   updated_at: string;
+  // Sprint 2 — champs enrichis
+  dnd: number;
+  dnd_settings: string; // JSON
+  date_of_birth: string;
+  country: string;
+  timezone: string;
+  additional_emails: string; // JSON array
+  additional_phones: string; // JSON array
+  city: string;
+  postal_code: string;
+  company: string;
+  lifecycle_stage: LifecycleStage;
+  favorite: number;
+  last_activity_at: string;
+  social_linkedin: string;
+  social_facebook: string;
+  social_instagram: string;
+  avatar_url: string;
+  migrated_from: string;
+  pipeline_id: string;
+  stage_id: string;
   // Jointures optionnelles
   client_name?: string;
   tags?: string[];
@@ -315,6 +340,35 @@ export interface LeadDetail extends Lead {
   activity: ActivityLogEntry[];
 }
 
+// Sprint 2 — Notes multiples
+export interface LeadNote {
+  id: string;
+  lead_id: string;
+  user_id: string;
+  body: string;
+  category: 'general' | 'call' | 'meeting' | 'follow-up' | 'important';
+  is_pinned: number;
+  created_at: string;
+  author_name?: string;
+}
+
+// Sprint 2 — Score profiles
+export interface ScoreProfile {
+  id: string;
+  name: string;
+  description: string;
+  formula: string;
+  is_default: number;
+}
+
+export interface LeadScore {
+  profile_id: string;
+  name: string;
+  description: string;
+  score: number;
+  computed_at: string;
+}
+
 export interface ApiResponse<T> {
   data?: T;
   error?: string;
@@ -357,7 +411,42 @@ export const SOURCE_LABELS: Record<string, string> = {
   referral: 'Référence',
   phone: 'Téléphone',
   walkin: 'Sans RDV',
+  ghl_import: 'Import GHL',
   other: 'Autre',
+};
+
+export const LIFECYCLE_LABELS: Record<LifecycleStage, string> = {
+  lead: 'Lead',
+  mql: 'MQL',
+  sql: 'SQL',
+  opportunity: 'Opportunité',
+  customer: 'Client',
+  lost: 'Perdu',
+};
+
+export const LIFECYCLE_COLORS: Record<LifecycleStage, string> = {
+  lead: 'var(--color-info)',
+  mql: 'var(--color-accent)',
+  sql: 'var(--color-warning)',
+  opportunity: 'oklch(0.7 0.18 60)',
+  customer: 'var(--color-success)',
+  lost: 'var(--color-danger)',
+};
+
+export const NOTE_CATEGORY_LABELS: Record<string, string> = {
+  general: 'Général',
+  call: 'Appel',
+  meeting: 'Rencontre',
+  'follow-up': 'Relance',
+  important: 'Important',
+};
+
+export const NOTE_CATEGORY_ICONS: Record<string, string> = {
+  general: '📝',
+  call: '📞',
+  meeting: '🤝',
+  'follow-up': '🔄',
+  important: '⚠️',
 };
 
 export const ACTIVITY_LABELS: Record<ActivityType, string> = {

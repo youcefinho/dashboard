@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="fr" class="h-full">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Intralys CRM — Direction artistique 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+  :root {
+    --bg-canvas:     oklch(0.99 0 0);
+    --bg-surface:    oklch(1 0 0);
+    --bg-subtle:     oklch(0.97 0.003 250);
+    --bg-muted:      oklch(0.95 0.004 250);
+    --bg-inverse:    oklch(0.18 0.015 260);
+    --bg-inverse-2:  oklch(0.22 0.018 260);
+    --text-primary:    oklch(0.18 0.01 260);
+    --text-secondary:  oklch(0.42 0.008 260);
+    --text-muted:      oklch(0.58 0.006 260);
+    --text-inverse:    oklch(0.97 0 0);
+    --text-inverse-mut: oklch(0.65 0.005 260);
+    --border-subtle:  oklch(0.93 0.004 250);
+    --border-default: oklch(0.88 0.005 250);
+    --border-strong:  oklch(0.78 0.006 250);
+    --brand:          oklch(0.55 0.22 264);
+    --brand-hover:    oklch(0.48 0.22 264);
+    --brand-soft:     oklch(0.96 0.04 264);
+    --success:        oklch(0.65 0.18 145);
+    --success-soft:   oklch(0.96 0.04 145);
+    --warning:        oklch(0.72 0.15 75);
+    --warning-soft:   oklch(0.97 0.04 75);
+    --danger:         oklch(0.62 0.21 25);
+    --danger-soft:    oklch(0.97 0.03 25);
+    --info:           oklch(0.65 0.13 240);
+    --info-soft:      oklch(0.96 0.03 240);
+  }
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-feature-settings: 'cv11', 'ss01', 'ss03';
+    background: var(--bg-canvas);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+  }
+  .num { font-variant-numeric: tabular-nums; }
+  /* Subtle scrollbar */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 999px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
+  /* Sparkline */
+  .sparkline { stroke-linecap: round; stroke-linejoin: round; fill: none; }
+  /* Animation shimmer */
+  @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+  .skeleton {
+    background: linear-gradient(90deg, var(--bg-muted) 0%, var(--bg-subtle) 50%, var(--bg-muted) 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+</style>
+</head>
+<body class="h-full overflow-hidden">
+
+<div class="flex h-screen">
+
+  <!-- ═══════════ SIDEBAR ═══════════ -->
+  <aside class="w-60 flex-shrink-0 flex flex-col" style="background: var(--bg-inverse); color: var(--text-inverse);">
+    <!-- Logo -->
+    <div class="px-5 py-4 flex items-center gap-2.5">
+      <div class="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm" style="background: var(--brand);">
+        I
+      </div>
+      <div>
+        <div class="font-semibold text-sm leading-tight">Intralys</div>
+        <div class="text-[10px] uppercase tracking-wider" style="color: var(--text-inverse-mut);">CRM</div>
+      </div>
+      <button class="ml-auto w-7 h-7 rounded-md flex items-center justify-center hover:bg-white/5 transition" title="Collapse sidebar">
+        <i data-lucide="chevrons-left" class="w-4 h-4" style="color: var(--text-inverse-mut);"></i>
+      </button>
+    </div>
+
+    <!-- Sub-account switcher -->
+    <div class="px-3 mb-2">
+      <button class="w-full px-3 py-2 rounded-lg flex items-center gap-2.5 hover:bg-white/5 transition text-left">
+        <div class="w-7 h-7 rounded-md flex items-center justify-center text-xs font-semibold" style="background: var(--brand-soft); color: var(--brand);">M</div>
+        <div class="flex-1 min-w-0">
+          <div class="text-xs font-medium truncate">Mathis Guimont</div>
+          <div class="text-[10px] truncate" style="color: var(--text-inverse-mut);">RE/Max Vision</div>
+        </div>
+        <i data-lucide="chevrons-up-down" class="w-3.5 h-3.5" style="color: var(--text-inverse-mut);"></i>
+      </button>
+    </div>
+
+    <!-- Nav -->
+    <nav class="flex-1 px-3 space-y-0.5 overflow-y-auto">
+      <div class="px-3 py-2 text-[10px] uppercase tracking-wider font-semibold" style="color: var(--text-inverse-mut);">Workspace</div>
+
+      <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition relative" style="background: var(--brand-soft); color: var(--brand);">
+        <span class="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-r" style="background: var(--brand);"></span>
+        <i data-lucide="layout-dashboard" class="w-[18px] h-[18px]"></i>
+        Dashboard
+      </a>
+      <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium hover:bg-white/5 transition" style="color: rgba(255,255,255,0.85);">
+        <i data-lucide="users" class="w-[18px] h-[18px]"></i>
+        Contacts
+        <span class="ml-auto text-[10px] px-1.5 py-0.5 rounded-md font-semibold" style="background: rgba(255,255,255,0.08); color: var(--text-inverse-mut);">847</span>
+      </a>
+      <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium hover:bg-white/5 transition" style="color: rgba(255,255,255,0.85);">
+        <i data-lucide="kanban-square" class="w-[18px] h-[18px]"></i>
+        Pipeline
+      </a>
+      <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium hover:bg-white/5 transition relative" style="color: rgba(255,255,255,0.85);">
+        <i data-lucide="messages-square" class="w-[18px] h-[18px]"></i>
+        Conversations
+        <span class="ml-auto w-5 h-5 rounded-full text-[10px] flex items-center justify-center font-semibold" style="background: var(--danger); color: white;">3</span>
+      </a>
+      <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium hover:bg-white/5 transition" style="color: rgba(255,255,255,0.85);">
+        <i data-lucide="calendar" class="w-[18px] h-[18px]"></i>
+        Calendrier
+      </a>
+      <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium hover:bg-white/5 transition" style="color: rgba(255,255,255,0.85);">
+        <i data-lucide="check-circle" class="w-[18px] h-[18px]"></i>
+        Tâches
+      </a>
+
+      <div class="px-3 pt-4 pb-2 text-[10px] uppercase tracking-wider font-semibold" style="color: var(--text-inverse-mut);">Marketing</div>
+      <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium hover:bg-white/5 transition" style="color: rgba(255,255,255,0.85);">
+        <i data-lucide="mail" class="w-[18px] h-[18px]"></i>
+        Templates
+      </a>
+      <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium hover:bg-white/5 transition" style="color: rgba(255,255,255,0.85);">
+        <i data-lucide="zap" class="w-[18px] h-[18px]"></i>
+        Workflows
+      </a>
+      <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium hover:bg-white/5 transition" style="color: rgba(255,255,255,0.85);">
+        <i data-lucide="file-text" class="w-[18px] h-[18px]"></i>
+        Documents
+      </a>
+
+      <div class="px-3 pt-4 pb-2 text-[10px] uppercase tracking-wider font-semibold" style="color: var(--text-inverse-mut);">Insights</div>
+      <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium hover:bg-white/5 transition" style="color: rgba(255,255,255,0.85);">
+        <i data-lucide="bar-chart-3" class="w-[18px] h-[18px]"></i>
+        Rapports
+      </a>
+      <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium hover:bg-white/5 transition" style="color: rgba(255,255,255,0.85);">
+        <i data-lucide="settings" class="w-[18px] h-[18px]"></i>
+        Paramètres
+      </a>
+    </nav>
+
+    <!-- Footer profile -->
+    <div class="px-3 pb-4 pt-2 border-t border-white/5">
+      <button class="w-full px-2 py-2 rounded-lg flex items-center gap-2.5 hover:bg-white/5 transition">
+        <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold" style="background: var(--brand);">RB</div>
+        <div class="flex-1 text-left min-w-0">
+          <div class="text-xs font-medium truncate">Rochdi Bouchareb</div>
+          <div class="text-[10px] truncate" style="color: var(--text-inverse-mut);">Admin Intralys</div>
+        </div>
+        <i data-lucide="more-horizontal" class="w-4 h-4" style="color: var(--text-inverse-mut);"></i>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ═══════════ MAIN ═══════════ -->
+  <main class="flex-1 flex flex-col min-w-0">
+
+    <!-- Header -->
+    <header class="h-14 flex items-center px-6 gap-4 border-b" style="background: var(--bg-surface); border-color: var(--border-subtle);">
+      <h1 class="text-lg font-semibold tracking-tight">Dashboard</h1>
+
+      <!-- Search global -->
+      <div class="ml-auto relative w-96">
+        <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style="color: var(--text-muted);"></i>
+        <input type="search" placeholder="Rechercher contacts, deals, conversations…" class="w-full h-9 pl-9 pr-16 rounded-lg text-sm transition focus:outline-none" style="background: var(--bg-subtle); border: 1px solid var(--border-subtle);">
+        <kbd class="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] px-1.5 py-0.5 rounded font-mono font-medium" style="background: var(--bg-surface); color: var(--text-muted); border: 1px solid var(--border-default);">⌘K</kbd>
+      </div>
+
+      <!-- Header actions -->
+      <button class="w-9 h-9 rounded-lg flex items-center justify-center transition hover:bg-[var(--bg-subtle)]" title="Mode sombre">
+        <i data-lucide="moon" class="w-[18px] h-[18px]" style="color: var(--text-secondary);"></i>
+      </button>
+      <button class="w-9 h-9 rounded-lg flex items-center justify-center transition hover:bg-[var(--bg-subtle)] relative" title="Notifications">
+        <i data-lucide="bell" class="w-[18px] h-[18px]" style="color: var(--text-secondary);"></i>
+        <span class="absolute top-2 right-2 w-2 h-2 rounded-full" style="background: var(--danger);"></span>
+      </button>
+      <button class="px-3 h-9 rounded-lg text-sm font-medium flex items-center gap-2 transition hover:opacity-90" style="background: var(--brand); color: white;">
+        <i data-lucide="plus" class="w-4 h-4"></i>
+        Nouveau
+      </button>
+    </header>
+
+    <!-- Content -->
+    <div class="flex-1 overflow-y-auto" style="background: var(--bg-canvas);">
+      <div class="p-8 max-w-[1400px] mx-auto">
+
+        <!-- Page header -->
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h2 class="text-2xl font-bold tracking-tight">Bonjour Rochdi 👋</h2>
+            <p class="text-sm mt-1" style="color: var(--text-secondary);">Voici la vue d'ensemble de Mathis Guimont — 30 derniers jours.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <!-- Period selector segmented -->
+            <div class="inline-flex p-0.5 rounded-lg" style="background: var(--bg-subtle); border: 1px solid var(--border-subtle);">
+              <button class="px-3 h-7 text-xs font-medium rounded-md" style="color: var(--text-secondary);">7j</button>
+              <button class="px-3 h-7 text-xs font-semibold rounded-md" style="background: var(--bg-surface); color: var(--text-primary); box-shadow: 0 1px 2px oklch(0 0 0 / 0.05);">30j</button>
+              <button class="px-3 h-7 text-xs font-medium rounded-md" style="color: var(--text-secondary);">90j</button>
+              <button class="px-3 h-7 text-xs font-medium rounded-md flex items-center gap-1" style="color: var(--text-secondary);">
+                <i data-lucide="calendar" class="w-3 h-3"></i>
+                Custom
+              </button>
+            </div>
+            <button class="h-9 px-3 rounded-lg text-sm font-medium flex items-center gap-2 transition hover:bg-[var(--bg-subtle)]" style="border: 1px solid var(--border-default); color: var(--text-secondary);">
+              <i data-lucide="download" class="w-4 h-4"></i>
+              Exporter
+            </button>
+          </div>
+        </div>
+
+        <!-- Stat cards grid -->
+        <div class="grid grid-cols-4 gap-4 mb-6">
+
+          <!-- Stat 1 -->
+          <div class="p-5 rounded-xl" style="background: var(--bg-surface); border: 1px solid var(--border-subtle);">
+            <div class="flex items-start justify-between mb-3">
+              <div class="w-10 h-10 rounded-lg flex items-center justify-center" style="background: var(--brand-soft);">
+                <i data-lucide="users" class="w-5 h-5" style="color: var(--brand);"></i>
+              </div>
+              <span class="text-xs font-semibold flex items-center gap-0.5 num" style="color: var(--success);">
+                <i data-lucide="trending-up" class="w-3 h-3"></i>
+                +12.5%
+              </span>
+            </div>
+            <div class="text-3xl font-bold tracking-tight num">847</div>
+            <div class="text-xs mt-1" style="color: var(--text-secondary);">Total contacts</div>
+            <svg class="w-full h-8 mt-3" viewBox="0 0 100 30" preserveAspectRatio="none">
+              <path class="sparkline" stroke="var(--brand)" stroke-width="1.5" d="M0,22 L10,18 L20,20 L30,15 L40,17 L50,12 L60,14 L70,8 L80,10 L90,5 L100,3"/>
+              <path d="M0,22 L10,18 L20,20 L30,15 L40,17 L50,12 L60,14 L70,8 L80,10 L90,5 L100,3 L100,30 L0,30 Z" fill="url(#g1)" opacity="0.15"/>
+              <defs><linearGradient id="g1" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="var(--brand)"/><stop offset="1" stop-color="var(--brand)" stop-opacity="0"/></linearGradient></defs>
+            </svg>
+          </div>
+
+          <!-- Stat 2 -->
+          <div class="p-5 rounded-xl" style="background: var(--bg-surface); border: 1px solid var(--border-subtle);">
+            <div class="flex items-start justify-between mb-3">
+              <div class="w-10 h-10 rounded-lg flex items-center justify-center" style="background: var(--success-soft);">
+                <i data-lucide="dollar-sign" class="w-5 h-5" style="color: var(--success);"></i>
+              </div>
+              <span class="text-xs font-semibold flex items-center gap-0.5 num" style="color: var(--success);">
+                <i data-lucide="trending-up" class="w-3 h-3"></i>
+                +28.3%
+              </span>
+            </div>
+            <div class="text-3xl font-bold tracking-tight num">$2.4M</div>
+            <div class="text-xs mt-1" style="color: var(--text-secondary);">Pipeline value</div>
+            <svg class="w-full h-8 mt-3" viewBox="0 0 100 30" preserveAspectRatio="none">
+              <path class="sparkline" stroke="var(--success)" stroke-width="1.5" d="M0,25 L15,22 L25,18 L40,20 L55,12 L70,15 L85,8 L100,5"/>
+              <path d="M0,25 L15,22 L25,18 L40,20 L55,12 L70,15 L85,8 L100,5 L100,30 L0,30 Z" fill="var(--success)" opacity="0.1"/>
+            </svg>
+          </div>
+
+          <!-- Stat 3 -->
+          <div class="p-5 rounded-xl" style="background: var(--bg-surface); border: 1px solid var(--border-subtle);">
+            <div class="flex items-start justify-between mb-3">
+              <div class="w-10 h-10 rounded-lg flex items-center justify-center" style="background: var(--warning-soft);">
+                <i data-lucide="target" class="w-5 h-5" style="color: var(--warning);"></i>
+              </div>
+              <span class="text-xs font-semibold flex items-center gap-0.5 num" style="color: var(--danger);">
+                <i data-lucide="trending-down" class="w-3 h-3"></i>
+                -2.1%
+              </span>
+            </div>
+            <div class="text-3xl font-bold tracking-tight num">23<span class="text-lg font-medium" style="color: var(--text-muted);">%</span></div>
+            <div class="text-xs mt-1" style="color: var(--text-secondary);">Taux de conversion</div>
+            <svg class="w-full h-8 mt-3" viewBox="0 0 100 30" preserveAspectRatio="none">
+              <path class="sparkline" stroke="var(--warning)" stroke-width="1.5" d="M0,8 L15,10 L30,7 L45,12 L60,9 L75,15 L90,12 L100,18"/>
+            </svg>
+          </div>
+
+          <!-- Stat 4 -->
+          <div class="p-5 rounded-xl" style="background: var(--bg-surface); border: 1px solid var(--border-subtle);">
+            <div class="flex items-start justify-between mb-3">
+              <div class="w-10 h-10 rounded-lg flex items-center justify-center" style="background: var(--info-soft);">
+                <i data-lucide="zap" class="w-5 h-5" style="color: var(--info);"></i>
+              </div>
+              <span class="text-xs font-semibold flex items-center gap-0.5 num" style="color: var(--success);">
+                <i data-lucide="trending-up" class="w-3 h-3"></i>
+                +18.0%
+              </span>
+            </div>
+            <div class="text-3xl font-bold tracking-tight num">142</div>
+            <div class="text-xs mt-1" style="color: var(--text-secondary);">Workflows actifs</div>
+            <svg class="w-full h-8 mt-3" viewBox="0 0 100 30" preserveAspectRatio="none">
+              <path class="sparkline" stroke="var(--info)" stroke-width="1.5" d="M0,20 L15,18 L30,15 L45,16 L60,10 L75,12 L90,7 L100,5"/>
+            </svg>
+          </div>
+
+        </div>
+
+        <!-- Main grid 2 cols -->
+        <div class="grid grid-cols-3 gap-4 mb-6">
+
+          <!-- Chart left (col-span-2) -->
+          <div class="col-span-2 p-6 rounded-xl" style="background: var(--bg-surface); border: 1px solid var(--border-subtle);">
+            <div class="flex items-center justify-between mb-5">
+              <div>
+                <h3 class="text-base font-semibold">Acquisition de leads</h3>
+                <p class="text-xs mt-0.5" style="color: var(--text-secondary);">30 derniers jours par source</p>
+              </div>
+              <div class="flex items-center gap-3 text-xs">
+                <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full" style="background: var(--brand);"></span><span style="color: var(--text-secondary);">Site web</span></span>
+                <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full" style="background: var(--info);"></span><span style="color: var(--text-secondary);">Facebook</span></span>
+                <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full" style="background: var(--warning);"></span><span style="color: var(--text-secondary);">Référence</span></span>
+              </div>
+            </div>
+            <!-- Fake bar chart -->
+            <div class="h-48 flex items-end gap-2 px-1">
+              <!-- 14 bars -->
+              <div class="flex-1 flex flex-col gap-0.5 items-center">
+                <div class="w-full flex flex-col gap-0.5">
+                  <div class="rounded-t-sm" style="background: var(--brand); height: 32px;"></div>
+                  <div style="background: var(--info); height: 18px;"></div>
+                  <div class="rounded-b-sm" style="background: var(--warning); height: 8px;"></div>
+                </div>
+              </div>
+              <div class="flex-1 flex flex-col gap-0.5 items-center">
+                <div class="w-full flex flex-col gap-0.5">
+                  <div class="rounded-t-sm" style="background: var(--brand); height: 28px;"></div>
+                  <div style="background: var(--info); height: 14px;"></div>
+                </div>
+              </div>
+              <div class="flex-1 flex flex-col gap-0.5 items-center">
+                <div class="w-full flex flex-col gap-0.5">
+                  <div class="rounded-t-sm" style="background: var(--brand); height: 45px;"></div>
+                  <div style="background: var(--info); height: 22px;"></div>
+                  <div class="rounded-b-sm" style="background: var(--warning); height: 12px;"></div>
+                </div>
+              </div>
+              <div class="flex-1 flex flex-col gap-0.5 items-center">
+                <div class="w-full flex flex-col gap-0.5">
+                  <div class="rounded-t-sm" style="background: var(--brand); height: 38px;"></div>
+                  <div style="background: var(--info); height: 16px;"></div>
+                </div>
+              </div>
+              <div class="flex-1 flex flex-col gap-0.5 items-center">
+                <div class="w-full flex flex-col gap-0.5">
+                  <div class="rounded-t-sm" style="background: var(--brand); height: 60px;"></div>
+                  <div style="background: var(--info); height: 28px;"></div>
+                  <div class="rounded-b-sm" style="background: var(--warning); height: 18px;"></div>
+                </div>
+              </div>
+              <div class="flex-1 flex flex-col gap-0.5 items-center">
+                <div class="w-full flex flex-col gap-0.5">
+                  <div class="rounded-t-sm" style="background: var(--brand); height: 52px;"></div>
+                  <div style="background: var(--info); height: 24px;"></div>
+                  <div class="rounded-b-sm" style="background: var(--warning); height: 10px;"></div>
+                </div>
+              </div>
+              <div class="flex-1 flex flex-col gap-0.5 items-center">
+                <div class="w-full flex flex-col gap-0.5">
+                  <div class="rounded-t-sm" style="background: var(--brand); height: 75px;"></div>
+                  <div style="background: var(--info); height: 35px;"></div>
+                  <div class="rounded-b-sm" style="background: var(--warning); height: 22px;"></div>
+                </div>
+              </div>
+              <div class="flex-1 flex flex-col gap-0.5 items-center">
+                <div class="w-full flex flex-col gap-0.5">
+                  <div class="rounded-t-sm" style="background: var(--brand); height: 88px;"></div>
+                  <div style="background: var(--info); height: 42px;"></div>
+                  <div class="rounded-b-sm" style="background: var(--warning); height: 25px;"></div>
+                </div>
+              </div>
+              <div class="flex-1 flex flex-col gap-0.5 items-center">
+                <div class="w-full flex flex-col gap-0.5">
+                  <div class="rounded-t-sm" style="background: var(--brand); height: 70px;"></div>
+                  <div style="background: var(--info); height: 30px;"></div>
+                  <div class="rounded-b-sm" style="background: var(--warning); height: 18px;"></div>
+                </div>
+              </div>
+              <div class="flex-1 flex flex-col gap-0.5 items-center">
+                <div class="w-full flex flex-col gap-0.5">
+                  <div class="rounded-t-sm" style="background: var(--brand); height: 95px;"></div>
+                  <div style="background: var(--info); height: 48px;"></div>
+                  <div class="rounded-b-sm" style="background: var(--warning); height: 32px;"></div>
+                </div>
+              </div>
+              <div class="flex-1 flex flex-col gap-0.5 items-center">
+                <div class="w-full flex flex-col gap-0.5">
+                  <div class="rounded-t-sm" style="background: var(--brand); height: 110px;"></div>
+                  <div style="background: var(--info); height: 55px;"></div>
+                  <div class="rounded-b-sm" style="background: var(--warning); height: 38px;"></div>
+                </div>
+              </div>
+              <div class="flex-1 flex flex-col gap-0.5 items-center">
+                <div class="w-full flex flex-col gap-0.5">
+                  <div class="rounded-t-sm" style="background: var(--brand); height: 92px;"></div>
+                  <div style="background: var(--info); height: 45px;"></div>
+                  <div class="rounded-b-sm" style="background: var(--warning); height: 30px;"></div>
+                </div>
+              </div>
+              <div class="flex-1 flex flex-col gap-0.5 items-center">
+                <div class="w-full flex flex-col gap-0.5">
+                  <div class="rounded-t-sm" style="background: var(--brand); height: 125px;"></div>
+                  <div style="background: var(--info); height: 60px;"></div>
+                  <div class="rounded-b-sm" style="background: var(--warning); height: 42px;"></div>
+                </div>
+              </div>
+              <div class="flex-1 flex flex-col gap-0.5 items-center">
+                <div class="w-full flex flex-col gap-0.5">
+                  <div class="rounded-t-sm" style="background: var(--brand); height: 138px;"></div>
+                  <div style="background: var(--info); height: 68px;"></div>
+                  <div class="rounded-b-sm" style="background: var(--warning); height: 48px;"></div>
+                </div>
+              </div>
+            </div>
+            <div class="flex justify-between text-[10px] mt-2 px-1" style="color: var(--text-muted);">
+              <span>4 mai</span><span>9 mai</span><span>14 mai</span><span>19 mai</span><span>24 mai</span><span>29 mai</span>
+            </div>
+          </div>
+
+          <!-- Activity feed (col 1) -->
+          <div class="p-6 rounded-xl" style="background: var(--bg-surface); border: 1px solid var(--border-subtle);">
+            <div class="flex items-center justify-between mb-5">
+              <h3 class="text-base font-semibold">Activité récente</h3>
+              <span class="flex items-center gap-1 text-xs font-medium" style="color: var(--success);">
+                <span class="w-1.5 h-1.5 rounded-full animate-pulse" style="background: var(--success);"></span>
+                Live
+              </span>
+            </div>
+            <div class="space-y-4">
+              <!-- Activity item -->
+              <div class="flex gap-3">
+                <div class="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-semibold flex-shrink-0" style="background: var(--brand-soft); color: var(--brand);">JM</div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-xs leading-relaxed">
+                    <span class="font-semibold">Julie Martin</span>
+                    <span style="color: var(--text-secondary);">a converti</span>
+                    <span class="font-semibold">Sophie T.</span>
+                    <span style="color: var(--text-secondary);">en deal signé</span>
+                  </div>
+                  <div class="text-[10px] mt-0.5" style="color: var(--text-muted);">il y a 2 min · $485k</div>
+                </div>
+              </div>
+              <div class="flex gap-3">
+                <div class="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-semibold flex-shrink-0" style="background: var(--info-soft); color: var(--info);">MG</div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-xs leading-relaxed">
+                    <span class="font-semibold">Workflow</span>
+                    <span style="color: var(--text-secondary);">a envoyé un email à</span>
+                    <span class="font-semibold">3 contacts</span>
+                  </div>
+                  <div class="text-[10px] mt-0.5" style="color: var(--text-muted);">il y a 8 min · Relance J+3</div>
+                </div>
+              </div>
+              <div class="flex gap-3">
+                <div class="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-semibold flex-shrink-0" style="background: var(--warning-soft); color: var(--warning);">DC</div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-xs leading-relaxed">
+                    <span class="font-semibold">David Chen</span>
+                    <span style="color: var(--text-secondary);">a réservé un RDV pour</span>
+                    <span class="font-semibold">demain 14h</span>
+                  </div>
+                  <div class="text-[10px] mt-0.5" style="color: var(--text-muted);">il y a 24 min</div>
+                </div>
+              </div>
+              <div class="flex gap-3">
+                <div class="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-semibold flex-shrink-0" style="background: var(--success-soft); color: var(--success);">+5</div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-xs leading-relaxed">
+                    <span class="font-semibold">5 nouveaux leads</span>
+                    <span style="color: var(--text-secondary);">capturés via</span>
+                    <span class="font-semibold">leadform-acheter</span>
+                  </div>
+                  <div class="text-[10px] mt-0.5" style="color: var(--text-muted);">il y a 1h</div>
+                </div>
+              </div>
+              <div class="flex gap-3">
+                <div class="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-semibold flex-shrink-0" style="background: var(--danger-soft); color: var(--danger);">RB</div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-xs leading-relaxed">
+                    <span class="font-semibold">Rochdi</span>
+                    <span style="color: var(--text-secondary);">a signé le mandat avec</span>
+                    <span class="font-semibold">F. Bergeron</span>
+                  </div>
+                  <div class="text-[10px] mt-0.5" style="color: var(--text-muted);">il y a 2h · Sainte-Foy</div>
+                </div>
+              </div>
+            </div>
+            <button class="w-full mt-5 text-xs font-medium py-2 rounded-lg transition hover:bg-[var(--bg-subtle)]" style="color: var(--brand);">
+              Voir toute l'activité →
+            </button>
+          </div>
+
+        </div>
+
+        <!-- Recent contacts table -->
+        <div class="rounded-xl overflow-hidden" style="background: var(--bg-surface); border: 1px solid var(--border-subtle);">
+          <div class="px-6 py-4 flex items-center justify-between border-b" style="border-color: var(--border-subtle);">
+            <div>
+              <h3 class="text-base font-semibold">Derniers contacts</h3>
+              <p class="text-xs mt-0.5" style="color: var(--text-secondary);">8 contacts actifs cette semaine</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button class="h-8 px-3 rounded-lg text-xs font-medium flex items-center gap-1.5 transition hover:bg-[var(--bg-subtle)]" style="color: var(--text-secondary); border: 1px solid var(--border-default);">
+                <i data-lucide="filter" class="w-3.5 h-3.5"></i>
+                Filtrer
+              </button>
+              <a href="#" class="h-8 px-3 rounded-lg text-xs font-medium flex items-center gap-1 transition hover:bg-[var(--brand-soft)]" style="color: var(--brand);">
+                Voir tout
+                <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+              </a>
+            </div>
+          </div>
+          <table class="w-full">
+            <thead>
+              <tr style="background: var(--bg-subtle);">
+                <th class="text-left px-6 py-2.5 text-[11px] font-semibold uppercase tracking-wider" style="color: var(--text-secondary);">Contact</th>
+                <th class="text-left px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider" style="color: var(--text-secondary);">Statut</th>
+                <th class="text-left px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider" style="color: var(--text-secondary);">Source</th>
+                <th class="text-right px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider" style="color: var(--text-secondary);">Valeur</th>
+                <th class="text-left px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider" style="color: var(--text-secondary);">Score</th>
+                <th class="text-right px-6 py-2.5 text-[11px] font-semibold uppercase tracking-wider" style="color: var(--text-secondary);">Activité</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="border-t hover:bg-[var(--bg-subtle)] transition cursor-pointer" style="border-color: var(--border-subtle);">
+                <td class="px-6 py-3">
+                  <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-semibold" style="background: var(--brand-soft); color: var(--brand);">ST</div>
+                    <div>
+                      <div class="text-sm font-medium">Sophie Tremblay</div>
+                      <div class="text-[11px]" style="color: var(--text-muted);">sophie.t@gmail.com</div>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-4 py-3"><span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium" style="background: var(--success-soft); color: var(--success);">● Signé</span></td>
+                <td class="px-4 py-3 text-xs" style="color: var(--text-secondary);">Facebook Ads</td>
+                <td class="px-4 py-3 text-right text-sm font-semibold num">$485k</td>
+                <td class="px-4 py-3">
+                  <div class="flex items-center gap-2">
+                    <div class="w-16 h-1.5 rounded-full overflow-hidden" style="background: var(--bg-muted);">
+                      <div class="h-full rounded-full" style="background: var(--success); width: 92%;"></div>
+                    </div>
+                    <span class="text-xs font-medium num">92</span>
+                  </div>
+                </td>
+                <td class="px-6 py-3 text-right text-xs" style="color: var(--text-muted);">il y a 2 min</td>
+              </tr>
+              <tr class="border-t hover:bg-[var(--bg-subtle)] transition cursor-pointer" style="border-color: var(--border-subtle);">
+                <td class="px-6 py-3">
+                  <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-semibold" style="background: var(--info-soft); color: var(--info);">DC</div>
+                    <div>
+                      <div class="text-sm font-medium">David Chen</div>
+                      <div class="text-[11px]" style="color: var(--text-muted);">david.chen@example.com</div>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-4 py-3"><span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium" style="background: var(--warning-soft); color: var(--warning);">● RDV</span></td>
+                <td class="px-4 py-3 text-xs" style="color: var(--text-secondary);">Référence</td>
+                <td class="px-4 py-3 text-right text-sm font-semibold num">$720k</td>
+                <td class="px-4 py-3">
+                  <div class="flex items-center gap-2">
+                    <div class="w-16 h-1.5 rounded-full overflow-hidden" style="background: var(--bg-muted);">
+                      <div class="h-full rounded-full" style="background: var(--warning); width: 78%;"></div>
+                    </div>
+                    <span class="text-xs font-medium num">78</span>
+                  </div>
+                </td>
+                <td class="px-6 py-3 text-right text-xs" style="color: var(--text-muted);">il y a 24 min</td>
+              </tr>
+              <tr class="border-t hover:bg-[var(--bg-subtle)] transition cursor-pointer" style="border-color: var(--border-subtle);">
+                <td class="px-6 py-3">
+                  <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-semibold" style="background: var(--warning-soft); color: var(--warning);">FB</div>
+                    <div>
+                      <div class="text-sm font-medium">François Bergeron</div>
+                      <div class="text-[11px]" style="color: var(--text-muted);">fb@desjardins.com</div>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-4 py-3"><span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium" style="background: var(--info-soft); color: var(--info);">● Contacté</span></td>
+                <td class="px-4 py-3 text-xs" style="color: var(--text-secondary);">Site web</td>
+                <td class="px-4 py-3 text-right text-sm font-semibold num">$340k</td>
+                <td class="px-4 py-3">
+                  <div class="flex items-center gap-2">
+                    <div class="w-16 h-1.5 rounded-full overflow-hidden" style="background: var(--bg-muted);">
+                      <div class="h-full rounded-full" style="background: var(--info); width: 56%;"></div>
+                    </div>
+                    <span class="text-xs font-medium num">56</span>
+                  </div>
+                </td>
+                <td class="px-6 py-3 text-right text-xs" style="color: var(--text-muted);">il y a 2h</td>
+              </tr>
+              <tr class="border-t hover:bg-[var(--bg-subtle)] transition cursor-pointer" style="border-color: var(--border-subtle);">
+                <td class="px-6 py-3">
+                  <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-semibold" style="background: var(--success-soft); color: var(--success);">JP</div>
+                    <div>
+                      <div class="text-sm font-medium">Julie Paquette</div>
+                      <div class="text-[11px]" style="color: var(--text-muted);">julie.p@hotmail.com</div>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-4 py-3"><span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium" style="background: var(--brand-soft); color: var(--brand);">● Nouveau</span></td>
+                <td class="px-4 py-3 text-xs" style="color: var(--text-secondary);">Google Ads</td>
+                <td class="px-4 py-3 text-right text-sm" style="color: var(--text-muted);">—</td>
+                <td class="px-4 py-3">
+                  <div class="flex items-center gap-2">
+                    <div class="w-16 h-1.5 rounded-full overflow-hidden" style="background: var(--bg-muted);">
+                      <div class="h-full rounded-full" style="background: var(--danger); width: 32%;"></div>
+                    </div>
+                    <span class="text-xs font-medium num">32</span>
+                  </div>
+                </td>
+                <td class="px-6 py-3 text-right text-xs" style="color: var(--text-muted);">il y a 4h</td>
+              </tr>
+              <tr class="border-t hover:bg-[var(--bg-subtle)] transition cursor-pointer" style="border-color: var(--border-subtle);">
+                <td class="px-6 py-3">
+                  <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-semibold" style="background: var(--danger-soft); color: var(--danger);">PL</div>
+                    <div>
+                      <div class="text-sm font-medium">Pierre Lavoie</div>
+                      <div class="text-[11px]" style="color: var(--text-muted);">p.lavoie@me.com</div>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-4 py-3"><span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium" style="background: oklch(0.96 0.005 260); color: var(--text-secondary);">● Perdu</span></td>
+                <td class="px-4 py-3 text-xs" style="color: var(--text-secondary);">Téléphone</td>
+                <td class="px-4 py-3 text-right text-sm" style="color: var(--text-muted);">—</td>
+                <td class="px-4 py-3">
+                  <div class="flex items-center gap-2">
+                    <div class="w-16 h-1.5 rounded-full overflow-hidden" style="background: var(--bg-muted);">
+                      <div class="h-full rounded-full" style="background: var(--danger); width: 18%;"></div>
+                    </div>
+                    <span class="text-xs font-medium num">18</span>
+                  </div>
+                </td>
+                <td class="px-6 py-3 text-right text-xs" style="color: var(--text-muted);">il y a 1j</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- ─── COMPONENTS SHOWCASE ─── -->
+        <div class="mt-12 mb-6">
+          <h2 class="text-2xl font-bold tracking-tight mb-1">Component showcase</h2>
+          <p class="text-sm" style="color: var(--text-secondary);">Pour valider la cohérence du design system avant la refonte complète.</p>
+        </div>
+
+        <!-- Buttons -->
+        <div class="p-6 rounded-xl mb-4" style="background: var(--bg-surface); border: 1px solid var(--border-subtle);">
+          <h3 class="text-sm font-semibold mb-4" style="color: var(--text-secondary);">Buttons</h3>
+          <div class="flex flex-wrap gap-3 items-center">
+            <button class="h-9 px-4 rounded-lg text-sm font-medium flex items-center gap-2 transition hover:opacity-90" style="background: var(--brand); color: white;">
+              <i data-lucide="plus" class="w-4 h-4"></i> Primary
+            </button>
+            <button class="h-9 px-4 rounded-lg text-sm font-medium transition hover:bg-[var(--bg-subtle)]" style="background: var(--bg-surface); color: var(--text-primary); border: 1px solid var(--border-default);">
+              Secondary
+            </button>
+            <button class="h-9 px-4 rounded-lg text-sm font-medium transition hover:bg-[var(--bg-subtle)]" style="color: var(--text-secondary);">
+              Ghost
+            </button>
+            <button class="h-9 px-4 rounded-lg text-sm font-medium flex items-center gap-2 transition hover:opacity-90" style="background: var(--danger); color: white;">
+              <i data-lucide="trash-2" class="w-4 h-4"></i> Destructive
+            </button>
+            <button class="h-9 px-4 rounded-lg text-sm font-medium underline-offset-4 hover:underline transition" style="color: var(--brand);">
+              Link button
+            </button>
+            <button disabled class="h-9 px-4 rounded-lg text-sm font-medium opacity-50 cursor-not-allowed" style="background: var(--brand); color: white;">
+              Disabled
+            </button>
+            <button class="h-9 px-4 rounded-lg text-sm font-medium flex items-center gap-2" style="background: var(--brand); color: white;">
+              <svg class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+              Loading…
+            </button>
+          </div>
+        </div>
+
+        <!-- Badges -->
+        <div class="p-6 rounded-xl mb-4" style="background: var(--bg-surface); border: 1px solid var(--border-subtle);">
+          <h3 class="text-sm font-semibold mb-4" style="color: var(--text-secondary);">Badges & Pills</h3>
+          <div class="flex flex-wrap gap-2 items-center">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium" style="background: var(--brand-soft); color: var(--brand);">● Nouveau</span>
+            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium" style="background: var(--info-soft); color: var(--info);">● Contacté</span>
+            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium" style="background: var(--warning-soft); color: var(--warning);">● RDV</span>
+            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium" style="background: var(--success-soft); color: var(--success);">● Signé</span>
+            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium" style="background: oklch(0.96 0.005 260); color: var(--text-secondary);">● Fermé</span>
+            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium" style="background: var(--danger-soft); color: var(--danger);">● Perdu</span>
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-semibold" style="background: var(--brand); color: white;">PRO</span>
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-semibold" style="background: var(--success); color: white;">+12%</span>
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium" style="border: 1px solid var(--border-default); color: var(--text-secondary);">acheteur</span>
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium" style="border: 1px solid var(--border-default); color: var(--text-secondary);">budget-500k</span>
+          </div>
+        </div>
+
+        <!-- Inputs -->
+        <div class="p-6 rounded-xl mb-4" style="background: var(--bg-surface); border: 1px solid var(--border-subtle);">
+          <h3 class="text-sm font-semibold mb-4" style="color: var(--text-secondary);">Inputs</h3>
+          <div class="grid grid-cols-3 gap-4">
+            <div>
+              <label class="text-xs font-medium mb-1.5 block" style="color: var(--text-secondary);">Email</label>
+              <input type="email" placeholder="rochdi@intralys.com" class="w-full h-9 px-3 rounded-lg text-sm transition focus:outline-none focus:border-[var(--brand)] focus:ring-2" style="background: var(--bg-surface); border: 1px solid var(--border-default); --tw-ring-color: var(--brand-soft);">
+            </div>
+            <div>
+              <label class="text-xs font-medium mb-1.5 block" style="color: var(--text-secondary);">Recherche avec icône</label>
+              <div class="relative">
+                <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style="color: var(--text-muted);"></i>
+                <input type="search" placeholder="Rechercher…" class="w-full h-9 pl-9 pr-3 rounded-lg text-sm" style="background: var(--bg-surface); border: 1px solid var(--border-default);">
+              </div>
+            </div>
+            <div>
+              <label class="text-xs font-medium mb-1.5 block" style="color: var(--text-secondary);">Champ avec erreur</label>
+              <input type="text" value="Trop court" class="w-full h-9 px-3 rounded-lg text-sm" style="background: var(--bg-surface); border: 1px solid var(--danger);">
+              <div class="text-[11px] mt-1" style="color: var(--danger);">Minimum 3 caractères</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pipeline preview -->
+        <div class="p-6 rounded-xl mb-4" style="background: var(--bg-surface); border: 1px solid var(--border-subtle);">
+          <h3 class="text-sm font-semibold mb-4" style="color: var(--text-secondary);">Pipeline kanban (preview)</h3>
+          <div class="grid grid-cols-4 gap-3">
+            <!-- Stage 1 -->
+            <div class="rounded-lg p-3" style="background: var(--bg-subtle);">
+              <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full" style="background: var(--brand);"></span>
+                  <span class="text-xs font-semibold uppercase tracking-wider">Nouveau</span>
+                </div>
+                <span class="text-[10px] px-1.5 py-0.5 rounded font-semibold" style="background: var(--bg-surface); color: var(--text-muted);">12</span>
+              </div>
+              <div class="space-y-2">
+                <div class="p-3 rounded-lg cursor-pointer transition hover:shadow-md" style="background: var(--bg-surface); border: 1px solid var(--border-subtle);">
+                  <div class="flex items-start justify-between mb-1">
+                    <div class="text-sm font-medium">Julie Paquette</div>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded font-medium" style="background: var(--brand-soft); color: var(--brand);">Acheteur</span>
+                  </div>
+                  <div class="text-[11px]" style="color: var(--text-muted);">Maison · Aylmer</div>
+                  <div class="flex items-center justify-between mt-2 pt-2 border-t" style="border-color: var(--border-subtle);">
+                    <div class="flex items-center gap-1.5">
+                      <div class="w-10 h-1 rounded-full" style="background: var(--bg-muted);">
+                        <div class="h-full rounded-full" style="width: 32%; background: var(--danger);"></div>
+                      </div>
+                      <span class="text-[10px] font-medium num">32</span>
+                    </div>
+                    <span class="text-[10px]" style="color: var(--text-muted);">il y a 4h</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Stage 2 -->
+            <div class="rounded-lg p-3" style="background: var(--bg-subtle);">
+              <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full" style="background: var(--info);"></span>
+                  <span class="text-xs font-semibold uppercase tracking-wider">Contacté</span>
+                </div>
+                <span class="text-[10px] px-1.5 py-0.5 rounded font-semibold" style="background: var(--bg-surface); color: var(--text-muted);">8</span>
+              </div>
+              <div class="space-y-2">
+                <div class="p-3 rounded-lg cursor-pointer transition hover:shadow-md" style="background: var(--bg-surface); border: 1px solid var(--border-subtle);">
+                  <div class="flex items-start justify-between mb-1">
+                    <div class="text-sm font-medium">F. Bergeron</div>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded font-medium" style="background: var(--brand-soft); color: var(--brand);">Acheteur</span>
+                  </div>
+                  <div class="text-[11px]" style="color: var(--text-muted);">Sainte-Foy</div>
+                  <div class="flex items-center justify-between mt-2 pt-2 border-t" style="border-color: var(--border-subtle);">
+                    <span class="text-xs font-semibold num" style="color: var(--brand);">$340k</span>
+                    <span class="text-[10px]" style="color: var(--text-muted);">il y a 2h</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Stage 3 -->
+            <div class="rounded-lg p-3" style="background: var(--bg-subtle);">
+              <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full" style="background: var(--warning);"></span>
+                  <span class="text-xs font-semibold uppercase tracking-wider">RDV</span>
+                </div>
+                <span class="text-[10px] px-1.5 py-0.5 rounded font-semibold" style="background: var(--bg-surface); color: var(--text-muted);">5</span>
+              </div>
+              <div class="space-y-2">
+                <div class="p-3 rounded-lg cursor-pointer transition hover:shadow-md border-l-2" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-left-color: var(--warning);">
+                  <div class="flex items-start justify-between mb-1">
+                    <div class="text-sm font-medium">David Chen</div>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded font-medium" style="background: var(--brand-soft); color: var(--brand);">Acheteur</span>
+                  </div>
+                  <div class="text-[11px]" style="color: var(--text-muted);">Hypothèque commerciale</div>
+                  <div class="flex items-center justify-between mt-2 pt-2 border-t" style="border-color: var(--border-subtle);">
+                    <span class="text-xs font-semibold num" style="color: var(--brand);">$720k</span>
+                    <span class="text-[10px] font-medium" style="color: var(--warning);">⚠ 9j</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Stage 4 -->
+            <div class="rounded-lg p-3" style="background: var(--bg-subtle);">
+              <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full" style="background: var(--success);"></span>
+                  <span class="text-xs font-semibold uppercase tracking-wider">Signé</span>
+                </div>
+                <span class="text-[10px] px-1.5 py-0.5 rounded font-semibold" style="background: var(--bg-surface); color: var(--text-muted);">3</span>
+              </div>
+              <div class="space-y-2">
+                <div class="p-3 rounded-lg cursor-pointer transition hover:shadow-md" style="background: var(--bg-surface); border: 1px solid var(--border-subtle);">
+                  <div class="flex items-start justify-between mb-1">
+                    <div class="text-sm font-medium">Sophie Tremblay</div>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded font-medium" style="background: var(--brand-soft); color: var(--brand);">Acheteur</span>
+                  </div>
+                  <div class="text-[11px]" style="color: var(--text-muted);">Condo · Aylmer</div>
+                  <div class="flex items-center justify-between mt-2 pt-2 border-t" style="border-color: var(--border-subtle);">
+                    <span class="text-xs font-semibold num" style="color: var(--success);">$485k</span>
+                    <span class="text-[10px]" style="color: var(--text-muted);">aujourd'hui</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer note -->
+        <div class="text-center py-8 text-xs" style="color: var(--text-muted);">
+          Mockup Direction artistique 2026 — Intralys CRM<br>
+          Light mode primary · OKLCH tokens · Inter font · Lucide icons · 240px sidebar dark contrast<br>
+          <span style="color: var(--brand);">Click "Save mockup as PDF" dans browser pour partager</span>
+        </div>
+
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+  lucide.createIcons();
+</script>
+
+</body>
+</html>

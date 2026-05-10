@@ -1,6 +1,6 @@
 // ── Client API — Helpers pour appeler le worker ─────────────
 
-import type { ApiResponse, Client, Lead, LeadDetail, DashboardStats, ActivityLogEntry, Message, EmailTemplate, Workflow, WorkflowStep, WorkflowEnrollment, Appointment, Task } from './types';
+import type { ApiResponse, Client, Lead, LeadDetail, DashboardStats, ActivityLogEntry, Message, EmailTemplate, Workflow, WorkflowStep, WorkflowEnrollment, Appointment, Task, LeadNote, LeadScore, CustomFieldValue } from './types';
 
 const API_BASE = '/api';
 
@@ -250,6 +250,53 @@ export async function exportLeadsCsv(params?: {
   a.download = `leads-intralys-${new Date().toISOString().slice(0, 10)}.csv`;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+// ── Sprint 2 : Notes multiples ─────────────────────────────
+
+export async function getLeadNotes(leadId: string): Promise<ApiResponse<LeadNote[]>> {
+  return apiFetch<LeadNote[]>(`/leads/${leadId}/notes`);
+}
+
+export async function createLeadNote(
+  leadId: string, note: { body: string; category?: string; is_pinned?: boolean }
+): Promise<ApiResponse<{ id: string }>> {
+  return apiFetch<{ id: string }>(`/leads/${leadId}/notes`, { method: 'POST', body: JSON.stringify(note) });
+}
+
+export async function updateLeadNote(
+  leadId: string, noteId: string, updates: { body?: string; category?: string; is_pinned?: boolean }
+): Promise<ApiResponse<{ success: boolean }>> {
+  return apiFetch<{ success: boolean }>(`/leads/${leadId}/notes/${noteId}`, { method: 'PATCH', body: JSON.stringify(updates) });
+}
+
+export async function deleteLeadNote(leadId: string, noteId: string): Promise<ApiResponse<{ success: boolean }>> {
+  return apiFetch<{ success: boolean }>(`/leads/${leadId}/notes/${noteId}`, { method: 'DELETE' });
+}
+
+// ── Sprint 2 : Scores ──────────────────────────────────────
+
+export async function getLeadScores(leadId: string): Promise<ApiResponse<LeadScore[]>> {
+  return apiFetch<LeadScore[]>(`/leads/${leadId}/scores`);
+}
+
+export async function recomputeLeadScore(leadId: string): Promise<ApiResponse<LeadScore[]>> {
+  return apiFetch<LeadScore[]>(`/leads/${leadId}/scores/recompute`, { method: 'POST' });
+}
+
+// ── Sprint 2 : Custom Field Values ─────────────────────────
+
+export async function getLeadCustomFields(leadId: string): Promise<ApiResponse<CustomFieldValue[]>> {
+  return apiFetch<CustomFieldValue[]>(`/leads/${leadId}/custom-fields`);
+}
+
+// ── Sprint 2 : Création de lead ────────────────────────────
+
+export async function createLead(lead: {
+  client_id: string; name: string; email: string; phone?: string;
+  type?: string; source?: string; message?: string;
+}): Promise<ApiResponse<{ id: string }>> {
+  return apiFetch<{ id: string }>('/leads/bulk', { method: 'POST', body: JSON.stringify({ action: 'create', leads: [lead] }) });
 }
 
 // ── Phase 2 : Messages & Conversations ─────────────────────
@@ -894,9 +941,7 @@ export async function deleteCustomField(fieldId: string): Promise<ApiResponse<{ 
   return apiFetch<{ success: boolean }>(`/custom-fields/${fieldId}`, { method: 'DELETE' });
 }
 
-export async function getLeadCustomFields(leadId: string): Promise<ApiResponse<Array<Record<string, unknown>>>> {
-  return apiFetch<Array<Record<string, unknown>>>(`/leads/${leadId}/custom-fields`);
-}
+// getLeadCustomFields déplacé dans Sprint 2 section (ligne ~289)
 
 export async function setLeadCustomFields(leadId: string, fields: Array<{ field_id: string; value: string }>): Promise<ApiResponse<{ success: boolean; updated: number }>> {
   return apiFetch<{ success: boolean; updated: number }>(`/leads/${leadId}/custom-fields`, {
