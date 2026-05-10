@@ -385,6 +385,74 @@ export function LeadDetailPage() {
             </div>
           </Card>
 
+          {/* DND — Do Not Disturb */}
+          <Card className="p-4">
+            <h3 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-3">🔕 Ne pas déranger</h3>
+            <div className="space-y-2">
+              {(['email', 'sms', 'call'] as const).map(channel => {
+                const dndSettings = (() => {
+                  try { return JSON.parse((lead as unknown as Record<string, unknown>).dnd_settings as string || '{}'); }
+                  catch { return {}; }
+                })() as Record<string, boolean>;
+                const isActive = dndSettings[channel] ?? false;
+                const icons = { email: '📧', sms: '📱', call: '📞' };
+                const labels = { email: 'Email', sms: 'SMS', call: 'Appels' };
+                return (
+                  <button
+                    key={channel}
+                    onClick={() => {
+                      const newSettings = { ...dndSettings, [channel]: !isActive };
+                      const hasDnd = Object.values(newSettings).some(Boolean);
+                      void updateLead(leadId, {
+                        dnd: hasDnd ? 1 : 0,
+                        dnd_settings: JSON.stringify(newSettings),
+                      } as Record<string, unknown>).then(() => void loadLead());
+                    }}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-[var(--radius-md)] text-xs font-medium transition-all cursor-pointer ${
+                      isActive
+                        ? 'bg-[color-mix(in_oklch,var(--color-danger)_10%,transparent)] text-[var(--color-danger)] border border-[color-mix(in_oklch,var(--color-danger)_25%,transparent)]'
+                        : 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-hover)]'
+                    }`}
+                  >
+                    <span>{icons[channel]} {labels[channel]}</span>
+                    <span className={`w-8 h-[18px] rounded-full relative transition-all ${isActive ? 'bg-[var(--color-danger)]' : 'bg-[var(--color-border)]'}`}>
+                      <span className={`absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white transition-all shadow-sm ${isActive ? 'left-[14px]' : 'left-[2px]'}`} />
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </Card>
+
+          {/* Champs étendus */}
+          <Card className="p-4">
+            <h3 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-3">📋 Infos complémentaires</h3>
+            <div className="space-y-2 text-xs">
+              {[
+                { key: 'date_of_birth', label: 'Date de naissance', val: (lead as unknown as Record<string, unknown>).date_of_birth as string || '—', type: 'date' },
+                { key: 'country', label: 'Pays', val: (lead as unknown as Record<string, unknown>).country as string || 'CA', type: 'text' },
+                { key: 'timezone', label: 'Fuseau horaire', val: (lead as unknown as Record<string, unknown>).timezone as string || 'America/Toronto', type: 'text' },
+              ].map(f => (
+                <div key={f.key} className="flex items-center justify-between">
+                  <span className="text-[var(--color-text-muted)]">{f.label}</span>
+                  {editingField === f.key ? (
+                    <input
+                      autoFocus type={f.type} value={fieldValue}
+                      onChange={e => setFieldValue(e.target.value)}
+                      onBlur={() => void saveField(f.key)}
+                      onKeyDown={e => { if (e.key === 'Enter') void saveField(f.key); if (e.key === 'Escape') setEditingField(null); }}
+                      className="w-32 px-1.5 py-0.5 text-xs bg-[var(--color-bg-input)] border border-[var(--color-accent)] rounded-[var(--radius-sm)] focus:outline-none text-right"
+                    />
+                  ) : (
+                    <button onClick={() => startEdit(f.key, f.val === '—' ? '' : f.val)} className="text-right cursor-pointer hover:text-[var(--color-accent)] transition-colors">
+                      {f.val}
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </Card>
+
           {/* RDV liés */}
           <Card className="p-4">
             <h3 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-2">📅 Rendez-vous</h3>
