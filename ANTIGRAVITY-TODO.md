@@ -818,7 +818,7 @@ if (channel === 'sms' && env.TWILIO_ACCOUNT_SID) {
 
 ## 5. P2 — Nice-to-have (faire quand P0+P1 sont stables)
 
-- ✅ Form builder visuel + widget embed + soumissions — `6e78595`
+- ✅ Form builder visuel + widget embed `<script>` — `6e78595` + `ffdc456`
 - ✅ Public booking pages `/book/{slug}` (Calendly clone) — `6e78595`
 - ⬜ Sync Google Calendar (OAuth2) — nécessite credentials Google Cloud
 - ✅ Email broadcast + filtres + templates — `3975b2a`
@@ -826,10 +826,11 @@ if (channel === 'sms' && env.TWILIO_ACCOUNT_SID) {
 - ⬜ Reputation : Google Business Profile API — nécessite API key GBP
 - ✅ Reports : CPL/CPA par source + conversion funnel — `3975b2a`
 - ✅ Sub-accounts hierarchy (agency → location → user) — `6e78595`
-- ⬜ Snapshots (cloner setup) — dépend de sub-accounts UI
-- ⬜ White-label total — config branding par sub-account (colonnes ajoutées, UI à faire)
-- ✅ AI bot conversationnel (OpenAI GPT-4o-mini, qualif lead, historique) — `6e78595`
-- ✅ 2FA TOTP (RFC 6238 pure Web Crypto, setup/verify/disable) — `3975b2a`
+- ✅ Snapshots (export/import config entre clients) — `ffdc456`
+- ✅ White-label (branding par compte, merge config) — `ffdc456`
+- ✅ AI bot conversationnel (GPT-4o-mini, historique, qualif) — `6e78595`
+- ✅ 2FA TOTP (RFC 6238 pure Web Crypto) — `3975b2a`
+- ✅ Code splitting React.lazy (-29% bundle, 892→633KB) — `ffdc456`
 
 ---
 
