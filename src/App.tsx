@@ -23,13 +23,15 @@ const IntegrationsPage = lazy(() => import('@/pages/Integrations').then(m => ({ 
 const ReportsPage = lazy(() => import('@/pages/Reports').then(m => ({ default: m.ReportsPage })));
 const TasksPage = lazy(() => import('@/pages/Tasks').then(m => ({ default: m.TasksPage })));
 const ChangePasswordPage = lazy(() => import('@/pages/ChangePassword').then(m => ({ default: m.ChangePasswordPage })));
+const DocumentsPage = lazy(() => import('@/pages/Documents').then(m => ({ default: m.DocumentsPage })));
+const ReviewsPage = lazy(() => import('@/pages/Reviews').then(m => ({ default: m.ReviewsPage })));
 
 // ── Spinner de chargement ──────────────────────────────────
 
 function PageLoader() {
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: 'var(--bg-primary, #0a0a14)' }}>
-      <div style={{ width: 36, height: 36, border: '3px solid rgba(99,102,241,0.2)', borderTopColor: '#6366f1', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: 'var(--color-bg-primary, #f8f9fa)' }}>
+      <div style={{ width: 36, height: 36, border: '3px solid rgba(99,102,241,0.2)', borderTopColor: 'var(--color-accent, #6366f1)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
     </div>
   );
 }
@@ -174,6 +176,18 @@ const changePasswordRoute = createRoute({
   component: () => (<LazyGuard><ChangePasswordPage /></LazyGuard>),
 });
 
+const documentsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/documents',
+  component: () => (<LazyGuard><DocumentsPage /></LazyGuard>),
+});
+
+const reviewsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/reviews',
+  component: () => (<LazyGuard><ReviewsPage /></LazyGuard>),
+});
+
 // ── Router ──────────────────────────────────────────────────
 
 const routeTree = rootRoute.addChildren([
@@ -196,6 +210,8 @@ const routeTree = rootRoute.addChildren([
   tasksRoute,
   changePasswordRoute,
   settingsRoute,
+  documentsRoute,
+  reviewsRoute,
 ]);
 
 const router = createRouter({ routeTree });
