@@ -360,17 +360,17 @@ src/
 
 | ID | Tâche | Status | Commit |
 |---|---|---|---|
-| P3.0 | Refactor worker.ts en modules | ⬜ todo | — |
-| P3.1 | Conformité QC (CASL + Loi 25 + AMF) | ⬜ todo | — |
-| P3.2 | Documents & e-signature | ⬜ todo | — |
-| P3.3 | Conversations multi-canal complètes | ⬜ todo | — |
-| P3.4 | Smart Lists + Custom Fields UI | ⬜ todo | — |
-| P3.5 | Attribution server-side (CAPI + GAds) | ⬜ todo | — |
-| P3.6 | AI features (scoring + content + workflow) | ⬜ todo | — |
-| P3.7 | Workflow canvas 2D + branches | ⬜ todo | — |
-| P3.8 | Payments Stripe Connect | ⬜ todo | — |
-| P3.9 | SaaS configurator | ⬜ todo | — |
-| P3.10 | Mobile prep (soft delete + push backend + OpenAPI) | ⬜ todo | — |
+| P3.0 | Refactor worker.ts en modules | ✅ done | 8970ad9 |
+| P3.1 | Conformité QC (CASL + Loi 25 + AMF) | ✅ done | 66155ea |
+| P3.2 | Documents & e-signature | ⬜ skip MVP | — |
+| P3.3 | Conversations multi-canal complètes | ⬜ skip MVP | — |
+| P3.4 | Smart Lists + Custom Fields UI | ✅ done | b9003ab |
+| P3.5 | Attribution server-side (CAPI + GAds) | ⬜ skip MVP | — |
+| P3.6 | AI features (scoring + content + workflow) | ✅ done | 55e9b6e |
+| P3.7 | Workflow canvas 2D + branches | ⬜ skip MVP | — |
+| P3.8 | Payments Stripe Connect | ⬜ skip MVP | — |
+| P3.9 | SaaS configurator | ⬜ skip MVP | — |
+| P3.10 | Mobile prep (soft delete + push backend + OpenAPI) | ⬜ skip MVP | — |
 
 ---
 
