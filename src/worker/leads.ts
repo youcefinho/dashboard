@@ -1,6 +1,6 @@
 // ── Module Leads — Intralys CRM ─────────────────────────────
 import type { Env } from './types';
-import { sanitizeInput, sanitizeHtml, json, audit, corsHeaders, createNotification } from './helpers';
+import { sanitizeInput, json, audit, corsHeaders, createNotification } from './helpers';
 
 // Référence externe (injectée par le routeur principal)
 let autoEnrollFn: ((env: Env, workflowId: string, leadId: string) => Promise<void>) | null = null;

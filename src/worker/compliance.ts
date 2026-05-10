@@ -1,6 +1,6 @@
 // ── Module Compliance (CASL + Loi 25 + AMF) — Intralys CRM ─
 import type { Env } from './types';
-import { sanitizeInput, sanitizeHtml, json, audit, corsHeaders } from './helpers';
+import { sanitizeHtml, json, audit, corsHeaders } from './helpers';
 
 // ── Helpers CASL ────────────────────────────────────────────
 
