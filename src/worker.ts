@@ -813,10 +813,12 @@ async function handleGetLeads(env: Env, auth: { role: string }, url: URL): Promi
   const source = url.searchParams.get('source');
   const clientId = url.searchParams.get('client_id');
   const sort = url.searchParams.get('sort') || 'newest';
+  const cursor = url.searchParams.get('cursor');
+  const limit = Math.min(parseInt(url.searchParams.get('limit') || '50'), 200);
 
   let query = `SELECT l.*, c.name as client_name FROM leads l
                LEFT JOIN clients c ON l.client_id = c.id WHERE 1=1`;
-  const params: string[] = [];
+  const params: (string | number)[] = [];
 
   if (status && ['new', 'contacted', 'meeting', 'signed', 'closed', 'lost'].includes(status)) {
     query += ' AND l.status = ?';
@@ -836,6 +838,16 @@ async function handleGetLeads(env: Env, auth: { role: string }, url: URL): Promi
     params.push(`%${cleanSearch}%`, `%${cleanSearch}%`, `%${cleanSearch}%`);
   }
 
+  // Cursor-based pagination
+  if (cursor) {
+    if (sort === 'oldest') {
+      query += ' AND l.created_at > ?';
+    } else {
+      query += ' AND l.created_at < ?';
+    }
+    params.push(cursor);
+  }
+
   if (sort === 'oldest') {
     query += ' ORDER BY l.created_at ASC';
   } else if (sort === 'name') {
@@ -843,12 +855,22 @@ async function handleGetLeads(env: Env, auth: { role: string }, url: URL): Promi
   } else {
     query += ' ORDER BY l.created_at DESC';
   }
-  query += ' LIMIT 500';
+  query += ' LIMIT ?';
+  params.push(limit + 1); // +1 pour détecter s'il y a une page suivante
 
   const stmt = env.DB.prepare(query);
   const { results } = params.length > 0 ? await stmt.bind(...params).all() : await stmt.all();
+  const items = (results || []) as Array<Record<string, unknown>>;
 
-  return json({ data: results || [] });
+  // Déterminer le next_cursor
+  let nextCursor: string | null = null;
+  if (items.length > limit) {
+    items.pop(); // Retirer l'élément supplémentaire
+    const lastItem = items[items.length - 1];
+    if (lastItem) nextCursor = lastItem.created_at as string;
+  }
+
+  return json({ data: items, next_cursor: nextCursor });
 }
 
 // ── PATCH /api/leads/:id ────────────────────────────────────
