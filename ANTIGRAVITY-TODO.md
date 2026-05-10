@@ -902,14 +902,14 @@ Set en prod via : `npx wrangler secret put <NAME>`.
 
 | ID | Tâche | Status | Commit |
 |---|---|---|---|
-| P0.1 | CORS restreint + database_id | ✅ done | — |
-| P0.2 | Auth PBKDF2 + change-password | ✅ done | — |
-| P0.3 | Routes /api/tasks | ✅ done | — |
-| P0.4 | Workflow engine cron | ✅ done | — |
+| P0.1 | CORS restreint + database_id | ✅ done | 8434753 |
+| P0.2 | Auth PBKDF2 + change-password | ✅ done | 8434753 |
+| P0.3 | Routes /api/tasks | ✅ done | 8434753 |
+| P0.4 | Workflow engine cron | ✅ done | 8434753 |
 | P1.1 | Twilio SMS bidirectionnel | ⬜ todo | — |
 | P1.2 | Email inbound webhook | ⬜ todo | — |
 | P1.3 | Validation Zod | ⬜ todo | — |
-| P1.4 | Notifications réelles | ✅ done | — |
+| P1.4 | Notifications réelles | ✅ done | 8434753 |
 | P1.5 | Pagination cursor | ⬜ todo | — |
 | P1.6 | Audit log middleware | ⬜ todo | — |
 | P1.7 | Bulk actions Leads | ⬜ todo | — |

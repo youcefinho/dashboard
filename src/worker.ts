@@ -112,6 +112,26 @@ function json(data: unknown, status = 200): Response {
   });
 }
 
+// ── Audit log helper (best-effort) ──────────────────────────
+
+async function audit(
+  env: Env,
+  userId: string,
+  action: string,
+  resourceType: string,
+  resourceId: string,
+  details: Record<string, unknown> = {}
+): Promise<void> {
+  try {
+    const ip = _currentRequest?.headers.get('CF-Connecting-IP') || 'unknown';
+    const ua = _currentRequest?.headers.get('User-Agent') || '';
+    await env.DB.prepare(
+      `INSERT INTO audit_log (user_id, action, resource_type, resource_id, details, ip, user_agent)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
+    ).bind(userId, action, resourceType, resourceId, JSON.stringify(details), ip, ua).run();
+  } catch { /* non critique — ne jamais bloquer l'action principale */ }
+}
+
 // ── Auth helpers ────────────────────────────────────────────
 
 function extractToken(request: Request): string | null {
@@ -564,6 +584,7 @@ async function finishLogin(env: Env, userId: string, role: string, name: string,
     await env.DB.prepare('DELETE FROM login_attempts WHERE attempted_at < ?').bind(cleanupWindow).run();
   } catch { /* non critique */ }
 
+  await audit(env, userId, 'auth.login', 'user', userId, { email, role });
   return json({ success: true, token, must_change_password: mustChangePassword, user: { id: userId, name, role, email } });
 }
 
@@ -590,6 +611,7 @@ async function handleChangePassword(request: Request, env: Env): Promise<Respons
 
   const hash = await hashPassword(body.next);
   await env.DB.prepare("UPDATE users SET password_hash = ?, must_change_password = 0, updated_at = datetime('now') WHERE id = ?").bind(hash, auth.userId).run();
+  await audit(env, auth.userId, 'auth.change_password', 'user', auth.userId);
   return json({ success: true });
 }
 
@@ -730,6 +752,7 @@ async function handleCreateClient(request: Request, env: Env, auth: { role: stri
      VALUES (?, ?, ?, ?, ?, ?, ?)`
   ).bind(id, name, email, phone, siteUrl, city, banner).run();
 
+  await audit(env, auth.userId, 'client.create', 'client', id, { name, email });
   return json({ success: true, id }, 201);
 }
 
@@ -934,6 +957,7 @@ async function handlePatchLead(
     }
   }
 
+  await audit(env, auth.userId, 'lead.update', 'lead', leadId, body as Record<string, unknown>);
   return json({ success: true });
 }
 
@@ -1804,6 +1828,7 @@ async function handleDeleteTask(env: Env, auth: { userId: string; role: string }
     }
   }
   await env.DB.prepare('DELETE FROM tasks WHERE id = ?').bind(taskId).run();
+  await audit(env, auth.userId, 'task.delete', 'task', taskId);
   return json({ data: { success: true } });
 }
 
