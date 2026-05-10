@@ -4,23 +4,35 @@ import { createRouter, createRoute, createRootRoute, RouterProvider, Navigate } 
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { LoginPage } from '@/pages/Login';
 import { DashboardPage } from '@/pages/Dashboard';
-import { ClientsPage } from '@/pages/Clients';
-import { ClientLeadsPage } from '@/pages/ClientLeads';
-import { LeadsPage } from '@/pages/Leads';
-import { LeadDetailPage } from '@/pages/LeadDetail';
-import { PipelinePage } from '@/pages/Pipeline';
-import { SettingsPage } from '@/pages/Settings';
-import { InboxPage } from '@/pages/Inbox';
-import { TemplatesPage } from '@/pages/Templates';
-import { WorkflowsPage } from '@/pages/Workflows';
-import { WorkflowDetailPage } from '@/pages/WorkflowDetail';
-import { WorkflowBuilderPage } from '@/pages/WorkflowBuilder';
-import { CalendarPage } from '@/pages/Calendar';
-import { IntegrationsPage } from '@/pages/Integrations';
-import { ReportsPage } from '@/pages/Reports';
-import { TasksPage } from '@/pages/Tasks';
-import { ChangePasswordPage } from '@/pages/ChangePassword';
-import type { ReactNode } from 'react';
+import { Suspense, lazy, type ReactNode } from 'react';
+
+// ── Code splitting : chargement différé des pages secondaires ──
+const ClientsPage = lazy(() => import('@/pages/Clients').then(m => ({ default: m.ClientsPage })));
+const ClientLeadsPage = lazy(() => import('@/pages/ClientLeads').then(m => ({ default: m.ClientLeadsPage })));
+const LeadsPage = lazy(() => import('@/pages/Leads').then(m => ({ default: m.LeadsPage })));
+const LeadDetailPage = lazy(() => import('@/pages/LeadDetail').then(m => ({ default: m.LeadDetailPage })));
+const PipelinePage = lazy(() => import('@/pages/Pipeline').then(m => ({ default: m.PipelinePage })));
+const SettingsPage = lazy(() => import('@/pages/Settings').then(m => ({ default: m.SettingsPage })));
+const InboxPage = lazy(() => import('@/pages/Inbox').then(m => ({ default: m.InboxPage })));
+const TemplatesPage = lazy(() => import('@/pages/Templates').then(m => ({ default: m.TemplatesPage })));
+const WorkflowsPage = lazy(() => import('@/pages/Workflows').then(m => ({ default: m.WorkflowsPage })));
+const WorkflowDetailPage = lazy(() => import('@/pages/WorkflowDetail').then(m => ({ default: m.WorkflowDetailPage })));
+const WorkflowBuilderPage = lazy(() => import('@/pages/WorkflowBuilder').then(m => ({ default: m.WorkflowBuilderPage })));
+const CalendarPage = lazy(() => import('@/pages/Calendar').then(m => ({ default: m.CalendarPage })));
+const IntegrationsPage = lazy(() => import('@/pages/Integrations').then(m => ({ default: m.IntegrationsPage })));
+const ReportsPage = lazy(() => import('@/pages/Reports').then(m => ({ default: m.ReportsPage })));
+const TasksPage = lazy(() => import('@/pages/Tasks').then(m => ({ default: m.TasksPage })));
+const ChangePasswordPage = lazy(() => import('@/pages/ChangePassword').then(m => ({ default: m.ChangePasswordPage })));
+
+// ── Spinner de chargement ──────────────────────────────────
+
+function PageLoader() {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: 'var(--bg-primary, #0a0a14)' }}>
+      <div style={{ width: 36, height: 36, border: '3px solid rgba(99,102,241,0.2)', borderTopColor: '#6366f1', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+    </div>
+  );
+}
 
 // ── Auth Guard ──────────────────────────────────────────────
 
@@ -30,6 +42,16 @@ function AuthGuard({ children }: { children: ReactNode }) {
     return <Navigate to="/login" />;
   }
   return <>{children}</>;
+}
+
+function LazyGuard({ children }: { children: ReactNode }) {
+  return (
+    <AuthGuard>
+      <Suspense fallback={<PageLoader />}>
+        {children}
+      </Suspense>
+    </AuthGuard>
+  );
 }
 
 // ── Routes ──────────────────────────────────────────────────
@@ -53,49 +75,37 @@ const dashboardRoute = createRoute({
 const clientsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/clients',
-  component: () => (
-    <AuthGuard><ClientsPage /></AuthGuard>
-  ),
+  component: () => (<LazyGuard><ClientsPage /></LazyGuard>),
 });
 
 const clientLeadsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/clients/$clientId',
-  component: () => (
-    <AuthGuard><ClientLeadsPage /></AuthGuard>
-  ),
+  component: () => (<LazyGuard><ClientLeadsPage /></LazyGuard>),
 });
 
 const leadsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/leads',
-  component: () => (
-    <AuthGuard><LeadsPage /></AuthGuard>
-  ),
+  component: () => (<LazyGuard><LeadsPage /></LazyGuard>),
 });
 
 const leadDetailRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/leads/$leadId',
-  component: () => (
-    <AuthGuard><LeadDetailPage /></AuthGuard>
-  ),
+  component: () => (<LazyGuard><LeadDetailPage /></LazyGuard>),
 });
 
 const pipelineRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/pipeline',
-  component: () => (
-    <AuthGuard><PipelinePage /></AuthGuard>
-  ),
+  component: () => (<LazyGuard><PipelinePage /></LazyGuard>),
 });
 
 const settingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/settings',
-  component: () => (
-    <AuthGuard><SettingsPage /></AuthGuard>
-  ),
+  component: () => (<LazyGuard><SettingsPage /></LazyGuard>),
 });
 
 const indexRoute = createRoute({
@@ -107,81 +117,61 @@ const indexRoute = createRoute({
 const inboxRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/conversations',
-  component: () => (
-    <AuthGuard><InboxPage /></AuthGuard>
-  ),
+  component: () => (<LazyGuard><InboxPage /></LazyGuard>),
 });
 
 const templatesRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/templates',
-  component: () => (
-    <AuthGuard><TemplatesPage /></AuthGuard>
-  ),
+  component: () => (<LazyGuard><TemplatesPage /></LazyGuard>),
 });
 
 const workflowsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/workflows',
-  component: () => (
-    <AuthGuard><WorkflowsPage /></AuthGuard>
-  ),
+  component: () => (<LazyGuard><WorkflowsPage /></LazyGuard>),
 });
 
 const workflowDetailRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/workflows/$workflowId',
-  component: () => (
-    <AuthGuard><WorkflowDetailPage /></AuthGuard>
-  ),
+  component: () => (<LazyGuard><WorkflowDetailPage /></LazyGuard>),
 });
 
 const workflowNewRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/workflows/new',
-  component: () => (
-    <AuthGuard><WorkflowBuilderPage /></AuthGuard>
-  ),
+  component: () => (<LazyGuard><WorkflowBuilderPage /></LazyGuard>),
 });
 
 const calendarRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/calendar',
-  component: () => (
-    <AuthGuard><CalendarPage /></AuthGuard>
-  ),
+  component: () => (<LazyGuard><CalendarPage /></LazyGuard>),
 });
 
 const integrationsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/integrations',
-  component: () => (
-    <AuthGuard><IntegrationsPage /></AuthGuard>
-  ),
+  component: () => (<LazyGuard><IntegrationsPage /></LazyGuard>),
 });
 
 const reportsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/reports',
-  component: () => (
-    <AuthGuard><ReportsPage /></AuthGuard>
-  ),
+  component: () => (<LazyGuard><ReportsPage /></LazyGuard>),
 });
 
 const tasksRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/tasks',
-  component: () => (
-    <AuthGuard><TasksPage /></AuthGuard>
-  ),
+  component: () => (<LazyGuard><TasksPage /></LazyGuard>),
 });
 
 const changePasswordRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/change-password',
-  component: () => (
-    <AuthGuard><ChangePasswordPage /></AuthGuard>
-  ),
+  component: () => (<LazyGuard><ChangePasswordPage /></LazyGuard>),
 });
 
 // ── Router ──────────────────────────────────────────────────

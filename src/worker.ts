@@ -535,6 +535,17 @@ async function routeApi(request: Request, env: Env, url: URL): Promise<Response>
   const subMatch = path.match(/^\/api\/sub-accounts\/([^/]+)$/);
   if (subMatch && method === 'PATCH') return handleUpdateSubAccount(request, env, auth, subMatch[1] as string);
 
+  // ── Snapshots (cloner setup) ─────────────────────────────
+  if (path === '/api/snapshots/create' && method === 'POST') return handleCreateSnapshot(request, env, auth);
+  if (path === '/api/snapshots/apply' && method === 'POST') return handleApplySnapshot(request, env, auth);
+
+  // ── White-label config ──────────────────────────────────
+  if (path === '/api/whitelabel' && method === 'GET') return handleGetWhitelabel(env, auth);
+  if (path === '/api/whitelabel' && method === 'PATCH') return handleUpdateWhitelabel(request, env, auth);
+
+  // ── Widget embed script ─────────────────────────────────
+  if (path === '/api/widget.js' && method === 'GET') return handleWidgetScript(env, url);
+
   // ── Debug (à retirer avant prod) ────────────────────────
   if (path === '/api/debug/run-cron' && method === 'GET') {
     if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
@@ -3646,4 +3657,223 @@ async function handleUpdateSubAccount(request: Request, env: Env, auth: { userId
   await env.DB.prepare(`UPDATE users SET ${u.join(', ')} WHERE id = ?`).bind(...p).run();
   await audit(env, auth.userId, 'sub_account.update', 'user', userId);
   return json({ data: { success: true } });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ██  P2.9 — SNAPSHOTS (cloner setup)
+// ═══════════════════════════════════════════════════════════════
+
+async function handleCreateSnapshot(request: Request, env: Env, auth: { userId: string; role: string }): Promise<Response> {
+  if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
+  const body = await request.json() as { source_client_id?: string; name?: string };
+  if (!body.source_client_id) return json({ error: 'source_client_id requis' }, 400);
+
+  // Exporter la config du client source
+  const client = await env.DB.prepare('SELECT * FROM clients WHERE id = ?').bind(body.source_client_id).first();
+  if (!client) return json({ error: 'Client introuvable' }, 404);
+
+  const { results: workflows } = await env.DB.prepare('SELECT * FROM workflows WHERE client_id = ?').bind(body.source_client_id).all();
+  const { results: templates } = await env.DB.prepare('SELECT * FROM email_templates WHERE client_id = ?').bind(body.source_client_id).all();
+  const { results: forms } = await env.DB.prepare('SELECT * FROM forms WHERE client_id = ?').bind(body.source_client_id).all();
+  const { results: bookingPages } = await env.DB.prepare('SELECT * FROM booking_pages WHERE client_id = ?').bind(body.source_client_id).all();
+  const { results: pipelines } = await env.DB.prepare('SELECT * FROM pipelines').all();
+  const { results: stages } = await env.DB.prepare('SELECT * FROM pipeline_stages').all();
+
+  const snapshot = {
+    id: crypto.randomUUID(),
+    name: body.name || `Snapshot ${new Date().toISOString().split('T')[0]}`,
+    source_client_id: body.source_client_id,
+    created_by: auth.userId,
+    created_at: new Date().toISOString(),
+    data: { workflows: workflows || [], templates: templates || [], forms: forms || [], booking_pages: bookingPages || [], pipelines: pipelines || [], stages: stages || [] },
+  };
+
+  // Stocker dans audit_log (pas de table dédiée pour être léger)
+  await env.DB.prepare(
+    "INSERT INTO audit_log (user_id, action, resource_type, resource_id, details) VALUES (?, 'snapshot.create', 'snapshot', ?, ?)"
+  ).bind(auth.userId, snapshot.id, JSON.stringify(snapshot)).run();
+
+  await audit(env, auth.userId, 'snapshot.create', 'snapshot', snapshot.id, { name: snapshot.name });
+  return json({ data: { id: snapshot.id, name: snapshot.name, items: { workflows: (workflows || []).length, templates: (templates || []).length, forms: (forms || []).length, booking_pages: (bookingPages || []).length } } }, 201);
+}
+
+async function handleApplySnapshot(request: Request, env: Env, auth: { userId: string; role: string }): Promise<Response> {
+  if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
+  const body = await request.json() as { snapshot_id?: string; target_client_id?: string };
+  if (!body.snapshot_id || !body.target_client_id) return json({ error: 'snapshot_id et target_client_id requis' }, 400);
+
+  // Charger le snapshot
+  const snapshotRow = await env.DB.prepare(
+    "SELECT details FROM audit_log WHERE resource_id = ? AND action = 'snapshot.create'"
+  ).bind(body.snapshot_id).first() as { details: string } | null;
+  if (!snapshotRow) return json({ error: 'Snapshot introuvable' }, 404);
+
+  const snapshot = JSON.parse(snapshotRow.details) as { data: { workflows: Array<Record<string, unknown>>; templates: Array<Record<string, unknown>>; forms: Array<Record<string, unknown>>; booking_pages: Array<Record<string, unknown>> } };
+  const applied = { workflows: 0, templates: 0, forms: 0, booking_pages: 0 };
+
+  // Copier les workflows
+  for (const wf of snapshot.data.workflows) {
+    const id = crypto.randomUUID();
+    await env.DB.prepare(
+      'INSERT INTO workflows (id, client_id, name, trigger_type, trigger_config, is_active) VALUES (?, ?, ?, ?, ?, 0)'
+    ).bind(id, body.target_client_id, wf.name as string, wf.trigger_type as string, wf.trigger_config as string).run();
+    applied.workflows++;
+  }
+
+  // Copier les templates
+  for (const tpl of snapshot.data.templates) {
+    const id = crypto.randomUUID();
+    await env.DB.prepare(
+      'INSERT INTO email_templates (id, client_id, name, category, subject, body_html, body_text) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    ).bind(id, body.target_client_id, tpl.name as string, tpl.category as string, tpl.subject as string, tpl.body_html as string, tpl.body_text as string).run();
+    applied.templates++;
+  }
+
+  // Copier les formulaires
+  for (const f of snapshot.data.forms) {
+    const id = crypto.randomUUID();
+    const slug = `${(f.slug as string)}-${body.target_client_id.substring(0, 8)}`;
+    await env.DB.prepare(
+      'INSERT INTO forms (id, client_id, name, slug, fields, submit_action, success_message) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    ).bind(id, body.target_client_id, f.name as string, slug, f.fields as string, f.submit_action as string, f.success_message as string).run();
+    applied.forms++;
+  }
+
+  // Copier les booking pages
+  for (const bp of snapshot.data.booking_pages) {
+    const id = crypto.randomUUID();
+    const slug = `${(bp.slug as string)}-${body.target_client_id.substring(0, 8)}`;
+    await env.DB.prepare(
+      'INSERT INTO booking_pages (id, client_id, slug, title, description, duration_minutes) VALUES (?, ?, ?, ?, ?, ?)'
+    ).bind(id, body.target_client_id, slug, bp.title as string, (bp.description || '') as string, (bp.duration_minutes || 30) as number).run();
+    applied.booking_pages++;
+  }
+
+  await audit(env, auth.userId, 'snapshot.apply', 'snapshot', body.snapshot_id, { target: body.target_client_id, applied });
+  return json({ data: { applied } });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ██  P2.10 — WHITE-LABEL CONFIG
+// ═══════════════════════════════════════════════════════════════
+
+async function handleGetWhitelabel(env: Env, auth: { userId: string; role: string }): Promise<Response> {
+  if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
+  const user = await env.DB.prepare('SELECT branding FROM users WHERE id = ?').bind(auth.userId).first() as { branding: string } | null;
+  let branding: Record<string, unknown> = {};
+  try { branding = JSON.parse(user?.branding || '{}'); } catch { /* */ }
+  return json({ data: branding });
+}
+
+async function handleUpdateWhitelabel(request: Request, env: Env, auth: { userId: string; role: string }): Promise<Response> {
+  if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
+  const body = await request.json() as {
+    company_name?: string; logo_url?: string; favicon_url?: string;
+    primary_color?: string; accent_color?: string;
+    login_bg_url?: string; custom_domain?: string;
+    email_footer?: string; support_email?: string;
+  };
+
+  // Charger le branding actuel et merger
+  const user = await env.DB.prepare('SELECT branding FROM users WHERE id = ?').bind(auth.userId).first() as { branding: string } | null;
+  let current: Record<string, unknown> = {};
+  try { current = JSON.parse(user?.branding || '{}'); } catch { /* */ }
+  const merged = { ...current, ...body };
+
+  await env.DB.prepare("UPDATE users SET branding = ?, updated_at = datetime('now') WHERE id = ?")
+    .bind(JSON.stringify(merged), auth.userId).run();
+
+  await audit(env, auth.userId, 'whitelabel.update', 'user', auth.userId);
+  return json({ data: merged });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ██  P2.11 — WIDGET EMBED SCRIPT
+// ═══════════════════════════════════════════════════════════════
+
+async function handleWidgetScript(env: Env, url: URL): Promise<Response> {
+  const formSlug = url.searchParams.get('form');
+  if (!formSlug) {
+    return new Response('// Erreur: paramètre ?form=slug requis', { status: 400, headers: { 'Content-Type': 'application/javascript' } });
+  }
+
+  const form = await env.DB.prepare('SELECT * FROM forms WHERE slug = ? AND is_active = 1').bind(formSlug).first() as Record<string, unknown> | null;
+  if (!form) {
+    return new Response('// Formulaire non trouvé', { status: 404, headers: { 'Content-Type': 'application/javascript' } });
+  }
+
+  let fields: Array<{ name: string; label: string; type: string; required?: boolean }> = [];
+  try { fields = JSON.parse(form.fields as string); } catch { /* */ }
+
+  // Si aucun champ défini, utiliser les champs par défaut
+  if (fields.length === 0) {
+    fields = [
+      { name: 'nom', label: 'Nom complet', type: 'text', required: true },
+      { name: 'email', label: 'Courriel', type: 'email', required: true },
+      { name: 'phone', label: 'Téléphone', type: 'tel', required: false },
+      { name: 'message', label: 'Message', type: 'textarea', required: false },
+    ];
+  }
+
+  const apiBase = url.origin;
+  const script = `
+(function() {
+  var container = document.getElementById('intralys-form');
+  if (!container) { console.error('Intralys: élément #intralys-form non trouvé'); return; }
+
+  var style = document.createElement('style');
+  style.textContent = \`
+    .ilf { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 480px; margin: 0 auto; }
+    .ilf label { display: block; margin-bottom: 4px; font-weight: 600; font-size: 14px; color: #374151; }
+    .ilf input, .ilf textarea, .ilf select { width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; box-sizing: border-box; margin-bottom: 16px; }
+    .ilf input:focus, .ilf textarea:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
+    .ilf textarea { min-height: 80px; resize: vertical; }
+    .ilf button { width: 100%; padding: 12px; background: #6366f1; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; }
+    .ilf button:hover { background: #4f46e5; }
+    .ilf .ilf-ok { background: #10b981; color: white; padding: 16px; border-radius: 8px; text-align: center; font-weight: 600; }
+    .ilf .ilf-err { background: #ef4444; color: white; padding: 12px; border-radius: 8px; margin-bottom: 12px; font-size: 14px; }
+  \`;
+  document.head.appendChild(style);
+
+  var html = '<div class="ilf"><form id="ilf-form">';
+  var fields = ${JSON.stringify(fields)};
+  fields.forEach(function(f) {
+    html += '<label>' + f.label + (f.required ? ' *' : '') + '</label>';
+    if (f.type === 'textarea') {
+      html += '<textarea name="' + f.name + '"' + (f.required ? ' required' : '') + '></textarea>';
+    } else {
+      html += '<input type="' + f.type + '" name="' + f.name + '"' + (f.required ? ' required' : '') + ' />';
+    }
+  });
+  html += '<button type="submit">Envoyer</button></form></div>';
+  container.innerHTML = html;
+
+  document.getElementById('ilf-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var data = {};
+    fields.forEach(function(f) { data[f.name] = e.target.elements[f.name].value; });
+    var btn = e.target.querySelector('button');
+    btn.textContent = 'Envoi...'; btn.disabled = true;
+    fetch('${apiBase}/api/form/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ form_id: '${form.id}', data: data })
+    }).then(function(r) { return r.json(); }).then(function(res) {
+      if (res.data) {
+        container.querySelector('.ilf').innerHTML = '<div class="ilf-ok">' + (res.data.success_message || 'Merci !') + '</div>';
+      } else {
+        container.querySelector('.ilf').insertAdjacentHTML('afterbegin', '<div class="ilf-err">' + (res.error || 'Erreur') + '</div>');
+        btn.textContent = 'Envoyer'; btn.disabled = false;
+      }
+    }).catch(function() {
+      container.querySelector('.ilf').insertAdjacentHTML('afterbegin', '<div class="ilf-err">Erreur de connexion</div>');
+      btn.textContent = 'Envoyer'; btn.disabled = false;
+    });
+  });
+})();
+`;
+
+  return new Response(script.trim(), {
+    headers: { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'public, max-age=300', 'Access-Control-Allow-Origin': '*' },
+  });
 }
