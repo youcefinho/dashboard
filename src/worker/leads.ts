@@ -549,3 +549,79 @@ export async function handleExportCsv(env: Env, auth: { role: string }, url: URL
     },
   });
 }
+
+// ── Webhook — Réception de leads externes ───────────────────
+export async function handleWebhookLead(request: Request, env: Env): Promise<Response> {
+  // Vérifier le secret webhook
+  const secret = request.headers.get('X-Webhook-Secret') || '';
+  const expectedSecret = (env as Record<string, unknown>).WEBHOOK_SECRET as string || '';
+  if (!expectedSecret || secret !== expectedSecret) {
+    return json({ error: 'Invalid webhook secret' }, 401);
+  }
+
+  // Identifier le client via le header
+  const clientId = request.headers.get('X-Client-Id') || '';
+  if (!clientId) {
+    return json({ error: 'Missing X-Client-Id header' }, 400);
+  }
+
+  // Vérifier que le client existe
+  const client = await env.DB.prepare('SELECT id FROM clients WHERE id = ?').bind(clientId).first();
+  if (!client) {
+    return json({ error: 'Unknown client' }, 404);
+  }
+
+  // Parser et sanitiser le body
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json() as Record<string, unknown>;
+  } catch {
+    return json({ error: 'Invalid JSON' }, 400);
+  }
+
+  const name = sanitizeInput(String(body.name || ''), 100);
+  const email = sanitizeInput(String(body.email || ''), 255);
+  const phone = sanitizeInput(String(body.phone || ''), 30);
+  const message = sanitizeInput(String(body.message || ''), 2000);
+  const typeRaw = String(body.type || 'buy').toLowerCase();
+  const type = ['buy', 'sell', 'invest'].includes(typeRaw) ? typeRaw : 'buy';
+
+  if (!name || !email) {
+    return json({ error: 'name and email are required' }, 400);
+  }
+
+  // Vérifier doublon (même email + même client dans les 24h)
+  const existing = await env.DB.prepare(
+    `SELECT id FROM leads WHERE email = ? AND client_id = ? AND created_at > datetime('now', '-1 day')`
+  ).bind(email, clientId).first();
+  if (existing) {
+    return json({ success: true, id: existing.id, duplicate: true }, 200);
+  }
+
+  // Créer le lead
+  const id = crypto.randomUUID();
+  await env.DB.prepare(
+    `INSERT INTO leads (id, client_id, name, email, phone, message, type, source, status, score) VALUES (?, ?, ?, ?, ?, ?, ?, 'website', 'new', 30)`
+  ).bind(id, clientId, name, email, phone, message, type).run();
+
+  // Logger l'activité
+  await audit(env, id, 'created', 'Lead reçu via webhook', null);
+
+  // Notification (best-effort)
+  try {
+    await createNotification(env, null, 'lead', `Nouveau lead : ${name}`, id);
+  } catch { /* silencieux */ }
+
+  // Auto-enroll workflow si configuré
+  if (autoEnrollFn) {
+    const workflows = await env.DB.prepare(
+      `SELECT id FROM workflows WHERE trigger_type = 'lead_created' AND is_active = 1 AND (trigger_config LIKE '%"client_id":"${clientId}"%' OR trigger_config LIKE '%"all_clients":true%')`
+    ).all();
+    for (const wf of (workflows.results || []) as { id: string }[]) {
+      try { await autoEnrollFn(env, wf.id, id); } catch { /* silencieux */ }
+    }
+  }
+
+  return json({ success: true, id }, 201);
+}
+
