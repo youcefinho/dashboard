@@ -51,6 +51,12 @@ import { handleGbpReviews, handleGbpStats } from './worker/gbp';
 import { handleEmailBroadcast, handleBroadcastHistory } from './worker/broadcast';
 import { handleDashboardStats, handleTotpSetup, handleTotpVerify, handleTotpDisable, handleSendSmsRoute, handleCsvImport, handleExportCsv as handleExportCsvDash } from './worker/dashboard';
 import { handleWebhookLead } from './worker/leads';
+import {
+  handleUploadFile, handleGetFile, handleGetFiles, handleDeleteFile,
+  handleGetDocumentTemplates, handleCreateDocumentTemplate, handleUpdateDocumentTemplate, handleDeleteDocumentTemplate,
+  handleGetDocuments, handleCreateDocument, handleSendDocument,
+  handlePublicGetDocument, handlePublicSignDocument,
+} from './worker/documents';
 
 // Injection de dépendance : autoEnroll pour les leads
 setAutoEnroll(autoEnroll);
@@ -79,6 +85,10 @@ export default {
       if (path === '/api/widget.js' && method === 'GET') return await handleWidgetScript(env, url);
       const unsubMatch = path.match(/^\/api\/unsubscribe\/(.+)$/);
       if (unsubMatch && method === 'GET') return await handlePublicUnsubscribe(env, unsubMatch[1]!);
+      // Documents — signature publique
+      const signMatch = path.match(/^\/api\/sign\/([^/]+)$/);
+      if (signMatch && method === 'GET') return await handlePublicGetDocument(env, signMatch[1]!);
+      if (signMatch && method === 'POST') return await handlePublicSignDocument(request, env, signMatch[1]!);
     } catch (err) {
       console.error('Erreur route publique:', err);
       return json({ error: 'Erreur serveur' }, 500);
@@ -296,6 +306,22 @@ async function routeProtected(
   if (slMatch && method === 'DELETE') return handleDeleteSmartList(env, auth, slMatch[1]!);
   const slExecMatch = path.match(/^\/api\/smart-lists\/([^/]+)\/execute$/);
   if (slExecMatch && method === 'GET') return handleExecuteSmartList(env, auth, slExecMatch[1]!, url);
+
+  // Documents + e-sign (P4.3)
+  if (path === '/api/files' && method === 'POST') return handleUploadFile(request, env, auth);
+  if (path === '/api/files' && method === 'GET') return handleGetFiles(env, auth, url);
+  const fileMatch = path.match(/^\/api\/files\/([^/]+)$/);
+  if (fileMatch && method === 'GET') return handleGetFile(env, auth, fileMatch[1]!);
+  if (fileMatch && method === 'DELETE') return handleDeleteFile(env, auth, fileMatch[1]!);
+  if (path === '/api/document-templates' && method === 'GET') return handleGetDocumentTemplates(env, auth, url);
+  if (path === '/api/document-templates' && method === 'POST') return handleCreateDocumentTemplate(request, env, auth);
+  const dtMatch = path.match(/^\/api\/document-templates\/([^/]+)$/);
+  if (dtMatch && method === 'PATCH') return handleUpdateDocumentTemplate(request, env, auth, dtMatch[1]!);
+  if (dtMatch && method === 'DELETE') return handleDeleteDocumentTemplate(env, auth, dtMatch[1]!);
+  if (path === '/api/documents' && method === 'GET') return handleGetDocuments(env, auth, url);
+  if (path === '/api/documents' && method === 'POST') return handleCreateDocument(request, env, auth);
+  const docSendMatch = path.match(/^\/api\/documents\/([^/]+)\/send$/);
+  if (docSendMatch && method === 'POST') return handleSendDocument(request, env, auth, docSendMatch[1]!);
 
   // Debug (à retirer avant prod)
   if (path === '/api/debug/run-cron' && method === 'GET') {

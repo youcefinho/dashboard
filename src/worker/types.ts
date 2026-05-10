@@ -17,6 +17,7 @@ export interface Env {
   GOOGLE_REDIRECT_URI: string;
   GBP_API_KEY: string;
   ANTHROPIC_API_KEY: string;
+  FILES: R2Bucket;
 }
 
 export interface AuthContext {
