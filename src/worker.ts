@@ -62,6 +62,7 @@ import {
   handleGetReviews, handleGetReviewStats, handleSuggestReviewReply, handleReplyToReview,
 } from './worker/reviews';
 import { WebchatRoom, handleWebchatConnect, handleWebchatPrechat, handleWebchatWidget } from './worker/webchat';
+import { handleStartMigration, handleGetMigrationStatus } from './worker/migrate';
 
 // Export Durable Object pour Cloudflare
 export { WebchatRoom };
@@ -344,6 +345,10 @@ async function routeProtected(
   if (path === '/api/documents' && method === 'POST') return handleCreateDocument(request, env, auth);
   const docSendMatch = path.match(/^\/api\/documents\/([^/]+)\/send$/);
   if (docSendMatch && method === 'POST') return handleSendDocument(request, env, auth, docSendMatch[1]!);
+
+  // Migration GHL
+  if (path === '/api/migrate/ghl' && method === 'POST') return handleStartMigration(request, env, auth);
+  if (path === '/api/migrate/status' && method === 'GET') return handleGetMigrationStatus(env, auth, url);
 
   // Debug (à retirer avant prod)
   if (path === '/api/debug/run-cron' && method === 'GET') {
