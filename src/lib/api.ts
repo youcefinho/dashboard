@@ -836,3 +836,34 @@ export async function getGbpReviews(accountId: string, locationId: string): Prom
 export async function getGbpStats(): Promise<ApiResponse<{ accounts: Array<{ id: string; name: string }> }>> {
   return apiFetch<{ accounts: Array<{ id: string; name: string }> }>('/gbp/stats');
 }
+
+// ── Conformité CASL / Loi 25 ────────────────────────────────
+
+export async function getUnsubscribes(params?: { limit?: number; offset?: number }): Promise<ApiResponse<Array<Record<string, unknown>>>> {
+  const search = new URLSearchParams();
+  if (params?.limit) search.set('limit', params.limit.toString());
+  if (params?.offset) search.set('offset', params.offset.toString());
+  return apiFetch<Array<Record<string, unknown>>>(`/unsubscribes?${search.toString()}`);
+}
+
+export async function logConsent(data: {
+  lead_id: string; consent_type: string; granted: boolean;
+}): Promise<ApiResponse<{ success: boolean }>> {
+  return apiFetch<{ success: boolean }>('/consent', {
+    method: 'POST', body: JSON.stringify(data),
+  });
+}
+
+export async function getConsent(leadId: string): Promise<ApiResponse<Array<Record<string, unknown>>>> {
+  return apiFetch<Array<Record<string, unknown>>>(`/consent?lead_id=${leadId}`);
+}
+
+export async function forgetLead(leadId: string): Promise<ApiResponse<{ success: boolean; anonymized: boolean }>> {
+  return apiFetch<{ success: boolean; anonymized: boolean }>(`/leads/${leadId}/forget`, {
+    method: 'POST',
+  });
+}
+
+export async function exportLeadPii(leadId: string): Promise<ApiResponse<Record<string, unknown>>> {
+  return apiFetch<Record<string, unknown>>(`/leads/${leadId}/export-pii`);
+}
