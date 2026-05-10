@@ -818,18 +818,18 @@ if (channel === 'sms' && env.TWILIO_ACCOUNT_SID) {
 
 ## 5. P2 — Nice-to-have (faire quand P0+P1 sont stables)
 
-- ⬜ Form builder visuel (TipTap-like) + endpoint embed `<script src=".../widget.js">`
-- ⬜ Public booking pages `/book/{slug}` (Calendly clone)
-- ⬜ Sync Google Calendar (OAuth2)
-- ✅ Email broadcast + suppression list (CASL compliance QC) — `3975b2a`
-- ✅ Bulk import CSV avec field mapping — `3975b2a`
-- ⬜ Reputation : Google Business Profile API (review monitoring)
+- ✅ Form builder visuel + widget embed + soumissions — `6e78595`
+- ✅ Public booking pages `/book/{slug}` (Calendly clone) — `6e78595`
+- ⬜ Sync Google Calendar (OAuth2) — nécessite credentials Google Cloud
+- ✅ Email broadcast + filtres + templates — `3975b2a`
+- ✅ Bulk import CSV avec field mapping auto FR/EN — `3975b2a`
+- ⬜ Reputation : Google Business Profile API — nécessite API key GBP
 - ✅ Reports : CPL/CPA par source + conversion funnel — `3975b2a`
-- ⬜ Sub-accounts hierarchy (agency → location → user, 3 niveaux)
-- ⬜ Snapshots (cloner setup d'un sub-account)
-- ⬜ White-label total
-- ⬜ AI bot conversationnel (qualif lead via SMS/web) — utilise Claude API ou OpenAI
-- ✅ 2FA TOTP (setup + verify + disable, implémentation RFC 6238 pure Web Crypto) — `3975b2a`
+- ✅ Sub-accounts hierarchy (agency → location → user) — `6e78595`
+- ⬜ Snapshots (cloner setup) — dépend de sub-accounts UI
+- ⬜ White-label total — config branding par sub-account (colonnes ajoutées, UI à faire)
+- ✅ AI bot conversationnel (OpenAI GPT-4o-mini, qualif lead, historique) — `6e78595`
+- ✅ 2FA TOTP (RFC 6238 pure Web Crypto, setup/verify/disable) — `3975b2a`
 
 ---
 
