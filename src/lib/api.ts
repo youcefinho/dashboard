@@ -780,3 +780,59 @@ export async function createSubAccount(data: { name: string; email: string; pass
 export async function updateSubAccount(id: string, data: Record<string, unknown>): Promise<ApiResponse<{ success: boolean }>> {
   return apiFetch<{ success: boolean }>(`/sub-accounts/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 }
+
+// ── Snapshots ────────────────────────────────────────────────
+
+export async function createSnapshot(sourceClientId: string, name?: string): Promise<ApiResponse<{ id: string; name: string; items: Record<string, number> }>> {
+  return apiFetch<{ id: string; name: string; items: Record<string, number> }>('/snapshots/create', {
+    method: 'POST', body: JSON.stringify({ source_client_id: sourceClientId, name }),
+  });
+}
+
+export async function applySnapshot(snapshotId: string, targetClientId: string): Promise<ApiResponse<{ applied: Record<string, number> }>> {
+  return apiFetch<{ applied: Record<string, number> }>('/snapshots/apply', {
+    method: 'POST', body: JSON.stringify({ snapshot_id: snapshotId, target_client_id: targetClientId }),
+  });
+}
+
+// ── White-label ──────────────────────────────────────────────
+
+export async function getWhitelabel(): Promise<ApiResponse<Record<string, unknown>>> {
+  return apiFetch<Record<string, unknown>>('/whitelabel');
+}
+
+export async function updateWhitelabel(data: {
+  company_name?: string; logo_url?: string; primary_color?: string;
+  accent_color?: string; custom_domain?: string; support_email?: string;
+}): Promise<ApiResponse<Record<string, unknown>>> {
+  return apiFetch<Record<string, unknown>>('/whitelabel', { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+// ── Google Calendar ──────────────────────────────────────────
+
+export async function getGcalAuthUrl(): Promise<ApiResponse<{ auth_url: string }>> {
+  return apiFetch<{ auth_url: string }>('/gcal/auth-url');
+}
+
+export async function getGcalEvents(timeMin?: string, timeMax?: string): Promise<ApiResponse<{ events: Array<Record<string, unknown>> }>> {
+  const params = new URLSearchParams();
+  if (timeMin) params.set('time_min', timeMin);
+  if (timeMax) params.set('time_max', timeMax);
+  return apiFetch<{ events: Array<Record<string, unknown>> }>(`/gcal/events?${params.toString()}`);
+}
+
+export async function syncGcal(): Promise<ApiResponse<{ synced: number; total: number }>> {
+  return apiFetch<{ synced: number; total: number }>('/gcal/sync', { method: 'POST' });
+}
+
+// ── Google Business Profile ─────────────────────────────────
+
+export async function getGbpReviews(accountId: string, locationId: string): Promise<ApiResponse<{ reviews: Array<Record<string, unknown>>; average_rating: number; total_count: number }>> {
+  return apiFetch<{ reviews: Array<Record<string, unknown>>; average_rating: number; total_count: number }>(
+    `/gbp/reviews?account_id=${accountId}&location_id=${locationId}`
+  );
+}
+
+export async function getGbpStats(): Promise<ApiResponse<{ accounts: Array<{ id: string; name: string }> }>> {
+  return apiFetch<{ accounts: Array<{ id: string; name: string }> }>('/gbp/stats');
+}
