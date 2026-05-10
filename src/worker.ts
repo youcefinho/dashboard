@@ -2,6 +2,7 @@
 // Routes API + assets statiques servis par Cloudflare
 
 import { Resend } from 'resend';
+import { validate, loginSchema, changePasswordSchema, patchLeadSchema, bulkLeadsSchema, webhookLeadSchema, createClientSchema, createTaskSchema, createTemplateSchema, createAppointmentSchema } from './lib/schemas';
 
 // ── Types Worker ────────────────────────────────────────────
 
@@ -522,18 +523,18 @@ async function handleLogin(request: Request, env: Env): Promise<Response> {
     return json({ error: 'Trop de tentatives. Réessayez dans 1 heure.' }, 429);
   }
 
-  const body = await request.json() as { email?: string; password?: string };
-  const email = sanitizeInput(body.email, 200).toLowerCase();
-  const password = body.password || '';
+  const raw = await request.json();
+  const parsed = validate(loginSchema, raw);
+  if (!parsed.success) {
+    return json({ error: parsed.error }, 400);
+  }
+  const email = parsed.data.email.toLowerCase();
+  const password = parsed.data.password;
 
   // Enregistrer la tentative
   await env.DB.prepare(
     "INSERT INTO login_attempts (ip, attempted_at) VALUES (?, datetime('now'))"
   ).bind(ip).run();
-
-  if (!email || !password) {
-    return json({ error: 'Email et mot de passe requis' }, 400);
-  }
 
   // Chercher l'utilisateur par email
   const user = await env.DB.prepare(
@@ -598,10 +599,12 @@ async function finishLogin(env: Env, userId: string, role: string, name: string,
 async function handleChangePassword(request: Request, env: Env): Promise<Response> {
   const auth = await requireAuth(request, env);
   if (auth instanceof Response) return auth;
-  const body = await request.json() as { current?: string; next?: string };
-  if (!body.current || !body.next || body.next.length < 8) {
-    return json({ error: 'Mot de passe actuel + nouveau (min 8 chars) requis' }, 400);
+  const raw = await request.json();
+  const parsed = validate(changePasswordSchema, raw);
+  if (!parsed.success) {
+    return json({ error: parsed.error }, 400);
   }
+  const body = parsed.data;
   const user = await env.DB.prepare('SELECT password_hash FROM users WHERE id = ?').bind(auth.userId).first() as { password_hash: string } | null;
   if (!user) return json({ error: 'Utilisateur non trouvé' }, 404);
 
