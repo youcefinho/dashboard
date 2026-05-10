@@ -1,219 +1,26 @@
 // ── Worker API — Intralys CRM Central ───────────────────────
 // Routes API + assets statiques servis par Cloudflare
+// Refactoré P3.0 — imports depuis modules src/worker/
 
 import { Resend } from 'resend';
 import { validate, loginSchema, changePasswordSchema } from './lib/schemas';
-
-// ── Types Worker ────────────────────────────────────────────
-
-interface Env {
-  DB: D1Database;
-  ADMIN_PASSWORD: string;
-  RESEND_API_KEY: string;
-  WEBHOOK_SECRET: string;
-  NOTIFICATION_EMAIL: string;
-  ALLOWED_ORIGINS: string;
-  TWILIO_ACCOUNT_SID: string;
-  TWILIO_AUTH_TOKEN: string;
-  TWILIO_PHONE_NUMBER: string;
-  OPENAI_API_KEY: string;
-  GOOGLE_CLIENT_ID: string;
-  GOOGLE_CLIENT_SECRET: string;
-  GOOGLE_REDIRECT_URI: string;
-  GBP_API_KEY: string;
-}
-
-// ── Constantes ──────────────────────────────────────────────
-
-const SESSION_DURATION_HOURS = 24;
-const MAX_LOGIN_ATTEMPTS = 5;
-const LOGIN_WINDOW_HOURS = 1;
-
-// ── Sanitisation ────────────────────────────────────────────
-
-function sanitizeHtml(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-function sanitizeInput(str: string | undefined | null, maxLen = 500): string {
-  if (!str) return '';
-  return str.trim().slice(0, maxLen);
-}
-
-// ── Password hashing (PBKDF2-SHA256, 210k iterations OWASP 2023) ─────
-
-const PBKDF2_ITERATIONS = 210_000;
-
-async function hashPassword(password: string): Promise<string> {
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const key = await crypto.subtle.importKey(
-    'raw', new TextEncoder().encode(password),
-    { name: 'PBKDF2' }, false, ['deriveBits']
-  );
-  const bits = await crypto.subtle.deriveBits(
-    { name: 'PBKDF2', salt, iterations: PBKDF2_ITERATIONS, hash: 'SHA-256' },
-    key, 256
-  );
-  const hashB64 = btoa(String.fromCharCode(...new Uint8Array(bits)));
-  const saltB64 = btoa(String.fromCharCode(...salt));
-  return `pbkdf2$${PBKDF2_ITERATIONS}$${saltB64}$${hashB64}`;
-}
-
-async function verifyPassword(password: string, stored: string): Promise<boolean> {
-  if (!stored.startsWith('pbkdf2$')) return false;
-  const [, iterStr, saltB64, hashB64] = stored.split('$');
-  if (!iterStr || !saltB64 || !hashB64) return false;
-  const salt = Uint8Array.from(atob(saltB64), c => c.charCodeAt(0));
-  const key = await crypto.subtle.importKey(
-    'raw', new TextEncoder().encode(password),
-    { name: 'PBKDF2' }, false, ['deriveBits']
-  );
-  const bits = await crypto.subtle.deriveBits(
-    { name: 'PBKDF2', salt, iterations: parseInt(iterStr), hash: 'SHA-256' },
-    key, 256
-  );
-  const computed = btoa(String.fromCharCode(...new Uint8Array(bits)));
-  // Comparaison à temps constant
-  if (computed.length !== hashB64.length) return false;
-  let diff = 0;
-  for (let i = 0; i < computed.length; i++) {
-    diff |= computed.charCodeAt(i) ^ hashB64.charCodeAt(i);
-  }
-  return diff === 0;
-}
-
-// ── Request context (stocké au début de fetch, utilisé partout) ─────
-let _currentRequest: Request | null = null;
-let _currentEnv: Env | null = null;
-
-function corsHeaders(): Record<string, string> {
-  if (_currentRequest && _currentEnv) {
-    const origin = _currentRequest.headers.get('Origin') || '';
-    const allowed = (_currentEnv.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
-    // Dev local : si ALLOWED_ORIGINS vide ou contient localhost, on autorise localhost
-    if (allowed.length === 0) allowed.push('http://localhost:5176', 'http://localhost:5173');
-    const allowOrigin = allowed.includes(origin) ? origin : '';
-    return {
-      'Access-Control-Allow-Origin': allowOrigin,
-      'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Webhook-Secret, X-Client-Id',
-      'Access-Control-Allow-Credentials': 'true',
-      'Vary': 'Origin',
-    };
-  }
-  // Fallback sécurisé — empty origin bloque les requêtes cross-origin
-  return {
-    'Access-Control-Allow-Origin': '',
-    'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Webhook-Secret, X-Client-Id',
-  };
-}
-
-function json(data: unknown, status = 200): Response {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { 'Content-Type': 'application/json', ...corsHeaders() },
-  });
-}
-
-// ── Audit log helper (best-effort) ──────────────────────────
-
-async function audit(
-  env: Env,
-  userId: string,
-  action: string,
-  resourceType: string,
-  resourceId: string,
-  details: Record<string, unknown> = {}
-): Promise<void> {
-  try {
-    const ip = _currentRequest?.headers.get('CF-Connecting-IP') || 'unknown';
-    const ua = _currentRequest?.headers.get('User-Agent') || '';
-    await env.DB.prepare(
-      `INSERT INTO audit_log (user_id, action, resource_type, resource_id, details, ip, user_agent)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
-    ).bind(userId, action, resourceType, resourceId, JSON.stringify(details), ip, ua).run();
-  } catch { /* non critique — ne jamais bloquer l'action principale */ }
-}
-
-// ── Twilio SMS helper ───────────────────────────────────────
-
-async function sendSms(
-  env: Env, to: string, body: string
-): Promise<{ success: boolean; sid?: string; error?: string }> {
-  if (!env.TWILIO_ACCOUNT_SID || !env.TWILIO_AUTH_TOKEN || !env.TWILIO_PHONE_NUMBER) {
-    return { success: false, error: 'Twilio non configuré' };
-  }
-
-  try {
-    const url = `https://api.twilio.com/2010-04-01/Accounts/${env.TWILIO_ACCOUNT_SID}/Messages.json`;
-    const auth = btoa(`${env.TWILIO_ACCOUNT_SID}:${env.TWILIO_AUTH_TOKEN}`);
-    const params = new URLSearchParams({
-      To: to,
-      From: env.TWILIO_PHONE_NUMBER,
-      Body: body,
-    });
-
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Basic ${auth}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: params.toString(),
-    });
-
-    const data = await res.json() as { sid?: string; message?: string; code?: number };
-    if (!res.ok) {
-      return { success: false, error: data.message || `Twilio ${res.status}` };
-    }
-    return { success: true, sid: data.sid };
-  } catch (err) {
-    return { success: false, error: String(err) };
-  }
-}
-
-// ── Auth helpers ────────────────────────────────────────────
-
-function extractToken(request: Request): string | null {
-  const authHeader = request.headers.get('Authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
-  const token = authHeader.replace('Bearer ', '').trim();
-  return token.length >= 10 ? token : null;
-}
-
-async function validateSession(token: string, env: Env): Promise<{ valid: boolean; userId?: string; role?: string }> {
-  const { results } = await env.DB.prepare(
-    "SELECT user_id, role FROM admin_sessions WHERE token = ? AND expires_at > datetime('now')"
-  ).bind(token).all();
-  if (!results || results.length === 0) return { valid: false };
-  const session = results[0] as { user_id: string; role: string };
-  return { valid: true, userId: session.user_id, role: session.role };
-}
-
-async function requireAuth(request: Request, env: Env): Promise<Response | { userId: string; role: string }> {
-  const token = extractToken(request);
-  if (!token) return json({ error: 'Non autorisé' }, 401);
-
-  const session = await validateSession(token, env);
-  if (!session.valid || !session.userId || !session.role) {
-    return json({ error: 'Session expirée ou invalide' }, 401);
-  }
-  return { userId: session.userId, role: session.role };
-}
+import type { Env, AuthContext } from './worker/types';
+import { SESSION_DURATION_HOURS, MAX_LOGIN_ATTEMPTS, LOGIN_WINDOW_HOURS } from './worker/types';
+import {
+  setRequestContext, sanitizeHtml, sanitizeInput, corsHeaders, json, audit,
+  sendSms, extractToken, validateSession, requireAuth, createNotification
+} from './worker/helpers';
+import {
+  hashPassword, verifyPassword, base32Encode, base32Decode,
+  generateTotp, verifyTotp
+} from './worker/crypto';
 
 // ── Router principal ────────────────────────────────────────
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     // Stocker le contexte pour corsHeaders()/json() automatiques
-    _currentRequest = request;
-    _currentEnv = env;
+    setRequestContext(request, env);
 
     const url = new URL(request.url);
 
@@ -2176,13 +1983,7 @@ async function handleReadAllNotifications(env: Env, auth: { userId: string; role
   return json({ data: { success: true } });
 }
 
-// Helper pour créer une notification
-async function createNotification(env: Env, userId: string, title: string, description: string, icon = '🔔', link = '', clientId = ''): Promise<void> {
-  await env.DB.prepare(
-    `INSERT INTO notifications (id, user_id, client_id, icon, title, description, link)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`
-  ).bind(crypto.randomUUID(), userId, clientId, icon, title, description, link).run();
-}
+// createNotification importée depuis ./worker/helpers
 
 async function processWorkflowQueue(env: Env): Promise<void> {
   const now = new Date().toISOString();
@@ -2686,98 +2487,7 @@ async function handleDeletePipelineStage(
 // ██  P2 — FEATURES AVANCÉES
 // ═══════════════════════════════════════════════════════════════
 
-// ── 2FA TOTP — Setup ────────────────────────────────────────
-// Implémentation TOTP RFC 6238 avec Web Crypto API (pas de dépendance)
-
-function base32Encode(buffer: Uint8Array): string {
-  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-  let result = '';
-  let bits = 0;
-  let value = 0;
-  for (const byte of buffer) {
-    value = (value << 8) | byte;
-    bits += 8;
-    while (bits >= 5) {
-      result += alphabet[(value >>> (bits - 5)) & 31];
-      bits -= 5;
-    }
-  }
-  if (bits > 0) {
-    result += alphabet[(value << (5 - bits)) & 31];
-  }
-  return result;
-}
-
-function base32Decode(encoded: string): Uint8Array {
-  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-  const cleaned = encoded.toUpperCase().replace(/[^A-Z2-7]/g, '');
-  const bytes: number[] = [];
-  let bits = 0;
-  let value = 0;
-  for (const char of cleaned) {
-    const idx = alphabet.indexOf(char);
-    if (idx === -1) continue;
-    value = (value << 5) | idx;
-    bits += 5;
-    if (bits >= 8) {
-      bytes.push((value >>> (bits - 8)) & 0xff);
-      bits -= 8;
-    }
-  }
-  return new Uint8Array(bytes);
-}
-
-async function generateTotp(secret: string, timeStep = 30): Promise<string> {
-  const key = base32Decode(secret);
-  const time = Math.floor(Date.now() / 1000 / timeStep);
-  const timeBuffer = new ArrayBuffer(8);
-  const timeView = new DataView(timeBuffer);
-  timeView.setUint32(4, time, false);
-
-  const cryptoKey = await crypto.subtle.importKey(
-    'raw', key, { name: 'HMAC', hash: 'SHA-1' }, false, ['sign']
-  );
-  const hmac = await crypto.subtle.sign('HMAC', cryptoKey, timeBuffer);
-  const hmacArray = new Uint8Array(hmac);
-
-  const offset = hmacArray[hmacArray.length - 1]! & 0x0f;
-  const code = (
-    ((hmacArray[offset]! & 0x7f) << 24) |
-    ((hmacArray[offset + 1]! & 0xff) << 16) |
-    ((hmacArray[offset + 2]! & 0xff) << 8) |
-    (hmacArray[offset + 3]! & 0xff)
-  ) % 1_000_000;
-
-  return code.toString().padStart(6, '0');
-}
-
-async function verifyTotp(secret: string, token: string): Promise<boolean> {
-  // Fenêtre de tolérance : -1, 0, +1 (90 secondes total)
-  for (const offset of [-1, 0, 1]) {
-    const time = Math.floor(Date.now() / 1000 / 30) + offset;
-    const timeBuffer = new ArrayBuffer(8);
-    const timeView = new DataView(timeBuffer);
-    timeView.setUint32(4, time, false);
-
-    const key = base32Decode(secret);
-    const cryptoKey = await crypto.subtle.importKey(
-      'raw', key, { name: 'HMAC', hash: 'SHA-1' }, false, ['sign']
-    );
-    const hmac = await crypto.subtle.sign('HMAC', cryptoKey, timeBuffer);
-    const hmacArray = new Uint8Array(hmac);
-
-    const off = hmacArray[hmacArray.length - 1]! & 0x0f;
-    const code = (
-      ((hmacArray[off]! & 0x7f) << 24) |
-      ((hmacArray[off + 1]! & 0xff) << 16) |
-      ((hmacArray[off + 2]! & 0xff) << 8) |
-      (hmacArray[off + 3]! & 0xff)
-    ) % 1_000_000;
-
-    if (code.toString().padStart(6, '0') === token) return true;
-  }
-  return false;
-}
+// ── 2FA TOTP handlers (crypto functions importées depuis ./worker/crypto) ──
 
 async function handleTotpSetup(
   env: Env, auth: { userId: string; role: string }
