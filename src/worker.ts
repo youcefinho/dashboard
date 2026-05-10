@@ -57,6 +57,10 @@ import {
   handleGetDocuments, handleCreateDocument, handleSendDocument,
   handlePublicGetDocument, handlePublicSignDocument,
 } from './worker/documents';
+import {
+  handleGetReviewRequests, handleCreateReviewRequest, handleBulkReviewRequest,
+  handleGetReviews, handleGetReviewStats, handleSuggestReviewReply, handleReplyToReview,
+} from './worker/reviews';
 
 // Injection de dépendance : autoEnroll pour les leads
 setAutoEnroll(autoEnroll);
@@ -286,6 +290,16 @@ async function routeProtected(
   // Google Business Profile
   if (path === '/api/gbp/reviews' && method === 'GET') return handleGbpReviews(env, auth, url);
   if (path === '/api/gbp/stats' && method === 'GET') return handleGbpStats(env, auth);
+
+  // Reviews & Reputation (P4.6)
+  if (path === '/api/reviews' && method === 'GET') return handleGetReviews(env, auth, url);
+  if (path === '/api/reviews/stats' && method === 'GET') return handleGetReviewStats(env, auth, url);
+  if (path === '/api/reviews/requests' && method === 'GET') return handleGetReviewRequests(env, auth, url);
+  if (path === '/api/reviews/requests' && method === 'POST') return handleCreateReviewRequest(request, env, auth);
+  if (path === '/api/reviews/requests/bulk' && method === 'POST') return handleBulkReviewRequest(request, env, auth);
+  if (path === '/api/reviews/suggest-reply' && method === 'POST') return handleSuggestReviewReply(request, env, auth);
+  const reviewReplyMatch = path.match(/^\/api\/reviews\/([^/]+)\/reply$/);
+  if (reviewReplyMatch && method === 'POST') return handleReplyToReview(request, env, auth, reviewReplyMatch[1]!);
 
   // Compliance
   if (path === '/api/unsubscribes' && method === 'GET') return handleGetUnsubscribes(env, auth, url);
