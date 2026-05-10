@@ -16,6 +16,7 @@ interface Env {
   TWILIO_ACCOUNT_SID: string;
   TWILIO_AUTH_TOKEN: string;
   TWILIO_PHONE_NUMBER: string;
+  OPENAI_API_KEY: string;
 }
 
 // ── Constantes ──────────────────────────────────────────────
@@ -232,6 +233,39 @@ export default {
       } catch (err) {
         console.error('Webhook email erreur:', err);
         return json({ error: 'Erreur webhook' }, 500);
+      }
+    }
+    // Routes publiques booking + form (pas d'auth CRM)
+    if (url.pathname.startsWith('/api/book/') && request.method === 'GET') {
+      try {
+        return await handlePublicBookingPage(env, url);
+      } catch (err) {
+        console.error('Booking page erreur:', err);
+        return json({ error: 'Erreur booking' }, 500);
+      }
+    }
+    if (url.pathname === '/api/book' && request.method === 'POST') {
+      try {
+        return await handlePublicCreateBooking(request, env);
+      } catch (err) {
+        console.error('Booking create erreur:', err);
+        return json({ error: 'Erreur booking' }, 500);
+      }
+    }
+    if (url.pathname.startsWith('/api/form/') && request.method === 'GET') {
+      try {
+        return await handlePublicFormGet(env, url);
+      } catch (err) {
+        console.error('Form get erreur:', err);
+        return json({ error: 'Erreur formulaire' }, 500);
+      }
+    }
+    if (url.pathname === '/api/form/submit' && request.method === 'POST') {
+      try {
+        return await handlePublicFormSubmit(request, env);
+      } catch (err) {
+        console.error('Form submit erreur:', err);
+        return json({ error: 'Erreur formulaire' }, 500);
       }
     }
 
@@ -470,6 +504,36 @@ async function routeApi(request: Request, env: Env, url: URL): Promise<Response>
   // ── Email broadcast ─────────────────────────────────────
   if (path === '/api/broadcast' && method === 'POST') return handleEmailBroadcast(request, env, auth);
   if (path === '/api/broadcast/history' && method === 'GET') return handleBroadcastHistory(env, auth, url);
+
+  // ── Booking pages (admin CRUD) ──────────────────────────
+  if (path === '/api/booking-pages' && method === 'GET') return handleGetBookingPages(env, auth);
+  if (path === '/api/booking-pages' && method === 'POST') return handleCreateBookingPage(request, env, auth);
+  const bookingMatch = path.match(/^\/api\/booking-pages\/([^/]+)$/);
+  if (bookingMatch && method === 'PATCH') return handleUpdateBookingPage(request, env, auth, bookingMatch[1] as string);
+  if (bookingMatch && method === 'DELETE') return handleDeleteBookingPage(env, auth, bookingMatch[1] as string);
+  const bookingsListMatch = path.match(/^\/api\/booking-pages\/([^/]+)\/bookings$/);
+  if (bookingsListMatch && method === 'GET') return handleGetBookings(env, auth, bookingsListMatch[1] as string, url);
+
+  // ── Forms (admin CRUD) ──────────────────────────────────
+  if (path === '/api/forms' && method === 'GET') return handleGetForms(env, auth);
+  if (path === '/api/forms' && method === 'POST') return handleCreateForm(request, env, auth);
+  const formMatch = path.match(/^\/api\/forms\/([^/]+)$/);
+  if (formMatch && method === 'PATCH') return handleUpdateForm(request, env, auth, formMatch[1] as string);
+  if (formMatch && method === 'DELETE') return handleDeleteForm(env, auth, formMatch[1] as string);
+  const submissionsMatch = path.match(/^\/api\/forms\/([^/]+)\/submissions$/);
+  if (submissionsMatch && method === 'GET') return handleGetFormSubmissions(env, auth, submissionsMatch[1] as string, url);
+
+  // ── AI Bot ──────────────────────────────────────────────
+  if (path === '/api/ai/chat' && method === 'POST') return handleAiChat(request, env, auth);
+  if (path === '/api/ai/conversations' && method === 'GET') return handleGetAiConversations(env, auth, url);
+  const aiConvMatch = path.match(/^\/api\/ai\/conversations\/([^/]+)$/);
+  if (aiConvMatch && method === 'GET') return handleGetAiConversation(env, auth, aiConvMatch[1] as string);
+
+  // ── Sub-accounts ────────────────────────────────────────
+  if (path === '/api/sub-accounts' && method === 'GET') return handleGetSubAccounts(env, auth);
+  if (path === '/api/sub-accounts' && method === 'POST') return handleCreateSubAccount(request, env, auth);
+  const subMatch = path.match(/^\/api\/sub-accounts\/([^/]+)$/);
+  if (subMatch && method === 'PATCH') return handleUpdateSubAccount(request, env, auth, subMatch[1] as string);
 
   // ── Debug (à retirer avant prod) ────────────────────────
   if (path === '/api/debug/run-cron' && method === 'GET') {
@@ -3241,4 +3305,345 @@ async function handleBroadcastHistory(
   });
 
   return json({ data: history });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ██  P2.5 — BOOKING PAGES (Calendly clone)
+// ═══════════════════════════════════════════════════════════════
+
+async function handlePublicBookingPage(env: Env, url: URL): Promise<Response> {
+  const slug = url.pathname.replace('/api/book/', '');
+  if (!slug) return json({ error: 'Slug requis' }, 400);
+  const page = await env.DB.prepare(
+    'SELECT * FROM booking_pages WHERE slug = ? AND is_active = 1'
+  ).bind(slug).first() as Record<string, unknown> | null;
+  if (!page) return json({ error: 'Page non trouvée' }, 404);
+  // Récupérer les créneaux déjà pris
+  const today = new Date().toISOString().split('T')[0];
+  const { results: booked } = await env.DB.prepare(
+    "SELECT start_time, end_time FROM bookings WHERE booking_page_id = ? AND status = 'confirmed' AND start_time >= ?"
+  ).bind(page.id as string, today).all();
+  return json({ data: { page, booked_slots: booked || [] } });
+}
+
+async function handlePublicCreateBooking(request: Request, env: Env): Promise<Response> {
+  const body = await request.json() as {
+    booking_page_id?: string; guest_name?: string; guest_email?: string;
+    guest_phone?: string; start_time?: string; notes?: string;
+  };
+  if (!body.booking_page_id || !body.guest_name || !body.guest_email || !body.start_time) {
+    return json({ error: 'booking_page_id, guest_name, guest_email et start_time requis' }, 400);
+  }
+  const page = await env.DB.prepare(
+    'SELECT * FROM booking_pages WHERE id = ? AND is_active = 1'
+  ).bind(body.booking_page_id).first() as Record<string, unknown> | null;
+  if (!page) return json({ error: 'Page non trouvée' }, 404);
+
+  const duration = (page.duration_minutes as number) || 30;
+  const startTime = new Date(body.start_time);
+  const endTime = new Date(startTime.getTime() + duration * 60000);
+
+  // Vérifier conflit
+  const conflict = await env.DB.prepare(
+    "SELECT id FROM bookings WHERE booking_page_id = ? AND status = 'confirmed' AND start_time < ? AND end_time > ?"
+  ).bind(body.booking_page_id, endTime.toISOString(), startTime.toISOString()).first();
+  if (conflict) return json({ error: 'Ce créneau est déjà réservé' }, 409);
+
+  const id = crypto.randomUUID();
+  await env.DB.prepare(
+    `INSERT INTO bookings (id, booking_page_id, client_id, guest_name, guest_email, guest_phone, start_time, end_time, notes)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).bind(id, body.booking_page_id, page.client_id as string,
+    sanitizeInput(body.guest_name, 100), sanitizeInput(body.guest_email, 200).toLowerCase(),
+    sanitizeInput(body.guest_phone || '', 30), startTime.toISOString(), endTime.toISOString(),
+    sanitizeInput(body.notes || '', 500)).run();
+
+  // Créer le lead automatiquement
+  const leadId = crypto.randomUUID();
+  await env.DB.prepare(
+    `INSERT OR IGNORE INTO leads (id, client_id, name, email, phone, source, status, pipeline_id, stage_id)
+     VALUES (?, ?, ?, ?, ?, 'booking', 'meeting', 'pipeline-default', 'stage-meeting')`
+  ).bind(leadId, page.client_id as string, sanitizeInput(body.guest_name, 100),
+    sanitizeInput(body.guest_email, 200).toLowerCase(), sanitizeInput(body.guest_phone || '', 30)).run();
+
+  // Notifier admins
+  const { results: admins } = await env.DB.prepare("SELECT id FROM users WHERE role = 'admin' AND is_active = 1").all();
+  for (const admin of (admins || []) as Array<{ id: string }>) {
+    await createNotification(env, admin.id, '📅 Nouveau RDV', `${body.guest_name} — ${startTime.toLocaleDateString('fr-CA')}`, '📅', '', page.client_id as string);
+  }
+
+  return json({ data: { id, start_time: startTime.toISOString(), end_time: endTime.toISOString(), confirmation: page.confirmation_message } }, 201);
+}
+
+async function handleGetBookingPages(env: Env, auth: { role: string }): Promise<Response> {
+  if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
+  const { results } = await env.DB.prepare('SELECT * FROM booking_pages ORDER BY created_at DESC').all();
+  return json({ data: results || [] });
+}
+
+async function handleCreateBookingPage(request: Request, env: Env, auth: { role: string; userId: string }): Promise<Response> {
+  if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
+  const body = await request.json() as Record<string, unknown>;
+  if (!body.client_id || !body.title || !body.slug) return json({ error: 'client_id, title et slug requis' }, 400);
+  const id = crypto.randomUUID();
+  await env.DB.prepare(
+    `INSERT INTO booking_pages (id, client_id, slug, title, description, duration_minutes, color) VALUES (?, ?, ?, ?, ?, ?, ?)`
+  ).bind(id, body.client_id as string, sanitizeInput(body.slug as string, 50), sanitizeInput(body.title as string, 200),
+    sanitizeInput((body.description || '') as string, 500), (body.duration_minutes as number) || 30, (body.color || '#6366f1') as string).run();
+  await audit(env, auth.userId, 'booking_page.create', 'booking_page', id);
+  return json({ data: { id } }, 201);
+}
+
+async function handleUpdateBookingPage(request: Request, env: Env, auth: { role: string; userId: string }, pageId: string): Promise<Response> {
+  if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
+  const body = await request.json() as Record<string, unknown>;
+  const u: string[] = []; const p: (string | number)[] = [];
+  if (body.title) { u.push('title = ?'); p.push(sanitizeInput(body.title as string, 200)); }
+  if (body.description !== undefined) { u.push('description = ?'); p.push(sanitizeInput(body.description as string, 500)); }
+  if (body.duration_minutes) { u.push('duration_minutes = ?'); p.push(body.duration_minutes as number); }
+  if (body.is_active !== undefined) { u.push('is_active = ?'); p.push(body.is_active as number); }
+  if (body.available_days) { u.push('available_days = ?'); p.push(JSON.stringify(body.available_days)); }
+  if (body.available_hours) { u.push('available_hours = ?'); p.push(JSON.stringify(body.available_hours)); }
+  if (u.length === 0) return json({ error: 'Aucune modification' }, 400);
+  u.push("updated_at = datetime('now')"); p.push(pageId);
+  await env.DB.prepare(`UPDATE booking_pages SET ${u.join(', ')} WHERE id = ?`).bind(...p).run();
+  await audit(env, auth.userId, 'booking_page.update', 'booking_page', pageId);
+  return json({ data: { success: true } });
+}
+
+async function handleDeleteBookingPage(env: Env, auth: { role: string; userId: string }, pageId: string): Promise<Response> {
+  if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
+  await env.DB.prepare('DELETE FROM bookings WHERE booking_page_id = ?').bind(pageId).run();
+  await env.DB.prepare('DELETE FROM booking_pages WHERE id = ?').bind(pageId).run();
+  await audit(env, auth.userId, 'booking_page.delete', 'booking_page', pageId);
+  return json({ data: { success: true } });
+}
+
+async function handleGetBookings(env: Env, auth: { role: string }, pageId: string, url: URL): Promise<Response> {
+  if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
+  const status = url.searchParams.get('status');
+  let q = 'SELECT * FROM bookings WHERE booking_page_id = ?';
+  const p: string[] = [pageId];
+  if (status) { q += ' AND status = ?'; p.push(status); }
+  q += ' ORDER BY start_time DESC LIMIT 100';
+  const { results } = await env.DB.prepare(q).bind(...p).all();
+  return json({ data: results || [] });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ██  P2.6 — FORM BUILDER + WIDGET
+// ═══════════════════════════════════════════════════════════════
+
+async function handlePublicFormGet(env: Env, url: URL): Promise<Response> {
+  const slug = url.pathname.replace('/api/form/', '');
+  if (!slug) return json({ error: 'Slug requis' }, 400);
+  const form = await env.DB.prepare('SELECT * FROM forms WHERE slug = ? AND is_active = 1').bind(slug).first();
+  if (!form) return json({ error: 'Formulaire non trouvé' }, 404);
+  return json({ data: form });
+}
+
+async function handlePublicFormSubmit(request: Request, env: Env): Promise<Response> {
+  const body = await request.json() as { form_id?: string; data?: Record<string, unknown> };
+  if (!body.form_id || !body.data) return json({ error: 'form_id et data requis' }, 400);
+  const form = await env.DB.prepare('SELECT * FROM forms WHERE id = ? AND is_active = 1')
+    .bind(body.form_id).first() as Record<string, unknown> | null;
+  if (!form) return json({ error: 'Formulaire non trouvé' }, 404);
+
+  const subId = crypto.randomUUID();
+  const ip = request.headers.get('CF-Connecting-IP') || '';
+  const ua = request.headers.get('User-Agent') || '';
+  await env.DB.prepare(
+    'INSERT INTO form_submissions (id, form_id, client_id, data, ip, user_agent) VALUES (?, ?, ?, ?, ?, ?)'
+  ).bind(subId, body.form_id, form.client_id as string, JSON.stringify(body.data), ip, sanitizeInput(ua, 300)).run();
+
+  // Si action = create_lead, créer un lead
+  if (form.submit_action === 'create_lead') {
+    const d = body.data as Record<string, string>;
+    const leadId = crypto.randomUUID();
+    await env.DB.prepare(
+      `INSERT INTO leads (id, client_id, name, email, phone, source, message, status, pipeline_id, stage_id)
+       VALUES (?, ?, ?, ?, ?, 'form', ?, 'new', 'pipeline-default', 'stage-new')`
+    ).bind(leadId, form.client_id as string, sanitizeInput(d.name || d.nom || '', 100),
+      sanitizeInput(d.email || '', 200).toLowerCase(), sanitizeInput(d.phone || d.telephone || '', 30),
+      sanitizeInput(d.message || d.note || '', 2000)).run();
+    await env.DB.prepare('UPDATE form_submissions SET lead_id = ? WHERE id = ?').bind(leadId, subId).run();
+  }
+
+  return json({ data: { id: subId, success_message: form.success_message, redirect_url: form.redirect_url } }, 201);
+}
+
+async function handleGetForms(env: Env, auth: { role: string }): Promise<Response> {
+  if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
+  const { results } = await env.DB.prepare('SELECT f.*, (SELECT COUNT(*) FROM form_submissions WHERE form_id = f.id) as submission_count FROM forms f ORDER BY f.created_at DESC').all();
+  return json({ data: results || [] });
+}
+
+async function handleCreateForm(request: Request, env: Env, auth: { role: string; userId: string }): Promise<Response> {
+  if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
+  const body = await request.json() as Record<string, unknown>;
+  if (!body.client_id || !body.name || !body.slug) return json({ error: 'client_id, name et slug requis' }, 400);
+  const id = crypto.randomUUID();
+  await env.DB.prepare(
+    'INSERT INTO forms (id, client_id, name, slug, description, fields, submit_action, success_message) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+  ).bind(id, body.client_id as string, sanitizeInput(body.name as string, 200), sanitizeInput(body.slug as string, 50),
+    sanitizeInput((body.description || '') as string, 500), JSON.stringify(body.fields || []),
+    (body.submit_action || 'create_lead') as string, sanitizeInput((body.success_message || 'Merci !') as string, 500)).run();
+  await audit(env, auth.userId, 'form.create', 'form', id);
+  return json({ data: { id } }, 201);
+}
+
+async function handleUpdateForm(request: Request, env: Env, auth: { role: string; userId: string }, formId: string): Promise<Response> {
+  if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
+  const body = await request.json() as Record<string, unknown>;
+  const u: string[] = []; const p: (string | number)[] = [];
+  if (body.name) { u.push('name = ?'); p.push(sanitizeInput(body.name as string, 200)); }
+  if (body.fields) { u.push('fields = ?'); p.push(JSON.stringify(body.fields)); }
+  if (body.is_active !== undefined) { u.push('is_active = ?'); p.push(body.is_active as number); }
+  if (body.success_message) { u.push('success_message = ?'); p.push(sanitizeInput(body.success_message as string, 500)); }
+  if (body.submit_action) { u.push('submit_action = ?'); p.push(body.submit_action as string); }
+  if (u.length === 0) return json({ error: 'Aucune modification' }, 400);
+  u.push("updated_at = datetime('now')"); p.push(formId);
+  await env.DB.prepare(`UPDATE forms SET ${u.join(', ')} WHERE id = ?`).bind(...p).run();
+  await audit(env, auth.userId, 'form.update', 'form', formId);
+  return json({ data: { success: true } });
+}
+
+async function handleDeleteForm(env: Env, auth: { role: string; userId: string }, formId: string): Promise<Response> {
+  if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
+  await env.DB.prepare('DELETE FROM form_submissions WHERE form_id = ?').bind(formId).run();
+  await env.DB.prepare('DELETE FROM forms WHERE id = ?').bind(formId).run();
+  await audit(env, auth.userId, 'form.delete', 'form', formId);
+  return json({ data: { success: true } });
+}
+
+async function handleGetFormSubmissions(env: Env, auth: { role: string }, formId: string, url: URL): Promise<Response> {
+  if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
+  const limit = Math.min(parseInt(url.searchParams.get('limit') || '50'), 200);
+  const { results } = await env.DB.prepare(
+    'SELECT * FROM form_submissions WHERE form_id = ? ORDER BY created_at DESC LIMIT ?'
+  ).bind(formId, limit).all();
+  return json({ data: results || [] });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ██  P2.7 — AI BOT CONVERSATIONNEL
+// ═══════════════════════════════════════════════════════════════
+
+async function handleAiChat(request: Request, env: Env, auth: { userId: string; role: string }): Promise<Response> {
+  if (!env.OPENAI_API_KEY) return json({ error: 'OPENAI_API_KEY non configurée' }, 500);
+  const body = await request.json() as { lead_id?: string; message?: string; conversation_id?: string };
+  if (!body.message) return json({ error: 'Message requis' }, 400);
+  if (!body.lead_id && !body.conversation_id) return json({ error: 'lead_id ou conversation_id requis' }, 400);
+
+  let convId = body.conversation_id || '';
+  let clientId = '';
+
+  if (!convId && body.lead_id) {
+    const lead = await env.DB.prepare('SELECT client_id FROM leads WHERE id = ?').bind(body.lead_id).first() as { client_id: string } | null;
+    if (!lead) return json({ error: 'Lead introuvable' }, 404);
+    clientId = lead.client_id;
+    convId = crypto.randomUUID();
+    await env.DB.prepare(
+      "INSERT INTO ai_conversations (id, lead_id, client_id, channel, status) VALUES (?, ?, ?, 'web', 'active')"
+    ).bind(convId, body.lead_id, clientId).run();
+  }
+
+  // Charger l'historique
+  const { results: history } = await env.DB.prepare(
+    'SELECT role, content FROM ai_messages WHERE conversation_id = ? ORDER BY created_at ASC LIMIT 20'
+  ).bind(convId).all();
+
+  const messages = [
+    { role: 'system', content: 'Tu es un assistant CRM pour courtiers immobiliers au Québec. Tu qualifies les leads, réponds aux questions sur le processus immobilier, et aides à planifier des rendez-vous. Sois professionnel, chaleureux et concis. Réponds en français.' },
+    ...((history || []) as Array<{ role: string; content: string }>),
+    { role: 'user', content: body.message },
+  ];
+
+  // Appel OpenAI
+  const aiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${env.OPENAI_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model: 'gpt-4o-mini', messages, max_tokens: 500, temperature: 0.7 }),
+  });
+  const aiData = await aiRes.json() as { choices?: Array<{ message?: { content?: string } }>; usage?: { total_tokens?: number } };
+  const reply = aiData.choices?.[0]?.message?.content || 'Désolé, je ne peux pas répondre pour le moment.';
+  const tokens = aiData.usage?.total_tokens || 0;
+
+  // Sauvegarder les messages
+  await env.DB.prepare('INSERT INTO ai_messages (id, conversation_id, role, content, tokens_used) VALUES (?, ?, ?, ?, 0)')
+    .bind(crypto.randomUUID(), convId, 'user', sanitizeInput(body.message, 2000)).run();
+  await env.DB.prepare('INSERT INTO ai_messages (id, conversation_id, role, content, tokens_used) VALUES (?, ?, ?, ?, ?)')
+    .bind(crypto.randomUUID(), convId, 'assistant', reply, tokens).run();
+
+  return json({ data: { conversation_id: convId, reply, tokens_used: tokens } });
+}
+
+async function handleGetAiConversations(env: Env, auth: { role: string }, url: URL): Promise<Response> {
+  if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
+  const limit = Math.min(parseInt(url.searchParams.get('limit') || '20'), 100);
+  const { results } = await env.DB.prepare(
+    `SELECT c.*, l.name as lead_name, (SELECT COUNT(*) FROM ai_messages WHERE conversation_id = c.id) as message_count
+     FROM ai_conversations c LEFT JOIN leads l ON c.lead_id = l.id ORDER BY c.updated_at DESC LIMIT ?`
+  ).bind(limit).all();
+  return json({ data: results || [] });
+}
+
+async function handleGetAiConversation(env: Env, auth: { role: string }, convId: string): Promise<Response> {
+  if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
+  const conv = await env.DB.prepare('SELECT * FROM ai_conversations WHERE id = ?').bind(convId).first();
+  if (!conv) return json({ error: 'Conversation non trouvée' }, 404);
+  const { results: msgs } = await env.DB.prepare(
+    'SELECT * FROM ai_messages WHERE conversation_id = ? ORDER BY created_at ASC'
+  ).bind(convId).all();
+  return json({ data: { ...conv, messages: msgs || [] } });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ██  P2.8 — SUB-ACCOUNTS HIERARCHY
+// ═══════════════════════════════════════════════════════════════
+
+async function handleGetSubAccounts(env: Env, auth: { userId: string; role: string }): Promise<Response> {
+  if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
+  const { results } = await env.DB.prepare(
+    `SELECT u.id, u.name, u.email, u.role, u.account_level, u.parent_user_id, u.max_clients, u.is_active, u.created_at,
+     p.name as parent_name, (SELECT COUNT(*) FROM users WHERE parent_user_id = u.id) as child_count
+     FROM users u LEFT JOIN users p ON u.parent_user_id = p.id ORDER BY u.account_level, u.name`
+  ).all();
+  return json({ data: results || [] });
+}
+
+async function handleCreateSubAccount(request: Request, env: Env, auth: { userId: string; role: string }): Promise<Response> {
+  if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
+  const body = await request.json() as { name?: string; email?: string; role?: string; account_level?: string; parent_user_id?: string; max_clients?: number; password?: string };
+  if (!body.name || !body.email || !body.password) return json({ error: 'name, email et password requis' }, 400);
+
+  const existing = await env.DB.prepare('SELECT id FROM users WHERE email = ?').bind(body.email.toLowerCase()).first();
+  if (existing) return json({ error: 'Email déjà utilisé' }, 409);
+
+  const id = crypto.randomUUID();
+  const hash = await hashPassword(body.password);
+  await env.DB.prepare(
+    `INSERT INTO users (id, name, email, password_hash, role, account_level, parent_user_id, max_clients) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+  ).bind(id, sanitizeInput(body.name, 100), body.email.toLowerCase(), hash,
+    body.role || 'broker', body.account_level || 'user', body.parent_user_id || auth.userId, body.max_clients || 5).run();
+
+  await audit(env, auth.userId, 'sub_account.create', 'user', id, { name: body.name, level: body.account_level });
+  return json({ data: { id } }, 201);
+}
+
+async function handleUpdateSubAccount(request: Request, env: Env, auth: { userId: string; role: string }, userId: string): Promise<Response> {
+  if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
+  const body = await request.json() as Record<string, unknown>;
+  const u: string[] = []; const p: (string | number)[] = [];
+  if (body.name) { u.push('name = ?'); p.push(sanitizeInput(body.name as string, 100)); }
+  if (body.is_active !== undefined) { u.push('is_active = ?'); p.push(body.is_active as number); }
+  if (body.max_clients !== undefined) { u.push('max_clients = ?'); p.push(body.max_clients as number); }
+  if (body.account_level) { u.push('account_level = ?'); p.push(body.account_level as string); }
+  if (body.permissions) { u.push('permissions = ?'); p.push(JSON.stringify(body.permissions)); }
+  if (body.branding) { u.push('branding = ?'); p.push(JSON.stringify(body.branding)); }
+  if (u.length === 0) return json({ error: 'Aucune modification' }, 400);
+  u.push("updated_at = datetime('now')"); p.push(userId);
+  await env.DB.prepare(`UPDATE users SET ${u.join(', ')} WHERE id = ?`).bind(...p).run();
+  await audit(env, auth.userId, 'sub_account.update', 'user', userId);
+  return json({ data: { success: true } });
 }

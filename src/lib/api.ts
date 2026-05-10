@@ -702,3 +702,81 @@ export async function getBroadcastHistory(limit?: number): Promise<ApiResponse<A
   if (limit) params.set('limit', String(limit));
   return apiFetch<Array<Record<string, unknown>>>(`/broadcast/history?${params.toString()}`);
 }
+
+// ── Booking Pages ───────────────────────────────────────────
+
+export async function getBookingPages(): Promise<ApiResponse<Array<Record<string, unknown>>>> {
+  return apiFetch<Array<Record<string, unknown>>>('/booking-pages');
+}
+
+export async function createBookingPage(data: { client_id: string; title: string; slug: string; description?: string; duration_minutes?: number; color?: string }): Promise<ApiResponse<{ id: string }>> {
+  return apiFetch<{ id: string }>('/booking-pages', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function updateBookingPage(id: string, data: Record<string, unknown>): Promise<ApiResponse<{ success: boolean }>> {
+  return apiFetch<{ success: boolean }>(`/booking-pages/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+export async function deleteBookingPage(id: string): Promise<ApiResponse<{ success: boolean }>> {
+  return apiFetch<{ success: boolean }>(`/booking-pages/${id}`, { method: 'DELETE' });
+}
+
+export async function getBookings(pageId: string, status?: string): Promise<ApiResponse<Array<Record<string, unknown>>>> {
+  const params = new URLSearchParams();
+  if (status) params.set('status', status);
+  return apiFetch<Array<Record<string, unknown>>>(`/booking-pages/${pageId}/bookings?${params.toString()}`);
+}
+
+// ── Forms ────────────────────────────────────────────────────
+
+export async function getForms(): Promise<ApiResponse<Array<Record<string, unknown>>>> {
+  return apiFetch<Array<Record<string, unknown>>>('/forms');
+}
+
+export async function createForm(data: { client_id: string; name: string; slug: string; fields?: unknown[]; submit_action?: string }): Promise<ApiResponse<{ id: string }>> {
+  return apiFetch<{ id: string }>('/forms', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function updateForm(id: string, data: Record<string, unknown>): Promise<ApiResponse<{ success: boolean }>> {
+  return apiFetch<{ success: boolean }>(`/forms/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+export async function deleteForm(id: string): Promise<ApiResponse<{ success: boolean }>> {
+  return apiFetch<{ success: boolean }>(`/forms/${id}`, { method: 'DELETE' });
+}
+
+export async function getFormSubmissions(formId: string, limit?: number): Promise<ApiResponse<Array<Record<string, unknown>>>> {
+  const params = new URLSearchParams();
+  if (limit) params.set('limit', String(limit));
+  return apiFetch<Array<Record<string, unknown>>>(`/forms/${formId}/submissions?${params.toString()}`);
+}
+
+// ── AI Bot ───────────────────────────────────────────────────
+
+export async function aiChat(params: { lead_id?: string; conversation_id?: string; message: string }): Promise<ApiResponse<{ conversation_id: string; reply: string; tokens_used: number }>> {
+  return apiFetch<{ conversation_id: string; reply: string; tokens_used: number }>('/ai/chat', { method: 'POST', body: JSON.stringify(params) });
+}
+
+export async function getAiConversations(limit?: number): Promise<ApiResponse<Array<Record<string, unknown>>>> {
+  const params = new URLSearchParams();
+  if (limit) params.set('limit', String(limit));
+  return apiFetch<Array<Record<string, unknown>>>(`/ai/conversations?${params.toString()}`);
+}
+
+export async function getAiConversation(id: string): Promise<ApiResponse<Record<string, unknown>>> {
+  return apiFetch<Record<string, unknown>>(`/ai/conversations/${id}`);
+}
+
+// ── Sub-accounts ────────────────────────────────────────────
+
+export async function getSubAccounts(): Promise<ApiResponse<Array<Record<string, unknown>>>> {
+  return apiFetch<Array<Record<string, unknown>>>('/sub-accounts');
+}
+
+export async function createSubAccount(data: { name: string; email: string; password: string; role?: string; account_level?: string; max_clients?: number }): Promise<ApiResponse<{ id: string }>> {
+  return apiFetch<{ id: string }>('/sub-accounts', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function updateSubAccount(id: string, data: Record<string, unknown>): Promise<ApiResponse<{ success: boolean }>> {
+  return apiFetch<{ success: boolean }>(`/sub-accounts/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
