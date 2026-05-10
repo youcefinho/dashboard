@@ -820,10 +820,10 @@ if (channel === 'sms' && env.TWILIO_ACCOUNT_SID) {
 
 - ✅ Form builder visuel + widget embed `<script>` — `6e78595` + `ffdc456`
 - ✅ Public booking pages `/book/{slug}` (Calendly clone) — `6e78595`
-- ⬜ Sync Google Calendar (OAuth2) — nécessite credentials Google Cloud
+- ✅ Google Calendar OAuth2 (auth + refresh + events + sync bookings) — `6f38f2b`
 - ✅ Email broadcast + filtres + templates — `3975b2a`
 - ✅ Bulk import CSV avec field mapping auto FR/EN — `3975b2a`
-- ⬜ Reputation : Google Business Profile API — nécessite API key GBP
+- ✅ Google Business Profile API (reviews + stats) — `6f38f2b`
 - ✅ Reports : CPL/CPA par source + conversion funnel — `3975b2a`
 - ✅ Sub-accounts hierarchy (agency → location → user) — `6e78595`
 - ✅ Snapshots (export/import config entre clients) — `ffdc456`
@@ -885,14 +885,18 @@ bun run build && git add -A && git commit -m "..."
 
 ```
 ADMIN_PASSWORD          # bootstrap initial, à retirer après P0.2
-RESEND_API_KEY          # email outbound + (P1) inbound webhook signature
+RESEND_API_KEY          # email outbound + broadcast + webhook signature
 WEBHOOK_SECRET          # X-Webhook-Secret pour /api/webhook/lead
 NOTIFICATION_EMAIL      # email Rochdi pour notifications nouveau lead
 ALLOWED_ORIGINS         # CSV des origins autorisés CORS (P0.1)
-TWILIO_ACCOUNT_SID      # P1.1
-TWILIO_AUTH_TOKEN       # P1.1
-TWILIO_FROM_NUMBER      # P1.1
-TWILIO_WEBHOOK_SECRET   # P1.1 (validation HMAC)
+TWILIO_ACCOUNT_SID      # SMS bidirectionnel (P1.1)
+TWILIO_AUTH_TOKEN       # SMS bidirectionnel (P1.1)
+TWILIO_PHONE_NUMBER     # Numéro Twilio d'envoi
+OPENAI_API_KEY          # AI bot conversationnel (P2.7)
+GOOGLE_CLIENT_ID        # Google Calendar OAuth2 (P2.12)
+GOOGLE_CLIENT_SECRET    # Google Calendar OAuth2 (P2.12)
+GOOGLE_REDIRECT_URI     # Callback URL OAuth2
+GBP_API_KEY             # Google Business Profile (P2.13)
 ```
 
 Set en prod via : `npx wrangler secret put <NAME>`.
