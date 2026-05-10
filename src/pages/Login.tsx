@@ -33,10 +33,10 @@ export function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-[var(--color-bg-primary)] relative overflow-hidden">
       {/* Cercles décoratifs animés */}
-      <div className="absolute w-[500px] h-[500px] rounded-full opacity-[0.03] -top-48 -right-48"
-        style={{ background: 'radial-gradient(circle, oklch(0.72 0.19 160), transparent)' }} />
-      <div className="absolute w-[400px] h-[400px] rounded-full opacity-[0.04] -bottom-32 -left-32"
-        style={{ background: 'radial-gradient(circle, oklch(0.70 0.15 240), transparent)' }} />
+      <div className="absolute w-[500px] h-[500px] rounded-full opacity-[0.04] -top-48 -right-48"
+        style={{ background: 'radial-gradient(circle, var(--color-accent), transparent)' }} />
+      <div className="absolute w-[400px] h-[400px] rounded-full opacity-[0.05] -bottom-32 -left-32"
+        style={{ background: 'radial-gradient(circle, var(--color-info), transparent)' }} />
 
       <div className="w-full max-w-sm animate-fade-in relative z-10">
         {/* Logo */}

@@ -7,9 +7,9 @@ type Theme = 'dark' | 'light';
 export function useTheme() {
   const [theme, setThemeState] = useState<Theme>(() => {
     if (typeof window !== 'undefined') {
-      return (localStorage.getItem('intralys-theme') as Theme) || 'dark';
+      return (localStorage.getItem('intralys-theme') as Theme) || 'light';
     }
-    return 'dark';
+    return 'light';
   });
 
   useEffect(() => {
