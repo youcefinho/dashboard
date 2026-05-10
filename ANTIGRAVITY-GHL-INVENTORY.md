@@ -6,6 +6,44 @@
 
 ---
 
+## ⚡ DÉCISIONS ROCHDI — 2026-05-10 (scope verrouillé)
+
+Rochdi a tranché les 6 questions bloquantes du §8. Scope MVP Phase 4 révisé :
+
+### MVP Phase 4 verrouillé (~11 jours, 3 features)
+- ✅ **P4.3 Documents + e-sign** (5j) — bucket Cloudflare R2 `intralys-files` à créer
+- ✅ **P4.6 Reviews & Reputation** (3j) — Google Business Profile API uniquement (pas FB pour MVP)
+- ✅ **P4.2 Webchat widget live** (3j) — Durable Objects + WebSocket
+
+### Quick wins infra (à intégrer dans le sprint MVP)
+- ✅ **Q.1 DND par canal** (1j)
+- ✅ **Q.5 Champs contact étendus** (0.5j)
+
+### ❌ SKIPPED — retirés du scope MVP
+
+| Feature | Raison Rochdi | Statut |
+|---|---|---|
+| P4.1 Voice/Calls Twilio | Courtiers QC utilisent leur cell perso, pas besoin d'IVR/recording | 🚫 Phase 5+ si demandé |
+| P4.20 IVR call routing | Dépend de P4.1 (Voice) | 🚫 Phase 5+ |
+| P3.3.c Voice transcription | Dépend de P4.1 | 🚫 Phase 5+ |
+| P3.8 Payments Stripe Connect | Stripe pas configuré, attendre 5 premiers clients | 🚫 Backlog post-MVP |
+| P3.9 SaaS configurator | Dépend de P3.8 (Stripe) | 🚫 Backlog post-MVP |
+| P4.18 Text-to-Pay | Dépend de P3.8 (Stripe Invoices) | 🚫 Backlog post-MVP |
+| P4.10 Affiliate Manager | Pas de rabatteurs chez courtiers QC | 🚫 Phase 5+ si demandé |
+| P4.11 Memberships/Cours | Pas de plan formation pour l'instant | 🚫 Phase 5+ si demandé |
+| P4.12 Website builder | Courtiers gardent leurs sites Intralys landing pages existants | 🚫 Hors scope définitif |
+
+### Stratégie commerciale validée
+**Option C Hybride :** MVP Phase 4 (11j) → app mobile Capacitor V1 → reste Phase 4 selon demandes clients.
+Total avant mobile : **11j MVP + ~6.5j quick wins infra = ~17j de dev**.
+
+### Action immédiate
+1. Antigravity crée `intralys-files` R2 bucket via `npx wrangler r2 bucket create intralys-files`
+2. Antigravity attaque P3.0 refactor worker.ts (préalable obligatoire)
+3. Puis MVP Phase 4 dans l'ordre P4.3 → P4.6 → P4.2 + quick wins en parallèle
+
+---
+
 ## 0. Découverte clé via l'API GHL
 
 **38 modules GHL activés** sur l'agency (vu dans `permissions` du sub-account Mathis) :
@@ -447,45 +485,72 @@ L'audit MCP a montré ces 401/403 (PIT pas autorisé) — donc à confirmer avec
 
 ## 7. Status tracker Phase 4
 
+> **Scope verrouillé 2026-05-10** par décisions Rochdi (cf. encadré DÉCISIONS en haut du doc).
+> 🎯 = MVP Phase 4 (à faire maintenant) · 🔜 = backlog post-5-clients · 🚫 = skip définitif/conditionnel
+
 | ID | Tâche | Status | Commit |
 |---|---|---|---|
-| Q.1 | DND par canal | ⬜ todo | — |
+| **MVP Phase 4 — à faire maintenant (11j + 1.5j quick wins)** | | | |
+| 🎯 P3.0 | Refactor worker.ts en modules (préalable bloquant) | ⬜ todo | — |
+| 🎯 Q.1 | DND par canal | ⬜ todo | — |
+| 🎯 Q.5 | Champs contact étendus (additionalEmails, dateOfBirth, country, timezone) | ⬜ todo | — |
+| 🎯 P4.3 | Documents + e-sign (R2 bucket `intralys-files`) | ⬜ todo (cf P3.2) | — |
+| 🎯 P4.6 | Reviews & Reputation (Google Business Profile only) | ⬜ todo | — |
+| 🎯 P4.2 | Webchat widget live (Durable Objects WebSocket) | ⬜ todo | — |
+| **Quick wins infra restants — à programmer post-MVP** | | | |
 | Q.2 | Followers + mentions | ⬜ todo | — |
-| Q.3 | Activity events unifiés | ⬜ todo | — |
+| Q.3 | Activity events unifiés (timeline = inbox) | ⬜ todo | — |
 | Q.4 | Multi-score profiles | ⬜ todo | — |
-| Q.5 | Champs contact étendus | ⬜ todo | — |
 | Q.6 | RBAC granulaire 40 modules | ⬜ todo | — |
-| P4.1 | Voice/Calls + voicemail | ⬜ todo | — |
-| P4.2 | Webchat widget live | ⬜ todo | — |
-| P4.3 | Documents + e-sign | ⬜ todo (cf P3.2) | — |
+| **Phase 4 — features encore en scope (conservées dans backlog actif)** | | | |
 | P4.4 | Multi-touch attribution | ⬜ todo (cf P3.5) | — |
 | P4.5 | Trigger Links | ⬜ todo | — |
-| P4.6 | Reviews & Reputation | ⬜ todo | — |
 | P4.7 | Email builder drag&drop | ⬜ todo | — |
 | P4.8 | Surveys + Quiz | ⬜ todo | — |
 | P4.9 | FB Messenger + IG DM | ⬜ todo (cf P3.3.b) | — |
-| P4.10 | Affiliate Manager | ⬜ todo | — |
-| P4.11 | Memberships/Cours | ⬜ todo | — |
-| P4.12 | Website builder | ⬜ todo | — |
 | P4.13 | Blog CMS | ⬜ todo | — |
 | P4.14 | Social Media Posting | ⬜ todo | — |
 | P4.15 | QR Codes | ⬜ todo | — |
 | P4.16 | Campaigns wrapper | ⬜ todo | — |
 | P4.17 | Agent Reporting | ⬜ todo | — |
-| P4.18 | Text-to-Pay | ⬜ todo | — |
 | P4.19 | Launchpad onboarding | ⬜ todo | — |
-| P4.20 | IVR call routing | ⬜ todo | — |
+| **🔜 Backlog post-MVP (Stripe-dépendantes, à activer après 5 clients)** | | | |
+| 🔜 P3.8 | Payments Stripe Connect | 🚫 reporté | — |
+| 🔜 P3.9 | SaaS configurator (revente sub-accounts) | 🚫 reporté (dépend P3.8) | — |
+| 🔜 P4.18 | Text-to-Pay | 🚫 reporté (dépend P3.8) | — |
+| **🚫 SKIP définitif (sauf demande client explicite)** | | | |
+| 🚫 P4.1 | Voice/Calls Twilio + voicemail | SKIP — courtiers QC utilisent cell perso | — |
+| 🚫 P4.20 | IVR call routing | SKIP — dépend P4.1 | — |
+| 🚫 P3.3.c | Voice transcription Whisper | SKIP — dépend P4.1 | — |
+| 🚫 P4.10 | Affiliate Manager | SKIP — pas de rabatteurs courtiers QC | — |
+| 🚫 P4.11 | Memberships / Cours en ligne | SKIP — pas de plan formation pour l'instant | — |
+| 🚫 P4.12 | Website builder + Funnels visual | SKIP définitif — courtiers gardent landing pages Intralys | — |
 
 ---
 
-## 8. Questions bloquantes pour Rochdi
+## 8. Décisions Rochdi — RÉPONDU le 2026-05-10
 
-1. **Tu vas dans quelle direction commerciale ?** Option A (MVP 16j) / B (Full 71j) / C (Hybride avec mobile) ?
-2. **Twilio Voice** est-il commandé ? (10DLC est fait pour SMS, mais Voice c'est un autre dossier).
-3. **Tu veux héberger le site des courtiers** (P4.12) ou tu préfères qu'ils gardent leur site existant ?
-4. **Affiliate Manager** — est-ce que les courtiers QC ont vraiment des rabatteurs ? (skip si non).
-5. **Memberships** — vendre des formations courtiers est-il un business model que tu veux pousser ? (lourd à développer si pas demandé).
-6. **Stripe Connect** est-il configuré sur ton compte Intralys ? (le `customerId: cus_TIX3crrzEeA6PO` indique oui, mais Connect est différent).
+| # | Question | Décision Rochdi | Impact scope |
+|---|---|---|---|
+| 1 | Direction commerciale (Option A/B/C) ? | ✅ **Option C Hybride** — MVP révisé 11j → mobile → reste P4 selon demandes | MVP réduit de 16j → 11j (3 features au lieu de 4 + Documents bouge en P4.3) |
+| 2 | Twilio Voice activé ? | ❌ **SKIP** — courtiers QC utilisent leur cell perso pour les appels | P4.1, P4.20, P3.3.c retirés du scope (Phase 5+ si demandé) |
+| 3 | Héberger les sites courtiers (Website builder) ? | ❌ **SKIP définitif** — courtiers gardent leurs landing pages Intralys existantes | P4.12 retiré définitivement |
+| 4 | Affiliate Manager — rabatteurs ? | ❌ **SKIP** — pas de rabatteurs chez courtiers QC | P4.10 retiré (Phase 5+ si demandé) |
+| 5 | Memberships / formation ? | ❌ **SKIP** — pas de plan formation pour l'instant | P4.11 retiré (Phase 5+ si demandé) |
+| 6 | Stripe Connect configuré ? | ⚠️ **SKIP MVP** — incertain, attendre les 5 premiers clients pour valider le besoin SaaS | P3.8, P3.9, P4.18 reportés au backlog post-MVP |
+| Bonus | Cloudflare R2 bucket pour Documents ? | ✅ **GO** — créer bucket `intralys-files` | P4.3 débloqué |
+
+### Conséquences chiffrées
+- **Avant décisions :** MVP Phase 4 = 16j (4 features) · Full Phase 4 = 71j (20 features) · ~32j Phase 3 + mobile
+- **Après décisions :** MVP Phase 4 = 11j (3 features) + 1.5j quick wins (Q.1+Q.5) + 6.5j P3.0 refactor = **~19j avant mobile**
+- **Backlog actif post-MVP** : 11 features Phase 4 conservées (~30j) + 4 quick wins (~4.5j) = ~34j à étaler sur 6 mois selon ventes
+- **Backlog conditionnel** : 9 features SKIP à activer uniquement si client final le demande explicitement
+- **Économies de scope** : ~37 jours de dev éliminés (52% de la Full Phase 4 originale)
+
+### Prochaines décisions à prendre (post-MVP, pas urgentes)
+- Quand activer P3.8 Stripe Connect (déclencheur : 5e client signé)
+- Quand attaquer Q.6 RBAC granulaire (déclencheur : 1er client multi-utilisateurs)
+- Quand prioriser P4.7 Email builder vs P4.13 Blog CMS vs P4.14 Social posting (selon retours clients)
 
 ---
 
