@@ -171,17 +171,17 @@ export function DashboardPage() {
               <AreaChart data={stats?.leads_by_day || []}>
                 <defs>
                   <linearGradient id="gradient-leads" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="oklch(0.72 0.19 160)" stopOpacity={0.3} />
-                    <stop offset="100%" stopColor="oklch(0.72 0.19 160)" stopOpacity={0} />
+                    <stop offset="0%" stopColor="oklch(0.55 0.24 265)" stopOpacity={0.25} />
+                    <stop offset="100%" stopColor="oklch(0.55 0.24 265)" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'oklch(0.45 0 0)' }} tickFormatter={(v: string) => v.slice(5)} />
-                <YAxis tick={{ fontSize: 11, fill: 'oklch(0.45 0 0)' }} width={30} allowDecimals={false} />
+                <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }} tickFormatter={(v: string) => v.slice(5)} />
+                <YAxis tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }} width={30} allowDecimals={false} />
                 <Tooltip
-                  contentStyle={{ background: 'oklch(0.19 0.015 260)', border: '1px solid oklch(0.28 0.015 260)', borderRadius: '8px', fontSize: '12px', color: 'oklch(0.95 0 0)' }}
+                  contentStyle={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-border)', borderRadius: '8px', fontSize: '12px', color: 'var(--color-text-primary)' }}
                   labelFormatter={(v) => `Date : ${String(v)}`}
                 />
-                <Area type="monotone" dataKey="count" stroke="oklch(0.72 0.19 160)" fill="url(#gradient-leads)" strokeWidth={2} />
+                <Area type="monotone" dataKey="count" stroke="oklch(0.55 0.24 265)" fill="url(#gradient-leads)" strokeWidth={2} />
               </AreaChart>
             </ResponsiveContainer>
           )}
@@ -195,14 +195,14 @@ export function DashboardPage() {
           ) : (
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={(stats?.leads_by_status || []).map(s => ({ ...s, label: STATUS_LABELS[s.status as LeadStatus] || s.status }))}>
-                <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'oklch(0.45 0 0)' }} />
-                <YAxis tick={{ fontSize: 11, fill: 'oklch(0.45 0 0)' }} width={25} allowDecimals={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} />
+                <YAxis tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }} width={25} allowDecimals={false} />
                 <Tooltip
-                  contentStyle={{ background: 'oklch(0.19 0.015 260)', border: '1px solid oklch(0.28 0.015 260)', borderRadius: '8px', fontSize: '12px', color: 'oklch(0.95 0 0)' }}
+                  contentStyle={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-border)', borderRadius: '8px', fontSize: '12px', color: 'var(--color-text-primary)' }}
                 />
                 <Bar dataKey="count" radius={[4, 4, 0, 0]}>
                   {(stats?.leads_by_status || []).map((_, i) => (
-                    <Cell key={i} fill={['oklch(0.72 0.19 160)', 'oklch(0.70 0.15 240)', 'oklch(0.78 0.15 80)', 'oklch(0.72 0.19 160)', 'oklch(0.50 0.02 260)', 'oklch(0.65 0.22 25)'][i % 6] as string} />
+                    <Cell key={i} fill={['oklch(0.55 0.24 265)', 'oklch(0.60 0.18 245)', 'oklch(0.75 0.18 75)', 'oklch(0.60 0.19 155)', 'oklch(0.50 0.02 265)', 'oklch(0.60 0.24 25)'][i % 6] as string} />
                   ))}
                 </Bar>
               </BarChart>

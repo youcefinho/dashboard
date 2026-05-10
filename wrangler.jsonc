@@ -14,6 +14,26 @@
       "database_id": "ee9da52c-0e09-4d03-8819-dfc5b033cd18"
     }
   ],
+  "r2_buckets": [
+    {
+      "binding": "FILES",
+      "bucket_name": "intralys-files"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "WEBCHAT_ROOMS",
+        "class_name": "WebchatRoom"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_classes": ["WebchatRoom"]
+    }
+  ],
   "vars": {
     "ALLOWED_ORIGINS": "https://crm.intralys.com,https://intralys-dashboard.pages.dev"
   },

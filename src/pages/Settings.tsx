@@ -215,8 +215,8 @@ export function SettingsPage() {
                   <label className="text-xs font-medium text-[var(--color-text-muted)] mb-2 block">Thème</label>
                   <div className="flex gap-3">
                     {[
-                      { id: 'dark', label: '🌙 Sombre', active: true },
-                      { id: 'light', label: '☀️ Clair', active: false },
+                      { id: 'light', label: '☀️ Clair', active: true },
+                      { id: 'dark', label: '🌙 Sombre', active: false },
                       { id: 'auto', label: '🖥️ Système', active: false },
                     ].map(t => (
                       <button key={t.id}
@@ -229,7 +229,7 @@ export function SettingsPage() {
                 <div>
                   <label className="text-xs font-medium text-[var(--color-text-muted)] mb-2 block">Couleur d'accent</label>
                   <div className="flex gap-2">
-                    {['oklch(0.72 0.19 160)', 'oklch(0.65 0.20 260)', 'oklch(0.70 0.20 30)', 'oklch(0.65 0.20 330)', 'oklch(0.70 0.15 80)'].map(c => (
+                    {['oklch(0.55 0.24 265)', 'oklch(0.60 0.19 155)', 'oklch(0.65 0.20 30)', 'oklch(0.55 0.22 330)', 'oklch(0.60 0.18 245)'].map(c => (
                       <button key={c} className="w-8 h-8 rounded-full border-2 border-transparent hover:border-white cursor-pointer transition-all hover:scale-110" style={{ backgroundColor: c }} />
                     ))}
                   </div>
