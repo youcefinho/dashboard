@@ -818,18 +818,18 @@ if (channel === 'sms' && env.TWILIO_ACCOUNT_SID) {
 
 ## 5. P2 — Nice-to-have (faire quand P0+P1 sont stables)
 
-- Form builder visuel (TipTap-like) + endpoint embed `<script src=".../widget.js">`
-- Public booking pages `/book/{slug}` (Calendly clone)
-- Sync Google Calendar (OAuth2)
-- Email broadcast + suppression list (CASL compliance QC)
-- Bulk import CSV avec field mapping
-- Reputation : Google Business Profile API (review monitoring)
-- Reports : CPL/CPA par source + Facebook CAPI server-side
-- Sub-accounts hierarchy (agency → location → user, 3 niveaux)
-- Snapshots (cloner setup d'un sub-account)
-- White-label total
-- AI bot conversationnel (qualif lead via SMS/web) — utilise Claude API ou OpenAI
-- 2FA TOTP (colonnes déjà ajoutées en P0.2 — implémente UI + verify endpoint)
+- ⬜ Form builder visuel (TipTap-like) + endpoint embed `<script src=".../widget.js">`
+- ⬜ Public booking pages `/book/{slug}` (Calendly clone)
+- ⬜ Sync Google Calendar (OAuth2)
+- ✅ Email broadcast + suppression list (CASL compliance QC) — `3975b2a`
+- ✅ Bulk import CSV avec field mapping — `3975b2a`
+- ⬜ Reputation : Google Business Profile API (review monitoring)
+- ✅ Reports : CPL/CPA par source + conversion funnel — `3975b2a`
+- ⬜ Sub-accounts hierarchy (agency → location → user, 3 niveaux)
+- ⬜ Snapshots (cloner setup d'un sub-account)
+- ⬜ White-label total
+- ⬜ AI bot conversationnel (qualif lead via SMS/web) — utilise Claude API ou OpenAI
+- ✅ 2FA TOTP (setup + verify + disable, implémentation RFC 6238 pure Web Crypto) — `3975b2a`
 
 ---
 
