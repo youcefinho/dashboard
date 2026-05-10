@@ -1,0 +1,34 @@
+// ── Tooltip — Radix tooltip accessible ──────────────────────
+import * as TooltipPrimitive from '@radix-ui/react-tooltip';
+import { type ReactNode } from 'react';
+import { cn } from '@/lib/cn';
+
+interface TooltipProps {
+  children: ReactNode;
+  content: ReactNode;
+  side?: 'top' | 'right' | 'bottom' | 'left';
+  className?: string;
+}
+
+export function Tooltip({ children, content, side = 'top', className }: TooltipProps) {
+  return (
+    <TooltipPrimitive.Provider delayDuration={200}>
+      <TooltipPrimitive.Root>
+        <TooltipPrimitive.Trigger asChild>{children}</TooltipPrimitive.Trigger>
+        <TooltipPrimitive.Portal>
+          <TooltipPrimitive.Content
+            side={side}
+            sideOffset={6}
+            className={cn(
+              'z-50 px-2.5 py-1.5 text-xs font-medium rounded-[var(--radius-sm)] bg-[var(--bg-inverse)] text-[var(--text-inverse)] shadow-[var(--shadow-md)] animate-in fade-in-0 zoom-in-95',
+              className
+            )}
+          >
+            {content}
+            <TooltipPrimitive.Arrow className="fill-[var(--bg-inverse)]" />
+          </TooltipPrimitive.Content>
+        </TooltipPrimitive.Portal>
+      </TooltipPrimitive.Root>
+    </TooltipPrimitive.Provider>
+  );
+}
