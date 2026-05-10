@@ -63,6 +63,13 @@ import {
 } from './worker/reviews';
 import { WebchatRoom, handleWebchatConnect, handleWebchatPrechat, handleWebchatWidget } from './worker/webchat';
 import { handleStartMigration, handleGetMigrationStatus } from './worker/migrate';
+import {
+  handleGetScoreProfiles, handleCreateScoreProfile, handleUpdateScoreProfile,
+  handleGetLeadScores, handleRecomputeLeadScore, seedDefaultScoreProfiles,
+} from './worker/scoring';
+import {
+  handleGetLeadNotes, handleCreateLeadNote, handleUpdateLeadNote, handleDeleteLeadNote,
+} from './worker/lead-notes';
 
 // Export Durable Object pour Cloudflare
 export { WebchatRoom };
@@ -129,6 +136,8 @@ export default {
 
   async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
     ctx.waitUntil(processWorkflowQueue(env));
+    // Seed des profils de scoring par défaut (idempotent)
+    ctx.waitUntil(seedDefaultScoreProfiles(env));
   },
 } satisfies ExportedHandler<Env>;
 
@@ -170,6 +179,18 @@ async function routeProtected(
   const cfvMatch = path.match(/^\/api\/leads\/([^/]+)\/custom-fields$/);
   if (cfvMatch && method === 'GET') return handleGetLeadCustomFields(env, auth, cfvMatch[1]!);
   if (cfvMatch && method === 'PATCH') return handleSetLeadCustomFields(request, env, auth, cfvMatch[1]!);
+  // Lead scores (Phase 2.0)
+  const leadScoresMatch = path.match(/^\/api\/leads\/([^/]+)\/scores$/);
+  if (leadScoresMatch && method === 'GET') return handleGetLeadScores(env, auth, leadScoresMatch[1]!);
+  const leadRecomputeMatch = path.match(/^\/api\/leads\/([^/]+)\/scores\/recompute$/);
+  if (leadRecomputeMatch && method === 'POST') return handleRecomputeLeadScore(env, auth, leadRecomputeMatch[1]!);
+  // Lead notes (Sprint 2)
+  const leadNotesMatch = path.match(/^\/api\/leads\/([^/]+)\/notes$/);
+  if (leadNotesMatch && method === 'GET') return handleGetLeadNotes(env, auth, leadNotesMatch[1]!);
+  if (leadNotesMatch && method === 'POST') return handleCreateLeadNote(request, env, auth, leadNotesMatch[1]!);
+  const leadNoteMatch = path.match(/^\/api\/leads\/([^/]+)\/notes\/([^/]+)$/);
+  if (leadNoteMatch && method === 'PATCH') return handleUpdateLeadNote(request, env, auth, leadNoteMatch[1]!, leadNoteMatch[2]!);
+  if (leadNoteMatch && method === 'DELETE') return handleDeleteLeadNote(env, auth, leadNoteMatch[1]!, leadNoteMatch[2]!);
 
   // Tags & Activity
   if (path === '/api/tags' && method === 'GET') return handleGetAllTags(env, auth);
@@ -349,6 +370,12 @@ async function routeProtected(
   // Migration GHL
   if (path === '/api/migrate/ghl' && method === 'POST') return handleStartMigration(request, env, auth);
   if (path === '/api/migrate/status' && method === 'GET') return handleGetMigrationStatus(env, auth, url);
+
+  // Score Profiles (Phase 2.0)
+  if (path === '/api/score-profiles' && method === 'GET') return handleGetScoreProfiles(env, auth, url);
+  if (path === '/api/score-profiles' && method === 'POST') return handleCreateScoreProfile(request, env, auth);
+  const spMatch = path.match(/^\/api\/score-profiles\/([^/]+)$/);
+  if (spMatch && method === 'PATCH') return handleUpdateScoreProfile(request, env, auth, spMatch[1]!);
 
   // Debug (à retirer avant prod)
   if (path === '/api/debug/run-cron' && method === 'GET') {

@@ -554,7 +554,7 @@ export async function handleExportCsv(env: Env, auth: { role: string }, url: URL
 export async function handleWebhookLead(request: Request, env: Env): Promise<Response> {
   // Vérifier le secret webhook
   const secret = request.headers.get('X-Webhook-Secret') || '';
-  const expectedSecret = (env as Record<string, unknown>).WEBHOOK_SECRET as string || '';
+  const expectedSecret = (env as unknown as Record<string, unknown>).WEBHOOK_SECRET as string || '';
   if (!expectedSecret || secret !== expectedSecret) {
     return json({ error: 'Invalid webhook secret' }, 401);
   }
@@ -605,11 +605,11 @@ export async function handleWebhookLead(request: Request, env: Env): Promise<Res
   ).bind(id, clientId, name, email, phone, message, type).run();
 
   // Logger l'activité
-  await audit(env, id, 'created', 'Lead reçu via webhook', null);
+  await audit(env, id, 'created', 'Lead reçu via webhook', '');
 
   // Notification (best-effort)
   try {
-    await createNotification(env, null, 'lead', `Nouveau lead : ${name}`, id);
+    await createNotification(env, '', 'lead', `Nouveau lead : ${name}`, id);
   } catch { /* silencieux */ }
 
   // Auto-enroll workflow si configuré
