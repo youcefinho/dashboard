@@ -867,3 +867,64 @@ export async function forgetLead(leadId: string): Promise<ApiResponse<{ success:
 export async function exportLeadPii(leadId: string): Promise<ApiResponse<Record<string, unknown>>> {
   return apiFetch<Record<string, unknown>>(`/leads/${leadId}/export-pii`);
 }
+
+// ── Custom Fields (P3.4) ────────────────────────────────────
+
+export async function getCustomFields(clientId?: string): Promise<ApiResponse<Array<Record<string, unknown>>>> {
+  const params = clientId ? `?client_id=${clientId}` : '';
+  return apiFetch<Array<Record<string, unknown>>>(`/custom-fields${params}`);
+}
+
+export async function createCustomField(data: {
+  client_id: string; name: string; field_type: string;
+  options?: string[]; is_required?: boolean; sort_order?: number;
+}): Promise<ApiResponse<{ id: string; slug: string }>> {
+  return apiFetch<{ id: string; slug: string }>('/custom-fields', {
+    method: 'POST', body: JSON.stringify(data),
+  });
+}
+
+export async function updateCustomField(fieldId: string, data: Record<string, unknown>): Promise<ApiResponse<{ success: boolean }>> {
+  return apiFetch<{ success: boolean }>(`/custom-fields/${fieldId}`, {
+    method: 'PATCH', body: JSON.stringify(data),
+  });
+}
+
+export async function deleteCustomField(fieldId: string): Promise<ApiResponse<{ success: boolean }>> {
+  return apiFetch<{ success: boolean }>(`/custom-fields/${fieldId}`, { method: 'DELETE' });
+}
+
+export async function getLeadCustomFields(leadId: string): Promise<ApiResponse<Array<Record<string, unknown>>>> {
+  return apiFetch<Array<Record<string, unknown>>>(`/leads/${leadId}/custom-fields`);
+}
+
+export async function setLeadCustomFields(leadId: string, fields: Array<{ field_id: string; value: string }>): Promise<ApiResponse<{ success: boolean; updated: number }>> {
+  return apiFetch<{ success: boolean; updated: number }>(`/leads/${leadId}/custom-fields`, {
+    method: 'PATCH', body: JSON.stringify({ fields }),
+  });
+}
+
+// ── Smart Lists (P3.4) ──────────────────────────────────────
+
+export async function getSmartLists(): Promise<ApiResponse<Array<Record<string, unknown>>>> {
+  return apiFetch<Array<Record<string, unknown>>>('/smart-lists');
+}
+
+export async function createSmartList(data: {
+  name: string; client_id?: string; filters: Record<string, unknown>;
+}): Promise<ApiResponse<{ id: string }>> {
+  return apiFetch<{ id: string }>('/smart-lists', {
+    method: 'POST', body: JSON.stringify(data),
+  });
+}
+
+export async function deleteSmartList(listId: string): Promise<ApiResponse<{ success: boolean }>> {
+  return apiFetch<{ success: boolean }>(`/smart-lists/${listId}`, { method: 'DELETE' });
+}
+
+export async function executeSmartList(listId: string, params?: { limit?: number; offset?: number }): Promise<ApiResponse<Array<Record<string, unknown>>>> {
+  const search = new URLSearchParams();
+  if (params?.limit) search.set('limit', params.limit.toString());
+  if (params?.offset) search.set('offset', params.offset.toString());
+  return apiFetch<Array<Record<string, unknown>>>(`/smart-lists/${listId}/execute?${search.toString()}`);
+}
