@@ -61,6 +61,10 @@ import {
   handleGetReviewRequests, handleCreateReviewRequest, handleBulkReviewRequest,
   handleGetReviews, handleGetReviewStats, handleSuggestReviewReply, handleReplyToReview,
 } from './worker/reviews';
+import { WebchatRoom, handleWebchatConnect, handleWebchatPrechat, handleWebchatWidget } from './worker/webchat';
+
+// Export Durable Object pour Cloudflare
+export { WebchatRoom };
 
 // Injection de dépendance : autoEnroll pour les leads
 setAutoEnroll(autoEnroll);
@@ -93,6 +97,10 @@ export default {
       const signMatch = path.match(/^\/api\/sign\/([^/]+)$/);
       if (signMatch && method === 'GET') return await handlePublicGetDocument(env, signMatch[1]!);
       if (signMatch && method === 'POST') return await handlePublicSignDocument(request, env, signMatch[1]!);
+      // Webchat — routes publiques
+      if (path === '/api/webchat/ws') return await handleWebchatConnect(request, env, url);
+      if (path === '/api/webchat/prechat' && method === 'POST') return await handleWebchatPrechat(request, env);
+      if (path === '/api/webchat/widget.js' && method === 'GET') return handleWebchatWidget(env, url);
     } catch (err) {
       console.error('Erreur route publique:', err);
       return json({ error: 'Erreur serveur' }, 500);

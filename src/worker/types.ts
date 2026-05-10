@@ -18,6 +18,7 @@ export interface Env {
   GBP_API_KEY: string;
   ANTHROPIC_API_KEY: string;
   FILES: R2Bucket;
+  WEBCHAT_ROOMS: DurableObjectNamespace;
 }
 
 export interface AuthContext {
