@@ -50,7 +50,7 @@ export function WorkflowsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div className="flex items-center gap-3">
           <h1 className="text-xl font-bold">⚡ Automations</h1>
-          <Badge color="var(--color-success)">{activeCount} actifs</Badge>
+          <Badge color="var(--success)">{activeCount} actifs</Badge>
           <Badge>{workflows.length} total</Badge>
         </div>
         <Link to="/workflows/new"><Button>+ Nouveau workflow</Button></Link>
@@ -59,20 +59,20 @@ export function WorkflowsPage() {
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         <Card className="p-3 text-center">
-          <p className="text-xl font-bold text-[var(--color-accent)]">{workflows.length}</p>
-          <p className="text-[10px] text-[var(--color-text-muted)] uppercase">Workflows</p>
+          <p className="text-xl font-bold text-[var(--brand-primary)]">{workflows.length}</p>
+          <p className="text-[10px] text-[var(--text-muted)] uppercase">Workflows</p>
         </Card>
         <Card className="p-3 text-center">
-          <p className="text-xl font-bold text-[var(--color-success)]">{activeCount}</p>
-          <p className="text-[10px] text-[var(--color-text-muted)] uppercase">Actifs</p>
+          <p className="text-xl font-bold text-[var(--success)]">{activeCount}</p>
+          <p className="text-[10px] text-[var(--text-muted)] uppercase">Actifs</p>
         </Card>
         <Card className="p-3 text-center">
-          <p className="text-xl font-bold text-[var(--color-info)]">{totalEnrolled}</p>
-          <p className="text-[10px] text-[var(--color-text-muted)] uppercase">Leads inscrits</p>
+          <p className="text-xl font-bold text-[var(--info)]">{totalEnrolled}</p>
+          <p className="text-[10px] text-[var(--text-muted)] uppercase">Leads inscrits</p>
         </Card>
         <Card className="p-3 text-center">
-          <p className="text-xl font-bold text-[var(--color-warning)]">{totalExecs}</p>
-          <p className="text-[10px] text-[var(--color-text-muted)] uppercase">Exécutions</p>
+          <p className="text-xl font-bold text-[var(--warning)]">{totalExecs}</p>
+          <p className="text-[10px] text-[var(--text-muted)] uppercase">Exécutions</p>
         </Card>
       </div>
 
@@ -80,7 +80,7 @@ export function WorkflowsPage() {
       <div className="flex gap-2 mb-6">
         {(['all', 'active', 'inactive'] as const).map(mode => (
           <button key={mode} onClick={() => setFilterMode(mode)}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer border transition-all ${filterMode === mode ? 'bg-[var(--color-accent)] text-white border-[var(--color-accent)]' : 'border-[var(--color-border-subtle)] text-[var(--color-text-muted)]'}`}>
+            className={`px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer border transition-all ${filterMode === mode ? 'bg-[var(--brand-primary)] text-white border-[var(--brand-primary)]' : 'border-[var(--border-subtle)] text-[var(--text-muted)]'}`}>
             {mode === 'all' ? `Tous (${workflows.length})` : mode === 'active' ? `✅ Actifs (${activeCount})` : `⏸️ Inactifs (${workflows.length - activeCount})`}
           </button>
         ))}
@@ -96,7 +96,7 @@ export function WorkflowsPage() {
           {filteredWorkflows.map((wf) => {
             const successRate = (wf.total_executions ?? 0) > 0 ? Math.round(((wf.total_executions ?? 0) / Math.max(wf.total_executions ?? 1, 1)) * 100) : 0;
             return (
-              <Card key={wf.id} className={`hover:border-[var(--color-accent)]/30 transition-all ${!wf.is_active ? 'opacity-60' : ''}`}>
+              <Card key={wf.id} className={`hover:border-[var(--brand-primary)]/30 transition-all ${!wf.is_active ? 'opacity-60' : ''}`}>
                 <div className="p-5">
                   {/* Header */}
                   <div className="flex items-start justify-between mb-3">
@@ -105,17 +105,17 @@ export function WorkflowsPage() {
                         <span className="text-lg">{TRIGGER_ICONS[wf.trigger_type as TriggerType] || '⚡'}</span>
                         <h3 className="font-semibold text-sm truncate">{wf.name}</h3>
                       </div>
-                      <p className="text-xs text-[var(--color-text-muted)] line-clamp-2">{wf.description}</p>
+                      <p className="text-xs text-[var(--text-muted)] line-clamp-2">{wf.description}</p>
                     </div>
                     <button onClick={() => void handleToggle(wf.id, wf.is_active)}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer shrink-0 ml-3 ${wf.is_active ? 'bg-[var(--color-success)]' : 'bg-[var(--color-bg-hover)]'}`}>
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer shrink-0 ml-3 ${wf.is_active ? 'bg-[var(--success)]' : 'bg-[var(--bg-subtle)]'}`}>
                       <span className={`inline-block h-4 w-4 rounded-full bg-white transition-transform shadow-sm ${wf.is_active ? 'translate-x-6' : 'translate-x-1'}`} />
                     </button>
                   </div>
 
                   {/* Trigger enrichi */}
-                  <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-[var(--color-bg-tertiary)] rounded-[var(--radius-md)] border-l-2 border-l-[var(--color-accent)]">
-                    <span className="text-xs font-medium text-[var(--color-text-secondary)]">
+                  <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-[var(--bg-subtle)] rounded-[var(--radius-md)] border-l-2 border-l-[var(--brand-primary)]">
+                    <span className="text-xs font-medium text-[var(--text-secondary)]">
                       Quand : {TRIGGER_LABELS[wf.trigger_type as TriggerType] || wf.trigger_type}
                     </span>
                   </div>
@@ -124,36 +124,36 @@ export function WorkflowsPage() {
                   <div className="flex items-center gap-1 mb-3">
                     {Array.from({ length: wf.steps_count ?? 0 }).map((_, i) => (
                       <div key={i} className="flex items-center gap-1">
-                        <div className="w-5 h-5 rounded-full bg-[var(--color-accent)]/15 text-[var(--color-accent)] text-[9px] font-bold flex items-center justify-center">
+                        <div className="w-5 h-5 rounded-full bg-[var(--brand-primary)]/15 text-[var(--brand-primary)] text-[9px] font-bold flex items-center justify-center">
                           {i + 1}
                         </div>
-                        {i < (wf.steps_count ?? 0) - 1 && <div className="w-3 h-px bg-[var(--color-border-subtle)]" />}
+                        {i < (wf.steps_count ?? 0) - 1 && <div className="w-3 h-px bg-[var(--border-subtle)]" />}
                       </div>
                     ))}
-                    {(wf.steps_count ?? 0) === 0 && <span className="text-[10px] text-[var(--color-text-muted)]">Aucune étape</span>}
+                    {(wf.steps_count ?? 0) === 0 && <span className="text-[10px] text-[var(--text-muted)]">Aucune étape</span>}
                   </div>
 
                   {/* Stats */}
                   <div className="grid grid-cols-3 gap-2 mb-3 text-center">
-                    <div className="bg-[var(--color-bg-hover)] rounded-[var(--radius-sm)] px-2 py-1.5">
-                      <p className="text-lg font-bold text-[var(--color-accent)]">{wf.steps_count ?? 0}</p>
-                      <p className="text-[10px] text-[var(--color-text-muted)]">Étapes</p>
+                    <div className="bg-[var(--bg-subtle)] rounded-[var(--radius-sm)] px-2 py-1.5">
+                      <p className="text-lg font-bold text-[var(--brand-primary)]">{wf.steps_count ?? 0}</p>
+                      <p className="text-[10px] text-[var(--text-muted)]">Étapes</p>
                     </div>
-                    <div className="bg-[var(--color-bg-hover)] rounded-[var(--radius-sm)] px-2 py-1.5">
-                      <p className="text-lg font-bold text-[var(--color-success)]">{wf.active_enrollments ?? 0}</p>
-                      <p className="text-[10px] text-[var(--color-text-muted)]">Inscrits</p>
+                    <div className="bg-[var(--bg-subtle)] rounded-[var(--radius-sm)] px-2 py-1.5">
+                      <p className="text-lg font-bold text-[var(--success)]">{wf.active_enrollments ?? 0}</p>
+                      <p className="text-[10px] text-[var(--text-muted)]">Inscrits</p>
                     </div>
-                    <div className="bg-[var(--color-bg-hover)] rounded-[var(--radius-sm)] px-2 py-1.5">
-                      <p className="text-lg font-bold text-[var(--color-info)]">{wf.total_executions ?? 0}</p>
-                      <p className="text-[10px] text-[var(--color-text-muted)]">Exécutions</p>
+                    <div className="bg-[var(--bg-subtle)] rounded-[var(--radius-sm)] px-2 py-1.5">
+                      <p className="text-lg font-bold text-[var(--info)]">{wf.total_executions ?? 0}</p>
+                      <p className="text-[10px] text-[var(--text-muted)]">Exécutions</p>
                     </div>
                   </div>
 
                   {/* Barre de progression */}
                   {(wf.total_executions ?? 0) > 0 && (
                     <div className="mb-3">
-                      <div className="h-1.5 rounded-full bg-[var(--color-bg-hover)] overflow-hidden">
-                        <div className="h-full rounded-full bg-[var(--color-success)] transition-all" style={{ width: `${successRate}%` }} />
+                      <div className="h-1.5 rounded-full bg-[var(--bg-subtle)] overflow-hidden">
+                        <div className="h-full rounded-full bg-[var(--success)] transition-all" style={{ width: `${successRate}%` }} />
                       </div>
                     </div>
                   )}
@@ -164,7 +164,7 @@ export function WorkflowsPage() {
                       <Button variant="secondary" size="sm" className="w-full">👁️ Détails</Button>
                     </Link>
                     <button onClick={() => void handleDelete(wf.id)}
-                      className="px-3 py-1.5 text-xs text-[var(--color-danger)] border border-[var(--color-border-subtle)] rounded-[var(--radius-md)] hover:bg-[var(--color-danger)]/10 transition-colors cursor-pointer">
+                      className="px-3 py-1.5 text-xs text-[var(--danger)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] hover:bg-[var(--danger)]/10 transition-colors cursor-pointer">
                       🗑️
                     </button>
                   </div>

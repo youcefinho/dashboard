@@ -89,20 +89,20 @@ export function TasksPage() {
       {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
         <Card className="p-4 text-center">
-          <p className="text-2xl font-bold text-[var(--color-text-primary)]">{tasks.length}</p>
-          <p className="text-xs text-[var(--color-text-muted)]">Total</p>
+          <p className="text-2xl font-bold text-[var(--text-primary)]">{tasks.length}</p>
+          <p className="text-xs text-[var(--text-muted)]">Total</p>
         </Card>
         <Card className="p-4 text-center">
-          <p className="text-2xl font-bold text-[var(--color-danger)]">{overdueTasks.length}</p>
-          <p className="text-xs text-[var(--color-text-muted)]">En retard</p>
+          <p className="text-2xl font-bold text-[var(--danger)]">{overdueTasks.length}</p>
+          <p className="text-xs text-[var(--text-muted)]">En retard</p>
         </Card>
         <Card className="p-4 text-center">
-          <p className="text-2xl font-bold text-[var(--color-warning)]">{todayTasks.length}</p>
-          <p className="text-xs text-[var(--color-text-muted)]">Aujourd'hui</p>
+          <p className="text-2xl font-bold text-[var(--warning)]">{todayTasks.length}</p>
+          <p className="text-xs text-[var(--text-muted)]">Aujourd'hui</p>
         </Card>
         <Card className="p-4 text-center">
-          <p className="text-2xl font-bold text-[var(--color-success)]">{doneTasks.length}</p>
-          <p className="text-xs text-[var(--color-text-muted)]">Terminées</p>
+          <p className="text-2xl font-bold text-[var(--success)]">{doneTasks.length}</p>
+          <p className="text-xs text-[var(--text-muted)]">Terminées</p>
         </Card>
       </div>
 
@@ -118,8 +118,8 @@ export function TasksPage() {
                 onClick={() => setFilter(f)}
                 className={`px-3 py-1 text-xs rounded-full cursor-pointer transition-colors ${
                   filter === f
-                    ? 'bg-[var(--color-accent)] text-white'
-                    : 'bg-[var(--color-bg-hover)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
+                    ? 'bg-[var(--brand-primary)] text-white'
+                    : 'bg-[var(--bg-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                 }`}
               >
                 {f === 'all' ? 'Toutes' : TASK_STATUS_LABELS[f]}
@@ -135,21 +135,21 @@ export function TasksPage() {
       {/* Tri + Vue mode */}
       <div className="flex items-center gap-3 mb-4">
         <div className="flex items-center gap-1.5">
-          <span className="text-[10px] text-[var(--color-text-muted)] uppercase">Trier :</span>
+          <span className="text-[10px] text-[var(--text-muted)] uppercase">Trier :</span>
           {(['due_date', 'priority', 'status'] as const).map(s => (
             <button key={s} onClick={() => setSortBy(s)}
-              className={`px-2 py-0.5 text-[10px] rounded-full cursor-pointer transition-colors ${sortBy === s ? 'bg-[var(--color-accent)] text-white' : 'bg-[var(--color-bg-hover)] text-[var(--color-text-muted)]'}`}>
+              className={`px-2 py-0.5 text-[10px] rounded-full cursor-pointer transition-colors ${sortBy === s ? 'bg-[var(--brand-primary)] text-white' : 'bg-[var(--bg-subtle)] text-[var(--text-muted)]'}`}>
               {s === 'due_date' ? '📅 Date' : s === 'priority' ? '🚨 Priorité' : '📊 Statut'}
             </button>
           ))}
         </div>
         <div className="flex items-center gap-1 ml-auto">
           <button onClick={() => setViewMode('list')}
-            className={`p-1.5 rounded cursor-pointer transition-colors ${viewMode === 'list' ? 'bg-[var(--color-accent)] text-white' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'}`}>
+            className={`p-1.5 rounded cursor-pointer transition-colors ${viewMode === 'list' ? 'bg-[var(--brand-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>
             ☰
           </button>
           <button onClick={() => setViewMode('kanban')}
-            className={`p-1.5 rounded cursor-pointer transition-colors ${viewMode === 'kanban' ? 'bg-[var(--color-accent)] text-white' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'}`}>
+            className={`p-1.5 rounded cursor-pointer transition-colors ${viewMode === 'kanban' ? 'bg-[var(--brand-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>
             ▦
           </button>
         </div>
@@ -169,7 +169,7 @@ export function TasksPage() {
             <select
               value={newPriority}
               onChange={e => setNewPriority(e.target.value as TaskPriority)}
-              className="px-3 py-2 text-sm bg-[var(--color-bg-input)] border border-[var(--color-border-subtle)] rounded-[var(--radius-md)]"
+              className="px-3 py-2 text-sm bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)]"
             >
               <option value="high">🔴 Haute</option>
               <option value="medium">🟡 Moyenne</option>
@@ -179,7 +179,7 @@ export function TasksPage() {
               type="date"
               value={newDueDate}
               onChange={e => setNewDueDate(e.target.value)}
-              className="px-3 py-2 text-sm bg-[var(--color-bg-input)] border border-[var(--color-border-subtle)] rounded-[var(--radius-md)] text-[var(--color-text-primary)]"
+              className="px-3 py-2 text-sm bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-[var(--text-primary)]"
             />
             <Button onClick={handleCreateTask} size="sm">Créer</Button>
           </div>
@@ -190,11 +190,11 @@ export function TasksPage() {
       {viewMode === 'kanban' ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {(['todo', 'in_progress', 'done'] as const).map(status => (
-            <div key={status} className="bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-3">
+            <div key={status} className="bg-[var(--bg-surface)] rounded-[var(--radius-lg)] p-3">
               <div className="flex items-center gap-2 mb-3 px-1">
                 <span className="text-sm">{TASK_STATUS_ICONS[status]}</span>
                 <h3 className="text-xs font-bold uppercase tracking-wider">{TASK_STATUS_LABELS[status]}</h3>
-                <span className="text-[10px] text-[var(--color-text-muted)] bg-[var(--color-bg-hover)] px-1.5 py-0.5 rounded-full ml-auto">
+                <span className="text-[10px] text-[var(--text-muted)] bg-[var(--bg-subtle)] px-1.5 py-0.5 rounded-full ml-auto">
                   {tasks.filter(t => t.status === status).length}
                 </span>
               </div>
@@ -205,11 +205,11 @@ export function TasksPage() {
                       <button onClick={() => toggleStatus(task)} className="text-sm cursor-pointer shrink-0">{TASK_STATUS_ICONS[task.status]}</button>
                       <p className={`text-xs font-medium truncate ${task.status === 'done' ? 'line-through' : ''}`}>{task.title}</p>
                     </div>
-                    <div className="flex items-center justify-between text-[10px] text-[var(--color-text-muted)]">
+                    <div className="flex items-center justify-between text-[10px] text-[var(--text-muted)]">
                       {task.lead_name ? (
-                        <Link to={`/leads/${task.lead_id}`} className="hover:text-[var(--color-accent)] transition-colors">👤 {task.lead_name}</Link>
+                        <Link to={`/leads/${task.lead_id}`} className="hover:text-[var(--brand-primary)] transition-colors">👤 {task.lead_name}</Link>
                       ) : <span />}
-                      <span className={isOverdue(task) ? 'text-[var(--color-danger)] font-semibold' : ''}>
+                      <span className={isOverdue(task) ? 'text-[var(--danger)] font-semibold' : ''}>
                         {formatDueDate(task.due_date)} {isOverdue(task) && '⚠️'}
                       </span>
                     </div>
@@ -227,7 +227,7 @@ export function TasksPage() {
       <div className="space-y-2">
         {filteredTasks.length === 0 ? (
           <Card className="p-8 text-center">
-            <p className="text-sm text-[var(--color-text-muted)]">Aucune tâche trouvée</p>
+            <p className="text-sm text-[var(--text-muted)]">Aucune tâche trouvée</p>
           </Card>
         ) : (
           filteredTasks.map(task => (
@@ -244,7 +244,7 @@ export function TasksPage() {
               {/* Contenu */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5">
-                  <p className={`text-sm font-medium ${task.status === 'done' ? 'line-through text-[var(--color-text-muted)]' : ''}`}>
+                  <p className={`text-sm font-medium ${task.status === 'done' ? 'line-through text-[var(--text-muted)]' : ''}`}>
                     {task.title}
                   </p>
                   <Badge color={TASK_PRIORITY_COLORS[task.priority]} className="text-[10px]">
@@ -252,13 +252,13 @@ export function TasksPage() {
                   </Badge>
                 </div>
                 {task.description && (
-                  <p className="text-xs text-[var(--color-text-muted)] mb-1">{task.description}</p>
+                  <p className="text-xs text-[var(--text-muted)] mb-1">{task.description}</p>
                 )}
-                <div className="flex items-center gap-3 text-[10px] text-[var(--color-text-muted)]">
+                <div className="flex items-center gap-3 text-[10px] text-[var(--text-muted)]">
                   {task.lead_name && (
-                    <Link to={`/leads/${task.lead_id}`} className="flex items-center gap-1 hover:text-[var(--color-accent)] transition-colors">👤 {task.lead_name}</Link>
+                    <Link to={`/leads/${task.lead_id}`} className="flex items-center gap-1 hover:text-[var(--brand-primary)] transition-colors">👤 {task.lead_name}</Link>
                   )}
-                  <span className={`flex items-center gap-1 ${isOverdue(task) ? 'text-[var(--color-danger)] font-semibold' : ''}`}>
+                  <span className={`flex items-center gap-1 ${isOverdue(task) ? 'text-[var(--danger)] font-semibold' : ''}`}>
                     📅 {formatDueDate(task.due_date)} {isOverdue(task) && '⚠️'}
                   </span>
                 </div>
@@ -267,7 +267,7 @@ export function TasksPage() {
               {/* Actions */}
               <button
                 onClick={() => handleDelete(task.id)}
-                className="p-1 text-[var(--color-text-muted)] hover:text-[var(--color-danger)] transition-colors cursor-pointer shrink-0"
+                className="p-1 text-[var(--text-muted)] hover:text-[var(--danger)] transition-colors cursor-pointer shrink-0"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />

@@ -97,7 +97,7 @@ export function ReviewsPage() {
 
   const renderStars = (rating: number) => {
     return Array.from({ length: 5 }, (_, i) => (
-      <span key={i} className={i < rating ? 'text-yellow-400' : 'text-[var(--color-border)]'}>★</span>
+      <span key={i} className={i < rating ? 'text-yellow-400' : 'text-[var(--border-default)]'}>★</span>
     ));
   };
 
@@ -105,11 +105,11 @@ export function ReviewsPage() {
     const pct = total > 0 ? (count / total) * 100 : 0;
     return (
       <div className="flex items-center gap-2 text-xs">
-        <span className="w-8 text-right text-[var(--color-text-muted)]">{stars}★</span>
-        <div className="flex-1 h-2 bg-[var(--color-bg-hover)] rounded-full overflow-hidden">
+        <span className="w-8 text-right text-[var(--text-muted)]">{stars}★</span>
+        <div className="flex-1 h-2 bg-[var(--bg-subtle)] rounded-full overflow-hidden">
           <div className="h-full bg-yellow-400 rounded-full transition-all" style={{ width: `${pct}%` }} />
         </div>
-        <span className="w-8 text-[var(--color-text-muted)]">{count}</span>
+        <span className="w-8 text-[var(--text-muted)]">{count}</span>
       </div>
     );
   };
@@ -123,15 +123,15 @@ export function ReviewsPage() {
   return (
     <AppLayout title="Avis & Réputation">
       {/* Onglets */}
-      <div className="flex gap-1 bg-[var(--color-bg-tertiary)] p-1 rounded-[var(--radius-lg)] w-fit mb-6">
+      <div className="flex gap-1 bg-[var(--bg-subtle)] p-1 rounded-[var(--radius-lg)] w-fit mb-6">
         {tabs.map(t => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
             className={`px-4 py-2 text-sm font-medium rounded-[var(--radius-md)] transition-all cursor-pointer ${
               tab === t.key
-                ? 'bg-[var(--color-bg-card)] text-[var(--color-text-primary)] shadow-[var(--shadow-xs)]'
-                : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
+                ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-[var(--shadow-xs)]'
+                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
             }`}
           >
             {t.label}
@@ -151,29 +151,29 @@ export function ReviewsPage() {
               {/* KPIs */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Card>
-                  <p className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider mb-1">Note moyenne</p>
+                  <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider mb-1">Note moyenne</p>
                   <div className="flex items-baseline gap-2">
                     <span className="text-3xl font-bold">{stats.average_rating || '—'}</span>
                     <span className="text-lg">⭐</span>
                   </div>
-                  <p className="text-xs text-[var(--color-text-muted)] mt-1">{stats.total_reviews} avis au total</p>
+                  <p className="text-xs text-[var(--text-muted)] mt-1">{stats.total_reviews} avis au total</p>
                 </Card>
                 <Card>
-                  <p className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider mb-1">5 étoiles</p>
-                  <span className="text-3xl font-bold text-[var(--color-success)]">{stats.five_star}</span>
-                  <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                  <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider mb-1">5 étoiles</p>
+                  <span className="text-3xl font-bold text-[var(--success)]">{stats.five_star}</span>
+                  <p className="text-xs text-[var(--text-muted)] mt-1">
                     {stats.total_reviews > 0 ? `${((stats.five_star / stats.total_reviews) * 100).toFixed(0)}%` : '—'} du total
                   </p>
                 </Card>
                 <Card>
-                  <p className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider mb-1">Réponses</p>
+                  <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider mb-1">Réponses</p>
                   <span className="text-3xl font-bold">{stats.replied_count}</span>
-                  <p className="text-xs text-[var(--color-text-muted)] mt-1">sur {stats.total_reviews} avis</p>
+                  <p className="text-xs text-[var(--text-muted)] mt-1">sur {stats.total_reviews} avis</p>
                 </Card>
                 <Card>
-                  <p className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider mb-1">Demandes envoyées</p>
+                  <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider mb-1">Demandes envoyées</p>
                   <span className="text-3xl font-bold">{stats.total_requests}</span>
-                  <p className="text-xs text-[var(--color-text-muted)] mt-1">{stats.pending_requests} en attente</p>
+                  <p className="text-xs text-[var(--text-muted)] mt-1">{stats.pending_requests} en attente</p>
                 </Card>
               </div>
 
@@ -207,7 +207,7 @@ export function ReviewsPage() {
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-sm font-semibold">{review.author_name}</span>
-                          <Badge color={review.source === 'google' ? 'var(--color-info)' : 'var(--color-accent)'}>
+                          <Badge color={review.source === 'google' ? 'var(--info)' : 'var(--brand-primary)'}>
                             {review.source === 'google' ? '🔍 Google' : review.source}
                           </Badge>
                         </div>
@@ -215,17 +215,17 @@ export function ReviewsPage() {
                           {renderStars(review.rating)}
                         </div>
                         {review.comment && (
-                          <p className="text-sm text-[var(--color-text-secondary)] mb-2">« {review.comment} »</p>
+                          <p className="text-sm text-[var(--text-secondary)] mb-2">« {review.comment} »</p>
                         )}
-                        <p className="text-xs text-[var(--color-text-muted)]">
+                        <p className="text-xs text-[var(--text-muted)]">
                           {review.review_date ? new Date(review.review_date).toLocaleDateString('fr-CA') : ''}
                         </p>
 
                         {/* Réponse existante */}
                         {review.reply && (
-                          <div className="mt-3 pl-4 border-l-2 border-[var(--color-accent)]">
-                            <p className="text-xs font-medium text-[var(--color-accent)] mb-1">Votre réponse</p>
-                            <p className="text-sm text-[var(--color-text-secondary)]">{review.reply}</p>
+                          <div className="mt-3 pl-4 border-l-2 border-[var(--brand-primary)]">
+                            <p className="text-xs font-medium text-[var(--brand-primary)] mb-1">Votre réponse</p>
+                            <p className="text-sm text-[var(--text-secondary)]">{review.reply}</p>
                           </div>
                         )}
 
@@ -236,7 +236,7 @@ export function ReviewsPage() {
                               value={replyText}
                               onChange={e => setReplyText(e.target.value)}
                               rows={3}
-                              className="w-full px-3 py-2 text-sm bg-[var(--color-bg-input)] border border-[var(--color-border-subtle)] rounded-[var(--radius-md)] focus:border-[var(--color-accent)] focus:outline-none"
+                              className="w-full px-3 py-2 text-sm bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] focus:border-[var(--brand-primary)] focus:outline-none"
                               placeholder="Écrivez votre réponse..."
                             />
                             <div className="flex gap-2">
@@ -286,31 +286,31 @@ export function ReviewsPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-[var(--color-border-subtle)]">
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Lead</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Canal</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Status</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Envoyé le</th>
+                    <tr className="border-b border-[var(--border-subtle)]">
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Lead</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Canal</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Status</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Envoyé le</th>
                     </tr>
                   </thead>
                   <tbody>
                     {requests.map(req => (
-                      <tr key={req.id} className="border-b border-[var(--color-border-subtle)] hover:bg-[var(--color-bg-hover)] transition-colors">
+                      <tr key={req.id} className="border-b border-[var(--border-subtle)] hover:bg-[var(--bg-subtle)] transition-colors">
                         <td className="py-3 px-4">
                           <p className="font-medium">{req.lead_name}</p>
-                          <p className="text-xs text-[var(--color-text-muted)]">{req.lead_email}</p>
+                          <p className="text-xs text-[var(--text-muted)]">{req.lead_email}</p>
                         </td>
                         <td className="py-3 px-4">
-                          <Badge color={req.channel === 'email' ? 'var(--color-info)' : 'var(--color-success)'}>
+                          <Badge color={req.channel === 'email' ? 'var(--info)' : 'var(--success)'}>
                             {req.channel === 'email' ? '📧 Email' : '📱 SMS'}
                           </Badge>
                         </td>
                         <td className="py-3 px-4">
                           <Badge color={
-                            req.status === 'sent' ? 'var(--color-info)' :
-                            req.status === 'clicked' ? 'var(--color-warning)' :
-                            req.status === 'reviewed' ? 'var(--color-success)' :
-                            'var(--color-muted)'
+                            req.status === 'sent' ? 'var(--info)' :
+                            req.status === 'clicked' ? 'var(--warning)' :
+                            req.status === 'reviewed' ? 'var(--success)' :
+                            'var(--text-muted)'
                           }>
                             {req.status === 'sent' ? 'Envoyé' :
                              req.status === 'clicked' ? 'Cliqué' :
@@ -318,7 +318,7 @@ export function ReviewsPage() {
                              req.status}
                           </Badge>
                         </td>
-                        <td className="py-3 px-4 text-[var(--color-text-muted)]">
+                        <td className="py-3 px-4 text-[var(--text-muted)]">
                           {req.sent_at ? new Date(req.sent_at).toLocaleDateString('fr-CA') : '—'}
                         </td>
                       </tr>

@@ -134,8 +134,8 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
     <div className="cmd-overlay" onClick={onClose}>
       <div className="cmd-palette" onClick={e => e.stopPropagation()}>
         {/* Input de recherche */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-[var(--color-border-subtle)]">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-muted)" strokeWidth="2">
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-[var(--border-subtle)]">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2">
             <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
           </svg>
           <input
@@ -145,21 +145,21 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
             onChange={e => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Rechercher leads, pages, clients..."
-            className="flex-1 bg-transparent text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] outline-none"
+            className="flex-1 bg-transparent text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none"
           />
-          <kbd className="text-[10px] px-1.5 py-0.5 bg-[var(--color-bg-hover)] text-[var(--color-text-muted)] rounded border border-[var(--color-border-subtle)]">ESC</kbd>
+          <kbd className="text-[10px] px-1.5 py-0.5 bg-[var(--bg-subtle)] text-[var(--text-muted)] rounded border border-[var(--border-subtle)]">ESC</kbd>
         </div>
 
         {/* Résultats */}
         <div className="max-h-[400px] overflow-y-auto py-2">
           {filteredItems.length === 0 ? (
             <div className="py-8 text-center">
-              <p className="text-sm text-[var(--color-text-muted)]">Aucun résultat pour « {query} »</p>
+              <p className="text-sm text-[var(--text-muted)]">Aucun résultat pour « {query} »</p>
             </div>
           ) : (
             Object.entries(groupedItems).map(([category, items]) => (
               <div key={category}>
-                <p className="px-4 py-1.5 text-[10px] font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{category}</p>
+                <p className="px-4 py-1.5 text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">{category}</p>
                 {items.map((item) => {
                   const itemIndex = flatIndex++;
                   const isSelected = itemIndex === selectedIndex;
@@ -169,16 +169,16 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
                       onClick={item.action}
                       onMouseEnter={() => setSelectedIndex(itemIndex)}
                       className={`w-full flex items-center gap-3 px-4 py-2.5 text-left cursor-pointer transition-colors ${
-                        isSelected ? 'bg-[var(--color-accent)]/10 text-[var(--color-accent)]' : 'hover:bg-[var(--color-bg-hover)]'
+                        isSelected ? 'bg-[var(--brand-primary)]/10 text-[var(--brand-primary)]' : 'hover:bg-[var(--bg-subtle)]'
                       }`}
                     >
                       <span className="text-base w-6 text-center shrink-0">{item.icon}</span>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{item.label}</p>
-                        <p className="text-[10px] text-[var(--color-text-muted)] truncate">{item.description}</p>
+                        <p className="text-[10px] text-[var(--text-muted)] truncate">{item.description}</p>
                       </div>
                       {isSelected && (
-                        <kbd className="text-[10px] px-1.5 py-0.5 bg-[var(--color-bg-hover)] text-[var(--color-text-muted)] rounded shrink-0">↵</kbd>
+                        <kbd className="text-[10px] px-1.5 py-0.5 bg-[var(--bg-subtle)] text-[var(--text-muted)] rounded shrink-0">↵</kbd>
                       )}
                     </button>
                   );
@@ -189,7 +189,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center gap-4 px-4 py-2 border-t border-[var(--color-border-subtle)] text-[10px] text-[var(--color-text-muted)]">
+        <div className="flex items-center gap-4 px-4 py-2 border-t border-[var(--border-subtle)] text-[10px] text-[var(--text-muted)]">
           <span>↑↓ naviguer</span>
           <span>↵ ouvrir</span>
           <span>esc fermer</span>

@@ -125,18 +125,18 @@ export function CalendarPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div className="flex items-center gap-3">
           <h1 className="text-xl font-bold">📅 Calendrier</h1>
-          <Badge color="var(--color-accent)">{todayCount} aujourd'hui</Badge>
-          <Badge color="var(--color-success)">{upcomingCount} à venir</Badge>
+          <Badge color="var(--brand-primary)">{todayCount} aujourd'hui</Badge>
+          <Badge color="var(--success)">{upcomingCount} à venir</Badge>
         </div>
         <div className="flex gap-2">
           {/* Toggle vue */}
-          <div className="flex bg-[var(--color-bg-tertiary)] rounded-[var(--radius-md)] p-0.5">
+          <div className="flex bg-[var(--bg-subtle)] rounded-[var(--radius-md)] p-0.5">
             <button onClick={() => setViewMode('list')}
-              className={`px-3 py-1.5 text-xs rounded-[var(--radius-sm)] cursor-pointer transition-colors ${viewMode === 'list' ? 'bg-[var(--color-accent)] text-white' : 'text-[var(--color-text-muted)]'}`}>
+              className={`px-3 py-1.5 text-xs rounded-[var(--radius-sm)] cursor-pointer transition-colors ${viewMode === 'list' ? 'bg-[var(--brand-primary)] text-white' : 'text-[var(--text-muted)]'}`}>
               📋 Liste
             </button>
             <button onClick={() => setViewMode('week')}
-              className={`px-3 py-1.5 text-xs rounded-[var(--radius-sm)] cursor-pointer transition-colors ${viewMode === 'week' ? 'bg-[var(--color-accent)] text-white' : 'text-[var(--color-text-muted)]'}`}>
+              className={`px-3 py-1.5 text-xs rounded-[var(--radius-sm)] cursor-pointer transition-colors ${viewMode === 'week' ? 'bg-[var(--brand-primary)] text-white' : 'text-[var(--text-muted)]'}`}>
               📅 Semaine
             </button>
           </div>
@@ -149,16 +149,16 @@ export function CalendarPage() {
       {/* Stats rapides */}
       <div className="grid grid-cols-3 gap-3 mb-6">
         <Card className="p-3 text-center">
-          <p className="text-2xl font-bold text-[var(--color-accent)]">{todayCount}</p>
-          <p className="text-xs text-[var(--color-text-muted)]">Aujourd'hui</p>
+          <p className="text-2xl font-bold text-[var(--brand-primary)]">{todayCount}</p>
+          <p className="text-xs text-[var(--text-muted)]">Aujourd'hui</p>
         </Card>
         <Card className="p-3 text-center">
-          <p className="text-2xl font-bold text-[var(--color-success)]">{confirmedCount}</p>
-          <p className="text-xs text-[var(--color-text-muted)]">Confirmés</p>
+          <p className="text-2xl font-bold text-[var(--success)]">{confirmedCount}</p>
+          <p className="text-xs text-[var(--text-muted)]">Confirmés</p>
         </Card>
         <Card className="p-3 text-center">
-          <p className="text-2xl font-bold text-[var(--color-info)]">{upcomingCount}</p>
-          <p className="text-xs text-[var(--color-text-muted)]">À venir</p>
+          <p className="text-2xl font-bold text-[var(--info)]">{upcomingCount}</p>
+          <p className="text-xs text-[var(--text-muted)]">À venir</p>
         </Card>
       </div>
 
@@ -170,11 +170,11 @@ export function CalendarPage() {
         /* ── Vue semaine ──────────────────────────── */
         <Card className="p-4">
           <div className="flex items-center justify-between mb-4">
-            <button onClick={() => goToWeek(-1)} className="text-sm text-[var(--color-text-muted)] hover:text-[var(--color-accent)] cursor-pointer">← Sem. précédente</button>
+            <button onClick={() => goToWeek(-1)} className="text-sm text-[var(--text-muted)] hover:text-[var(--brand-primary)] cursor-pointer">← Sem. précédente</button>
             <h3 className="text-sm font-semibold">
               {weekDays[0]?.toLocaleDateString('fr-CA', { day: 'numeric', month: 'long' })} — {weekDays[6]?.toLocaleDateString('fr-CA', { day: 'numeric', month: 'long', year: 'numeric' })}
             </h3>
-            <button onClick={() => goToWeek(1)} className="text-sm text-[var(--color-text-muted)] hover:text-[var(--color-accent)] cursor-pointer">Sem. suivante →</button>
+            <button onClick={() => goToWeek(1)} className="text-sm text-[var(--text-muted)] hover:text-[var(--brand-primary)] cursor-pointer">Sem. suivante →</button>
           </div>
 
           <div className="grid grid-cols-7 gap-1">
@@ -182,17 +182,17 @@ export function CalendarPage() {
               const dayAppts = getAppointmentsForDay(day);
               return (
                 <div key={day.toISOString()} className={`min-h-[120px] p-2 rounded-[var(--radius-sm)] border ${
-                  isToday(day) ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/5' : 'border-[var(--color-border-subtle)]'
+                  isToday(day) ? 'border-[var(--brand-primary)] bg-[var(--brand-primary)]/5' : 'border-[var(--border-subtle)]'
                 }`}>
-                  <p className={`text-xs font-semibold mb-1 ${isToday(day) ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-muted)]'}`}>
+                  <p className={`text-xs font-semibold mb-1 ${isToday(day) ? 'text-[var(--brand-primary)]' : 'text-[var(--text-muted)]'}`}>
                     {formatDateShort(day)}
                   </p>
                   <div className="space-y-1">
                     {dayAppts.map((appt) => (
-                      <div key={appt.id} className="text-[10px] p-1.5 rounded bg-[var(--color-bg-hover)] border-l-2"
+                      <div key={appt.id} className="text-[10px] p-1.5 rounded bg-[var(--bg-subtle)] border-l-2"
                         style={{ borderLeftColor: APPOINTMENT_TYPE_COLORS[appt.type] }}>
                         <p className="font-medium truncate">{formatTime(appt.start_time)}</p>
-                        <p className="truncate text-[var(--color-text-muted)]">{appt.title}</p>
+                        <p className="truncate text-[var(--text-muted)]">{appt.title}</p>
                       </div>
                     ))}
                   </div>
@@ -225,22 +225,22 @@ export function CalendarPage() {
                         <div className="flex items-center gap-2 mb-0.5">
                           <h3 className="text-sm font-semibold truncate">{appt.title}</h3>
                           <Badge color={
-                            appt.status === 'confirmed' ? 'var(--color-success)' :
-                            appt.status === 'cancelled' ? 'var(--color-danger)' :
-                            appt.status === 'completed' ? 'var(--color-info)' :
-                            appt.status === 'no_show' ? 'var(--color-warning)' : 'var(--color-muted)'
+                            appt.status === 'confirmed' ? 'var(--success)' :
+                            appt.status === 'cancelled' ? 'var(--danger)' :
+                            appt.status === 'completed' ? 'var(--info)' :
+                            appt.status === 'no_show' ? 'var(--warning)' : 'var(--text-muted)'
                           }>
                             {APPOINTMENT_STATUS_LABELS[appt.status]}
                           </Badge>
                         </div>
-                        <p className="text-xs text-[var(--color-text-muted)]">
+                        <p className="text-xs text-[var(--text-muted)]">
                           {APPOINTMENT_TYPE_LABELS[appt.type]} · {formatTime(appt.start_time)} — {formatTime(appt.end_time)} · {timeAgo(appt.start_time)}
                         </p>
                         {appt.location && (
-                          <p className="text-xs text-[var(--color-text-muted)] mt-0.5">📍 {appt.location}</p>
+                          <p className="text-xs text-[var(--text-muted)] mt-0.5">📍 {appt.location}</p>
                         )}
                         {appt.lead_name && (
-                          <p className="text-xs text-[var(--color-accent)] mt-0.5">👤 {appt.lead_name}</p>
+                          <p className="text-xs text-[var(--brand-primary)] mt-0.5">👤 {appt.lead_name}</p>
                         )}
                       </div>
 
@@ -248,13 +248,13 @@ export function CalendarPage() {
                       <div className="flex gap-1 shrink-0">
                         {appt.status === 'scheduled' && (
                           <button onClick={() => void handleStatusChange(appt.id, 'confirmed')}
-                            className="px-2 py-1 text-[10px] bg-[var(--color-success)]/15 text-[var(--color-success)] rounded-[var(--radius-sm)] hover:bg-[var(--color-success)]/25 cursor-pointer">
+                            className="px-2 py-1 text-[10px] bg-[var(--success)]/15 text-[var(--success)] rounded-[var(--radius-sm)] hover:bg-[var(--success)]/25 cursor-pointer">
                             ✅ Confirmer
                           </button>
                         )}
                         {(appt.status === 'scheduled' || appt.status === 'confirmed') && (
                           <button onClick={() => void handleStatusChange(appt.id, 'cancelled')}
-                            className="px-2 py-1 text-[10px] text-[var(--color-danger)] border border-[var(--color-border-subtle)] rounded-[var(--radius-sm)] hover:bg-[var(--color-danger)]/10 cursor-pointer">
+                            className="px-2 py-1 text-[10px] text-[var(--danger)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] hover:bg-[var(--danger)]/10 cursor-pointer">
                             ✕
                           </button>
                         )}
@@ -271,16 +271,16 @@ export function CalendarPage() {
       <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="Nouveau rendez-vous">
         <div className="space-y-3">
           <div>
-            <label className="text-xs font-medium text-[var(--color-text-secondary)] mb-1 block">Titre</label>
+            <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Titre</label>
             <Input value={formTitle} onChange={e => setFormTitle(e.target.value)} placeholder="Ex: Rencontre avec Sophie Tremblay" />
           </div>
           <div>
-            <label className="text-xs font-medium text-[var(--color-text-secondary)] mb-1 block">Type</label>
+            <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Type</label>
             <div className="grid grid-cols-5 gap-1">
               {APPOINTMENT_TYPES.map(t => (
                 <button key={t} onClick={() => setFormType(t)}
                   className={`p-2 text-center rounded-[var(--radius-sm)] border text-xs cursor-pointer transition-all ${
-                    formType === t ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/10' : 'border-[var(--color-border-subtle)]'
+                    formType === t ? 'border-[var(--brand-primary)] bg-[var(--brand-primary)]/10' : 'border-[var(--border-subtle)]'
                   }`}>
                   <p>{APPOINTMENT_TYPE_ICONS[t]}</p>
                   <p className="text-[10px]">{APPOINTMENT_TYPE_LABELS[t]}</p>
@@ -290,27 +290,27 @@ export function CalendarPage() {
           </div>
           <div className="grid grid-cols-3 gap-2">
             <div>
-              <label className="text-xs font-medium text-[var(--color-text-secondary)] mb-1 block">Date</label>
+              <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Date</label>
               <Input type="date" value={formDate} onChange={e => setFormDate(e.target.value)} />
             </div>
             <div>
-              <label className="text-xs font-medium text-[var(--color-text-secondary)] mb-1 block">Début</label>
+              <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Début</label>
               <Input type="time" value={formTimeStart} onChange={e => setFormTimeStart(e.target.value)} />
             </div>
             <div>
-              <label className="text-xs font-medium text-[var(--color-text-secondary)] mb-1 block">Fin</label>
+              <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Fin</label>
               <Input type="time" value={formTimeEnd} onChange={e => setFormTimeEnd(e.target.value)} />
             </div>
           </div>
           <div>
-            <label className="text-xs font-medium text-[var(--color-text-secondary)] mb-1 block">Lieu</label>
+            <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Lieu</label>
             <Input value={formLocation} onChange={e => setFormLocation(e.target.value)} placeholder="Bureau, Zoom, adresse..." />
           </div>
           <div>
-            <label className="text-xs font-medium text-[var(--color-text-secondary)] mb-1 block">Description</label>
+            <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Description</label>
             <textarea value={formDescription} onChange={e => setFormDescription(e.target.value)}
               rows={2} placeholder="Notes pour le rendez-vous..."
-              className="w-full px-3 py-2 bg-[var(--color-bg-tertiary)] border border-[var(--color-border-subtle)] rounded-[var(--radius-md)] text-sm placeholder:text-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent)] resize-none" />
+              className="w-full px-3 py-2 bg-[var(--bg-subtle)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand-primary)] resize-none" />
           </div>
           <div className="flex gap-2 justify-end">
             <Button variant="secondary" onClick={() => setShowAddModal(false)}>Annuler</Button>

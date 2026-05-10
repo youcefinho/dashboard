@@ -177,7 +177,7 @@ export function LeadDetailPage() {
                 </Badge>
                 <Badge color={STATUS_COLORS[lead.status]}>{STATUS_LABELS[lead.status]}</Badge>
                 {lead.lifecycle_stage && (
-                  <Badge color={LIFECYCLE_COLORS[lead.lifecycle_stage as LifecycleStage] || 'var(--color-muted)'}>
+                  <Badge color={LIFECYCLE_COLORS[lead.lifecycle_stage as LifecycleStage] || 'var(--text-muted)'}>
                     {LIFECYCLE_LABELS[lead.lifecycle_stage as LifecycleStage] || lead.lifecycle_stage}
                   </Badge>
                 )}
@@ -213,28 +213,28 @@ export function LeadDetailPage() {
                 { key: 'timeline', label: 'Délai', val: lead.timeline || '—' },
               ].map(f => (
                 <div key={f.key}>
-                  <p className="text-[var(--color-text-muted)] text-[10px] uppercase tracking-wider mb-0.5">{f.label}</p>
+                  <p className="text-[var(--text-muted)] text-[10px] uppercase tracking-wider mb-0.5">{f.label}</p>
                   {editingField === f.key ? (
                     <input autoFocus value={fieldValue} onChange={e => setFieldValue(e.target.value)}
                       onBlur={() => void saveField(f.key)} onKeyDown={e => { if (e.key === 'Enter') void saveField(f.key); if (e.key === 'Escape') setEditingField(null); }}
-                      className="w-full px-1.5 py-0.5 text-sm bg-[var(--color-bg-input)] border border-[var(--color-accent)] rounded-[var(--radius-sm)] focus:outline-none" />
+                      className="w-full px-1.5 py-0.5 text-sm bg-[var(--bg-surface)] border border-[var(--brand-primary)] rounded-[var(--radius-sm)] focus:outline-none" />
                   ) : (
-                    <button onClick={() => startEdit(f.key, f.val === '—' ? '' : f.val)} className="text-left cursor-pointer hover:text-[var(--color-accent)] transition-colors w-full group">
-                      {f.link && f.val !== '—' ? <a href={f.link} className="text-[var(--color-accent)] hover:underline" onClick={e => e.stopPropagation()}>{f.val}</a> : <span>{f.val}</span>}
-                      <span className="text-[10px] text-[var(--color-text-muted)] opacity-0 group-hover:opacity-100 ml-1">✏️</span>
+                    <button onClick={() => startEdit(f.key, f.val === '—' ? '' : f.val)} className="text-left cursor-pointer hover:text-[var(--brand-primary)] transition-colors w-full group">
+                      {f.link && f.val !== '—' ? <a href={f.link} className="text-[var(--brand-primary)] hover:underline" onClick={e => e.stopPropagation()}>{f.val}</a> : <span>{f.val}</span>}
+                      <span className="text-[10px] text-[var(--text-muted)] opacity-0 group-hover:opacity-100 ml-1">✏️</span>
                     </button>
                   )}
                 </div>
               ))}
-              {lead.message && <div className="col-span-2"><p className="text-[var(--color-text-muted)] text-[10px] uppercase tracking-wider mb-0.5">Message</p><p className="text-[var(--color-text-secondary)] text-sm">{lead.message}</p></div>}
+              {lead.message && <div className="col-span-2"><p className="text-[var(--text-muted)] text-[10px] uppercase tracking-wider mb-0.5">Message</p><p className="text-[var(--text-secondary)] text-sm">{lead.message}</p></div>}
             </div>
 
             {/* UTM */}
             {(lead.utm_source || lead.utm_medium || lead.utm_campaign) && (
-              <div className="mt-3 pt-3 border-t border-[var(--color-border-subtle)] flex flex-wrap gap-2">
-                {lead.utm_source && <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--color-bg-hover)] text-[var(--color-text-muted)]">source: {lead.utm_source}</span>}
-                {lead.utm_medium && <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--color-bg-hover)] text-[var(--color-text-muted)]">medium: {lead.utm_medium}</span>}
-                {lead.utm_campaign && <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--color-bg-hover)] text-[var(--color-text-muted)]">campaign: {lead.utm_campaign}</span>}
+              <div className="mt-3 pt-3 border-t border-[var(--border-subtle)] flex flex-wrap gap-2">
+                {lead.utm_source && <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--bg-subtle)] text-[var(--text-muted)]">source: {lead.utm_source}</span>}
+                {lead.utm_medium && <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--bg-subtle)] text-[var(--text-muted)]">medium: {lead.utm_medium}</span>}
+                {lead.utm_campaign && <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--bg-subtle)] text-[var(--text-muted)]">campaign: {lead.utm_campaign}</span>}
               </div>
             )}
           </Card>
@@ -256,19 +256,19 @@ export function LeadDetailPage() {
           <Card className="p-5">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold">📝 Notes</h3>
-              {!isEditingNotes && <button onClick={() => setIsEditingNotes(true)} className="text-xs text-[var(--color-accent)] hover:underline cursor-pointer">Modifier</button>}
+              {!isEditingNotes && <button onClick={() => setIsEditingNotes(true)} className="text-xs text-[var(--brand-primary)] hover:underline cursor-pointer">Modifier</button>}
             </div>
             {isEditingNotes ? (
               <div className="space-y-2">
                 <textarea value={editNotes} onChange={(e) => setEditNotes(e.target.value)} rows={4}
-                  className="w-full px-3 py-2 text-sm bg-[var(--color-bg-input)] border border-[var(--color-border-subtle)] rounded-[var(--radius-md)] text-[var(--color-text-primary)] resize-none focus:border-[var(--color-accent)] focus:outline-none" />
+                  className="w-full px-3 py-2 text-sm bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-[var(--text-primary)] resize-none focus:border-[var(--brand-primary)] focus:outline-none" />
                 <div className="flex gap-2">
                   <Button size="sm" onClick={() => void handleSaveNotes()}>Sauvegarder</Button>
                   <Button size="sm" variant="ghost" onClick={() => { setIsEditingNotes(false); setEditNotes(lead.notes || ''); }}>Annuler</Button>
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-[var(--color-text-secondary)] whitespace-pre-wrap">{lead.notes || 'Aucune note pour le moment.'}</p>
+              <p className="text-sm text-[var(--text-secondary)] whitespace-pre-wrap">{lead.notes || 'Aucune note pour le moment.'}</p>
             )}
           </Card>
 
@@ -291,31 +291,31 @@ export function LeadDetailPage() {
           <Card className="p-5">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold">📋 Timeline d'activité</h3>
-              <span className="text-[10px] text-[var(--color-text-muted)]">{lead.activity?.length || 0} événements</span>
+              <span className="text-[10px] text-[var(--text-muted)]">{lead.activity?.length || 0} événements</span>
             </div>
             {lead.activity && lead.activity.length > 0 ? (
               <div className="relative pl-6">
                 {/* Ligne verticale */}
-                <div className="absolute left-[9px] top-2 bottom-2 w-px bg-[var(--color-border-subtle)]" />
+                <div className="absolute left-[9px] top-2 bottom-2 w-px bg-[var(--border-subtle)]" />
                 <div className="space-y-4">
                   {lead.activity.map((act, i) => {
                     const actionType = act.action as ActivityType;
-                    const dotColor = actionType === 'email_sent' || actionType === 'sms_sent' ? 'var(--color-info)'
-                      : actionType === 'status_change' ? 'var(--color-warning)'
-                      : actionType === 'created' ? 'var(--color-success)'
-                      : actionType === 'deal_value_changed' ? 'var(--color-accent)'
-                      : 'var(--color-muted)';
+                    const dotColor = actionType === 'email_sent' || actionType === 'sms_sent' ? 'var(--info)'
+                      : actionType === 'status_change' ? 'var(--warning)'
+                      : actionType === 'created' ? 'var(--success)'
+                      : actionType === 'deal_value_changed' ? 'var(--brand-primary)'
+                      : 'var(--text-muted)';
                     return (
                       <div key={i} className="relative flex items-start gap-3 text-sm">
                         {/* Pastille */}
-                        <div className="absolute -left-6 top-1 w-[10px] h-[10px] rounded-full border-2 border-[var(--color-bg-secondary)]" style={{ background: dotColor }} />
+                        <div className="absolute -left-6 top-1 w-[10px] h-[10px] rounded-full border-2 border-[var(--bg-surface)]" style={{ background: dotColor }} />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <span className="text-sm">{ACTIVITY_ICONS[actionType] || '•'}</span>
                             <span className="font-medium text-sm">{ACTIVITY_LABELS[actionType] || act.action}</span>
-                            <span className="text-[10px] text-[var(--color-text-muted)] ml-auto shrink-0">{timeAgo(act.created_at)}</span>
+                            <span className="text-[10px] text-[var(--text-muted)] ml-auto shrink-0">{timeAgo(act.created_at)}</span>
                           </div>
-                          {act.details && <p className="text-xs text-[var(--color-text-muted)] mt-0.5 pl-6">{act.details}</p>}
+                          {act.details && <p className="text-xs text-[var(--text-muted)] mt-0.5 pl-6">{act.details}</p>}
                         </div>
                       </div>
                     );
@@ -323,7 +323,7 @@ export function LeadDetailPage() {
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-[var(--color-text-muted)]">Aucune activité enregistrée.</p>
+              <p className="text-sm text-[var(--text-muted)]">Aucune activité enregistrée.</p>
             )}
           </Card>
           )}
@@ -332,13 +332,13 @@ export function LeadDetailPage() {
           <Card className="p-5">
             <h3 className="text-sm font-semibold mb-3">📝 Notes ({leadNotes.length})</h3>
             {/* Formulaire ajout note */}
-            <div className="mb-4 space-y-2 p-3 rounded-[var(--radius-md)] bg-[var(--color-bg-hover)]">
+            <div className="mb-4 space-y-2 p-3 rounded-[var(--radius-md)] bg-[var(--bg-subtle)]">
               <textarea value={newNoteBody} onChange={e => setNewNoteBody(e.target.value)} rows={3}
                 placeholder="Ajouter une note..."
-                className="w-full px-3 py-2 text-sm bg-[var(--color-bg-input)] border border-[var(--color-border-subtle)] rounded-[var(--radius-md)] text-[var(--color-text-primary)] resize-none focus:border-[var(--color-accent)] focus:outline-none" />
+                className="w-full px-3 py-2 text-sm bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-[var(--text-primary)] resize-none focus:border-[var(--brand-primary)] focus:outline-none" />
               <div className="flex items-center gap-2">
                 <select value={newNoteCategory} onChange={e => setNewNoteCategory(e.target.value)}
-                  className="text-xs px-2 py-1 bg-[var(--color-bg-input)] border border-[var(--color-border-subtle)] rounded-[var(--radius-sm)] text-[var(--color-text-secondary)]">
+                  className="text-xs px-2 py-1 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] text-[var(--text-secondary)]">
                   {Object.entries(NOTE_CATEGORY_LABELS).map(([k, v]) => <option key={k} value={k}>{NOTE_CATEGORY_ICONS[k]} {v}</option>)}
                 </select>
                 <Button size="sm" disabled={!newNoteBody.trim()} onClick={async () => {
@@ -350,13 +350,13 @@ export function LeadDetailPage() {
             </div>
             {/* Liste des notes */}
             {leadNotes.length === 0 ? (
-              <p className="text-sm text-[var(--color-text-muted)]">Aucune note pour le moment.</p>
+              <p className="text-sm text-[var(--text-muted)]">Aucune note pour le moment.</p>
             ) : (
               <div className="space-y-3">
                 {leadNotes.map(note => (
-                  <div key={note.id} className={`p-3 rounded-[var(--radius-md)] border ${note.is_pinned ? 'border-[var(--color-warning)] bg-[oklch(0.95_0.02_90)]' : 'border-[var(--color-border-subtle)] bg-[var(--color-bg-card)]'}`}>
+                  <div key={note.id} className={`p-3 rounded-[var(--radius-md)] border ${note.is_pinned ? 'border-[var(--warning)] bg-[oklch(0.95_0.02_90)]' : 'border-[var(--border-subtle)] bg-[var(--bg-surface)]'}`}>
                     <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
+                      <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
                         {note.is_pinned ? <span>📌</span> : null}
                         <span>{NOTE_CATEGORY_ICONS[note.category] || '📝'} {NOTE_CATEGORY_LABELS[note.category] || note.category}</span>
                         <span>·</span>
@@ -365,9 +365,9 @@ export function LeadDetailPage() {
                         <span>{new Date(note.created_at).toLocaleDateString('fr-CA')}</span>
                       </div>
                       <button onClick={async () => { await deleteLeadNote(leadId, note.id); const r = await getLeadNotes(leadId); if (r.data) setLeadNotes(r.data); }}
-                        className="text-xs text-[var(--color-danger)] hover:underline cursor-pointer">✕</button>
+                        className="text-xs text-[var(--danger)] hover:underline cursor-pointer">✕</button>
                     </div>
-                    <p className="text-sm text-[var(--color-text-secondary)] whitespace-pre-wrap">{note.body}</p>
+                    <p className="text-sm text-[var(--text-secondary)] whitespace-pre-wrap">{note.body}</p>
                   </div>
                 ))}
               </div>
@@ -379,20 +379,20 @@ export function LeadDetailPage() {
           <Card className="p-5">
             <h3 className="text-sm font-semibold mb-3">📊 Scores multi-profils</h3>
             {leadScores.length === 0 ? (
-              <p className="text-sm text-[var(--color-text-muted)]">Aucun score calculé. Les scores seront calculés automatiquement.</p>
+              <p className="text-sm text-[var(--text-muted)]">Aucun score calculé. Les scores seront calculés automatiquement.</p>
             ) : (
               <div className="space-y-3">
                 {leadScores.map(s => (
-                  <div key={s.profile_id} className="p-3 rounded-[var(--radius-md)] bg-[var(--color-bg-hover)]">
+                  <div key={s.profile_id} className="p-3 rounded-[var(--radius-md)] bg-[var(--bg-subtle)]">
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-sm font-medium">{s.name}</span>
-                      <span className={`text-lg font-bold ${s.score >= 70 ? 'text-[var(--color-success)]' : s.score >= 40 ? 'text-[var(--color-warning)]' : 'text-[var(--color-danger)]'}`}>{s.score}/100</span>
+                      <span className={`text-lg font-bold ${s.score >= 70 ? 'text-[var(--success)]' : s.score >= 40 ? 'text-[var(--warning)]' : 'text-[var(--danger)]'}`}>{s.score}/100</span>
                     </div>
-                    <div className="w-full h-2 rounded-full bg-[var(--color-border-subtle)] overflow-hidden">
-                      <div className={`h-full rounded-full transition-all ${s.score >= 70 ? 'bg-[var(--color-success)]' : s.score >= 40 ? 'bg-[var(--color-warning)]' : 'bg-[var(--color-danger)]'}`}
+                    <div className="w-full h-2 rounded-full bg-[var(--border-subtle)] overflow-hidden">
+                      <div className={`h-full rounded-full transition-all ${s.score >= 70 ? 'bg-[var(--success)]' : s.score >= 40 ? 'bg-[var(--warning)]' : 'bg-[var(--danger)]'}`}
                         style={{ width: `${s.score}%` }} />
                     </div>
-                    {s.description && <p className="text-xs text-[var(--color-text-muted)] mt-1">{s.description}</p>}
+                    {s.description && <p className="text-xs text-[var(--text-muted)] mt-1">{s.description}</p>}
                   </div>
                 ))}
               </div>
@@ -403,8 +403,8 @@ export function LeadDetailPage() {
                 <h3 className="text-sm font-semibold mt-6 mb-3">🏷️ Champs personnalisés</h3>
                 <div className="grid grid-cols-2 gap-3">
                   {customFields.map(cf => (
-                    <div key={cf.field_id} className="p-2 rounded-[var(--radius-sm)] bg-[var(--color-bg-hover)]">
-                      <p className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">{cf.field_name}</p>
+                    <div key={cf.field_id} className="p-2 rounded-[var(--radius-sm)] bg-[var(--bg-subtle)]">
+                      <p className="text-[10px] uppercase tracking-wider text-[var(--text-muted)]">{cf.field_name}</p>
                       <p className="text-sm font-medium">{cf.value || '—'}</p>
                     </div>
                   ))}
@@ -420,13 +420,13 @@ export function LeadDetailPage() {
         <div className="space-y-4">
           {/* Statut */}
           <Card className="p-4">
-            <h3 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-3">Statut</h3>
+            <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Statut</h3>
             <div className="space-y-1.5">
               {LEAD_STATUSES.map((s) => (
                 <button key={s} onClick={() => void handleStatusChange(s)}
                   className={`w-full text-left px-3 py-2 rounded-[var(--radius-md)] text-sm font-medium transition-all cursor-pointer ${lead.status === s
-                    ? 'text-white shadow-[var(--shadow-glow)]' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-hover)]'}`}
-                  style={lead.status === s ? { backgroundColor: STATUS_COLORS[s].replace('var(', '').replace(')', '') ? undefined : undefined, background: 'var(--color-accent)' } : {}}>
+                    ? 'text-white shadow-[var(--shadow-glow)]' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]'}`}
+                  style={lead.status === s ? { backgroundColor: STATUS_COLORS[s].replace('var(', '').replace(')', '') ? undefined : undefined, background: 'var(--brand-primary)' } : {}}>
                   <Badge color={STATUS_COLORS[s]}>{STATUS_LABELS[s]}</Badge>
                 </button>
               ))}
@@ -435,35 +435,35 @@ export function LeadDetailPage() {
 
           {/* Opportunité / Deal */}
           <Card className="p-4">
-            <h3 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-3">💰 Opportunité</h3>
+            <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">💰 Opportunité</h3>
             <div className="space-y-3">
               <div>
-                <p className="text-[10px] text-[var(--color-text-muted)] mb-0.5">Valeur du deal</p>
+                <p className="text-[10px] text-[var(--text-muted)] mb-0.5">Valeur du deal</p>
                 {isEditingDeal ? (
                   <div className="flex gap-2">
                     <input type="number" value={editDealValue} onChange={(e) => setEditDealValue(e.target.value)}
-                      className="flex-1 px-2 py-1.5 text-sm bg-[var(--color-bg-input)] border border-[var(--color-border-subtle)] rounded-[var(--radius-sm)] focus:outline-none" />
+                      className="flex-1 px-2 py-1.5 text-sm bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] focus:outline-none" />
                     <Button size="sm" onClick={() => void handleSaveDeal()}>OK</Button>
                   </div>
                 ) : (
-                  <button onClick={() => setIsEditingDeal(true)} className="text-xl font-bold text-[var(--color-accent)] cursor-pointer hover:underline">
+                  <button onClick={() => setIsEditingDeal(true)} className="text-xl font-bold text-[var(--brand-primary)] cursor-pointer hover:underline">
                     {lead.deal_value ? `${lead.deal_value.toLocaleString('fr-CA')} $` : 'Ajouter'}
                   </button>
                 )}
               </div>
               <div>
-                <p className="text-[10px] text-[var(--color-text-muted)] mb-0.5">Probabilité ({STATUS_LABELS[lead.status]})</p>
+                <p className="text-[10px] text-[var(--text-muted)] mb-0.5">Probabilité ({STATUS_LABELS[lead.status]})</p>
                 <div className="flex items-center gap-2">
-                  <div className="flex-1 h-1.5 rounded-full bg-[var(--color-bg-hover)] overflow-hidden">
-                    <div className="h-full rounded-full bg-[var(--color-accent)] transition-all" style={{ width: `${stageProbability[lead.status] || 0}%` }} />
+                  <div className="flex-1 h-1.5 rounded-full bg-[var(--bg-subtle)] overflow-hidden">
+                    <div className="h-full rounded-full bg-[var(--brand-primary)] transition-all" style={{ width: `${stageProbability[lead.status] || 0}%` }} />
                   </div>
-                  <span className="text-xs font-semibold text-[var(--color-accent)]">{stageProbability[lead.status] || 0}%</span>
+                  <span className="text-xs font-semibold text-[var(--brand-primary)]">{stageProbability[lead.status] || 0}%</span>
                 </div>
               </div>
               {forecast > 0 && (
                 <div>
-                  <p className="text-[10px] text-[var(--color-text-muted)] mb-0.5">Prévision pondérée</p>
-                  <p className="text-sm font-semibold text-[var(--color-success)]">{forecast.toLocaleString('fr-CA')} $</p>
+                  <p className="text-[10px] text-[var(--text-muted)] mb-0.5">Prévision pondérée</p>
+                  <p className="text-sm font-semibold text-[var(--success)]">{forecast.toLocaleString('fr-CA')} $</p>
                 </div>
               )}
             </div>
@@ -471,26 +471,26 @@ export function LeadDetailPage() {
 
           {/* Tags */}
           <Card className="p-4">
-            <h3 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-2">🏷️ Tags</h3>
+            <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">🏷️ Tags</h3>
             <div className="flex flex-wrap gap-1.5 mb-3">
               {lead.tags && lead.tags.length > 0 ? lead.tags.map((tag) => (
-                <span key={tag} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-[var(--color-bg-hover)] text-[var(--color-text-secondary)]">
+                <span key={tag} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-[var(--bg-subtle)] text-[var(--text-secondary)]">
                   {tag}
-                  <button onClick={() => void handleRemoveTag(tag)} className="text-[var(--color-text-muted)] hover:text-[var(--color-danger)] cursor-pointer">×</button>
+                  <button onClick={() => void handleRemoveTag(tag)} className="text-[var(--text-muted)] hover:text-[var(--danger)] cursor-pointer">×</button>
                 </span>
-              )) : <p className="text-xs text-[var(--color-text-muted)]">Aucun tag</p>}
+              )) : <p className="text-xs text-[var(--text-muted)]">Aucun tag</p>}
             </div>
             <div className="flex gap-1.5">
               <input type="text" value={newTag} onChange={(e) => setNewTag(e.target.value)} placeholder="Nouveau tag..."
                 onKeyDown={(e) => { if (e.key === 'Enter') void handleAddTag(); }}
-                className="flex-1 px-2 py-1.5 text-xs bg-[var(--color-bg-input)] border border-[var(--color-border-subtle)] rounded-[var(--radius-sm)] focus:outline-none" />
+                className="flex-1 px-2 py-1.5 text-xs bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] focus:outline-none" />
               <Button size="sm" variant="secondary" onClick={() => void handleAddTag()}>+</Button>
             </div>
           </Card>
 
           {/* DND — Do Not Disturb */}
           <Card className="p-4">
-            <h3 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-3">🔕 Ne pas déranger</h3>
+            <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">🔕 Ne pas déranger</h3>
             <div className="space-y-2">
               {(['email', 'sms', 'call'] as const).map(channel => {
                 const dndSettings = (() => {
@@ -513,12 +513,12 @@ export function LeadDetailPage() {
                     }}
                     className={`w-full flex items-center justify-between px-3 py-2 rounded-[var(--radius-md)] text-xs font-medium transition-all cursor-pointer ${
                       isActive
-                        ? 'bg-[color-mix(in_oklch,var(--color-danger)_10%,transparent)] text-[var(--color-danger)] border border-[color-mix(in_oklch,var(--color-danger)_25%,transparent)]'
-                        : 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-hover)]'
+                        ? 'bg-[color-mix(in_oklch,var(--danger)_10%,transparent)] text-[var(--danger)] border border-[color-mix(in_oklch,var(--danger)_25%,transparent)]'
+                        : 'bg-[var(--bg-subtle)] text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]'
                     }`}
                   >
                     <span>{icons[channel]} {labels[channel]}</span>
-                    <span className={`w-8 h-[18px] rounded-full relative transition-all ${isActive ? 'bg-[var(--color-danger)]' : 'bg-[var(--color-border)]'}`}>
+                    <span className={`w-8 h-[18px] rounded-full relative transition-all ${isActive ? 'bg-[var(--danger)]' : 'bg-[var(--border-default)]'}`}>
                       <span className={`absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white transition-all shadow-sm ${isActive ? 'left-[14px]' : 'left-[2px]'}`} />
                     </span>
                   </button>
@@ -529,7 +529,7 @@ export function LeadDetailPage() {
 
           {/* Champs étendus */}
           <Card className="p-4">
-            <h3 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-3">📋 Infos complémentaires</h3>
+            <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">📋 Infos complémentaires</h3>
             <div className="space-y-2 text-xs">
               {[
                 { key: 'date_of_birth', label: 'Date de naissance', val: (lead as unknown as Record<string, unknown>).date_of_birth as string || '—', type: 'date' },
@@ -537,17 +537,17 @@ export function LeadDetailPage() {
                 { key: 'timezone', label: 'Fuseau horaire', val: (lead as unknown as Record<string, unknown>).timezone as string || 'America/Toronto', type: 'text' },
               ].map(f => (
                 <div key={f.key} className="flex items-center justify-between">
-                  <span className="text-[var(--color-text-muted)]">{f.label}</span>
+                  <span className="text-[var(--text-muted)]">{f.label}</span>
                   {editingField === f.key ? (
                     <input
                       autoFocus type={f.type} value={fieldValue}
                       onChange={e => setFieldValue(e.target.value)}
                       onBlur={() => void saveField(f.key)}
                       onKeyDown={e => { if (e.key === 'Enter') void saveField(f.key); if (e.key === 'Escape') setEditingField(null); }}
-                      className="w-32 px-1.5 py-0.5 text-xs bg-[var(--color-bg-input)] border border-[var(--color-accent)] rounded-[var(--radius-sm)] focus:outline-none text-right"
+                      className="w-32 px-1.5 py-0.5 text-xs bg-[var(--bg-surface)] border border-[var(--brand-primary)] rounded-[var(--radius-sm)] focus:outline-none text-right"
                     />
                   ) : (
-                    <button onClick={() => startEdit(f.key, f.val === '—' ? '' : f.val)} className="text-right cursor-pointer hover:text-[var(--color-accent)] transition-colors">
+                    <button onClick={() => startEdit(f.key, f.val === '—' ? '' : f.val)} className="text-right cursor-pointer hover:text-[var(--brand-primary)] transition-colors">
                       {f.val}
                     </button>
                   )}
@@ -558,24 +558,24 @@ export function LeadDetailPage() {
 
           {/* RDV liés */}
           <Card className="p-4">
-            <h3 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-2">📅 Rendez-vous</h3>
+            <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">📅 Rendez-vous</h3>
             {leadAppointments.length > 0 ? (
               <div className="space-y-2">
                 {leadAppointments.map((appt) => {
                   const apptDate = new Date(appt.start_time + (appt.start_time.endsWith('Z') ? '' : 'Z'));
                   return (
-                    <div key={appt.id} className="p-2 bg-[var(--color-bg-tertiary)] rounded-[var(--radius-sm)]">
+                    <div key={appt.id} className="p-2 bg-[var(--bg-subtle)] rounded-[var(--radius-sm)]">
                       <div className="flex items-center gap-1.5 mb-0.5">
                         <span className="text-xs">{APPOINTMENT_TYPE_ICONS[appt.type]}</span>
                         <span className="text-xs font-medium truncate">{appt.title}</span>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-[10px] text-[var(--color-text-muted)]">
+                        <span className="text-[10px] text-[var(--text-muted)]">
                           {APPOINTMENT_TYPE_LABELS[appt.type]} · {apptDate.toLocaleDateString('fr-CA')} à {apptDate.toLocaleTimeString('fr-CA', { hour: '2-digit', minute: '2-digit' })}
                         </span>
                         <Badge color={
-                          appt.status === 'confirmed' ? 'var(--color-success)' :
-                          appt.status === 'cancelled' ? 'var(--color-danger)' : 'var(--color-muted)'
+                          appt.status === 'confirmed' ? 'var(--success)' :
+                          appt.status === 'cancelled' ? 'var(--danger)' : 'var(--text-muted)'
                         }>
                           {APPOINTMENT_STATUS_LABELS[appt.status]}
                         </Badge>
@@ -585,61 +585,61 @@ export function LeadDetailPage() {
                 })}
               </div>
             ) : (
-              <p className="text-xs text-[var(--color-text-muted)]">Aucun RDV planifié</p>
+              <p className="text-xs text-[var(--text-muted)]">Aucun RDV planifié</p>
             )}
           </Card>
 
           {/* Score visuel */}
           <Card className="p-4">
-            <h3 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-2">🔥 Lead Score</h3>
+            <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">🔥 Lead Score</h3>
             <div className="flex items-center gap-3">
               <div className="flex-1">
-                <div className="h-2.5 rounded-full bg-[var(--color-bg-hover)] overflow-hidden">
+                <div className="h-2.5 rounded-full bg-[var(--bg-subtle)] overflow-hidden">
                   <div className="h-full rounded-full transition-all duration-500" style={{
                     width: `${lead.score}%`,
-                    background: lead.score >= 70 ? 'var(--color-success)' : lead.score >= 40 ? 'var(--color-warning)' : 'var(--color-danger)',
+                    background: lead.score >= 70 ? 'var(--success)' : lead.score >= 40 ? 'var(--warning)' : 'var(--danger)',
                   }} />
                 </div>
               </div>
               <span className={`text-lg font-bold ${
-                lead.score >= 70 ? 'text-[var(--color-success)]' : lead.score >= 40 ? 'text-[var(--color-warning)]' : 'text-[var(--color-danger)]'
+                lead.score >= 70 ? 'text-[var(--success)]' : lead.score >= 40 ? 'text-[var(--warning)]' : 'text-[var(--danger)]'
               }`}>{lead.score}</span>
             </div>
-            <p className="text-[10px] text-[var(--color-text-muted)] mt-1">
+            <p className="text-[10px] text-[var(--text-muted)] mt-1">
               {lead.score >= 70 ? '🔥 Lead chaud — prêt à convertir' : lead.score >= 40 ? '🟡 Lead tiède — à relancer' : '🔵 Lead froid — à nourrir'}
             </p>
           </Card>
 
           {/* Tâches liées */}
           <Card className="p-4">
-            <h3 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-2">📋 Tâches</h3>
+            <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">📋 Tâches</h3>
             {leadTasks.length > 0 ? (
               <div className="space-y-1.5">
                 {leadTasks.map(task => (
                   <button key={task.id}
                     onClick={() => { const next = task.status === 'done' ? 'todo' as const : 'done' as const; setLeadTasks(prev => prev.map(t => t.id === task.id ? {...t, status: next} : t)); void updateTask(task.id, { status: next }); }}
-                    className={`w-full text-left p-2 rounded-[var(--radius-sm)] bg-[var(--color-bg-tertiary)] cursor-pointer hover:bg-[var(--color-bg-hover)] transition-colors ${task.status === 'done' ? 'opacity-50' : ''}`}>
+                    className={`w-full text-left p-2 rounded-[var(--radius-sm)] bg-[var(--bg-subtle)] cursor-pointer hover:bg-[var(--bg-subtle)] transition-colors ${task.status === 'done' ? 'opacity-50' : ''}`}>
                     <div className="flex items-center gap-1.5">
                       <span className="text-xs">{TASK_STATUS_ICONS[task.status]}</span>
                       <span className={`text-xs font-medium truncate ${task.status === 'done' ? 'line-through' : ''}`}>{task.title}</span>
                     </div>
-                    <span className="text-[10px] text-[var(--color-text-muted)]">{TASK_PRIORITY_ICONS[task.priority]} {TASK_STATUS_LABELS[task.status]}</span>
+                    <span className="text-[10px] text-[var(--text-muted)]">{TASK_PRIORITY_ICONS[task.priority]} {TASK_STATUS_LABELS[task.status]}</span>
                   </button>
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-[var(--color-text-muted)]">Aucune tâche liée</p>
+              <p className="text-xs text-[var(--text-muted)]">Aucune tâche liée</p>
             )}
           </Card>
 
           {/* Infos */}
           <Card className="p-4">
-            <h3 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-2">Infos</h3>
+            <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">Infos</h3>
             <div className="space-y-2 text-xs">
-              <div className="flex justify-between"><span className="text-[var(--color-text-muted)]">Créé le</span><span>{new Date(lead.created_at).toLocaleDateString('fr-CA')}</span></div>
-              <div className="flex justify-between"><span className="text-[var(--color-text-muted)]">Mis à jour</span><span>{new Date(lead.updated_at).toLocaleDateString('fr-CA')}</span></div>
-              <div className="flex justify-between"><span className="text-[var(--color-text-muted)]">Source</span><span>{SOURCE_LABELS[lead.source] || lead.source}</span></div>
-              <div className="flex justify-between"><span className="text-[var(--color-text-muted)]">ID</span><span className="font-mono truncate ml-2">{lead.id.slice(0, 8)}</span></div>
+              <div className="flex justify-between"><span className="text-[var(--text-muted)]">Créé le</span><span>{new Date(lead.created_at).toLocaleDateString('fr-CA')}</span></div>
+              <div className="flex justify-between"><span className="text-[var(--text-muted)]">Mis à jour</span><span>{new Date(lead.updated_at).toLocaleDateString('fr-CA')}</span></div>
+              <div className="flex justify-between"><span className="text-[var(--text-muted)]">Source</span><span>{SOURCE_LABELS[lead.source] || lead.source}</span></div>
+              <div className="flex justify-between"><span className="text-[var(--text-muted)]">ID</span><span className="font-mono truncate ml-2">{lead.id.slice(0, 8)}</span></div>
             </div>
           </Card>
         </div>

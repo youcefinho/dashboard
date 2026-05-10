@@ -82,7 +82,7 @@ export function WorkflowDetailPage() {
   return (
     <AppLayout title={workflow.name}>
       <button onClick={() => void navigate({ to: '/workflows' })}
-        className="text-sm text-[var(--color-text-muted)] hover:text-[var(--color-accent)] mb-4 flex items-center gap-1 cursor-pointer">
+        className="text-sm text-[var(--text-muted)] hover:text-[var(--brand-primary)] mb-4 flex items-center gap-1 cursor-pointer">
         ← Retour aux automations
       </button>
 
@@ -94,12 +94,12 @@ export function WorkflowDetailPage() {
             <div className="flex items-start justify-between mb-3">
               <div>
                 <h2 className="text-lg font-bold">{workflow.name}</h2>
-                <p className="text-sm text-[var(--color-text-muted)] mt-1">{workflow.description}</p>
+                <p className="text-sm text-[var(--text-muted)] mt-1">{workflow.description}</p>
               </div>
               <button
                 onClick={() => void handleToggle()}
                 className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors cursor-pointer ${
-                  workflow.is_active ? 'bg-[var(--color-success)]' : 'bg-[var(--color-bg-hover)]'
+                  workflow.is_active ? 'bg-[var(--success)]' : 'bg-[var(--bg-subtle)]'
                 }`}
               >
                 <span className={`inline-block h-5 w-5 rounded-full bg-white transition-transform shadow-sm ${
@@ -108,13 +108,13 @@ export function WorkflowDetailPage() {
               </button>
             </div>
 
-            <div className="flex items-center gap-2 px-3 py-2 bg-[var(--color-bg-tertiary)] rounded-[var(--radius-md)]">
+            <div className="flex items-center gap-2 px-3 py-2 bg-[var(--bg-subtle)] rounded-[var(--radius-md)]">
               <span className="text-lg">{TRIGGER_ICONS[workflow.trigger_type as TriggerType] || '⚡'}</span>
               <span className="text-sm font-medium">
                 Déclencheur : <strong>{TRIGGER_LABELS[workflow.trigger_type as TriggerType]}</strong>
               </span>
               {workflow.trigger_config && workflow.trigger_config !== '{}' && (
-                <span className="text-xs text-[var(--color-text-muted)] ml-2">
+                <span className="text-xs text-[var(--text-muted)] ml-2">
                   ({workflow.trigger_config})
                 </span>
               )}
@@ -125,7 +125,7 @@ export function WorkflowDetailPage() {
           <Card className="p-5">
             <h3 className="text-sm font-semibold mb-4">🔗 Séquence d'étapes ({steps.length})</h3>
             {steps.length === 0 ? (
-              <p className="text-sm text-[var(--color-text-muted)]">Aucune étape configurée.</p>
+              <p className="text-sm text-[var(--text-muted)]">Aucune étape configurée.</p>
             ) : (
               <div className="space-y-0">
                 {steps.sort((a, b) => a.step_order - b.step_order).map((step, i) => {
@@ -140,25 +140,25 @@ export function WorkflowDetailPage() {
                         <div className="flex flex-col items-center">
                           <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${
                             step.step_type === 'wait' 
-                              ? 'bg-[var(--color-warning)]/15 text-[var(--color-warning)]' 
+                              ? 'bg-[var(--warning)]/15 text-[var(--warning)]' 
                               : step.step_type === 'condition'
-                                ? 'bg-[var(--color-info)]/15 text-[var(--color-info)]'
-                                : 'bg-[var(--color-accent)]/15 text-[var(--color-accent)]'
+                                ? 'bg-[var(--info)]/15 text-[var(--info)]'
+                                : 'bg-[var(--brand-primary)]/15 text-[var(--brand-primary)]'
                           }`}>
                             {STEP_TYPE_ICONS[step.step_type as StepType] || '•'}
                           </div>
                           {!isLast && (
-                            <div className="w-0.5 h-8 bg-[var(--color-border-subtle)]" />
+                            <div className="w-0.5 h-8 bg-[var(--border-subtle)]" />
                           )}
                         </div>
 
                         {/* Contenu */}
                         <div className="flex-1 pb-3">
                           <div className="flex items-center gap-2">
-                            <span className="text-xs font-semibold text-[var(--color-text-muted)]">#{step.step_order}</span>
+                            <span className="text-xs font-semibold text-[var(--text-muted)]">#{step.step_order}</span>
                             <span className="text-sm font-medium">{STEP_TYPE_LABELS[step.step_type as StepType]}</span>
                           </div>
-                          <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                          <p className="text-xs text-[var(--text-muted)] mt-0.5">
                             {step.step_type === 'wait' && `⏳ Attendre ${formatDelay(Number(config.delay_minutes || 0))}`}
                             {step.step_type === 'send_email' && `📧 Template : ${String(config.template_id || '')}`}
                             {step.step_type === 'send_sms' && `💬 « ${String(config.message || '').slice(0, 60)}... »`}
@@ -181,30 +181,30 @@ export function WorkflowDetailPage() {
         <div className="space-y-4">
           {/* Stats */}
           <Card className="p-4">
-            <h3 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-3">Statistiques</h3>
+            <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Statistiques</h3>
             <div className="space-y-3">
               <div className="flex justify-between text-sm">
-                <span className="text-[var(--color-text-muted)]">Statut</span>
-                <Badge color={workflow.is_active ? 'var(--color-success)' : 'var(--color-muted)'}>
+                <span className="text-[var(--text-muted)]">Statut</span>
+                <Badge color={workflow.is_active ? 'var(--success)' : 'var(--text-muted)'}>
                   {workflow.is_active ? 'Actif' : 'Inactif'}
                 </Badge>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-[var(--color-text-muted)]">Étapes</span>
+                <span className="text-[var(--text-muted)]">Étapes</span>
                 <span className="font-medium">{steps.length}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-[var(--color-text-muted)]">Leads inscrits</span>
+                <span className="text-[var(--text-muted)]">Leads inscrits</span>
                 <span className="font-medium">{enrollments.length}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-[var(--color-text-muted)]">Actifs</span>
-                <span className="font-medium text-[var(--color-success)]">
+                <span className="text-[var(--text-muted)]">Actifs</span>
+                <span className="font-medium text-[var(--success)]">
                   {enrollments.filter(e => e.status === 'active').length}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-[var(--color-text-muted)]">Terminés</span>
+                <span className="text-[var(--text-muted)]">Terminés</span>
                 <span className="font-medium">
                   {enrollments.filter(e => e.status === 'completed').length}
                 </span>
@@ -214,23 +214,23 @@ export function WorkflowDetailPage() {
 
           {/* Enrollments récents */}
           <Card className="p-4">
-            <h3 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-3">
+            <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">
               Leads inscrits ({enrollments.length})
             </h3>
             {enrollments.length === 0 ? (
-              <p className="text-xs text-[var(--color-text-muted)]">Aucun lead inscrit dans ce workflow.</p>
+              <p className="text-xs text-[var(--text-muted)]">Aucun lead inscrit dans ce workflow.</p>
             ) : (
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {enrollments.slice(0, 20).map((enr) => (
-                  <div key={enr.id} className="flex items-center justify-between text-xs p-2 bg-[var(--color-bg-hover)] rounded-[var(--radius-sm)]">
+                  <div key={enr.id} className="flex items-center justify-between text-xs p-2 bg-[var(--bg-subtle)] rounded-[var(--radius-sm)]">
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate">{enr.lead_name || enr.lead_id.slice(0, 8)}</p>
-                      <p className="text-[var(--color-text-muted)]">{timeAgo(enr.enrolled_at)}</p>
+                      <p className="text-[var(--text-muted)]">{timeAgo(enr.enrolled_at)}</p>
                     </div>
                     <Badge color={
-                      enr.status === 'active' ? 'var(--color-success)' : 
-                      enr.status === 'completed' ? 'var(--color-info)' :
-                      enr.status === 'cancelled' ? 'var(--color-danger)' : 'var(--color-muted)'
+                      enr.status === 'active' ? 'var(--success)' : 
+                      enr.status === 'completed' ? 'var(--info)' :
+                      enr.status === 'cancelled' ? 'var(--danger)' : 'var(--text-muted)'
                     }>
                       {ENROLLMENT_STATUS_LABELS[enr.status as EnrollmentStatus]}
                     </Badge>
@@ -242,18 +242,18 @@ export function WorkflowDetailPage() {
 
           {/* Infos */}
           <Card className="p-4">
-            <h3 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-2">Infos</h3>
+            <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">Infos</h3>
             <div className="space-y-2 text-xs">
               <div className="flex justify-between">
-                <span className="text-[var(--color-text-muted)]">Créé le</span>
+                <span className="text-[var(--text-muted)]">Créé le</span>
                 <span>{new Date(workflow.created_at).toLocaleDateString('fr-CA')}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[var(--color-text-muted)]">Scope</span>
+                <span className="text-[var(--text-muted)]">Scope</span>
                 <span>{workflow.client_id ? 'Client spécifique' : 'Global (tous)'}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[var(--color-text-muted)]">ID</span>
+                <span className="text-[var(--text-muted)]">ID</span>
                 <span className="font-mono truncate ml-2">{workflow.id.slice(0, 12)}</span>
               </div>
             </div>

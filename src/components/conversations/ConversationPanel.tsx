@@ -103,13 +103,13 @@ export function ConversationPanel({ leadId, leadName, leadEmail, leadPhone }: Co
   return (
     <div className="space-y-4">
       {/* Tabs */}
-      <div className="flex gap-1 p-1 bg-[var(--color-bg-tertiary)] rounded-[var(--radius-md)]">
+      <div className="flex gap-1 p-1 bg-[var(--bg-subtle)] rounded-[var(--radius-md)]">
         <button
           onClick={() => setActiveTab('history')}
           className={`flex-1 py-2 px-3 rounded-[var(--radius-sm)] text-xs font-medium transition-all cursor-pointer ${
             activeTab === 'history'
-              ? 'bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] shadow-sm'
-              : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]'
+              ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-sm'
+              : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
           }`}
         >
           📜 Historique ({messages.length})
@@ -118,8 +118,8 @@ export function ConversationPanel({ leadId, leadName, leadEmail, leadPhone }: Co
           onClick={() => setActiveTab('compose')}
           className={`flex-1 py-2 px-3 rounded-[var(--radius-sm)] text-xs font-medium transition-all cursor-pointer ${
             activeTab === 'compose'
-              ? 'bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] shadow-sm'
-              : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]'
+              ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-sm'
+              : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
           }`}
         >
           ✉️ Composer
@@ -136,7 +136,7 @@ export function ConversationPanel({ leadId, leadName, leadEmail, leadPhone }: Co
               <Skeleton className="h-16" />
             </div>
           ) : messages.length === 0 ? (
-            <div className="text-center py-8 text-[var(--color-text-muted)]">
+            <div className="text-center py-8 text-[var(--text-muted)]">
               <p className="text-2xl mb-2">💬</p>
               <p className="text-sm">Aucune conversation</p>
               <p className="text-xs mt-1">Envoyez le premier message !</p>
@@ -147,8 +147,8 @@ export function ConversationPanel({ leadId, leadName, leadEmail, leadPhone }: Co
                 key={msg.id}
                 className={`p-3 rounded-[var(--radius-md)] border text-sm ${
                   msg.direction === 'outbound'
-                    ? 'bg-[var(--color-accent)]/5 border-[var(--color-accent)]/20 ml-4'
-                    : 'bg-[var(--color-bg-hover)] border-[var(--color-border-subtle)] mr-4'
+                    ? 'bg-[var(--brand-primary)]/5 border-[var(--brand-primary)]/20 ml-4'
+                    : 'bg-[var(--bg-subtle)] border-[var(--border-subtle)] mr-4'
                 }`}
               >
                 <div className="flex items-center justify-between mb-1.5">
@@ -157,16 +157,16 @@ export function ConversationPanel({ leadId, leadName, leadEmail, leadPhone }: Co
                     <span className="font-medium text-xs">
                       {msg.direction === 'outbound' ? 'Vous' : leadName}
                     </span>
-                    <Badge color={msg.status === 'delivered' || msg.status === 'read' ? 'var(--color-success)' : msg.status === 'failed' ? 'var(--color-danger)' : undefined}>
+                    <Badge color={msg.status === 'delivered' || msg.status === 'read' ? 'var(--success)' : msg.status === 'failed' ? 'var(--danger)' : undefined}>
                       {MESSAGE_STATUS_LABELS[msg.status]}
                     </Badge>
                   </div>
-                  <span className="text-[10px] text-[var(--color-text-muted)]">{formatDate(msg.created_at)}</span>
+                  <span className="text-[10px] text-[var(--text-muted)]">{formatDate(msg.created_at)}</span>
                 </div>
                 {msg.subject && (
-                  <p className="font-medium text-xs text-[var(--color-text-secondary)] mb-1">{msg.subject}</p>
+                  <p className="font-medium text-xs text-[var(--text-secondary)] mb-1">{msg.subject}</p>
                 )}
-                <p className="text-xs text-[var(--color-text-secondary)] whitespace-pre-wrap">{msg.body.replace(/<[^>]+>/g, '')}</p>
+                <p className="text-xs text-[var(--text-secondary)] whitespace-pre-wrap">{msg.body.replace(/<[^>]+>/g, '')}</p>
               </div>
             ))
           )}
@@ -177,15 +177,15 @@ export function ConversationPanel({ leadId, leadName, leadEmail, leadPhone }: Co
       {activeTab === 'compose' && (
         <div className="space-y-3">
           {/* Sélection du canal */}
-          <div className="flex gap-1 p-1 bg-[var(--color-bg-tertiary)] rounded-[var(--radius-md)]">
+          <div className="flex gap-1 p-1 bg-[var(--bg-subtle)] rounded-[var(--radius-md)]">
             {(['email', 'sms', 'internal_note'] as const).map((ch) => (
               <button
                 key={ch}
                 onClick={() => setChannel(ch)}
                 className={`flex-1 py-1.5 px-2 rounded-[var(--radius-sm)] text-xs font-medium transition-all cursor-pointer ${
                   channel === ch
-                    ? 'bg-[var(--color-accent)] text-white'
-                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]'
+                    ? 'bg-[var(--brand-primary)] text-white'
+                    : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
                 }`}
               >
                 {CHANNEL_ICONS[ch]} {ch === 'email' ? 'Email' : ch === 'sms' ? 'SMS' : 'Note'}
@@ -194,7 +194,7 @@ export function ConversationPanel({ leadId, leadName, leadEmail, leadPhone }: Co
           </div>
 
           {/* Destinataire */}
-          <div className="text-xs text-[var(--color-text-muted)] px-1">
+          <div className="text-xs text-[var(--text-muted)] px-1">
             {channel === 'email' ? `À : ${leadEmail || 'Pas d\'email'}` : 
              channel === 'sms' ? `À : ${leadPhone || 'Pas de téléphone'}` : 
              '📝 Note interne (visible uniquement par l\'équipe)'}
@@ -205,7 +205,7 @@ export function ConversationPanel({ leadId, leadName, leadEmail, leadPhone }: Co
             <select
               value={selectedTemplate}
               onChange={(e) => applyTemplate(e.target.value)}
-              className="w-full px-3 py-2 bg-[var(--color-bg-tertiary)] border border-[var(--color-border-subtle)] rounded-[var(--radius-md)] text-xs text-[var(--color-text-secondary)] focus:outline-none focus:border-[var(--color-accent)]"
+              className="w-full px-3 py-2 bg-[var(--bg-subtle)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-xs text-[var(--text-secondary)] focus:outline-none focus:border-[var(--brand-primary)]"
             >
               <option value="">-- Utiliser un template --</option>
               {templates.map(t => (
@@ -221,7 +221,7 @@ export function ConversationPanel({ leadId, leadName, leadEmail, leadPhone }: Co
               placeholder="Sujet de l'email..."
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              className="w-full px-3 py-2 bg-[var(--color-bg-tertiary)] border border-[var(--color-border-subtle)] rounded-[var(--radius-md)] text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent)]"
+              className="w-full px-3 py-2 bg-[var(--bg-subtle)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand-primary)]"
             />
           )}
 
@@ -232,20 +232,20 @@ export function ConversationPanel({ leadId, leadName, leadEmail, leadPhone }: Co
             onChange={(e) => setBody(e.target.value)}
             rows={channel === 'sms' ? 3 : 6}
             maxLength={channel === 'sms' ? 160 : undefined}
-            className="w-full px-3 py-2 bg-[var(--color-bg-tertiary)] border border-[var(--color-border-subtle)] rounded-[var(--radius-md)] text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent)] resize-none"
+            className="w-full px-3 py-2 bg-[var(--bg-subtle)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand-primary)] resize-none"
           />
 
           {/* Compteur SMS */}
           {channel === 'sms' && (
-            <p className="text-[10px] text-[var(--color-text-muted)] text-right">{body.length}/160 caractères</p>
+            <p className="text-[10px] text-[var(--text-muted)] text-right">{body.length}/160 caractères</p>
           )}
 
           {/* Résultat d'envoi */}
           {sendResult && (
             <div className={`text-xs px-3 py-2 rounded-[var(--radius-md)] ${
               sendResult.type === 'success' 
-                ? 'bg-[var(--color-success)]/10 text-[var(--color-success)]'
-                : 'bg-[var(--color-danger)]/10 text-[var(--color-danger)]'
+                ? 'bg-[var(--success)]/10 text-[var(--success)]'
+                : 'bg-[var(--danger)]/10 text-[var(--danger)]'
             }`}>
               {sendResult.text}
             </div>

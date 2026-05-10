@@ -40,10 +40,10 @@ export function ClientLeadsPage() {
   return (
     <AppLayout title="Leads du client">
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)] mb-4">
-        <Link to="/clients" className="hover:text-[var(--color-accent)] transition-colors">Clients</Link>
+      <div className="flex items-center gap-2 text-sm text-[var(--text-muted)] mb-4">
+        <Link to="/clients" className="hover:text-[var(--brand-primary)] transition-colors">Clients</Link>
         <span>/</span>
-        <span className="text-[var(--color-text-primary)]">Leads</span>
+        <span className="text-[var(--text-primary)]">Leads</span>
       </div>
 
       {/* Filtres */}
@@ -65,7 +65,7 @@ export function ClientLeadsPage() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2.5 text-sm bg-[var(--color-bg-input)] border border-[var(--color-border-subtle)] rounded-[var(--radius-md)] text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none"
+            className="px-3 py-2.5 text-sm bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none"
           >
             <option value="">Tous les statuts</option>
             {LEAD_STATUSES.map(s => (
@@ -75,7 +75,7 @@ export function ClientLeadsPage() {
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
-            className="px-3 py-2.5 text-sm bg-[var(--color-bg-input)] border border-[var(--color-border-subtle)] rounded-[var(--radius-md)] text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none"
+            className="px-3 py-2.5 text-sm bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none"
           >
             <option value="">Tous les types</option>
             <option value="buy">Acheteur</option>
@@ -98,27 +98,27 @@ export function ClientLeadsPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-[var(--color-border-subtle)]">
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Nom</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Contact</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Type</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Statut</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Date</th>
+                <tr className="border-b border-[var(--border-subtle)]">
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Nom</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Contact</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Type</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Statut</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Date</th>
                 </tr>
               </thead>
               <tbody>
                 {leads.map((lead) => (
-                  <tr key={lead.id} className="border-b border-[var(--color-border-subtle)] hover:bg-[var(--color-bg-hover)] transition-colors">
+                  <tr key={lead.id} className="border-b border-[var(--border-subtle)] hover:bg-[var(--bg-subtle)] transition-colors">
                     <td className="px-4 py-3">
                       <p className="font-medium">{lead.name}</p>
-                      {lead.message && <p className="text-xs text-[var(--color-text-muted)] mt-0.5 truncate max-w-48">{lead.message}</p>}
+                      {lead.message && <p className="text-xs text-[var(--text-muted)] mt-0.5 truncate max-w-48">{lead.message}</p>}
                     </td>
                     <td className="px-4 py-3">
-                      <p className="text-[var(--color-text-secondary)]">{lead.email}</p>
-                      {lead.phone && <p className="text-xs text-[var(--color-text-muted)]">{lead.phone}</p>}
+                      <p className="text-[var(--text-secondary)]">{lead.email}</p>
+                      {lead.phone && <p className="text-xs text-[var(--text-muted)]">{lead.phone}</p>}
                     </td>
                     <td className="px-4 py-3">
-                      <Badge color={lead.type === 'buy' ? 'var(--color-accent)' : 'var(--color-warning)'}>
+                      <Badge color={lead.type === 'buy' ? 'var(--brand-primary)' : 'var(--warning)'}>
                         {TYPE_LABELS[lead.type]}
                       </Badge>
                     </td>
@@ -126,7 +126,7 @@ export function ClientLeadsPage() {
                       <select
                         value={lead.status}
                         onChange={(e) => void handleStatusChange(lead.id, e.target.value as LeadStatus)}
-                        className="text-xs px-2 py-1 bg-transparent border border-[var(--color-border-subtle)] rounded-[var(--radius-sm)] focus:outline-none"
+                        className="text-xs px-2 py-1 bg-transparent border border-[var(--border-subtle)] rounded-[var(--radius-sm)] focus:outline-none"
                         style={{ color: STATUS_COLORS[lead.status] }}
                       >
                         {LEAD_STATUSES.map(s => (
@@ -134,7 +134,7 @@ export function ClientLeadsPage() {
                         ))}
                       </select>
                     </td>
-                    <td className="px-4 py-3 text-xs text-[var(--color-text-muted)]">
+                    <td className="px-4 py-3 text-xs text-[var(--text-muted)]">
                       {new Date(lead.created_at).toLocaleDateString('fr-CA')}
                     </td>
                   </tr>

@@ -95,8 +95,8 @@ export function InboxPage() {
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <h1 className="text-xl font-bold">Conversations</h1>
-          <Badge color="var(--color-info)">{messages.length} messages</Badge>
-          <Badge color="var(--color-warning)">{threads.length} fils</Badge>
+          <Badge color="var(--info)">{messages.length} messages</Badge>
+          <Badge color="var(--warning)">{threads.length} fils</Badge>
         </div>
       </div>
 
@@ -108,12 +108,12 @@ export function InboxPage() {
       ) : filteredThreads.length === 0 ? (
         <EmptyState icon="💬" title="Aucune conversation" description="Les messages envoyés et reçus apparaîtront ici." />
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-0 h-[calc(100vh-12rem)] border border-[var(--color-border-subtle)] rounded-[var(--radius-lg)] overflow-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-0 h-[calc(100vh-12rem)] border border-[var(--border-subtle)] rounded-[var(--radius-lg)] overflow-hidden">
 
           {/* Panneau gauche — Liste des threads */}
-          <div className="border-r border-[var(--color-border-subtle)] flex flex-col bg-[var(--color-bg-secondary)]">
+          <div className="border-r border-[var(--border-subtle)] flex flex-col bg-[var(--bg-surface)]">
             {/* Recherche + filtres */}
-            <div className="p-3 border-b border-[var(--color-border-subtle)] space-y-2">
+            <div className="p-3 border-b border-[var(--border-subtle)] space-y-2">
               <Input
                 placeholder="Rechercher..."
                 value={searchQuery}
@@ -126,8 +126,8 @@ export function InboxPage() {
                     onClick={() => setChannelFilter(ch as MessageChannel | '')}
                     className={`flex-1 px-2 py-1 rounded text-[10px] font-medium cursor-pointer transition-colors ${
                       channelFilter === ch
-                        ? 'bg-[var(--color-accent)] text-white'
-                        : 'bg-[var(--color-bg-hover)] text-[var(--color-text-muted)]'
+                        ? 'bg-[var(--brand-primary)] text-white'
+                        : 'bg-[var(--bg-subtle)] text-[var(--text-muted)]'
                     }`}>
                     {ch === '' ? 'Tout' : CHANNEL_ICONS[ch]}
                   </button>
@@ -143,8 +143,8 @@ export function InboxPage() {
                 return (
                   <button key={thread.leadId}
                     onClick={() => setSelectedMessageId(thread.messages[0]?.id ?? null)}
-                    className={`w-full text-left p-3 border-b border-[var(--color-border-subtle)] transition-colors cursor-pointer ${
-                      isSelected ? 'bg-[var(--color-accent)]/10 border-l-2 border-l-[var(--color-accent)]' : 'hover:bg-[var(--color-bg-hover)]'
+                    className={`w-full text-left p-3 border-b border-[var(--border-subtle)] transition-colors cursor-pointer ${
+                      isSelected ? 'bg-[var(--brand-primary)]/10 border-l-2 border-l-[var(--brand-primary)]' : 'hover:bg-[var(--bg-subtle)]'
                     }`}>
                     <div className="flex items-center justify-between mb-1">
                       <div className="flex items-center gap-1.5">
@@ -155,17 +155,17 @@ export function InboxPage() {
                       </div>
                       <div className="flex items-center gap-1.5">
                         {thread.unread > 0 && (
-                          <span className="w-4 h-4 rounded-full bg-[var(--color-accent)] text-white text-[9px] flex items-center justify-center font-bold">
+                          <span className="w-4 h-4 rounded-full bg-[var(--brand-primary)] text-white text-[9px] flex items-center justify-center font-bold">
                             {thread.unread}
                           </span>
                         )}
-                        <span className="text-[10px] text-[var(--color-text-muted)] shrink-0">{formatDate(lastMsg.created_at)}</span>
+                        <span className="text-[10px] text-[var(--text-muted)] shrink-0">{formatDate(lastMsg.created_at)}</span>
                       </div>
                     </div>
                     {lastMsg.subject && (
-                      <p className="text-xs font-medium text-[var(--color-text-secondary)] truncate">{lastMsg.subject}</p>
+                      <p className="text-xs font-medium text-[var(--text-secondary)] truncate">{lastMsg.subject}</p>
                     )}
-                    <p className="text-[11px] text-[var(--color-text-muted)] truncate">
+                    <p className="text-[11px] text-[var(--text-muted)] truncate">
                       {lastMsg.direction === 'outbound' ? '→ ' : '← '}
                       {lastMsg.body.replace(/<[^>]+>/g, '').slice(0, 60)}
                     </p>
@@ -176,27 +176,27 @@ export function InboxPage() {
           </div>
 
           {/* Panneau droit — Fil de conversation */}
-          <div className="lg:col-span-2 flex flex-col bg-[var(--color-bg-primary)]">
+          <div className="lg:col-span-2 flex flex-col bg-[var(--bg-canvas)]">
             {selectedThread ? (
               <>
                 {/* En-tête conversation */}
-                <div className="p-4 border-b border-[var(--color-border-subtle)] flex items-center justify-between">
+                <div className="p-4 border-b border-[var(--border-subtle)] flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-[var(--color-accent)] flex items-center justify-center text-white font-bold text-sm">
+                    <div className="w-10 h-10 rounded-full bg-[var(--brand-primary)] flex items-center justify-center text-white font-bold text-sm">
                       {selectedThread.leadName.charAt(0).toUpperCase()}
                     </div>
                     <div>
                       <Link to={`/leads/${selectedThread.leadId}`}
-                        className="text-sm font-bold hover:text-[var(--color-accent)] transition-colors">
+                        className="text-sm font-bold hover:text-[var(--brand-primary)] transition-colors">
                         {selectedThread.leadName}
                       </Link>
-                      <p className="text-[10px] text-[var(--color-text-muted)]">
+                      <p className="text-[10px] text-[var(--text-muted)]">
                         {selectedThread.messages.length} message{selectedThread.messages.length > 1 ? 's' : ''} · {CHANNEL_LABELS[selectedThread.lastMessage.channel]}
                       </p>
                     </div>
                   </div>
                   <Link to={`/leads/${selectedThread.leadId}`}
-                    className="text-xs text-[var(--color-accent)] hover:underline">
+                    className="text-xs text-[var(--brand-primary)] hover:underline">
                     Voir fiche →
                   </Link>
                 </div>
@@ -214,18 +214,18 @@ export function InboxPage() {
                       <div key={msg.id}>
                         {showDateSeparator && (
                           <div className="flex items-center gap-3 my-4">
-                            <div className="flex-1 h-px bg-[var(--color-border-subtle)]" />
-                            <span className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">
+                            <div className="flex-1 h-px bg-[var(--border-subtle)]" />
+                            <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider">
                               {new Date(msg.created_at + 'Z').toLocaleDateString('fr-CA', { weekday: 'long', day: 'numeric', month: 'long' })}
                             </span>
-                            <div className="flex-1 h-px bg-[var(--color-border-subtle)]" />
+                            <div className="flex-1 h-px bg-[var(--border-subtle)]" />
                           </div>
                         )}
                         <div className={`flex ${isOutbound ? 'justify-end' : 'justify-start'}`}>
                           <div className={`max-w-[75%] rounded-[var(--radius-lg)] p-3 ${
                             isOutbound
-                              ? 'bg-[var(--color-accent)] text-white rounded-br-sm'
-                              : 'bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] rounded-bl-sm'
+                              ? 'bg-[var(--brand-primary)] text-white rounded-br-sm'
+                              : 'bg-[var(--bg-surface)] text-[var(--text-primary)] rounded-bl-sm'
                           }`}>
                             {/* Canal + sujet */}
                             <div className="flex items-center gap-1.5 mb-1">
@@ -239,9 +239,9 @@ export function InboxPage() {
                               {msg.body.replace(/<[^>]+>/g, '')}
                             </p>
                             {/* Méta */}
-                            <div className={`flex items-center justify-between mt-2 text-[10px] ${isOutbound ? 'opacity-70' : 'text-[var(--color-text-muted)]'}`}>
+                            <div className={`flex items-center justify-between mt-2 text-[10px] ${isOutbound ? 'opacity-70' : 'text-[var(--text-muted)]'}`}>
                               <span>{formatFullDate(msg.created_at)}</span>
-                              <Badge color={msg.status === 'delivered' || msg.status === 'read' ? (isOutbound ? 'rgba(255,255,255,0.3)' : 'var(--color-success)') : undefined}>
+                              <Badge color={msg.status === 'delivered' || msg.status === 'read' ? (isOutbound ? 'rgba(255,255,255,0.3)' : 'var(--success)') : undefined}>
                                 {MESSAGE_STATUS_LABELS[msg.status]}
                               </Badge>
                             </div>
@@ -253,19 +253,19 @@ export function InboxPage() {
                 </div>
 
                 {/* Zone de composition */}
-                <div className="p-3 border-t border-[var(--color-border-subtle)] bg-[var(--color-bg-secondary)]">
+                <div className="p-3 border-t border-[var(--border-subtle)] bg-[var(--bg-surface)]">
                   <div className="flex gap-2">
                     <input
                       type="text"
                       placeholder="Écrire un message..."
-                      className="flex-1 px-3 py-2.5 text-sm bg-[var(--color-bg-input)] border border-[var(--color-border-subtle)] rounded-[var(--radius-md)] text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none"
+                      className="flex-1 px-3 py-2.5 text-sm bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none"
                     />
                     <Button size="sm">Envoyer</Button>
                   </div>
                 </div>
               </>
             ) : (
-              <div className="flex-1 flex items-center justify-center text-[var(--color-text-muted)]">
+              <div className="flex-1 flex items-center justify-center text-[var(--text-muted)]">
                 <p className="text-sm">Sélectionnez une conversation</p>
               </div>
             )}

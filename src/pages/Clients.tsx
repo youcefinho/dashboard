@@ -72,20 +72,20 @@ export function ClientsPage() {
       {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
         <Card className="p-3 text-center">
-          <p className="text-2xl font-bold text-[var(--color-accent)]">{clients.length}</p>
-          <p className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">Courtiers</p>
+          <p className="text-2xl font-bold text-[var(--brand-primary)]">{clients.length}</p>
+          <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider">Courtiers</p>
         </Card>
         <Card className="p-3 text-center">
-          <p className="text-2xl font-bold text-[var(--color-info)]">{totalLeads}</p>
-          <p className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">Leads total</p>
+          <p className="text-2xl font-bold text-[var(--info)]">{totalLeads}</p>
+          <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider">Leads total</p>
         </Card>
         <Card className="p-3 text-center">
-          <p className="text-2xl font-bold text-[var(--color-success)]">{avgConv}%</p>
-          <p className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">Conversion moy.</p>
+          <p className="text-2xl font-bold text-[var(--success)]">{avgConv}%</p>
+          <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider">Conversion moy.</p>
         </Card>
         <Card className="p-3 text-center">
-          <p className="text-2xl font-bold text-[var(--color-warning)]">{totalPipeline.toLocaleString('fr-CA')} $</p>
-          <p className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">Pipeline total</p>
+          <p className="text-2xl font-bold text-[var(--warning)]">{totalPipeline.toLocaleString('fr-CA')} $</p>
+          <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider">Pipeline total</p>
         </Card>
       </div>
 
@@ -98,7 +98,7 @@ export function ClientsPage() {
           className="max-w-xs"
         />
         <div className="flex items-center gap-2">
-          <p className="text-xs text-[var(--color-text-muted)] hidden sm:block">
+          <p className="text-xs text-[var(--text-muted)] hidden sm:block">
             {filteredClients.length} courtier{filteredClients.length > 1 ? 's' : ''}
           </p>
           <Button onClick={() => setShowModal(true)}>+ Nouveau client</Button>
@@ -129,57 +129,57 @@ export function ClientsPage() {
               >
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[var(--color-accent)] to-[var(--color-info)] flex items-center justify-center text-base font-bold text-white shadow-md">
+                    <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[var(--brand-primary)] to-[var(--info)] flex items-center justify-center text-base font-bold text-white shadow-md">
                       {client.name.charAt(0).toUpperCase()}
                     </div>
                     <div>
                       <h3 className="font-semibold text-sm">{client.name}</h3>
-                      <p className="text-xs text-[var(--color-text-muted)]">{client.city || 'Ville non définie'}</p>
+                      <p className="text-xs text-[var(--text-muted)]">{client.city || 'Ville non définie'}</p>
                     </div>
                   </div>
                   {client.is_active ? (
-                    <span className="flex items-center gap-1 text-[10px] text-[var(--color-success)]">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-success)] animate-pulse" /> Actif
+                    <span className="flex items-center gap-1 text-[10px] text-[var(--success)]">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[var(--success)] animate-pulse" /> Actif
                     </span>
                   ) : (
-                    <span className="text-[10px] text-[var(--color-text-muted)]">Inactif</span>
+                    <span className="text-[10px] text-[var(--text-muted)]">Inactif</span>
                   )}
                 </div>
 
                 {client.banner && (
-                  <p className="text-xs text-[var(--color-text-muted)] mb-3 bg-[var(--color-bg-tertiary)] px-2 py-1 rounded-[var(--radius-sm)] inline-block">🏢 {client.banner}</p>
+                  <p className="text-xs text-[var(--text-muted)] mb-3 bg-[var(--bg-subtle)] px-2 py-1 rounded-[var(--radius-sm)] inline-block">🏢 {client.banner}</p>
                 )}
 
                 {/* Métriques */}
-                <div className="grid grid-cols-3 gap-2 pt-3 border-t border-[var(--color-border-subtle)]">
+                <div className="grid grid-cols-3 gap-2 pt-3 border-t border-[var(--border-subtle)]">
                   <div className="text-center">
                     <p className="text-lg font-bold">{client.lead_count || 0}</p>
-                    <p className="text-[10px] text-[var(--color-text-muted)]">Leads</p>
+                    <p className="text-[10px] text-[var(--text-muted)]">Leads</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-lg font-bold text-[var(--color-success)]">{m?.convRate || 0}%</p>
-                    <p className="text-[10px] text-[var(--color-text-muted)]">Conv.</p>
+                    <p className="text-lg font-bold text-[var(--success)]">{m?.convRate || 0}%</p>
+                    <p className="text-[10px] text-[var(--text-muted)]">Conv.</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-lg font-bold text-[var(--color-accent)]">{(m?.pipelineValue || 0).toLocaleString('fr-CA')} $</p>
-                    <p className="text-[10px] text-[var(--color-text-muted)]">Pipeline</p>
+                    <p className="text-lg font-bold text-[var(--brand-primary)]">{(m?.pipelineValue || 0).toLocaleString('fr-CA')} $</p>
+                    <p className="text-[10px] text-[var(--text-muted)]">Pipeline</p>
                   </div>
                 </div>
 
                 {/* Barre de conversion */}
                 {m && m.total > 0 && (
                   <div className="mt-2">
-                    <div className="h-1.5 rounded-full bg-[var(--color-bg-hover)] overflow-hidden">
-                      <div className="h-full rounded-full bg-gradient-to-r from-[var(--color-accent)] to-[var(--color-success)] transition-all" style={{ width: `${Math.max(m.convRate, 5)}%` }} />
+                    <div className="h-1.5 rounded-full bg-[var(--bg-subtle)] overflow-hidden">
+                      <div className="h-full rounded-full bg-gradient-to-r from-[var(--brand-primary)] to-[var(--success)] transition-all" style={{ width: `${Math.max(m.convRate, 5)}%` }} />
                     </div>
                   </div>
                 )}
 
                 {/* Liens rapides */}
                 {(client.email || client.site_url) && (
-                  <div className="flex items-center gap-3 mt-2.5 text-[10px] text-[var(--color-text-muted)]">
+                  <div className="flex items-center gap-3 mt-2.5 text-[10px] text-[var(--text-muted)]">
                     {client.email && <span className="truncate">📧 {client.email}</span>}
-                    {client.site_url && <a href={client.site_url} target="_blank" rel="noreferrer" className="hover:text-[var(--color-accent)] transition-colors" onClick={e => e.stopPropagation()}>🌐 Site</a>}
+                    {client.site_url && <a href={client.site_url} target="_blank" rel="noreferrer" className="hover:text-[var(--brand-primary)] transition-colors" onClick={e => e.stopPropagation()}>🌐 Site</a>}
                   </div>
                 )}
               </Card>
@@ -242,7 +242,7 @@ function AddClientModal({
         <Input label="Bannière" id="client-banner" value={banner} onChange={e => setBanner(e.target.value)} placeholder="Royal LePage" />
         <Input label="URL du site" id="client-site" value={siteUrl} onChange={e => setSiteUrl(e.target.value)} placeholder="https://mathis-guimont.com" />
 
-        {error && <p className="text-sm text-[var(--color-danger)]">{error}</p>}
+        {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
 
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="ghost" type="button" onClick={onClose}>Annuler</Button>

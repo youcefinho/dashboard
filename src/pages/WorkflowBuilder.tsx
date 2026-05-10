@@ -111,7 +111,7 @@ export function WorkflowBuilderPage() {
   return (
     <AppLayout title="Nouveau workflow">
       <button onClick={() => void navigate({ to: '/workflows' })}
-        className="text-sm text-[var(--color-text-muted)] hover:text-[var(--color-accent)] mb-4 flex items-center gap-1 cursor-pointer">
+        className="text-sm text-[var(--text-muted)] hover:text-[var(--brand-primary)] mb-4 flex items-center gap-1 cursor-pointer">
         ← Retour aux automations
       </button>
 
@@ -121,15 +121,15 @@ export function WorkflowBuilderPage() {
           <h3 className="text-sm font-semibold mb-3">📝 Informations</h3>
           <div className="space-y-3">
             <div>
-              <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">Nom du workflow</label>
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Nom du workflow</label>
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Relance nouveau lead" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">Description</label>
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Description</label>
               <textarea value={description} onChange={(e) => setDescription(e.target.value)}
                 placeholder="Décrivez ce que fait cette automation..."
                 rows={2}
-                className="w-full px-3 py-2 bg-[var(--color-bg-tertiary)] border border-[var(--color-border-subtle)] rounded-[var(--radius-md)] text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent)] resize-none"
+                className="w-full px-3 py-2 bg-[var(--bg-subtle)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand-primary)] resize-none"
               />
             </div>
           </div>
@@ -145,8 +145,8 @@ export function WorkflowBuilderPage() {
                 onClick={() => { setTriggerType(tt); setTriggerConfig({}); }}
                 className={`p-3 rounded-[var(--radius-md)] border text-left transition-all cursor-pointer ${
                   triggerType === tt
-                    ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/10'
-                    : 'border-[var(--color-border-subtle)] hover:border-[var(--color-accent)]/50'
+                    ? 'border-[var(--brand-primary)] bg-[var(--brand-primary)]/10'
+                    : 'border-[var(--border-subtle)] hover:border-[var(--brand-primary)]/50'
                 }`}
               >
                 <p className="text-lg mb-1">{TRIGGER_ICONS[tt]}</p>
@@ -159,9 +159,9 @@ export function WorkflowBuilderPage() {
           {triggerType === 'status_changed' && (
             <div className="mt-3 flex gap-2">
               <div className="flex-1">
-                <label className="text-xs text-[var(--color-text-muted)]">Vers le statut</label>
+                <label className="text-xs text-[var(--text-muted)]">Vers le statut</label>
                 <select value={triggerConfig.to_status || ''} onChange={(e) => setTriggerConfig({ ...triggerConfig, to_status: e.target.value })}
-                  className="w-full mt-1 px-3 py-2 bg-[var(--color-bg-tertiary)] border border-[var(--color-border-subtle)] rounded-[var(--radius-md)] text-sm focus:outline-none focus:border-[var(--color-accent)]">
+                  className="w-full mt-1 px-3 py-2 bg-[var(--bg-subtle)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-sm focus:outline-none focus:border-[var(--brand-primary)]">
                   <option value="">N'importe quel statut</option>
                   <option value="new">Nouveau</option>
                   <option value="contacted">Contacté</option>
@@ -175,13 +175,13 @@ export function WorkflowBuilderPage() {
           )}
           {triggerType === 'score_threshold' && (
             <div className="mt-3">
-              <label className="text-xs text-[var(--color-text-muted)]">Score minimum</label>
+              <label className="text-xs text-[var(--text-muted)]">Score minimum</label>
               <Input type="number" value={triggerConfig.min_score || ''} onChange={(e) => setTriggerConfig({ ...triggerConfig, min_score: e.target.value })} placeholder="70" />
             </div>
           )}
           {triggerType === 'tag_added' && (
             <div className="mt-3">
-              <label className="text-xs text-[var(--color-text-muted)]">Tag spécifique</label>
+              <label className="text-xs text-[var(--text-muted)]">Tag spécifique</label>
               <Input value={triggerConfig.tag || ''} onChange={(e) => setTriggerConfig({ ...triggerConfig, tag: e.target.value })} placeholder="Ex: chaud" />
             </div>
           )}
@@ -194,7 +194,7 @@ export function WorkflowBuilderPage() {
           </div>
 
           {steps.length === 0 ? (
-            <div className="text-center py-6 text-[var(--color-text-muted)]">
+            <div className="text-center py-6 text-[var(--text-muted)]">
               <p className="text-2xl mb-2">🔗</p>
               <p className="text-sm">Aucune étape</p>
               <p className="text-xs mt-1">Ajoutez des étapes pour construire votre automation.</p>
@@ -210,36 +210,36 @@ export function WorkflowBuilderPage() {
                       {/* Icône + ligne */}
                       <div className="flex flex-col items-center">
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0 ${
-                          step.step_type === 'wait' ? 'bg-[var(--color-warning)]/15' : 'bg-[var(--color-accent)]/15'
+                          step.step_type === 'wait' ? 'bg-[var(--warning)]/15' : 'bg-[var(--brand-primary)]/15'
                         }`}>
                           {STEP_TYPE_ICONS[step.step_type]}
                         </div>
-                        {!isLast && <div className="w-0.5 h-full min-h-[2rem] bg-[var(--color-border-subtle)]" />}
+                        {!isLast && <div className="w-0.5 h-full min-h-[2rem] bg-[var(--border-subtle)]" />}
                       </div>
 
                       {/* Contenu du step */}
-                      <div className="flex-1 pb-3 bg-[var(--color-bg-tertiary)] rounded-[var(--radius-md)] p-3 mb-2">
+                      <div className="flex-1 pb-3 bg-[var(--bg-subtle)] rounded-[var(--radius-md)] p-3 mb-2">
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-xs font-semibold">
                             #{step.step_order} — {STEP_TYPE_LABELS[step.step_type]}
                           </span>
                           <div className="flex gap-1">
                             <button onClick={() => moveStep(i, 'up')} disabled={i === 0}
-                              className="text-xs px-1 text-[var(--color-text-muted)] hover:text-[var(--color-accent)] cursor-pointer disabled:opacity-30">↑</button>
+                              className="text-xs px-1 text-[var(--text-muted)] hover:text-[var(--brand-primary)] cursor-pointer disabled:opacity-30">↑</button>
                             <button onClick={() => moveStep(i, 'down')} disabled={isLast}
-                              className="text-xs px-1 text-[var(--color-text-muted)] hover:text-[var(--color-accent)] cursor-pointer disabled:opacity-30">↓</button>
+                              className="text-xs px-1 text-[var(--text-muted)] hover:text-[var(--brand-primary)] cursor-pointer disabled:opacity-30">↓</button>
                             <button onClick={() => removeStep(i)}
-                              className="text-xs px-1 text-[var(--color-danger)] hover:underline cursor-pointer">✕</button>
+                              className="text-xs px-1 text-[var(--danger)] hover:underline cursor-pointer">✕</button>
                           </div>
                         </div>
 
                         {/* Config spécifique au type de step */}
                         {step.step_type === 'wait' && (
                           <div>
-                            <label className="text-[10px] text-[var(--color-text-muted)]">Durée d'attente</label>
+                            <label className="text-[10px] text-[var(--text-muted)]">Durée d'attente</label>
                             <select value={step.config.delay_minutes as number}
                               onChange={(e) => updateStep(i, { ...step.config, delay_minutes: Number(e.target.value) })}
-                              className="w-full mt-1 px-2 py-1.5 text-xs bg-[var(--color-bg-secondary)] border border-[var(--color-border-subtle)] rounded-[var(--radius-sm)] focus:outline-none">
+                              className="w-full mt-1 px-2 py-1.5 text-xs bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] focus:outline-none">
                               <option value={30}>30 minutes</option>
                               <option value={60}>1 heure</option>
                               <option value={360}>6 heures</option>
@@ -250,13 +250,13 @@ export function WorkflowBuilderPage() {
                               <option value={10080}>7 jours</option>
                               <option value={20160}>14 jours</option>
                             </select>
-                            <p className="text-[10px] text-[var(--color-text-muted)] mt-1">= {formatDelay(step.config.delay_minutes as number)}</p>
+                            <p className="text-[10px] text-[var(--text-muted)] mt-1">= {formatDelay(step.config.delay_minutes as number)}</p>
                           </div>
                         )}
 
                         {step.step_type === 'send_email' && (
                           <div>
-                            <label className="text-[10px] text-[var(--color-text-muted)]">Template ID</label>
+                            <label className="text-[10px] text-[var(--text-muted)]">Template ID</label>
                             <Input value={step.config.template_id as string}
                               onChange={(e) => updateStep(i, { ...step.config, template_id: e.target.value })}
                               placeholder="tpl-welcome" />
@@ -265,18 +265,18 @@ export function WorkflowBuilderPage() {
 
                         {step.step_type === 'send_sms' && (
                           <div>
-                            <label className="text-[10px] text-[var(--color-text-muted)]">Message SMS</label>
+                            <label className="text-[10px] text-[var(--text-muted)]">Message SMS</label>
                             <textarea value={step.config.message as string}
                               onChange={(e) => updateStep(i, { ...step.config, message: e.target.value })}
                               rows={2} maxLength={160} placeholder="Bonjour {{nom}}, ..."
-                              className="w-full mt-1 px-2 py-1.5 text-xs bg-[var(--color-bg-secondary)] border border-[var(--color-border-subtle)] rounded-[var(--radius-sm)] focus:outline-none resize-none" />
-                            <p className="text-[10px] text-[var(--color-text-muted)] mt-1">{(step.config.message as string || '').length}/160</p>
+                              className="w-full mt-1 px-2 py-1.5 text-xs bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] focus:outline-none resize-none" />
+                            <p className="text-[10px] text-[var(--text-muted)] mt-1">{(step.config.message as string || '').length}/160</p>
                           </div>
                         )}
 
                         {(step.step_type === 'add_tag' || step.step_type === 'remove_tag') && (
                           <div>
-                            <label className="text-[10px] text-[var(--color-text-muted)]">Tag</label>
+                            <label className="text-[10px] text-[var(--text-muted)]">Tag</label>
                             <Input value={step.config.tag as string}
                               onChange={(e) => updateStep(i, { ...step.config, tag: e.target.value })}
                               placeholder="Ex: chaud, relancé, vip" />
@@ -285,10 +285,10 @@ export function WorkflowBuilderPage() {
 
                         {step.step_type === 'change_status' && (
                           <div>
-                            <label className="text-[10px] text-[var(--color-text-muted)]">Nouveau statut</label>
+                            <label className="text-[10px] text-[var(--text-muted)]">Nouveau statut</label>
                             <select value={step.config.status as string}
                               onChange={(e) => updateStep(i, { ...step.config, status: e.target.value })}
-                              className="w-full mt-1 px-2 py-1.5 text-xs bg-[var(--color-bg-secondary)] border border-[var(--color-border-subtle)] rounded-[var(--radius-sm)] focus:outline-none">
+                              className="w-full mt-1 px-2 py-1.5 text-xs bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] focus:outline-none">
                               <option value="new">Nouveau</option>
                               <option value="contacted">Contacté</option>
                               <option value="meeting">RDV</option>
@@ -301,7 +301,7 @@ export function WorkflowBuilderPage() {
 
                         {step.step_type === 'notify' && (
                           <div>
-                            <label className="text-[10px] text-[var(--color-text-muted)]">Message de notification</label>
+                            <label className="text-[10px] text-[var(--text-muted)]">Message de notification</label>
                             <Input value={step.config.message as string}
                               onChange={(e) => updateStep(i, { ...step.config, message: e.target.value })}
                               placeholder="Alerte : {{nom}} a besoin d'attention !" />
@@ -310,7 +310,7 @@ export function WorkflowBuilderPage() {
 
                         {step.step_type === 'webhook' && (
                           <div className="space-y-1">
-                            <label className="text-[10px] text-[var(--color-text-muted)]">URL du webhook</label>
+                            <label className="text-[10px] text-[var(--text-muted)]">URL du webhook</label>
                             <Input value={step.config.url as string}
                               onChange={(e) => updateStep(i, { ...step.config, url: e.target.value })}
                               placeholder="https://..." />
@@ -327,7 +327,7 @@ export function WorkflowBuilderPage() {
           {/* Bouton ajouter step */}
           <button
             onClick={() => setShowAddStep(true)}
-            className="w-full mt-3 py-3 border-2 border-dashed border-[var(--color-border-subtle)] rounded-[var(--radius-md)] text-sm text-[var(--color-text-muted)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-all cursor-pointer"
+            className="w-full mt-3 py-3 border-2 border-dashed border-[var(--border-subtle)] rounded-[var(--radius-md)] text-sm text-[var(--text-muted)] hover:border-[var(--brand-primary)] hover:text-[var(--brand-primary)] transition-all cursor-pointer"
           >
             + Ajouter une étape
           </button>
@@ -349,7 +349,7 @@ export function WorkflowBuilderPage() {
             <button
               key={st}
               onClick={() => addStep(st)}
-              className="p-3 text-left border border-[var(--color-border-subtle)] rounded-[var(--radius-md)] hover:border-[var(--color-accent)] hover:bg-[var(--color-accent)]/5 transition-all cursor-pointer"
+              className="p-3 text-left border border-[var(--border-subtle)] rounded-[var(--radius-md)] hover:border-[var(--brand-primary)] hover:bg-[var(--brand-primary)]/5 transition-all cursor-pointer"
             >
               <p className="text-lg mb-1">{STEP_TYPE_ICONS[st]}</p>
               <p className="text-xs font-medium">{STEP_TYPE_LABELS[st]}</p>

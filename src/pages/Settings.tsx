@@ -80,7 +80,7 @@ export function SettingsPage() {
       <div className="md:hidden flex gap-1.5 overflow-x-auto pb-3 mb-4 -mx-1 px-1">
         {visibleTabs.map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer border whitespace-nowrap shrink-0 transition-all ${activeTab === tab.id ? 'bg-[var(--color-accent)] text-white border-[var(--color-accent)]' : 'border-[var(--color-border-subtle)] text-[var(--color-text-muted)]'}`}>
+            className={`px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer border whitespace-nowrap shrink-0 transition-all ${activeTab === tab.id ? 'bg-[var(--brand-primary)] text-white border-[var(--brand-primary)]' : 'border-[var(--border-subtle)] text-[var(--text-muted)]'}`}>
             {tab.icon} {tab.label}
           </button>
         ))}
@@ -91,7 +91,7 @@ export function SettingsPage() {
         <nav className="hidden md:block w-48 shrink-0 space-y-1">
           {visibleTabs.map(tab => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-              className={`w-full flex items-center gap-2 px-3 py-2 rounded-[var(--radius-md)] text-sm text-left cursor-pointer transition-colors ${activeTab === tab.id ? 'bg-[var(--color-accent)]/10 text-[var(--color-accent)] font-medium' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-hover)]'}`}>
+              className={`w-full flex items-center gap-2 px-3 py-2 rounded-[var(--radius-md)] text-sm text-left cursor-pointer transition-colors ${activeTab === tab.id ? 'bg-[var(--brand-primary)]/10 text-[var(--brand-primary)] font-medium' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]'}`}>
               <span>{tab.icon}</span> {tab.label}
             </button>
           ))}
@@ -104,32 +104,32 @@ export function SettingsPage() {
             <>
               <Card className="p-5">
                 <div className="flex items-center gap-4 mb-5">
-                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[var(--color-accent)] to-[var(--color-info)] flex items-center justify-center text-2xl font-bold text-white shadow-lg">
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[var(--brand-primary)] to-[var(--info)] flex items-center justify-center text-2xl font-bold text-white shadow-lg">
                     {profileName.charAt(0).toUpperCase()}
                   </div>
                   <div>
                     <h3 className="text-base font-semibold">{profileName}</h3>
-                    <p className="text-sm text-[var(--color-text-muted)]">{profileEmail || '—'}</p>
-                    <Badge color={isAdmin ? 'var(--color-accent)' : 'var(--color-info)'}>{isAdmin ? 'Administrateur' : 'Courtier'}</Badge>
+                    <p className="text-sm text-[var(--text-muted)]">{profileEmail || '—'}</p>
+                    <Badge color={isAdmin ? 'var(--brand-primary)' : 'var(--info)'}>{isAdmin ? 'Administrateur' : 'Courtier'}</Badge>
                   </div>
-                  {saveMsg && <span className="ml-auto text-sm text-[var(--color-success)]">{saveMsg}</span>}
+                  {saveMsg && <span className="ml-auto text-sm text-[var(--success)]">{saveMsg}</span>}
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-xs font-medium text-[var(--color-text-muted)] mb-1 block">Nom complet</label>
+                    <label className="text-xs font-medium text-[var(--text-muted)] mb-1 block">Nom complet</label>
                     <Input value={profileName} onChange={e => setProfileName(e.target.value)} />
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-[var(--color-text-muted)] mb-1 block">Courriel</label>
+                    <label className="text-xs font-medium text-[var(--text-muted)] mb-1 block">Courriel</label>
                     <Input value={profileEmail} onChange={e => setProfileEmail(e.target.value)} type="email" />
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-[var(--color-text-muted)] mb-1 block">Téléphone</label>
+                    <label className="text-xs font-medium text-[var(--text-muted)] mb-1 block">Téléphone</label>
                     <Input value={profilePhone} onChange={e => setProfilePhone(e.target.value)} placeholder="+1 819 555-0000" />
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-[var(--color-text-muted)] mb-1 block">Entreprise</label>
+                    <label className="text-xs font-medium text-[var(--text-muted)] mb-1 block">Entreprise</label>
                     <Input value={profileCompany} onChange={e => setProfileCompany(e.target.value)} />
                   </div>
                 </div>
@@ -153,10 +153,10 @@ export function SettingsPage() {
                   { label: 'Workflow terminé', desc: 'Notification quand un lead termine un workflow', on: true },
                   { label: 'Tâche en retard', desc: 'Alerte quand une tâche dépasse sa date limite', on: true },
                 ].map(n => (
-                  <div key={n.label} className="flex items-center justify-between py-3 border-b border-[var(--color-border-subtle)] last:border-0">
+                  <div key={n.label} className="flex items-center justify-between py-3 border-b border-[var(--border-subtle)] last:border-0">
                     <div>
                       <p className="text-sm">{n.label}</p>
-                      <p className="text-xs text-[var(--color-text-muted)]">{n.desc}</p>
+                      <p className="text-xs text-[var(--text-muted)]">{n.desc}</p>
                     </div>
                     <ToggleSwitch defaultChecked={n.on} />
                   </div>
@@ -172,15 +172,15 @@ export function SettingsPage() {
                 <h3 className="text-sm font-semibold mb-4">🔒 Changer le mot de passe</h3>
                 <div className="space-y-3 max-w-md">
                   <div>
-                    <label className="text-xs font-medium text-[var(--color-text-muted)] mb-1 block">Mot de passe actuel</label>
+                    <label className="text-xs font-medium text-[var(--text-muted)] mb-1 block">Mot de passe actuel</label>
                     <Input type="password" placeholder="••••••••" />
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-[var(--color-text-muted)] mb-1 block">Nouveau mot de passe</label>
+                    <label className="text-xs font-medium text-[var(--text-muted)] mb-1 block">Nouveau mot de passe</label>
                     <Input type="password" placeholder="Minimum 8 caractères" />
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-[var(--color-text-muted)] mb-1 block">Confirmer</label>
+                    <label className="text-xs font-medium text-[var(--text-muted)] mb-1 block">Confirmer</label>
                     <Input type="password" placeholder="Répétez le mot de passe" />
                   </div>
                   <Button onClick={flashSave}>🔐 Mettre à jour</Button>
@@ -193,12 +193,12 @@ export function SettingsPage() {
                     { device: '💻 Chrome · Windows', ip: '192.168.1.x', time: 'Maintenant', current: true },
                     { device: '📱 Safari · iPhone', ip: '10.0.0.x', time: 'Il y a 2h', current: false },
                   ].map(s => (
-                    <div key={s.device} className="flex items-center justify-between py-2 px-3 bg-[var(--color-bg-tertiary)] rounded-[var(--radius-md)]">
+                    <div key={s.device} className="flex items-center justify-between py-2 px-3 bg-[var(--bg-subtle)] rounded-[var(--radius-md)]">
                       <div>
-                        <p className="text-sm">{s.device} {s.current && <Badge color="var(--color-success)">Active</Badge>}</p>
-                        <p className="text-[10px] text-[var(--color-text-muted)]">{s.ip} · {s.time}</p>
+                        <p className="text-sm">{s.device} {s.current && <Badge color="var(--success)">Active</Badge>}</p>
+                        <p className="text-[10px] text-[var(--text-muted)]">{s.ip} · {s.time}</p>
                       </div>
-                      {!s.current && <button className="text-xs text-[var(--color-danger)] hover:underline cursor-pointer">Déconnecter</button>}
+                      {!s.current && <button className="text-xs text-[var(--danger)] hover:underline cursor-pointer">Déconnecter</button>}
                     </div>
                   ))}
                 </div>
@@ -212,7 +212,7 @@ export function SettingsPage() {
               <h3 className="text-sm font-semibold mb-4">🎨 Apparence</h3>
               <div className="space-y-4">
                 <div>
-                  <label className="text-xs font-medium text-[var(--color-text-muted)] mb-2 block">Thème</label>
+                  <label className="text-xs font-medium text-[var(--text-muted)] mb-2 block">Thème</label>
                   <div className="flex gap-3">
                     {[
                       { id: 'light', label: '☀️ Clair', active: true },
@@ -220,14 +220,14 @@ export function SettingsPage() {
                       { id: 'auto', label: '🖥️ Système', active: false },
                     ].map(t => (
                       <button key={t.id}
-                        className={`px-4 py-3 rounded-[var(--radius-md)] border text-sm cursor-pointer transition-all ${t.active ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/10 text-[var(--color-accent)]' : 'border-[var(--color-border-subtle)] text-[var(--color-text-muted)] hover:border-[var(--color-accent)]'}`}>
+                        className={`px-4 py-3 rounded-[var(--radius-md)] border text-sm cursor-pointer transition-all ${t.active ? 'border-[var(--brand-primary)] bg-[var(--brand-primary)]/10 text-[var(--brand-primary)]' : 'border-[var(--border-subtle)] text-[var(--text-muted)] hover:border-[var(--brand-primary)]'}`}>
                         {t.label}
                       </button>
                     ))}
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-[var(--color-text-muted)] mb-2 block">Couleur d'accent</label>
+                  <label className="text-xs font-medium text-[var(--text-muted)] mb-2 block">Couleur d'accent</label>
                   <div className="flex gap-2">
                     {['oklch(0.55 0.24 265)', 'oklch(0.60 0.19 155)', 'oklch(0.65 0.20 30)', 'oklch(0.55 0.22 330)', 'oklch(0.60 0.18 245)'].map(c => (
                       <button key={c} className="w-8 h-8 rounded-full border-2 border-transparent hover:border-white cursor-pointer transition-all hover:scale-110" style={{ backgroundColor: c }} />
@@ -235,10 +235,10 @@ export function SettingsPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-[var(--color-text-muted)] mb-2 block">Sidebar</label>
+                  <label className="text-xs font-medium text-[var(--text-muted)] mb-2 block">Sidebar</label>
                   <div className="flex gap-3">
-                    <button className="px-4 py-2 rounded-[var(--radius-md)] border border-[var(--color-accent)] bg-[var(--color-accent)]/10 text-[var(--color-accent)] text-xs cursor-pointer">📌 Épinglée</button>
-                    <button className="px-4 py-2 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] text-[var(--color-text-muted)] text-xs cursor-pointer">📁 Rétractable</button>
+                    <button className="px-4 py-2 rounded-[var(--radius-md)] border border-[var(--brand-primary)] bg-[var(--brand-primary)]/10 text-[var(--brand-primary)] text-xs cursor-pointer">📌 Épinglée</button>
+                    <button className="px-4 py-2 rounded-[var(--radius-md)] border border-[var(--border-subtle)] text-[var(--text-muted)] text-xs cursor-pointer">📁 Rétractable</button>
                   </div>
                 </div>
               </div>
@@ -249,26 +249,26 @@ export function SettingsPage() {
           {activeTab === 'webhook' && isAdmin && (
             <Card className="p-5">
               <h3 className="text-sm font-semibold mb-1">Webhook — Réception des leads</h3>
-              <p className="text-xs text-[var(--color-text-muted)] mb-4">Configurez vos sites clients pour envoyer les leads vers cette URL.</p>
+              <p className="text-xs text-[var(--text-muted)] mb-4">Configurez vos sites clients pour envoyer les leads vers cette URL.</p>
               <div className="space-y-4">
                 <div>
-                  <label className="text-xs text-[var(--color-text-muted)] mb-1 block">URL du webhook</label>
+                  <label className="text-xs text-[var(--text-muted)] mb-1 block">URL du webhook</label>
                   <div className="flex gap-2">
-                    <div className="flex-1 px-3 py-2.5 text-sm bg-[var(--color-bg-input)] border border-[var(--color-border-subtle)] rounded-[var(--radius-md)] text-[var(--color-text-secondary)] font-mono truncate">{webhookUrl}</div>
+                    <div className="flex-1 px-3 py-2.5 text-sm bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-[var(--text-secondary)] font-mono truncate">{webhookUrl}</div>
                     <Button variant="secondary" size="sm" onClick={copyWebhookUrl}>{webhookCopied ? '✓ Copié' : 'Copier'}</Button>
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs text-[var(--color-text-muted)] mb-2 block">Headers requis</label>
-                  <div className="bg-[var(--color-bg-primary)] rounded-[var(--radius-md)] p-3 space-y-1.5 font-mono text-xs">
-                    <div className="flex"><span className="text-[var(--color-accent)] w-40">Content-Type</span><span className="text-[var(--color-text-secondary)]">application/json</span></div>
-                    <div className="flex"><span className="text-[var(--color-accent)] w-40">X-Webhook-Secret</span><span className="text-[var(--color-text-muted)]">votre-secret-webhook</span></div>
-                    <div className="flex"><span className="text-[var(--color-accent)] w-40">X-Client-Id</span><span className="text-[var(--color-text-muted)]">id-du-client</span></div>
+                  <label className="text-xs text-[var(--text-muted)] mb-2 block">Headers requis</label>
+                  <div className="bg-[var(--bg-canvas)] rounded-[var(--radius-md)] p-3 space-y-1.5 font-mono text-xs">
+                    <div className="flex"><span className="text-[var(--brand-primary)] w-40">Content-Type</span><span className="text-[var(--text-secondary)]">application/json</span></div>
+                    <div className="flex"><span className="text-[var(--brand-primary)] w-40">X-Webhook-Secret</span><span className="text-[var(--text-muted)]">votre-secret-webhook</span></div>
+                    <div className="flex"><span className="text-[var(--brand-primary)] w-40">X-Client-Id</span><span className="text-[var(--text-muted)]">id-du-client</span></div>
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs text-[var(--color-text-muted)] mb-2 block">Corps de la requête (JSON)</label>
-                  <pre className="bg-[var(--color-bg-primary)] rounded-[var(--radius-md)] p-3 font-mono text-xs text-[var(--color-text-secondary)] overflow-x-auto">{`{
+                  <label className="text-xs text-[var(--text-muted)] mb-2 block">Corps de la requête (JSON)</label>
+                  <pre className="bg-[var(--bg-canvas)] rounded-[var(--radius-md)] p-3 font-mono text-xs text-[var(--text-secondary)] overflow-x-auto">{`{
   "name": "Nom du lead",
   "email": "email@example.com",
   "phone": "819-555-0000",
@@ -276,10 +276,10 @@ export function SettingsPage() {
   "type": "buy"
 }`}</pre>
                 </div>
-                <div className="flex items-center gap-3 pt-2 border-t border-[var(--color-border-subtle)]">
+                <div className="flex items-center gap-3 pt-2 border-t border-[var(--border-subtle)]">
                   <Button variant="secondary" size="sm" onClick={() => void testWebhook()} isLoading={testStatus === 'loading'}>🧪 Tester le webhook</Button>
-                  {testStatus === 'success' && <span className="text-xs text-[var(--color-success)]">✓ Lead de test créé !</span>}
-                  {testStatus === 'error' && <span className="text-xs text-[var(--color-danger)]">✗ Erreur — vérifiez le worker</span>}
+                  {testStatus === 'success' && <span className="text-xs text-[var(--success)]">✓ Lead de test créé !</span>}
+                  {testStatus === 'error' && <span className="text-xs text-[var(--danger)]">✗ Erreur — vérifiez le worker</span>}
                 </div>
               </div>
             </Card>
@@ -303,12 +303,12 @@ export function SettingsPage() {
                   { keys: '↑ ↓', desc: 'Naviguer dans les listes' },
                   { keys: '↵', desc: 'Ouvrir l\'élément sélectionné' },
                 ].map(s => (
-                  <div key={s.keys} className="flex items-center justify-between py-2.5 border-b border-[var(--color-border-subtle)] last:border-0">
-                    <span className="text-sm text-[var(--color-text-secondary)]">{s.desc}</span>
+                  <div key={s.keys} className="flex items-center justify-between py-2.5 border-b border-[var(--border-subtle)] last:border-0">
+                    <span className="text-sm text-[var(--text-secondary)]">{s.desc}</span>
                     <div className="flex gap-1">
                       {s.keys.split(' ').map((k, i) => (
-                        k === '→' ? <span key={i} className="text-[var(--color-text-muted)] text-xs">→</span> :
-                        <kbd key={i} className="px-2 py-0.5 bg-[var(--color-bg-tertiary)] border border-[var(--color-border-subtle)] rounded text-xs font-mono text-[var(--color-text-muted)]">{k}</kbd>
+                        k === '→' ? <span key={i} className="text-[var(--text-muted)] text-xs">→</span> :
+                        <kbd key={i} className="px-2 py-0.5 bg-[var(--bg-subtle)] border border-[var(--border-subtle)] rounded text-xs font-mono text-[var(--text-muted)]">{k}</kbd>
                       ))}
                     </div>
                   </div>
@@ -332,17 +332,17 @@ export function SettingsPage() {
                     ['Router', 'TanStack Router'],
                     ['Modules', 'CRM · Inbox · Workflows · Calendrier · Intégrations · Rapports'],
                   ].map(([label, value]) => (
-                    <div key={label} className="flex items-center justify-between py-2.5 border-b border-[var(--color-border-subtle)] last:border-0">
-                      <span className="text-sm text-[var(--color-text-secondary)]">{label}</span>
-                      <span className="text-sm font-medium text-[var(--color-text-muted)]">{value}</span>
+                    <div key={label} className="flex items-center justify-between py-2.5 border-b border-[var(--border-subtle)] last:border-0">
+                      <span className="text-sm text-[var(--text-secondary)]">{label}</span>
+                      <span className="text-sm font-medium text-[var(--text-muted)]">{value}</span>
                     </div>
                   ))}
                 </div>
               </Card>
               {isAdmin && (
-                <Card className="p-5 border-[var(--color-danger)]/30">
-                  <h3 className="text-sm font-semibold text-[var(--color-danger)] mb-2">⚠️ Zone dangereuse</h3>
-                  <p className="text-xs text-[var(--color-text-muted)] mb-3">Actions sensibles. Procédez avec prudence.</p>
+                <Card className="p-5 border-[var(--danger)]/30">
+                  <h3 className="text-sm font-semibold text-[var(--danger)] mb-2">⚠️ Zone dangereuse</h3>
+                  <p className="text-xs text-[var(--text-muted)] mb-3">Actions sensibles. Procédez avec prudence.</p>
                   <div className="flex gap-2">
                     <Button variant="ghost" size="sm" onClick={() => void exportCSV()} isLoading={exportStatus === 'loading'}>
                       {exportStatus === 'done' ? '✓ Exporté' : '📥 Exporter leads (CSV)'}
@@ -364,7 +364,7 @@ function ToggleSwitch({ defaultChecked = false }: { defaultChecked?: boolean }) 
   const [checked, setChecked] = useState(defaultChecked);
   return (
     <button type="button" onClick={() => setChecked(!checked)}
-      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ${checked ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-bg-hover)]'}`}>
+      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ${checked ? 'bg-[var(--brand-primary)]' : 'bg-[var(--bg-subtle)]'}`}>
       <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform duration-200 mt-0.5 ${checked ? 'translate-x-4 ml-0.5' : 'translate-x-0.5'}`} />
     </button>
   );

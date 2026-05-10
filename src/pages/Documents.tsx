@@ -121,10 +121,10 @@ export function DocumentsPage() {
 
   const statusBadge = (status: string) => {
     const colors: Record<string, string> = {
-      draft: 'var(--color-muted)',
-      sent: 'var(--color-info)',
-      signed: 'var(--color-success)',
-      expired: 'var(--color-danger)',
+      draft: 'var(--text-muted)',
+      sent: 'var(--info)',
+      signed: 'var(--success)',
+      expired: 'var(--danger)',
     };
     const labels: Record<string, string> = {
       draft: 'Brouillon',
@@ -151,15 +151,15 @@ export function DocumentsPage() {
     <AppLayout title="Documents">
       {/* En-tête avec onglets */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <div className="flex gap-1 bg-[var(--color-bg-tertiary)] p-1 rounded-[var(--radius-lg)]">
+        <div className="flex gap-1 bg-[var(--bg-subtle)] p-1 rounded-[var(--radius-lg)]">
           {tabs.map(t => (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
               className={`px-4 py-2 text-sm font-medium rounded-[var(--radius-md)] transition-all cursor-pointer ${
                 tab === t.key
-                  ? 'bg-[var(--color-bg-card)] text-[var(--color-text-primary)] shadow-[var(--shadow-xs)]'
-                  : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
+                  ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-[var(--shadow-xs)]'
+                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
               }`}
             >
               {t.label}
@@ -180,7 +180,7 @@ export function DocumentsPage() {
             </Button>
           )}
           {tab === 'files' && (
-            <label className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-[var(--color-accent)] text-white rounded-[var(--radius-md)] cursor-pointer hover:bg-[var(--color-accent-hover)] transition-all">
+            <label className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-[var(--brand-primary)] text-white rounded-[var(--radius-md)] cursor-pointer hover:bg-[var(--color-accent-hover)] transition-all">
               📎 Upload
               <input type="file" className="hidden" onChange={uploadFile} />
             </label>
@@ -213,14 +213,14 @@ export function DocumentsPage() {
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold truncate">{doc.template_name || 'Document'}</p>
-                        <p className="text-xs text-[var(--color-text-muted)] truncate">{doc.lead_name || doc.lead_id}</p>
+                        <p className="text-xs text-[var(--text-muted)] truncate">{doc.lead_name || doc.lead_id}</p>
                       </div>
                       {statusBadge(doc.status)}
                     </div>
-                    <div className="text-xs text-[var(--color-text-muted)]">
+                    <div className="text-xs text-[var(--text-muted)]">
                       Créé le {new Date(doc.created_at).toLocaleDateString('fr-CA')}
                       {doc.signed_at && (
-                        <span className="ml-2 text-[var(--color-success)]">
+                        <span className="ml-2 text-[var(--success)]">
                           ✅ Signé le {new Date(doc.signed_at).toLocaleDateString('fr-CA')}
                         </span>
                       )}
@@ -253,7 +253,7 @@ export function DocumentsPage() {
                       <p className="text-sm font-semibold">{tpl.name}</p>
                       <button
                         onClick={() => void deleteTemplate(tpl.id)}
-                        className="p-1 text-[var(--color-text-muted)] hover:text-[var(--color-danger)] transition-colors cursor-pointer"
+                        className="p-1 text-[var(--text-muted)] hover:text-[var(--danger)] transition-colors cursor-pointer"
                         title="Supprimer"
                       >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -261,7 +261,7 @@ export function DocumentsPage() {
                         </svg>
                       </button>
                     </div>
-                    <p className="text-xs text-[var(--color-text-muted)]">
+                    <p className="text-xs text-[var(--text-muted)]">
                       Créé le {new Date(tpl.created_at).toLocaleDateString('fr-CA')}
                     </p>
                   </Card>
@@ -278,7 +278,7 @@ export function DocumentsPage() {
                 title="Aucun fichier"
                 description="Uploadez des fichiers pour les associer à vos leads."
                 action={
-                  <label className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-[var(--color-accent)] text-white rounded-[var(--radius-md)] cursor-pointer hover:bg-[var(--color-accent-hover)] transition-all">
+                  <label className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-[var(--brand-primary)] text-white rounded-[var(--radius-md)] cursor-pointer hover:bg-[var(--color-accent-hover)] transition-all">
                     📎 Upload
                     <input type="file" className="hidden" onChange={uploadFile} />
                   </label>
@@ -288,25 +288,25 @@ export function DocumentsPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-[var(--color-border-subtle)]">
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Nom</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Type</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Taille</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Date</th>
+                    <tr className="border-b border-[var(--border-subtle)]">
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Nom</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Type</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Taille</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Date</th>
                       <th className="text-right py-3 px-4"></th>
                     </tr>
                   </thead>
                   <tbody>
                     {files.map(file => (
-                      <tr key={file.id} className="border-b border-[var(--color-border-subtle)] hover:bg-[var(--color-bg-hover)] transition-colors">
+                      <tr key={file.id} className="border-b border-[var(--border-subtle)] hover:bg-[var(--bg-subtle)] transition-colors">
                         <td className="py-3 px-4 font-medium">{file.filename}</td>
-                        <td className="py-3 px-4 text-[var(--color-text-secondary)]">{file.content_type}</td>
-                        <td className="py-3 px-4 text-[var(--color-text-secondary)]">{formatSize(file.size)}</td>
-                        <td className="py-3 px-4 text-[var(--color-text-muted)]">{new Date(file.created_at).toLocaleDateString('fr-CA')}</td>
+                        <td className="py-3 px-4 text-[var(--text-secondary)]">{file.content_type}</td>
+                        <td className="py-3 px-4 text-[var(--text-secondary)]">{formatSize(file.size)}</td>
+                        <td className="py-3 px-4 text-[var(--text-muted)]">{new Date(file.created_at).toLocaleDateString('fr-CA')}</td>
                         <td className="py-3 px-4 text-right">
                           <button
                             onClick={() => void deleteFile(file.id)}
-                            className="p-1 text-[var(--color-text-muted)] hover:text-[var(--color-danger)] transition-colors cursor-pointer"
+                            className="p-1 text-[var(--text-muted)] hover:text-[var(--danger)] transition-colors cursor-pointer"
                           >
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                               <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
@@ -328,13 +328,13 @@ export function DocumentsPage() {
         <div className="space-y-4">
           <Input label="Nom du template" value={newTemplateName} onChange={e => setNewTemplateName(e.target.value)} placeholder="Ex: Promesse d'achat" />
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-[var(--color-text-secondary)]">Contenu HTML</label>
+            <label className="text-sm font-medium text-[var(--text-secondary)]">Contenu HTML</label>
             <textarea
               value={newTemplateBody}
               onChange={e => setNewTemplateBody(e.target.value)}
               placeholder="<p>Contenu du document...</p>"
               rows={6}
-              className="w-full px-3 py-2.5 text-sm bg-[var(--color-bg-input)] text-[var(--color-text-primary)] border border-[var(--color-border-subtle)] rounded-[var(--radius-md)] focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)] focus:outline-none font-mono"
+              className="w-full px-3 py-2.5 text-sm bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] focus:border-[var(--brand-primary)] focus:ring-1 focus:ring-[var(--brand-primary)] focus:outline-none font-mono"
             />
           </div>
           <div className="flex justify-end gap-2">
@@ -348,11 +348,11 @@ export function DocumentsPage() {
       <Modal isOpen={showNewDoc} onClose={() => setShowNewDoc(false)} title="Nouveau document">
         <div className="space-y-4">
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-[var(--color-text-secondary)]">Template</label>
+            <label className="text-sm font-medium text-[var(--text-secondary)]">Template</label>
             <select
               value={newDocTemplateId}
               onChange={e => setNewDocTemplateId(e.target.value)}
-              className="w-full px-3 py-2.5 text-sm bg-[var(--color-bg-input)] text-[var(--color-text-primary)] border border-[var(--color-border-subtle)] rounded-[var(--radius-md)] focus:border-[var(--color-accent)] focus:outline-none"
+              className="w-full px-3 py-2.5 text-sm bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] focus:border-[var(--brand-primary)] focus:outline-none"
             >
               <option value="">Sélectionner un template...</option>
               {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}

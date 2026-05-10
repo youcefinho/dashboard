@@ -50,24 +50,24 @@ export function ChangePasswordPage() {
       <div className="max-w-md mx-auto mt-8">
         <Card className="p-6">
           <h2 className="text-lg font-semibold mb-1">🔐 Changement de mot de passe</h2>
-          <p className="text-xs text-[var(--color-text-muted)] mb-6">
+          <p className="text-xs text-[var(--text-muted)] mb-6">
             Votre mot de passe doit faire au moins 8 caractères.
           </p>
 
           {success ? (
-            <div className="p-4 bg-[var(--color-success)]/10 border border-[var(--color-success)]/30 rounded-[var(--radius-md)] text-sm text-[var(--color-success)]">
+            <div className="p-4 bg-[var(--success)]/10 border border-[var(--success)]/30 rounded-[var(--radius-md)] text-sm text-[var(--success)]">
               ✅ Mot de passe changé avec succès ! Redirection...
             </div>
           ) : (
             <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
               {error && (
-                <div className="p-3 bg-[var(--color-danger)]/10 border border-[var(--color-danger)]/30 rounded-[var(--radius-md)] text-xs text-[var(--color-danger)]">
+                <div className="p-3 bg-[var(--danger)]/10 border border-[var(--danger)]/30 rounded-[var(--radius-md)] text-xs text-[var(--danger)]">
                   {error}
                 </div>
               )}
 
               <div>
-                <label className="block text-xs font-medium mb-1 text-[var(--color-text-secondary)]">
+                <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">
                   Mot de passe actuel
                 </label>
                 <Input
@@ -80,7 +80,7 @@ export function ChangePasswordPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium mb-1 text-[var(--color-text-secondary)]">
+                <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">
                   Nouveau mot de passe
                 </label>
                 <Input
@@ -94,7 +94,7 @@ export function ChangePasswordPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium mb-1 text-[var(--color-text-secondary)]">
+                <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">
                   Confirmer le nouveau mot de passe
                 </label>
                 <Input

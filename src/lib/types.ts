@@ -391,12 +391,12 @@ export const STATUS_LABELS: Record<LeadStatus, string> = {
 };
 
 export const STATUS_COLORS: Record<LeadStatus, string> = {
-  new: 'var(--color-accent)',
-  contacted: 'var(--color-info)',
-  meeting: 'var(--color-warning)',
-  signed: 'var(--color-success)',
-  closed: 'var(--color-muted)',
-  lost: 'var(--color-danger)',
+  new: 'var(--brand-primary)',
+  contacted: 'var(--info)',
+  meeting: 'var(--warning)',
+  signed: 'var(--success)',
+  closed: 'var(--text-muted)',
+  lost: 'var(--danger)',
 };
 
 export const TYPE_LABELS: Record<LeadType, string> = {
@@ -425,12 +425,12 @@ export const LIFECYCLE_LABELS: Record<LifecycleStage, string> = {
 };
 
 export const LIFECYCLE_COLORS: Record<LifecycleStage, string> = {
-  lead: 'var(--color-info)',
-  mql: 'var(--color-accent)',
-  sql: 'var(--color-warning)',
+  lead: 'var(--info)',
+  mql: 'var(--brand-primary)',
+  sql: 'var(--warning)',
   opportunity: 'oklch(0.7 0.18 60)',
-  customer: 'var(--color-success)',
-  lost: 'var(--color-danger)',
+  customer: 'var(--success)',
+  lost: 'var(--danger)',
 };
 
 export const NOTE_CATEGORY_LABELS: Record<string, string> = {
@@ -575,11 +575,11 @@ export const APPOINTMENT_TYPE_ICONS: Record<AppointmentType, string> = {
 };
 
 export const APPOINTMENT_TYPE_COLORS: Record<AppointmentType, string> = {
-  meeting: 'var(--color-accent)',
-  call: 'var(--color-info)',
-  visit: 'var(--color-success)',
-  signing: 'var(--color-warning)',
-  other: 'var(--color-muted)',
+  meeting: 'var(--brand-primary)',
+  call: 'var(--info)',
+  visit: 'var(--success)',
+  signing: 'var(--warning)',
+  other: 'var(--text-muted)',
 };
 
 export const APPOINTMENT_STATUS_LABELS: Record<AppointmentStatus, string> = {
@@ -599,9 +599,9 @@ export const TASK_PRIORITY_LABELS: Record<TaskPriority, string> = {
 };
 
 export const TASK_PRIORITY_COLORS: Record<TaskPriority, string> = {
-  high: 'var(--color-danger)',
-  medium: 'var(--color-warning)',
-  low: 'var(--color-info)',
+  high: 'var(--danger)',
+  medium: 'var(--warning)',
+  low: 'var(--info)',
 };
 
 export const TASK_PRIORITY_ICONS: Record<TaskPriority, string> = {

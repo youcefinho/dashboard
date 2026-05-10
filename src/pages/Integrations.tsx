@@ -114,7 +114,7 @@ export function IntegrationsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div className="flex items-center gap-3">
           <h1 className="text-xl font-bold">🔌 Intégrations</h1>
-          <Badge color="var(--color-success)">{activeCount} active{activeCount > 1 ? 's' : ''}</Badge>
+          <Badge color="var(--success)">{activeCount} active{activeCount > 1 ? 's' : ''}</Badge>
           <Badge>{INTEGRATIONS.length} disponibles</Badge>
         </div>
       </div>
@@ -122,52 +122,52 @@ export function IntegrationsPage() {
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         <Card className="p-3 text-center">
-          <p className="text-xl font-bold text-[var(--color-accent)]">{INTEGRATIONS.length}</p>
-          <p className="text-[10px] text-[var(--color-text-muted)] uppercase">Intégrations</p>
+          <p className="text-xl font-bold text-[var(--brand-primary)]">{INTEGRATIONS.length}</p>
+          <p className="text-[10px] text-[var(--text-muted)] uppercase">Intégrations</p>
         </Card>
         <Card className="p-3 text-center">
-          <p className="text-xl font-bold text-[var(--color-success)]">{activeCount}</p>
-          <p className="text-[10px] text-[var(--color-text-muted)] uppercase">Connectées</p>
+          <p className="text-xl font-bold text-[var(--success)]">{activeCount}</p>
+          <p className="text-[10px] text-[var(--text-muted)] uppercase">Connectées</p>
         </Card>
         <Card className="p-3 text-center">
-          <p className="text-xl font-bold text-[var(--color-warning)]">{INTEGRATIONS.length - activeCount}</p>
-          <p className="text-[10px] text-[var(--color-text-muted)] uppercase">À configurer</p>
+          <p className="text-xl font-bold text-[var(--warning)]">{INTEGRATIONS.length - activeCount}</p>
+          <p className="text-[10px] text-[var(--text-muted)] uppercase">À configurer</p>
         </Card>
         <Card className="p-3 text-center">
-          <p className="text-xl font-bold text-[var(--color-info)]">4</p>
-          <p className="text-[10px] text-[var(--color-text-muted)] uppercase">Catégories</p>
+          <p className="text-xl font-bold text-[var(--info)]">4</p>
+          <p className="text-[10px] text-[var(--text-muted)] uppercase">Catégories</p>
         </Card>
       </div>
 
       {/* Webhook URL */}
-      <Card className="p-4 mb-6 border-l-4 border-l-[var(--color-accent)]">
+      <Card className="p-4 mb-6 border-l-4 border-l-[var(--brand-primary)]">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-sm font-semibold">🔗 URL Webhook Universelle</h3>
-          <Badge color="var(--color-success)">Toujours active</Badge>
+          <Badge color="var(--success)">Toujours active</Badge>
         </div>
-        <p className="text-xs text-[var(--color-text-muted)] mb-2">
+        <p className="text-xs text-[var(--text-muted)] mb-2">
           Utilisez cette URL pour recevoir des leads depuis n'importe quelle source externe.
         </p>
         <div className="flex gap-2">
-          <code className="flex-1 px-3 py-2 bg-[var(--color-bg-tertiary)] rounded-[var(--radius-md)] text-xs font-mono text-[var(--color-accent)] overflow-x-auto">
+          <code className="flex-1 px-3 py-2 bg-[var(--bg-subtle)] rounded-[var(--radius-md)] text-xs font-mono text-[var(--brand-primary)] overflow-x-auto">
             POST {webhookUrl}
           </code>
           <Button size="sm" onClick={copyUrl}>{copiedUrl ? '✓ Copié !' : '📋 Copier'}</Button>
         </div>
         <details className="mt-3">
-          <summary className="text-xs text-[var(--color-text-muted)] cursor-pointer hover:text-[var(--color-accent)]">
+          <summary className="text-xs text-[var(--text-muted)] cursor-pointer hover:text-[var(--brand-primary)]">
             📖 Format du payload JSON + Headers requis
           </summary>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
             <div>
-              <p className="text-[10px] font-semibold text-[var(--color-text-secondary)] mb-1">Headers</p>
-              <pre className="p-2 bg-[var(--color-bg-tertiary)] rounded text-[10px] font-mono text-[var(--color-text-secondary)]">{`Content-Type: application/json
+              <p className="text-[10px] font-semibold text-[var(--text-secondary)] mb-1">Headers</p>
+              <pre className="p-2 bg-[var(--bg-subtle)] rounded text-[10px] font-mono text-[var(--text-secondary)]">{`Content-Type: application/json
 X-Webhook-Secret: <votre_secret>
 X-Client-Id: <id_courtier>`}</pre>
             </div>
             <div>
-              <p className="text-[10px] font-semibold text-[var(--color-text-secondary)] mb-1">Body JSON</p>
-              <pre className="p-2 bg-[var(--color-bg-tertiary)] rounded text-[10px] font-mono text-[var(--color-text-secondary)]">{`{
+              <p className="text-[10px] font-semibold text-[var(--text-secondary)] mb-1">Body JSON</p>
+              <pre className="p-2 bg-[var(--bg-subtle)] rounded text-[10px] font-mono text-[var(--text-secondary)]">{`{
   "name": "Prénom Nom",
   "email": "lead@ex.com",
   "phone": "+1 819 555-1234",
@@ -183,7 +183,7 @@ X-Client-Id: <id_courtier>`}</pre>
       <div className="flex gap-2 mb-6 flex-wrap">
         {(['all', 'ads', 'calendar', 'data', 'automation'] as const).map(cat => (
           <button key={cat} onClick={() => setFilterCategory(cat)}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer border transition-all ${filterCategory === cat ? 'bg-[var(--color-accent)] text-white border-[var(--color-accent)]' : 'border-[var(--color-border-subtle)] text-[var(--color-text-muted)]'}`}>
+            className={`px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer border transition-all ${filterCategory === cat ? 'bg-[var(--brand-primary)] text-white border-[var(--brand-primary)]' : 'border-[var(--border-subtle)] text-[var(--text-muted)]'}`}>
             {cat === 'all' ? `Toutes (${INTEGRATIONS.length})` : `${CATEGORY_LABELS[cat]} (${INTEGRATIONS.filter(i => i.category === cat).length})`}
           </button>
         ))}
@@ -197,28 +197,28 @@ X-Client-Id: <id_courtier>`}</pre>
           const isActive = integration.status === 'active';
 
           return (
-            <Card key={integration.id} className={`transition-all ${isActive ? 'border-l-4 border-l-[var(--color-success)]' : ''} hover:border-[var(--color-accent)]/20`}>
+            <Card key={integration.id} className={`transition-all ${isActive ? 'border-l-4 border-l-[var(--success)]' : ''} hover:border-[var(--brand-primary)]/20`}>
               <div className="p-4">
                 <div className="flex items-center gap-4">
-                  <div className={`w-12 h-12 rounded-[var(--radius-md)] flex items-center justify-center text-2xl shrink-0 ${isActive ? 'bg-[var(--color-success)]/10' : 'bg-[var(--color-bg-tertiary)]'}`}>
+                  <div className={`w-12 h-12 rounded-[var(--radius-md)] flex items-center justify-center text-2xl shrink-0 ${isActive ? 'bg-[var(--success)]/10' : 'bg-[var(--bg-subtle)]'}`}>
                     {integration.icon}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
                       <h3 className="text-sm font-semibold">{integration.name}</h3>
-                      <Badge color={isActive ? 'var(--color-success)' : integration.status === 'pending' ? 'var(--color-warning)' : 'var(--color-muted)'}>
+                      <Badge color={isActive ? 'var(--success)' : integration.status === 'pending' ? 'var(--warning)' : 'var(--text-muted)'}>
                         {isActive ? '✅ Connecté' : integration.status === 'pending' ? '⏳ En attente' : 'Non connecté'}
                       </Badge>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--color-bg-hover)] text-[var(--color-text-muted)]">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--bg-subtle)] text-[var(--text-muted)]">
                         {CATEGORY_LABELS[integration.category]}
                       </span>
                     </div>
-                    <p className="text-xs text-[var(--color-text-muted)]">{integration.description}</p>
+                    <p className="text-xs text-[var(--text-muted)]">{integration.description}</p>
                   </div>
                   <div className="flex gap-2 shrink-0">
                     {integration.docsUrl && (
                       <a href={integration.docsUrl} target="_blank" rel="noreferrer"
-                        className="px-2 py-1.5 text-[10px] text-[var(--color-text-muted)] border border-[var(--color-border-subtle)] rounded-[var(--radius-md)] hover:text-[var(--color-accent)] transition-colors">
+                        className="px-2 py-1.5 text-[10px] text-[var(--text-muted)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] hover:text-[var(--brand-primary)] transition-colors">
                         📖 Docs
                       </a>
                     )}
@@ -231,13 +231,13 @@ X-Client-Id: <id_courtier>`}</pre>
 
               {/* Configuration étendue */}
               {isExpanded && (
-                <div className="px-4 pb-4 border-t border-[var(--color-border-subtle)] pt-3 space-y-3 animate-slide-down">
+                <div className="px-4 pb-4 border-t border-[var(--border-subtle)] pt-3 space-y-3 animate-slide-down">
                   {integration.fields.length > 0 ? (
                     <>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {integration.fields.map((field) => (
                           <div key={field.key}>
-                            <label className="text-xs font-medium text-[var(--color-text-secondary)] mb-1 block">{field.label}</label>
+                            <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">{field.label}</label>
                             <Input type={field.type || 'text'} value={config[field.key] || ''} onChange={(e) => updateConfig(integration.id, field.key, e.target.value)} placeholder={field.placeholder} />
                           </div>
                         ))}
@@ -250,9 +250,9 @@ X-Client-Id: <id_courtier>`}</pre>
                       </div>
                     </>
                   ) : (
-                    <div className="text-center py-4 bg-[var(--color-bg-tertiary)] rounded-[var(--radius-md)]">
-                      <p className="text-sm text-[var(--color-text-muted)]">Utilisez l'URL webhook universelle ci-dessus pour connecter cette intégration.</p>
-                      <p className="text-xs text-[var(--color-text-muted)] mt-1">Consultez la documentation de {integration.name} pour configurer le webhook sortant.</p>
+                    <div className="text-center py-4 bg-[var(--bg-subtle)] rounded-[var(--radius-md)]">
+                      <p className="text-sm text-[var(--text-muted)]">Utilisez l'URL webhook universelle ci-dessus pour connecter cette intégration.</p>
+                      <p className="text-xs text-[var(--text-muted)] mt-1">Consultez la documentation de {integration.name} pour configurer le webhook sortant.</p>
                     </div>
                   )}
                 </div>
@@ -274,12 +274,12 @@ X-Client-Id: <id_courtier>`}</pre>
             { method: 'GET', path: '/api/messages', desc: 'Lister les messages inbox', auth: 'JWT' },
             { method: 'GET', path: '/api/stats', desc: 'Statistiques du dashboard', auth: 'JWT' },
           ].map(endpoint => (
-            <div key={endpoint.path} className="p-3 bg-[var(--color-bg-tertiary)] rounded-[var(--radius-md)] flex items-start gap-3">
-              <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${endpoint.method === 'POST' ? 'bg-[var(--color-accent)]/15 text-[var(--color-accent)]' : 'bg-[var(--color-success)]/15 text-[var(--color-success)]'}`}>{endpoint.method}</span>
+            <div key={endpoint.path} className="p-3 bg-[var(--bg-subtle)] rounded-[var(--radius-md)] flex items-start gap-3">
+              <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${endpoint.method === 'POST' ? 'bg-[var(--brand-primary)]/15 text-[var(--brand-primary)]' : 'bg-[var(--success)]/15 text-[var(--success)]'}`}>{endpoint.method}</span>
               <div>
                 <p className="text-xs font-semibold font-mono">{endpoint.path}</p>
-                <p className="text-[10px] text-[var(--color-text-muted)]">{endpoint.desc}</p>
-                <p className="text-[9px] text-[var(--color-text-muted)] mt-0.5">Auth : {endpoint.auth}</p>
+                <p className="text-[10px] text-[var(--text-muted)]">{endpoint.desc}</p>
+                <p className="text-[9px] text-[var(--text-muted)] mt-0.5">Auth : {endpoint.auth}</p>
               </div>
             </div>
           ))}

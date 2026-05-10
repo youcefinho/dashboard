@@ -70,27 +70,27 @@ export function PipelinePage() {
   };
 
   // Score couleur
-  const scoreColor = (score: number) => score >= 70 ? 'var(--color-success)' : score >= 40 ? 'var(--color-warning)' : 'var(--color-danger)';
+  const scoreColor = (score: number) => score >= 70 ? 'var(--success)' : score >= 40 ? 'var(--warning)' : 'var(--danger)';
 
   return (
     <AppLayout title="Pipeline">
       {/* KPIs Pipeline */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
         <Card className="p-3 text-center">
-          <p className="text-xl font-bold text-[var(--color-text-primary)]">{leads.length}</p>
-          <p className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">Opportunités</p>
+          <p className="text-xl font-bold text-[var(--text-primary)]">{leads.length}</p>
+          <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider">Opportunités</p>
         </Card>
         <Card className="p-3 text-center">
-          <p className="text-xl font-bold text-[var(--color-accent)]">{totalPipelineValue.toLocaleString('fr-CA')} $</p>
-          <p className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">Valeur totale</p>
+          <p className="text-xl font-bold text-[var(--brand-primary)]">{totalPipelineValue.toLocaleString('fr-CA')} $</p>
+          <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider">Valeur totale</p>
         </Card>
         <Card className="p-3 text-center">
-          <p className="text-xl font-bold text-[var(--color-success)]">{weightedForecast.toLocaleString('fr-CA')} $</p>
-          <p className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">Prévision pondérée</p>
+          <p className="text-xl font-bold text-[var(--success)]">{weightedForecast.toLocaleString('fr-CA')} $</p>
+          <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider">Prévision pondérée</p>
         </Card>
         <Card className="p-3 text-center">
-          <p className="text-xl font-bold text-[var(--color-warning)]">{leads.filter(l => getDaysInStage(l) > 7 && l.status !== 'closed' && l.status !== 'lost').length}</p>
-          <p className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">Dormants (&gt;7j)</p>
+          <p className="text-xl font-bold text-[var(--warning)]">{leads.filter(l => getDaysInStage(l) > 7 && l.status !== 'closed' && l.status !== 'lost').length}</p>
+          <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider">Dormants (&gt;7j)</p>
         </Card>
       </div>
 
@@ -114,7 +114,7 @@ export function PipelinePage() {
               <div
                 key={status}
                 className={`flex flex-col rounded-[var(--radius-lg)] p-2.5 transition-all duration-200
-                  ${isOver ? 'bg-[var(--color-bg-hover)] ring-2 ring-[var(--color-accent)]' : 'bg-[var(--color-bg-secondary)]'}
+                  ${isOver ? 'bg-[var(--bg-subtle)] ring-2 ring-[var(--brand-primary)]' : 'bg-[var(--bg-surface)]'}
                   ${status === 'lost' ? 'opacity-60' : ''}
                 `}
                 onDragOver={(e) => handleDragOver(e, status)}
@@ -128,16 +128,16 @@ export function PipelinePage() {
                       <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: STATUS_COLORS[status] }} />
                       <h3 className="text-xs font-bold uppercase tracking-wider">{STATUS_LABELS[status]}</h3>
                     </div>
-                    <span className="text-[10px] text-[var(--color-text-muted)] bg-[var(--color-bg-hover)] px-1.5 py-0.5 rounded-full">
+                    <span className="text-[10px] text-[var(--text-muted)] bg-[var(--bg-subtle)] px-1.5 py-0.5 rounded-full">
                       {columnLeads.length}
                     </span>
                   </div>
                   {/* Valeur colonne + probabilité */}
-                  <div className="flex items-center justify-between text-[10px] text-[var(--color-text-muted)]">
+                  <div className="flex items-center justify-between text-[10px] text-[var(--text-muted)]">
                     <span>{columnValue > 0 ? `${columnValue.toLocaleString('fr-CA')} $` : '—'}</span>
                     <span>{STAGE_PROBABILITY[status]}%</span>
                   </div>
-                  <div className="h-1 mt-1 rounded-full bg-[var(--color-bg-hover)] overflow-hidden">
+                  <div className="h-1 mt-1 rounded-full bg-[var(--bg-subtle)] overflow-hidden">
                     <div className="h-full rounded-full transition-all" style={{ width: `${STAGE_PROBABILITY[status]}%`, background: STATUS_COLORS[status] }} />
                   </div>
                 </div>
@@ -145,7 +145,7 @@ export function PipelinePage() {
                 {/* Cartes leads */}
                 <div className="flex-1 space-y-2 overflow-y-auto max-h-[calc(100vh-22rem)]">
                   {columnLeads.length === 0 && (
-                    <div className="text-center py-6 text-[10px] text-[var(--color-text-muted)] border border-dashed border-[var(--color-border-subtle)] rounded-[var(--radius-md)]">
+                    <div className="text-center py-6 text-[10px] text-[var(--text-muted)] border border-dashed border-[var(--border-subtle)] rounded-[var(--radius-md)]">
                       Déposez ici
                     </div>
                   )}
@@ -159,41 +159,41 @@ export function PipelinePage() {
                         to={`/leads/${lead.id}`}
                         draggable
                         onDragStart={(e) => handleDragStart(e, lead.id)}
-                        className={`block card p-3 cursor-grab active:cursor-grabbing transition-all hover:border-[var(--color-accent)] hover:shadow-md
+                        className={`block card p-3 cursor-grab active:cursor-grabbing transition-all hover:border-[var(--brand-primary)] hover:shadow-md
                           ${draggedId === lead.id ? 'opacity-40 scale-95' : ''}
-                          ${isDormant ? 'border-l-2 border-l-[var(--color-warning)]' : ''}
+                          ${isDormant ? 'border-l-2 border-l-[var(--warning)]' : ''}
                         `}
                       >
                         {/* Ligne 1 : Nom + Type */}
                         <div className="flex items-start justify-between mb-1.5">
                           <p className="text-sm font-medium truncate flex-1">{lead.name}</p>
-                          <Badge color={lead.type === 'buy' ? 'var(--color-accent)' : 'var(--color-warning)'}>
+                          <Badge color={lead.type === 'buy' ? 'var(--brand-primary)' : 'var(--warning)'}>
                             {TYPE_LABELS[lead.type]}
                           </Badge>
                         </div>
 
                         {/* Ligne 2 : Client */}
                         {lead.client_name && (
-                          <p className="text-[10px] text-[var(--color-text-muted)] mb-1.5">{lead.client_name}</p>
+                          <p className="text-[10px] text-[var(--text-muted)] mb-1.5">{lead.client_name}</p>
                         )}
 
                         {/* Ligne 3 : Score + Valeur */}
                         <div className="flex items-center justify-between mb-1.5">
                           <div className="flex items-center gap-1">
-                            <div className="w-6 h-1.5 rounded-full bg-[var(--color-bg-hover)] overflow-hidden">
+                            <div className="w-6 h-1.5 rounded-full bg-[var(--bg-subtle)] overflow-hidden">
                               <div className="h-full rounded-full" style={{ width: `${lead.score}%`, background: scoreColor(lead.score) }} />
                             </div>
-                            <span className="text-[10px] text-[var(--color-text-muted)]">{lead.score}</span>
+                            <span className="text-[10px] text-[var(--text-muted)]">{lead.score}</span>
                           </div>
                           {lead.deal_value > 0 && (
-                            <span className="text-[10px] font-semibold text-[var(--color-accent)]">{lead.deal_value.toLocaleString('fr-CA')} $</span>
+                            <span className="text-[10px] font-semibold text-[var(--brand-primary)]">{lead.deal_value.toLocaleString('fr-CA')} $</span>
                           )}
                         </div>
 
                         {/* Ligne 4 : Source + Date */}
-                        <div className="flex items-center justify-between text-[10px] text-[var(--color-text-muted)]">
+                        <div className="flex items-center justify-between text-[10px] text-[var(--text-muted)]">
                           <span>{SOURCE_LABELS[lead.source] || lead.source}</span>
-                          <span className={isDormant ? 'text-[var(--color-warning)] font-semibold' : ''}>
+                          <span className={isDormant ? 'text-[var(--warning)] font-semibold' : ''}>
                             {isDormant ? `⚠️ ${daysInStage}j` : new Date(lead.created_at).toLocaleDateString('fr-CA')}
                           </span>
                         </div>
@@ -202,9 +202,9 @@ export function PipelinePage() {
                         {lead.tags && lead.tags.length > 0 && (
                           <div className="flex flex-wrap gap-1 mt-1.5">
                             {lead.tags.slice(0, 2).map(tag => (
-                              <span key={tag} className="text-[9px] px-1.5 py-0.5 rounded-full bg-[var(--color-bg-hover)] text-[var(--color-text-muted)]">{tag}</span>
+                              <span key={tag} className="text-[9px] px-1.5 py-0.5 rounded-full bg-[var(--bg-subtle)] text-[var(--text-muted)]">{tag}</span>
                             ))}
-                            {lead.tags.length > 2 && <span className="text-[9px] text-[var(--color-text-muted)]">+{lead.tags.length - 2}</span>}
+                            {lead.tags.length > 2 && <span className="text-[9px] text-[var(--text-muted)]">+{lead.tags.length - 2}</span>}
                           </div>
                         )}
                       </Link>
