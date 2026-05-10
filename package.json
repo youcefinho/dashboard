@@ -12,6 +12,8 @@
     "db:migrate:phase3": "wrangler d1 execute intralys-crm --local --file=migration-phase3.sql",
     "db:migrate:phase4": "wrangler d1 execute intralys-crm --local --file=migration-phase4.sql",
     "db:migrate:phase5": "wrangler d1 execute intralys-crm --local --file=migration-phase5.sql",
+    "db:migrate:phase8": "wrangler d1 execute intralys-crm --local --file=migration-phase8.sql",
+    "db:migrate:phase9": "wrangler d1 execute intralys-crm --local --file=migration-phase9.sql",
     "build": "tsc && vite build",
     "preview": "vite preview"
   },
