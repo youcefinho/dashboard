@@ -4,14 +4,16 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, Button, Badge, Skeleton, EmptyState } from '@/components/ui';
-import { getLeadDetail, updateLead, addTag, removeTag, getAppointments, getTasks, updateTask } from '@/lib/api';
+import { getLeadDetail, updateLead, addTag, removeTag, getAppointments, getTasks, updateTask, getLeadNotes, createLeadNote, deleteLeadNote, getLeadScores, getLeadCustomFields } from '@/lib/api';
 import { ConversationPanel } from '@/components/conversations/ConversationPanel';
 import {
   STATUS_LABELS, STATUS_COLORS, TYPE_LABELS, SOURCE_LABELS,
   ACTIVITY_LABELS, ACTIVITY_ICONS, LEAD_STATUSES,
+  LIFECYCLE_LABELS, LIFECYCLE_COLORS, NOTE_CATEGORY_LABELS, NOTE_CATEGORY_ICONS,
   APPOINTMENT_TYPE_ICONS, APPOINTMENT_TYPE_LABELS, APPOINTMENT_STATUS_LABELS,
   TASK_PRIORITY_ICONS, TASK_STATUS_ICONS, TASK_STATUS_LABELS,
   type LeadDetail, type LeadStatus, type ActivityType, type Appointment, type Task,
+  type LeadNote, type LeadScore, type CustomFieldValue, type LifecycleStage,
 } from '@/lib/types';
 
 export function LeadDetailPage() {
@@ -26,9 +28,15 @@ export function LeadDetailPage() {
   const [isEditingDeal, setIsEditingDeal] = useState(false);
   const [leadAppointments, setLeadAppointments] = useState<Appointment[]>([]);
   const [leadTasks, setLeadTasks] = useState<Task[]>([]);
-  const [activeTab, setActiveTab] = useState<'details' | 'conversations' | 'activity'>('details');
+  const [activeTab, setActiveTab] = useState<'details' | 'conversations' | 'activity' | 'notes' | 'scores'>('details');
   const [editingField, setEditingField] = useState<string | null>(null);
   const [fieldValue, setFieldValue] = useState('');
+  // Sprint 2
+  const [leadNotes, setLeadNotes] = useState<LeadNote[]>([]);
+  const [leadScores, setLeadScores] = useState<LeadScore[]>([]);
+  const [customFields, setCustomFields] = useState<CustomFieldValue[]>([]);
+  const [newNoteBody, setNewNoteBody] = useState('');
+  const [newNoteCategory, setNewNoteCategory] = useState('general');
 
   const loadLead = useCallback(async () => {
     setIsLoading(true);
@@ -43,15 +51,16 @@ export function LeadDetailPage() {
 
   useEffect(() => {
     void loadLead();
-    // Charger les RDV liés au lead
     getAppointments().then(res => {
-      if (res.data) {
-        setLeadAppointments(res.data.filter(a => a.lead_id === leadId));
-      }
+      if (res.data) setLeadAppointments(res.data.filter(a => a.lead_id === leadId));
     }).catch(() => { /* ignoré */ });
     getTasks({ lead_id: leadId }).then(res => {
       if (res.data) setLeadTasks(res.data);
     }).catch(() => { /* ignoré */ });
+    // Sprint 2
+    getLeadNotes(leadId).then(r => { if (r.data) setLeadNotes(r.data); }).catch(() => {});
+    getLeadScores(leadId).then(r => { if (r.data) setLeadScores(r.data); }).catch(() => {});
+    getLeadCustomFields(leadId).then(r => { if (r.data) setCustomFields(r.data); }).catch(() => {});
   }, [loadLead, leadId]);
 
   const handleStatusChange = async (status: LeadStatus) => {
@@ -161,10 +170,20 @@ export function LeadDetailPage() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                <button onClick={async () => { await updateLead(leadId, { favorite: lead.favorite ? 0 : 1 } as Record<string, unknown>); void loadLead(); }}
+                  className="text-lg cursor-pointer hover:scale-125 transition-transform" title={lead.favorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}>
+                  {lead.favorite ? '⭐' : '☆'}
+                </button>
                 <Badge color={lead.type === 'buy' ? 'var(--color-accent)' : 'var(--color-warning)'}>
                   {TYPE_LABELS[lead.type]}
                 </Badge>
                 <Badge color={STATUS_COLORS[lead.status]}>{STATUS_LABELS[lead.status]}</Badge>
+                {lead.lifecycle_stage && (
+                  <Badge color={LIFECYCLE_COLORS[lead.lifecycle_stage as LifecycleStage] || 'var(--color-muted)'}>
+                    {LIFECYCLE_LABELS[lead.lifecycle_stage as LifecycleStage] || lead.lifecycle_stage}
+                  </Badge>
+                )}
+                {lead.dnd ? <span title="Ne pas déranger" className="text-sm">🔕</span> : null}
               </div>
             </div>
 
@@ -223,10 +242,10 @@ export function LeadDetailPage() {
           </Card>
 
           {/* Onglets */}
-          <div className="flex gap-1 border-b border-[var(--color-border-subtle)]">
-            {([['details', '📋 Détails'], ['conversations', '💬 Conversations'], ['activity', '📜 Activité']] as const).map(([key, label]) => (
-              <button key={key} onClick={() => setActiveTab(key)}
-                className={`px-4 py-2.5 text-sm font-medium transition-colors cursor-pointer border-b-2 -mb-px ${
+          <div className="flex gap-1 border-b border-[var(--color-border-subtle)] overflow-x-auto">
+            {([['details', '📋 Détails'], ['notes', `📝 Notes (${leadNotes.length})`], ['conversations', '💬 Conversations'], ['scores', `📊 Scores`], ['activity', '📜 Activité']] as const).map(([key, label]) => (
+              <button key={key} onClick={() => setActiveTab(key as typeof activeTab)}
+                className={`px-4 py-2.5 text-sm font-medium transition-colors cursor-pointer border-b-2 -mb-px whitespace-nowrap ${
                   activeTab === key ? 'border-[var(--color-accent)] text-[var(--color-accent)]' : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
                 }`}>{label}</button>
             ))}
@@ -311,6 +330,93 @@ export function LeadDetailPage() {
             )}
           </Card>
           )}
+
+          {activeTab === 'notes' && (
+          <Card className="p-5">
+            <h3 className="text-sm font-semibold mb-3">📝 Notes ({leadNotes.length})</h3>
+            {/* Formulaire ajout note */}
+            <div className="mb-4 space-y-2 p-3 rounded-[var(--radius-md)] bg-[var(--color-bg-hover)]">
+              <textarea value={newNoteBody} onChange={e => setNewNoteBody(e.target.value)} rows={3}
+                placeholder="Ajouter une note..."
+                className="w-full px-3 py-2 text-sm bg-[var(--color-bg-input)] border border-[var(--color-border-subtle)] rounded-[var(--radius-md)] text-[var(--color-text-primary)] resize-none focus:border-[var(--color-accent)] focus:outline-none" />
+              <div className="flex items-center gap-2">
+                <select value={newNoteCategory} onChange={e => setNewNoteCategory(e.target.value)}
+                  className="text-xs px-2 py-1 bg-[var(--color-bg-input)] border border-[var(--color-border-subtle)] rounded-[var(--radius-sm)] text-[var(--color-text-secondary)]">
+                  {Object.entries(NOTE_CATEGORY_LABELS).map(([k, v]) => <option key={k} value={k}>{NOTE_CATEGORY_ICONS[k]} {v}</option>)}
+                </select>
+                <Button size="sm" disabled={!newNoteBody.trim()} onClick={async () => {
+                  await createLeadNote(leadId, { body: newNoteBody, category: newNoteCategory });
+                  setNewNoteBody(''); setNewNoteCategory('general');
+                  const r = await getLeadNotes(leadId); if (r.data) setLeadNotes(r.data);
+                }}>Ajouter</Button>
+              </div>
+            </div>
+            {/* Liste des notes */}
+            {leadNotes.length === 0 ? (
+              <p className="text-sm text-[var(--color-text-muted)]">Aucune note pour le moment.</p>
+            ) : (
+              <div className="space-y-3">
+                {leadNotes.map(note => (
+                  <div key={note.id} className={`p-3 rounded-[var(--radius-md)] border ${note.is_pinned ? 'border-[var(--color-warning)] bg-[oklch(0.95_0.02_90)]' : 'border-[var(--color-border-subtle)] bg-[var(--color-bg-card)]'}`}>
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
+                        {note.is_pinned ? <span>📌</span> : null}
+                        <span>{NOTE_CATEGORY_ICONS[note.category] || '📝'} {NOTE_CATEGORY_LABELS[note.category] || note.category}</span>
+                        <span>·</span>
+                        <span>{note.author_name || 'Système'}</span>
+                        <span>·</span>
+                        <span>{new Date(note.created_at).toLocaleDateString('fr-CA')}</span>
+                      </div>
+                      <button onClick={async () => { await deleteLeadNote(leadId, note.id); const r = await getLeadNotes(leadId); if (r.data) setLeadNotes(r.data); }}
+                        className="text-xs text-[var(--color-danger)] hover:underline cursor-pointer">✕</button>
+                    </div>
+                    <p className="text-sm text-[var(--color-text-secondary)] whitespace-pre-wrap">{note.body}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+          )}
+
+          {activeTab === 'scores' && (
+          <Card className="p-5">
+            <h3 className="text-sm font-semibold mb-3">📊 Scores multi-profils</h3>
+            {leadScores.length === 0 ? (
+              <p className="text-sm text-[var(--color-text-muted)]">Aucun score calculé. Les scores seront calculés automatiquement.</p>
+            ) : (
+              <div className="space-y-3">
+                {leadScores.map(s => (
+                  <div key={s.profile_id} className="p-3 rounded-[var(--radius-md)] bg-[var(--color-bg-hover)]">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm font-medium">{s.name}</span>
+                      <span className={`text-lg font-bold ${s.score >= 70 ? 'text-[var(--color-success)]' : s.score >= 40 ? 'text-[var(--color-warning)]' : 'text-[var(--color-danger)]'}`}>{s.score}/100</span>
+                    </div>
+                    <div className="w-full h-2 rounded-full bg-[var(--color-border-subtle)] overflow-hidden">
+                      <div className={`h-full rounded-full transition-all ${s.score >= 70 ? 'bg-[var(--color-success)]' : s.score >= 40 ? 'bg-[var(--color-warning)]' : 'bg-[var(--color-danger)]'}`}
+                        style={{ width: `${s.score}%` }} />
+                    </div>
+                    {s.description && <p className="text-xs text-[var(--color-text-muted)] mt-1">{s.description}</p>}
+                  </div>
+                ))}
+              </div>
+            )}
+            {/* Custom Fields */}
+            {customFields.length > 0 && (
+              <>
+                <h3 className="text-sm font-semibold mt-6 mb-3">🏷️ Champs personnalisés</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  {customFields.map(cf => (
+                    <div key={cf.field_id} className="p-2 rounded-[var(--radius-sm)] bg-[var(--color-bg-hover)]">
+                      <p className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">{cf.field_name}</p>
+                      <p className="text-sm font-medium">{cf.value || '—'}</p>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </Card>
+          )}
+
         </div>
 
         {/* Colonne latérale */}

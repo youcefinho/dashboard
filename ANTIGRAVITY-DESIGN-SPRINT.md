@@ -37,51 +37,132 @@
 
 ### 2.1 — Couleurs (LIGHT MODE = primary)
 
+> **Source de vérité :** palette extraite du site live `intralys.com` (config Tailwind + CSS vars). Direction "multi-couleurs intentionnelle" = bleu cyan signature + accents warm + palette élargie pour différencier badges/sub-accounts/stages.
+
 ```css
-/* Backgrounds */
---bg-canvas:     oklch(0.99 0 0);              /* fond app — blanc cassé */
---bg-surface:    oklch(1 0 0);                  /* cards, modals — blanc pur */
---bg-subtle:     oklch(0.97 0.003 250);         /* section headers, hover row */
---bg-muted:      oklch(0.95 0.004 250);         /* disabled, skeletons */
---bg-inverse:    oklch(0.18 0.015 260);         /* sidebar dark contrast */
+/* ── Brand Intralys (signature) ─────────────────────────── */
+--brand-primary:  #009DDB;                      /* bleu cyan signature Intralys */
+--brand-hover:    #007EAF;                      /* darker pour hover */
+--brand-soft:     #C6EAF7;                      /* secondary Intralys — soft backgrounds */
+--brand-tint:     #E8F6FC;                      /* tint très light pour rows hover, badges */
+--brand-strong:   #006A93;                      /* dark accents */
 
-/* Text */
---text-primary:    oklch(0.18 0.01 260);        /* titres, body */
---text-secondary:  oklch(0.42 0.008 260);       /* labels, descriptions */
---text-muted:      oklch(0.58 0.006 260);       /* placeholders, hints */
---text-inverse:    oklch(0.97 0 0);             /* sur bg-inverse */
+/* ── Accent warm (CTAs urgents, conversions) ──────────── */
+--accent-orange:  #D96E27;                      /* orange brûlé Intralys */
+--accent-orange-soft: #FCEDE0;                  /* soft variant */
 
-/* Borders */
---border-subtle:  oklch(0.93 0.004 250);        /* dividers fins */
---border-default: oklch(0.88 0.005 250);        /* cards, inputs */
---border-strong:  oklch(0.78 0.006 250);        /* focus, active */
+/* ── Backgrounds (light mode) ───────────────────────────── */
+--bg-canvas:      #FAFBFC;                      /* fond app — blanc cassé tirant légèrement bleu */
+--bg-surface:     #FFFFFF;                      /* cards, modals — blanc pur */
+--bg-subtle:      #F5F7FA;                      /* hover row, section headers */
+--bg-muted:       #EDF1F5;                      /* skeletons, disabled */
+--bg-inverse:     #0D0D18;                      /* sidebar dark Intralys */
+--bg-inverse-2:   #1a1a2e;                      /* gradient stop pour hero/sidebar */
 
-/* Brand — Intralys signature */
---brand-primary:  oklch(0.55 0.22 264);         /* indigo-violet — vivant mais pro */
---brand-hover:    oklch(0.48 0.22 264);
---brand-soft:     oklch(0.96 0.04 264);         /* tint backgrounds */
---brand-strong:   oklch(0.40 0.22 264);         /* dark accents */
+/* ── Text ──────────────────────────────────────────────── */
+--text-primary:   #0D0D18;                      /* dark Intralys pour body/titres */
+--text-secondary: #4A5468;                      /* labels, descriptions */
+--text-muted:     #8A93A4;                      /* placeholders, hints */
+--text-inverse:   #FAFBFC;                      /* sur bg-inverse */
+--text-inverse-mut: #8A93A4;                    /* sur bg-inverse, muted */
+--text-link:      #188BF6;                      /* liens (bleu vif Intralys) */
 
-/* Statuses */
---success:        oklch(0.65 0.18 145);         /* vert sage — pas fluo */
---success-soft:   oklch(0.96 0.04 145);
---warning:        oklch(0.72 0.15 75);          /* ambre warm */
---warning-soft:   oklch(0.97 0.04 75);
---danger:         oklch(0.62 0.21 25);          /* rouge brique */
---danger-soft:    oklch(0.97 0.03 25);
---info:           oklch(0.65 0.13 240);         /* bleu cyan */
---info-soft:      oklch(0.96 0.03 240);
+/* ── Borders ───────────────────────────────────────────── */
+--border-subtle:  #EDF1F5;                      /* dividers fins */
+--border-default: #DDE3EB;                      /* cards, inputs */
+--border-strong:  #C2CBD7;                      /* focus, active */
 
-/* Pipeline stages — palette douce */
---stage-new:        oklch(0.65 0.13 240);
---stage-contacted:  oklch(0.65 0.15 195);
---stage-meeting:    oklch(0.72 0.15 75);
---stage-signed:     oklch(0.65 0.18 145);
---stage-closed:     oklch(0.55 0.02 260);
---stage-lost:       oklch(0.62 0.21 25);
+/* ── Status (palette ÉLARGIE Intralys multi-couleurs) ── */
+--success:       #37CA37;                       /* vert vif Intralys (cf. badges +250%) */
+--success-soft:  #DEF7DE;
+--info:          #188BF6;                       /* bleu vif Intralys (link color) */
+--info-soft:     #DBE9FE;
+--warning:       #FF9A00;                       /* orange vif Intralys */
+--warning-soft:  #FFEDD5;
+--danger:        #E93D3D;                       /* rouge Intralys */
+--danger-soft:   #FCDFDF;
 
-/* Focus ring */
---ring: oklch(0.55 0.22 264 / 0.25);
+/* ── Palette extended — multi-couleurs (Intralys) ──────── */
+/* Pour distinguer sub-accounts, tags, segments, custom badges */
+--color-cobalt:  #155EEF;                       /* bleu deep */
+--color-malibu:  #63B3ED;                       /* bleu doux */
+--color-indigo:  #757BBD;                       /* indigo doux */
+--color-purple:  #D6BCFA;                       /* violet pastel */
+--color-pink:    #FBB6CE;                       /* rose */
+--color-teal:    #81E6D9;                       /* turquoise */
+--color-yellow:  #FAF089;                       /* jaune doux */
+--color-coral:   #F6AD55;                       /* corail */
+
+/* ── Pipeline stages (mapping multi-couleurs) ──────────── */
+--stage-new:        var(--brand-primary);       /* bleu cyan = nouveau lead */
+--stage-contacted:  var(--info);                /* bleu vif = contact établi */
+--stage-meeting:    var(--warning);             /* orange = action requise */
+--stage-signed:     var(--success);             /* vert = win */
+--stage-closed:     var(--text-muted);          /* gris = neutre */
+--stage-lost:       var(--danger);              /* rouge = perte */
+
+/* ── Sub-account color tags (chaque client a sa couleur) ─ */
+--client-color-1: var(--brand-primary);         /* Mathis Guimont — bleu cyan */
+--client-color-2: var(--accent-orange);         /* Serujan — orange */
+--client-color-3: var(--color-purple);          /* Intralys — purple */
+--client-color-4: var(--color-teal);            /* Buteau — teal */
+--client-color-5: var(--color-coral);           /* EG Services — coral */
+--client-color-6: var(--success);               /* Gatineau Premier — vert */
+
+/* ── Focus ring ────────────────────────────────────────── */
+--ring: rgba(0, 157, 219, 0.25);                /* brand cyan 25% */
+
+/* ── Decorative gradients (inspirés intralys.com) ─────── */
+--gradient-hero-dark:  linear-gradient(135deg, #0D0D18 0%, #1a1a2e 100%);
+--gradient-shimmer:    linear-gradient(45deg, transparent 30%, rgba(0, 157, 219, 0.05) 50%, transparent 70%);
+--gradient-blob:       linear-gradient(45deg, rgba(0, 157, 219, 0.10), rgba(198, 234, 247, 0.05));
+--gradient-grid:       linear-gradient(rgba(0, 157, 219, 0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 157, 219, 0.08) 1px, transparent 1px);
+--gradient-radial:     radial-gradient(circle at 25% 25%, rgba(0, 157, 219, 0.08) 0%, transparent 50%);
+--gradient-cta:        linear-gradient(135deg, #009DDB 0%, #188BF6 100%);
+--gradient-warm:       linear-gradient(135deg, #D96E27 0%, #FF9A00 100%);
+```
+
+### Animations signature Intralys (à reproduire)
+
+```css
+/* Shimmer subtle pour sections clés (hero, cards features) */
+@keyframes shimmer { 
+  0%, 100% { transform: translateX(-100%); opacity: 0; } 
+  50%      { transform: translateX(100%);  opacity: 0.3; } 
+}
+.shimmer-bg { 
+  position: relative; 
+  overflow: hidden; 
+}
+.shimmer-bg::before {
+  content: ''; 
+  position: absolute; 
+  inset: 0;
+  background: var(--gradient-shimmer);
+  animation: shimmer 8s ease-in-out infinite;
+}
+
+/* Float pour blobs decoratifs (sub-account avatars, hero shapes) */
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  33%      { transform: translateY(-12px) rotate(120deg); }
+  66%      { transform: translateY(8px) rotate(240deg); }
+}
+
+/* Card lift hover signature Intralys */
+.card-lift { 
+  transition: all 0.3s ease; 
+}
+.card-lift:hover { 
+  transform: translateY(-5px); 
+  box-shadow: 0 20px 40px rgba(0, 157, 219, 0.15); 
+}
+
+/* Grid pattern background (sections "tech") */
+.grid-pattern { 
+  background-image: var(--gradient-grid); 
+  background-size: 50px 50px; 
+}
 ```
 
 ### 2.2 — Couleurs (DARK MODE — toggle)
