@@ -16,7 +16,7 @@ import {
   type LeadDetail, type LeadStatus, type ActivityType, type Appointment, type Task,
   type LeadNote, type LeadScore, type CustomFieldValue, type LifecycleStage,
 } from '@/lib/types';
-import { ArrowLeft, Star, Phone, Mail, CalendarPlus, CheckSquare, Trash2 } from 'lucide-react';
+import { ArrowLeft, Star, Phone, Mail, CalendarPlus, CheckSquare, Trash2, Compass } from 'lucide-react';
 
 export function LeadDetailPage() {
   const { leadId } = useParams({ strict: false }) as { leadId: string };
@@ -226,6 +226,9 @@ export function LeadDetailPage() {
               </button>
               <button onClick={() => void navigate({ to: '/tasks' })} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-[var(--radius-sm)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] hover:bg-[var(--brand-primary)] hover:text-white transition-colors cursor-pointer">
                 <CheckSquare size={13} /> Créer tâche
+              </button>
+              <button onClick={() => void navigate({ to: `/visit/${leadId}` })} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-[var(--radius-sm)] bg-gradient-to-r from-indigo-500/10 to-purple-500/10 text-indigo-600 border border-indigo-500/20 hover:bg-indigo-500 hover:text-white transition-colors cursor-pointer">
+                <Compass size={13} /> Mode Visite
               </button>
             </div>
 

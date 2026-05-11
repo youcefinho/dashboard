@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, Button, Badge } from '@/components/ui';
 import { Input } from '@/components/ui/Input';
-import { getDocuments, createDocument, sendDocument, getDocumentTemplates, type Document, type DocumentTemplate, getLeads } from '@/lib/api';
-import { FileSignature, Plus, Mail, Eye, CheckCircle, Clock } from 'lucide-react';
+import { getDocuments, createDocument, sendDocument, getDocumentTemplates, sendSigningSms, type Document, type DocumentTemplate, getLeads } from '@/lib/api';
+import { FileSignature, Plus, Mail, Eye, CheckCircle, Clock, MessageSquare } from 'lucide-react';
 
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -187,9 +187,20 @@ export function DocumentsPage() {
                         : timeAgo(doc.created_at)}
                   </td>
                   <td className="py-3 px-4 text-right">
-                    <Button variant="secondary" size="sm" onClick={() => window.open(`/sign/${doc.token}`, '_blank')}>
-                      Voir
-                    </Button>
+                    <div className="flex gap-1.5 justify-end">
+                      <Button variant="secondary" size="sm" onClick={() => window.open(`/sign/${doc.token}`, '_blank')}>
+                        Voir
+                      </Button>
+                      {(doc.status === 'draft' || doc.status === 'sent') && (
+                        <Button variant="ghost" size="sm" onClick={async () => {
+                          const res = await sendSigningSms(doc.id);
+                          if (res.data) alert(`SMS envoyé à ${res.data.sms_sent_to}`);
+                          else alert(res.error || 'Échec envoi SMS');
+                        }} title="Envoyer par SMS">
+                          <MessageSquare size={14} /> SMS
+                        </Button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
