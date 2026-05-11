@@ -61,26 +61,44 @@ export async function handleSendMessage(
   let status = 'sent';
   let externalId = '';
 
-  // Envoi réel via Resend (email) ou Twilio (SMS)
-  if (channel === 'email' && env.RESEND_API_KEY) {
-    try {
-      const resend = new Resend(env.RESEND_API_KEY);
-      const emailResult = await resend.emails.send({
-        from: 'Intralys CRM <noreply@intralys.com>',
-        to: [lead.email as string],
-        subject: subject || 'Message de votre courtier',
-        html: messageBody,
+  // Envoi réel via Resend (email) ou Twilio (SMS) — ou mocks en dev
+  if (channel === 'email') {
+    if (env.USE_MOCKS === 'true') {
+      const { mockSendEmail } = await import('./mocks/mock-resend');
+      const mockResult = await mockSendEmail(env, leadId, lead.client_id as string, {
+        to: [lead.email as string], subject: subject || 'Message de votre courtier', html: messageBody,
       });
-      if (emailResult.data) {
-        externalId = emailResult.data.id;
-        status = 'delivered';
+      externalId = mockResult.data.id;
+      status = 'mock-sent';
+    } else if (env.RESEND_API_KEY) {
+      try {
+        const resend = new Resend(env.RESEND_API_KEY);
+        const emailResult = await resend.emails.send({
+          from: 'Intralys CRM <noreply@intralys.com>',
+          to: [lead.email as string],
+          subject: subject || 'Message de votre courtier',
+          html: messageBody,
+        });
+        if (emailResult.data) {
+          externalId = emailResult.data.id;
+          status = 'delivered';
+        }
+      } catch (err) {
+        console.error('Erreur envoi email:', err);
+        status = 'failed';
       }
-    } catch (err) {
-      console.error('Erreur envoi email:', err);
-      status = 'failed';
     }
   } else if (channel === 'sms') {
-    status = 'sent';
+    if (env.USE_MOCKS === 'true') {
+      const { mockSendSms } = await import('./mocks/mock-twilio');
+      const mockResult = await mockSendSms(env, leadId, lead.client_id as string, {
+        to: lead.phone as string, body: messageBody,
+      });
+      externalId = mockResult.sid;
+      status = 'mock-sent';
+    } else {
+      status = 'sent';
+    }
   } else if (channel === 'internal_note') {
     status = 'delivered';
   }
