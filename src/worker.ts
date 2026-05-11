@@ -70,6 +70,10 @@ import {
 import {
   handleGetLeadNotes, handleCreateLeadNote, handleUpdateLeadNote, handleDeleteLeadNote,
 } from './worker/lead-notes';
+import {
+  handleGetConversations, handleGetConversationDetail,
+  handleCreateConversation, handleSendConversationMessage, handleUpdateConversation,
+} from './worker/conversations';
 
 // Export Durable Object pour Cloudflare
 export { WebchatRoom };
@@ -199,6 +203,15 @@ async function routeProtected(
 
   // Messages / Inbox
   if (path === '/api/messages' && method === 'GET') return handleGetInboxMessages(env, auth, url);
+
+  // Conversations (Sprint 3)
+  if (path === '/api/conversations' && method === 'GET') return handleGetConversations(env, auth, url);
+  if (path === '/api/conversations' && method === 'POST') return handleCreateConversation(request, env, auth);
+  const convMatch = path.match(/^\/api\/conversations\/([^/]+)$/);
+  if (convMatch && method === 'GET') return handleGetConversationDetail(env, auth, convMatch[1]!, url);
+  if (convMatch && method === 'PATCH') return handleUpdateConversation(request, env, auth, convMatch[1]!);
+  const convMsgMatch = path.match(/^\/api\/conversations\/([^/]+)\/messages$/);
+  if (convMsgMatch && method === 'POST') return handleSendConversationMessage(request, env, auth, convMsgMatch[1]!);
 
   // Templates
   if (path === '/api/templates' && method === 'GET') return handleGetTemplates(env, auth, url);

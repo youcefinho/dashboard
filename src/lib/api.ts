@@ -1,6 +1,6 @@
 // ── Client API — Helpers pour appeler le worker ─────────────
 
-import type { ApiResponse, Client, Lead, LeadDetail, DashboardStats, ActivityLogEntry, Message, EmailTemplate, Workflow, WorkflowStep, WorkflowEnrollment, Appointment, Task, LeadNote, LeadScore, CustomFieldValue } from './types';
+import type { ApiResponse, Client, Lead, LeadDetail, DashboardStats, ActivityLogEntry, Message, EmailTemplate, Workflow, WorkflowStep, WorkflowEnrollment, Appointment, Task, LeadNote, LeadScore, CustomFieldValue, Conversation, ConversationStatus } from './types';
 
 const API_BASE = '/api';
 
@@ -329,6 +329,63 @@ export async function getInboxMessages(params?: {
   if (params?.limit) searchParams.set('limit', String(params.limit));
   const qs = searchParams.toString();
   return apiFetch<Message[]>(`/messages${qs ? `?${qs}` : ''}`);
+}
+
+// ── Sprint 3 : Conversations ────────────────────────────────
+
+export async function getConversations(params?: {
+  channel?: string;
+  status?: string;
+  search?: string;
+  assigned?: string;
+  limit?: number;
+}): Promise<ApiResponse<Conversation[]> & { meta?: { counts: Array<{ status: string; count: number }> } }> {
+  const q = new URLSearchParams();
+  if (params?.channel) q.set('channel', params.channel);
+  if (params?.status) q.set('status', params.status);
+  if (params?.search) q.set('search', params.search);
+  if (params?.assigned) q.set('assigned', params.assigned);
+  if (params?.limit) q.set('limit', String(params.limit));
+  const qs = q.toString();
+  return apiFetch<Conversation[]>(`/conversations${qs ? `?${qs}` : ''}`);
+}
+
+export async function getConversation(id: string, cursor?: string): Promise<ApiResponse<Conversation & { messages: Message[] }>> {
+  const q = new URLSearchParams();
+  if (cursor) q.set('cursor', cursor);
+  const qs = q.toString();
+  return apiFetch<Conversation & { messages: Message[] }>(`/conversations/${id}${qs ? `?${qs}` : ''}`);
+}
+
+export async function createConversation(params: {
+  lead_id: string;
+  channel: string;
+  subject?: string;
+}): Promise<ApiResponse<{ id: string; existing: boolean }>> {
+  return apiFetch<{ id: string; existing: boolean }>('/conversations', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
+}
+
+export async function sendConversationMessage(
+  conversationId: string,
+  message: { body: string; subject?: string }
+): Promise<ApiResponse<{ id: string; success: boolean; status: string }>> {
+  return apiFetch<{ id: string; success: boolean; status: string }>(`/conversations/${conversationId}/messages`, {
+    method: 'POST',
+    body: JSON.stringify(message),
+  });
+}
+
+export async function updateConversation(
+  id: string,
+  updates: { status?: ConversationStatus; assigned_to?: string; is_starred?: number; snoozed_until?: string | null }
+): Promise<ApiResponse<{ success: boolean }>> {
+  return apiFetch<{ success: boolean }>(`/conversations/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(updates),
+  });
 }
 
 // ── Phase 2 : Templates d'emails ───────────────────────────

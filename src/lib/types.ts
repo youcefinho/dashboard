@@ -128,19 +128,46 @@ export interface User {
 export const MESSAGE_DIRECTIONS = ['inbound', 'outbound'] as const;
 export type MessageDirection = typeof MESSAGE_DIRECTIONS[number];
 
-export const MESSAGE_CHANNELS = ['email', 'sms', 'internal_note'] as const;
+export const MESSAGE_CHANNELS = ['email', 'sms', 'webchat', 'facebook_messenger', 'instagram_dm', 'internal_note'] as const;
 export type MessageChannel = typeof MESSAGE_CHANNELS[number];
 
 export const MESSAGE_STATUSES = ['draft', 'sent', 'delivered', 'failed', 'read', 'bounced'] as const;
 export type MessageStatus = typeof MESSAGE_STATUSES[number];
 
+export const CONVERSATION_STATUSES = ['open', 'closed', 'snoozed'] as const;
+export type ConversationStatus = typeof CONVERSATION_STATUSES[number];
+
 export const TEMPLATE_CATEGORIES = ['welcome', 'followup', 'reminder', 'notification', 'marketing', 'general'] as const;
 export type TemplateCategory = typeof TEMPLATE_CATEGORIES[number];
+
+export interface Conversation {
+  id: string;
+  lead_id: string;
+  client_id: string;
+  channel: MessageChannel;
+  status: ConversationStatus;
+  assigned_to: string | null;
+  subject: string;
+  last_message_at: string;
+  last_message_preview: string;
+  unread_count: number;
+  is_starred: number;
+  snoozed_until: string | null;
+  created_at: string;
+  updated_at: string;
+  // Jointures optionnelles
+  lead_name?: string;
+  lead_email?: string;
+  lead_phone?: string;
+  lead_avatar?: string;
+  assigned_name?: string;
+}
 
 export interface Message {
   id: string;
   lead_id: string;
   client_id: string;
+  conversation_id: string;
   direction: MessageDirection;
   channel: MessageChannel;
   subject: string;
@@ -478,13 +505,31 @@ export const ACTIVITY_ICONS: Record<ActivityType, string> = {
 export const CHANNEL_LABELS: Record<MessageChannel, string> = {
   email: 'Email',
   sms: 'SMS',
+  webchat: 'Webchat',
+  facebook_messenger: 'Messenger',
+  instagram_dm: 'Instagram',
   internal_note: 'Note interne',
 };
 
 export const CHANNEL_ICONS: Record<MessageChannel, string> = {
   email: '📧',
   sms: '💬',
+  webchat: '🌐',
+  facebook_messenger: '📘',
+  instagram_dm: '📷',
   internal_note: '📝',
+};
+
+export const CONVERSATION_STATUS_LABELS: Record<ConversationStatus, string> = {
+  open: 'Ouverte',
+  closed: 'Fermée',
+  snoozed: 'En pause',
+};
+
+export const CONVERSATION_STATUS_COLORS: Record<ConversationStatus, string> = {
+  open: 'var(--success)',
+  closed: 'var(--text-muted)',
+  snoozed: 'var(--warning)',
 };
 
 export const MESSAGE_STATUS_LABELS: Record<MessageStatus, string> = {
