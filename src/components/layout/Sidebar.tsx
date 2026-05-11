@@ -82,20 +82,23 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       <aside className={`
         fixed top-0 left-0 z-50 h-full ${sidebarWidth}
         bg-[var(--bg-inverse)] text-[var(--text-inverse)]
-        flex flex-col transition-all duration-200
+        flex flex-col transition-all duration-200 relative overflow-hidden
         lg:translate-x-0 lg:static lg:z-auto
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
+        {/* Blob décoratif (maquette) */}
+        <div className="absolute rounded-full pointer-events-none" style={{ background: '#009DDB', width: 240, height: 240, top: -60, right: -120, opacity: 0.4, filter: 'blur(40px)' }} />
         {/* Logo + collapse toggle */}
         <div className="h-14 flex items-center justify-between px-3 border-b border-white/10 shrink-0">
           <div className="flex items-center gap-2.5 overflow-hidden">
-            <div className="w-8 h-8 rounded-[var(--radius-sm)] bg-[var(--brand-primary)] flex items-center justify-center shrink-0">
-              <span className="text-white font-bold text-sm">I</span>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 font-bold text-base shadow-lg"
+              style={{ background: 'linear-gradient(135deg, #009DDB 0%, #188BF6 100%)', boxShadow: '0 4px 12px rgba(0,157,219,0.4)', color: 'white' }}>
+              I
             </div>
             {!collapsed && (
               <div className="overflow-hidden">
-                <h1 className="text-sm font-bold tracking-tight text-white whitespace-nowrap">Intralys</h1>
-                <p className="text-[10px] text-[var(--text-inverse-mut)] uppercase tracking-widest">CRM</p>
+                <h1 className="text-sm font-semibold leading-tight text-white whitespace-nowrap">Intralys</h1>
+                <p className="text-[10px] text-[var(--text-inverse-mut)] uppercase tracking-wider">CRM</p>
               </div>
             )}
           </div>
@@ -108,14 +111,14 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto py-2 px-2 space-y-1">
+        <nav className="flex-1 overflow-y-auto py-2 px-3 space-y-0.5 relative z-10">
           {NAV_SECTIONS.map((section, si) => {
             const items = section.items.filter(it => !it.adminOnly || isAdmin);
             if (items.length === 0) return null;
             return (
               <div key={si}>
                 {section.label && !collapsed && (
-                  <p className="px-2.5 pt-4 pb-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-inverse-mut)]">
+                  <p className="px-3 pt-4 pb-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-inverse-mut)]">
                     {section.label}
                   </p>
                 )}
@@ -130,18 +133,19 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       onClick={onClose}
                       title={collapsed ? item.label : undefined}
                       className={`
-                        flex items-center gap-2.5 px-2.5 py-2 rounded-[var(--radius-sm)] text-[13px] font-medium
+                        flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium
                         transition-all duration-[80ms] relative
                         ${isActive
-                          ? 'bg-[var(--brand-soft)] text-[var(--brand-primary)]'
-                          : 'text-[var(--text-inverse-mut)] hover:text-white hover:bg-white/[0.04]'
+                          ? 'text-[#6FCEF0]'
+                          : 'hover:bg-white/[0.05]'
                         }
                         ${collapsed ? 'justify-center' : ''}
                       `}
+                      style={isActive ? { background: 'rgba(0,157,219,0.15)' } : { color: 'rgba(255,255,255,0.85)' }}
                     >
                       {/* Barre latérale active */}
                       {isActive && (
-                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-4 rounded-full bg-[var(--brand-primary)]" />
+                        <div className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-r" style={{ background: 'var(--brand-primary)' }} />
                       )}
                       <span className="shrink-0">{item.icon}</span>
                       {!collapsed && <span className="truncate">{item.label}</span>}
@@ -154,10 +158,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         </nav>
 
         {/* Footer profil */}
-        <div className="px-2 py-3 border-t border-white/10 shrink-0">
-          <div className={`flex items-center ${collapsed ? 'justify-center' : 'gap-2.5 px-1'}`}>
-            <div className="w-8 h-8 rounded-full bg-[var(--brand-primary)]/20 flex items-center justify-center text-xs font-semibold text-[var(--brand-primary)] shrink-0">
-              {user?.name?.charAt(0)?.toUpperCase() || 'R'}
+        <div className="px-3 py-3 border-t border-white/5 shrink-0 relative z-10">
+          <div className={`flex items-center ${collapsed ? 'justify-center' : 'gap-2.5 px-2'}`}>
+            <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0"
+              style={{ background: 'linear-gradient(135deg, #D96E27 0%, #FF9A00 100%)', color: 'white' }}>
+              {user?.name?.charAt(0)?.toUpperCase() || 'R'}{user?.name?.split(' ')[1]?.charAt(0)?.toUpperCase() || 'B'}
             </div>
             {!collapsed && (
               <div className="flex-1 min-w-0">

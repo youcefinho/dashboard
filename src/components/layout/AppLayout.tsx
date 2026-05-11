@@ -130,7 +130,8 @@ export function AppLayout({ children, title }: AppLayoutProps) {
             {/* Bouton + Nouveau */}
             <button
               onClick={() => void navigate({ to: '/leads' })}
-              className="hidden sm:inline-flex items-center gap-1.5 h-8 px-3 text-xs font-medium rounded-[var(--radius-sm)] bg-[var(--brand-primary)] text-white hover:bg-[var(--brand-hover)] active:scale-[0.98] transition-all cursor-pointer"
+              className="hidden sm:inline-flex items-center gap-1.5 h-9 px-4 text-sm font-semibold rounded-lg text-white active:scale-[0.98] transition-all cursor-pointer"
+              style={{ background: 'linear-gradient(135deg, #009DDB 0%, #188BF6 100%)', boxShadow: '0 1px 2px rgba(0,157,219,0.2), 0 0 0 1px rgba(0,157,219,0.05)' }}
             >
               <Plus size={14} />
               Nouveau
