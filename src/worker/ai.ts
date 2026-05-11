@@ -180,28 +180,86 @@ Garde les messages concis et orientés vers l'action.`;
   return json({ data: { content: generatedContent, action } });
 }
 
-// ── AI Workflow Assistant ─────────────────────────────────────
+// ── AI Workflow Assistant (Sprint 7 enrichi) ─────────────────
 
 export async function handleAiSuggestWorkflow(request: Request, env: Env): Promise<Response> {
-  const body = await request.json() as { prompt: string };
+  const body = await request.json() as { prompt: string; client_id?: string };
+
+  // Charger le contexte métier si client_id fourni
+  let businessContext = '';
+  if (body.client_id) {
+    const client = await env.DB.prepare(
+      'SELECT business_type, brand_voice FROM clients WHERE id = ?'
+    ).bind(body.client_id).first() as { business_type?: string; brand_voice?: string } | null;
+
+    if (client) {
+      businessContext += `Type d'entreprise : ${client.business_type || 'B2B'}. `;
+      businessContext += `Ton : ${client.brand_voice || 'professionnel québécois'}. `;
+    }
+
+    // Charger les custom fields disponibles
+    const { results: fields } = await env.DB.prepare(
+      'SELECT name, slug, field_type FROM custom_field_defs WHERE client_id = ? ORDER BY sort_order'
+    ).bind(body.client_id).all();
+
+    if (fields && fields.length > 0) {
+      const fieldNames = fields.map(f => `${f.name} (${f.field_type})`).join(', ');
+      businessContext += `Champs personnalisés disponibles : ${fieldNames}. `;
+    }
+
+    // Charger les tags existants
+    const { results: tags } = await env.DB.prepare(
+      'SELECT DISTINCT tag FROM lead_tags WHERE lead_id IN (SELECT id FROM leads WHERE client_id = ?) LIMIT 20'
+    ).bind(body.client_id).all();
+
+    if (tags && tags.length > 0) {
+      businessContext += `Tags existants : ${tags.map(t => t.tag).join(', ')}. `;
+    }
+  }
+
+  const VALID_TYPES = ['wait', 'email', 'sms', 'task', 'condition', 'tag', 'notification'];
 
   const systemPrompt = `Tu es un expert en automatisation marketing pour PMEs québécoises. \
-L'utilisateur décrit un besoin en langage naturel. Génère un tableau JSON représentant les étapes d'un workflow Intralys CRM. \
-Chaque objet doit avoir: id (string), type ('wait'|'email'|'sms'|'task'|'condition'), et config (objet avec les détails). \
+${businessContext}\
+L'utilisateur décrit un besoin en langage naturel. Génère un objet JSON structuré représentant un workflow Intralys CRM. \
+Format de sortie : { "name": "Nom du workflow", "description": "Description courte", "trigger_type": "lead_created|form_submitted|tag_added|manual", "steps": [...] }. \
+Chaque step dans "steps" doit avoir: id (string), type (${VALID_TYPES.map(t => `'${t}'`).join('|')}), et config (objet avec les détails). \
 Pour 'wait': { delay_hours: number }. Pour 'email': { subject: string, body: string }. Pour 'sms': { body: string }. \
-Pour 'task': { title: string, due_in_days: number }. \
+Pour 'task': { title: string, due_in_days: number }. Pour 'tag': { tag: string }. Pour 'notification': { message: string }. \
+Pour 'condition': { field: string, operator: 'eq'|'ne'|'gt'|'lt', value: string, if_true_step: string, if_false_step: string }. \
 Réponds UNIQUEMENT avec le JSON valide, sans markdown autour. Maximum 6 étapes.`;
 
   const result = await callLLM(env, systemPrompt, body.prompt);
 
   try {
     const jsonStr = result.replace(/^```json\n?/, '').replace(/\n?```$/, '').trim();
-    const workflowSteps = JSON.parse(jsonStr);
-    return json({ data: { steps: workflowSteps } });
+    const workflow = JSON.parse(jsonStr) as {
+      name?: string;
+      description?: string;
+      trigger_type?: string;
+      steps?: Array<{ id: string; type: string; config: Record<string, unknown> }>;
+    };
+
+    // Validation : filtrer les types invalides
+    if (workflow.steps) {
+      workflow.steps = workflow.steps.filter(s => VALID_TYPES.includes(s.type));
+    }
+
+    return json({
+      data: {
+        name: workflow.name || 'Workflow IA',
+        description: workflow.description || '',
+        trigger_type: workflow.trigger_type || 'manual',
+        steps: workflow.steps || [],
+      },
+    });
   } catch (_err) {
     // Fallback mock workflow
     return json({
       data: {
+        name: 'Bienvenue nouveau lead',
+        description: 'Séquence de bienvenue automatique',
+        trigger_type: 'lead_created',
         steps: [
           { id: 'step-1', type: 'wait', config: { delay_hours: 1 } },
           { id: 'step-2', type: 'email', config: { subject: 'Bienvenue!', body: 'Bonjour {{lead.name}}, merci de nous avoir contactés.' } },
