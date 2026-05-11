@@ -1,4 +1,4 @@
-// ── Module Forms — Intralys CRM ─────────────────────────────
+// ── Module Forms — Intralys CRM (Sprint 7 enrichi) ──────────
 import type { Env } from './types';
 import { sanitizeInput, json, audit } from './helpers';
 import { autoEnrollForTrigger } from './workflows';
@@ -25,6 +25,41 @@ export async function handlePublicFormSubmit(request: Request, env: Env): Promis
     'INSERT INTO form_submissions (id, form_id, client_id, data, ip, user_agent) VALUES (?, ?, ?, ?, ?, ?)'
   ).bind(subId, body.form_id, form.client_id as string, JSON.stringify(body.data), ip, sanitizeInput(ua, 300)).run();
 
+  // Incrémenter total_submissions
+  await env.DB.prepare(
+    'UPDATE forms SET total_submissions = total_submissions + 1 WHERE id = ?'
+  ).bind(body.form_id).run();
+
+  // Quiz scoring : calcul pondéré si form_type = 'quiz'
+  let quizScore: number | null = null;
+  let quizResult: { range: string; message: string } | null = null;
+
+  if (form.form_type === 'quiz') {
+    quizScore = 0;
+    const answers = body.data as Record<string, string>;
+    for (const [, value] of Object.entries(answers)) {
+      const opt = await env.DB.prepare(
+        'SELECT weight FROM form_field_options WHERE value = ? LIMIT 1'
+      ).bind(String(value)).first() as { weight: number } | null;
+      if (opt) quizScore += opt.weight;
+    }
+
+    // 3 ranges : low (0-33), mid (34-66), high (67-100)
+    const settingsJson = form.settings_json as string;
+    let settings: { quiz_results?: Array<{ min: number; max: number; range: string; message: string }> } = {};
+    try { settings = JSON.parse(settingsJson || '{}'); } catch { /* ignore */ }
+
+    const ranges = settings.quiz_results || [
+      { min: 0, max: 33, range: 'low', message: 'Score faible — explorez nos options de base.' },
+      { min: 34, max: 66, range: 'mid', message: 'Bon potentiel — prenez rendez-vous pour en discuter!' },
+      { min: 67, max: 100, range: 'high', message: 'Excellent profil — nous avons la solution parfaite!' },
+    ];
+
+    const normalizedScore = Math.min(100, Math.max(0, quizScore));
+    quizResult = ranges.find(r => normalizedScore >= r.min && normalizedScore <= r.max) || ranges[ranges.length - 1] || null;
+  }
+
+  // Créer lead si submit_action = 'create_lead'
   if (form.submit_action === 'create_lead') {
     const d = body.data as Record<string, string>;
     const leadId = crypto.randomUUID();
@@ -35,15 +70,96 @@ export async function handlePublicFormSubmit(request: Request, env: Env): Promis
       sanitizeInput(d.email || '', 200).toLowerCase(), sanitizeInput(d.phone || d.telephone || '', 30),
       sanitizeInput(d.message || d.note || '', 2000)).run();
     await env.DB.prepare('UPDATE form_submissions SET lead_id = ? WHERE id = ?').bind(leadId, subId).run();
+
+    // Mapper custom fields si présents
+    const fields = form.fields as string;
+    let fieldsDef: Array<{ name: string; custom_field_id?: string }> = [];
+    try { fieldsDef = JSON.parse(fields || '[]'); } catch { /* ignore */ }
+
+    for (const field of fieldsDef) {
+      if (field.custom_field_id && d[field.name]) {
+        await env.DB.prepare(
+          'INSERT OR REPLACE INTO custom_field_values (lead_id, field_id, value) VALUES (?, ?, ?)'
+        ).bind(leadId, field.custom_field_id, sanitizeInput(d[field.name], 500)).run();
+      }
+    }
+
     await autoEnrollForTrigger(env, 'form_submitted', leadId);
   }
 
-  return json({ data: { id: subId, success_message: form.success_message, redirect_url: form.redirect_url } }, 201);
+  return json({
+    data: {
+      id: subId,
+      success_message: form.success_message,
+      redirect_url: form.redirect_url,
+      quiz_score: quizScore,
+      quiz_result: quizResult,
+    },
+  }, 201);
+}
+
+// ── Sprint 7 : Form view tracking ───────────────────────────
+
+export async function handleTrackFormView(
+  request: Request,
+  env: Env,
+  formId: string
+): Promise<Response> {
+  const ip = request.headers.get('CF-Connecting-IP') || '';
+  const ua = request.headers.get('User-Agent') || '';
+  const refUrl = request.headers.get('Referer') || '';
+
+  await env.DB.prepare(
+    'INSERT INTO form_views (form_id, ip, user_agent, url) VALUES (?, ?, ?, ?)'
+  ).bind(formId, ip, sanitizeInput(ua, 300), sanitizeInput(refUrl, 500)).run();
+
+  await env.DB.prepare(
+    'UPDATE forms SET total_views = total_views + 1 WHERE id = ?'
+  ).bind(formId).run();
+
+  return json({ data: { success: true } });
+}
+
+// ── Sprint 7 : Form stats ───────────────────────────────────
+
+export async function handleGetFormStats(
+  env: Env,
+  auth: { role: string },
+  formId: string
+): Promise<Response> {
+  if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
+
+  const form = await env.DB.prepare(
+    'SELECT total_views, total_submissions FROM forms WHERE id = ?'
+  ).bind(formId).first() as { total_views: number; total_submissions: number } | null;
+
+  if (!form) return json({ error: 'Formulaire introuvable' }, 404);
+
+  const conversionRate = form.total_views > 0
+    ? ((form.total_submissions / form.total_views) * 100).toFixed(1)
+    : '0.0';
+
+  const { results: viewsByDay } = await env.DB.prepare(
+    `SELECT date(viewed_at) as day, COUNT(*) as count
+     FROM form_views WHERE form_id = ?
+     GROUP BY date(viewed_at) ORDER BY day DESC LIMIT 30`
+  ).bind(formId).all();
+
+  return json({
+    data: {
+      total_views: form.total_views,
+      total_submissions: form.total_submissions,
+      conversion_rate: conversionRate,
+      views_by_day: viewsByDay || [],
+    },
+  });
 }
 
 export async function handleGetForms(env: Env, auth: { role: string }): Promise<Response> {
   if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
-  const { results } = await env.DB.prepare('SELECT f.*, (SELECT COUNT(*) FROM form_submissions WHERE form_id = f.id) as submission_count FROM forms f ORDER BY f.created_at DESC').all();
+  const { results } = await env.DB.prepare(
+    'SELECT f.*, (SELECT COUNT(*) FROM form_submissions WHERE form_id = f.id) as submission_count FROM forms f ORDER BY f.created_at DESC'
+  ).all();
   return json({ data: results || [] });
 }
 
@@ -52,11 +168,16 @@ export async function handleCreateForm(request: Request, env: Env, auth: { role:
   const body = await request.json() as Record<string, unknown>;
   if (!body.client_id || !body.name || !body.slug) return json({ error: 'client_id, name et slug requis' }, 400);
   const id = crypto.randomUUID();
+  const formType = (body.form_type || 'form') as string;
+  const settingsJson = body.settings_json ? JSON.stringify(body.settings_json) : '{}';
+
   await env.DB.prepare(
-    'INSERT INTO forms (id, client_id, name, slug, description, fields, submit_action, success_message) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+    `INSERT INTO forms (id, client_id, name, slug, description, fields, submit_action, success_message, form_type, settings_json)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).bind(id, body.client_id as string, sanitizeInput(body.name as string, 200), sanitizeInput(body.slug as string, 50),
     sanitizeInput((body.description || '') as string, 500), JSON.stringify(body.fields || []),
-    (body.submit_action || 'create_lead') as string, sanitizeInput((body.success_message || 'Merci !') as string, 500)).run();
+    (body.submit_action || 'create_lead') as string, sanitizeInput((body.success_message || 'Merci !') as string, 500),
+    formType, settingsJson).run();
   await audit(env, auth.userId, 'form.create', 'form', id);
   return json({ data: { id } }, 201);
 }
@@ -70,6 +191,9 @@ export async function handleUpdateForm(request: Request, env: Env, auth: { role:
   if (body.is_active !== undefined) { u.push('is_active = ?'); p.push(body.is_active as number); }
   if (body.success_message) { u.push('success_message = ?'); p.push(sanitizeInput(body.success_message as string, 500)); }
   if (body.submit_action) { u.push('submit_action = ?'); p.push(body.submit_action as string); }
+  if (body.form_type) { u.push('form_type = ?'); p.push(body.form_type as string); }
+  if (body.settings_json) { u.push('settings_json = ?'); p.push(JSON.stringify(body.settings_json)); }
+  if (body.folder_id !== undefined) { u.push('folder_id = ?'); p.push(body.folder_id as string); }
   if (u.length === 0) return json({ error: 'Aucune modification' }, 400);
   u.push("updated_at = datetime('now')"); p.push(formId);
   await env.DB.prepare(`UPDATE forms SET ${u.join(', ')} WHERE id = ?`).bind(...p).run();
