@@ -35,7 +35,8 @@
     }
   ],
   "vars": {
-    "ALLOWED_ORIGINS": "https://crm.intralys.com,https://intralys-dashboard.pages.dev"
+    "ALLOWED_ORIGINS": "https://crm.intralys.com,https://intralys-dashboard.pages.dev",
+    "USE_MOCKS": "true"
   },
   "triggers": {
     "crons": ["*/5 * * * *"]

@@ -46,8 +46,7 @@ import {
   handleGetSmartLists, handleCreateSmartList, handleDeleteSmartList, handleExecuteSmartList,
 } from './worker/custom-fields';
 import { handleGetSubAccounts, handleCreateSubAccount, handleUpdateSubAccount, handleCreateSnapshot, handleApplySnapshot, handleGetWhitelabel, handleUpdateWhitelabel, handleWidgetScript } from './worker/sub-accounts';
-import { handleGcalAuthUrl, handleGcalCallback, handleGcalEvents, handleGcalSync } from './worker/gcal';
-import { handleGbpReviews, handleGbpStats } from './worker/gbp';
+// gcal.ts et gbp.ts déplacés en _v2-backlog/ (Sprint Consolidation)
 import { handleEmailBroadcast, handleBroadcastHistory } from './worker/broadcast';
 import { handleDashboardStats, handleTotpSetup, handleTotpVerify, handleTotpDisable, handleSendSmsRoute, handleCsvImport, handleExportCsv as handleExportCsvDash } from './worker/dashboard';
 import { handleWebhookLead } from './worker/leads';
@@ -325,14 +324,11 @@ async function routeProtected(
   if (path === '/api/whitelabel' && method === 'PATCH') return handleUpdateWhitelabel(request, env, auth);
 
   // Google Calendar
-  if (path === '/api/gcal/auth-url' && method === 'GET') return handleGcalAuthUrl(env);
-  if (path === '/api/gcal/callback' && method === 'GET') return handleGcalCallback(env, auth, url);
-  if (path === '/api/gcal/events' && method === 'GET') return handleGcalEvents(env, auth, url);
-  if (path === '/api/gcal/sync' && method === 'POST') return handleGcalSync(env, auth);
+  // Google Calendar — V2 backlog (désactivé Sprint Consolidation)
+  // Routes /api/gcal/* retournent 404 par défaut (handler absent)
 
-  // Google Business Profile
-  if (path === '/api/gbp/reviews' && method === 'GET') return handleGbpReviews(env, auth, url);
-  if (path === '/api/gbp/stats' && method === 'GET') return handleGbpStats(env, auth);
+  // Google Business Profile — V2 backlog (désactivé Sprint Consolidation)
+  // Routes /api/gbp/* retournent 404 par défaut (handler absent)
 
   // Reviews & Reputation (P4.6)
   if (path === '/api/reviews' && method === 'GET') return handleGetReviews(env, auth, url);
