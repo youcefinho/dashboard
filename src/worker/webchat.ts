@@ -2,6 +2,7 @@
 // Durable Object WebSocket pour chat bidirectionnel en temps réel
 import type { Env } from './types';
 import { sanitizeInput, json, createNotification } from './helpers';
+import { findOrCreateConversation } from './conversations';
 
 // ── Types webchat ───────────────────────────────────────────
 
@@ -131,14 +132,22 @@ export class WebchatRoom {
         ).bind(this.prechat.email.toLowerCase()).first() as { id: string; client_id: string } | null;
 
         if (lead) {
+          // Trouver ou créer la conversation webchat
+          const convId = await findOrCreateConversation(this.env, lead.id, lead.client_id, 'webchat');
+
           await this.env.DB.prepare(
-            `INSERT INTO messages (id, lead_id, client_id, direction, channel, body, status, sent_by)
-             VALUES (?, ?, ?, ?, 'webchat', ?, 'delivered', ?)`
+            `INSERT INTO messages (id, lead_id, client_id, conversation_id, direction, channel, body, status, sent_by)
+             VALUES (?, ?, ?, ?, ?, 'webchat', ?, 'delivered', ?)`
           ).bind(
-            crypto.randomUUID(), lead.id, lead.client_id,
+            crypto.randomUUID(), lead.id, lead.client_id, convId,
             session.role === 'visitor' ? 'inbound' : 'outbound',
             msg.body, session.name
           ).run();
+
+          // Mettre à jour la conversation
+          await this.env.DB.prepare(
+            `UPDATE conversations SET last_message_at = datetime('now'), last_message_preview = ?, unread_count = unread_count + ?, updated_at = datetime('now') WHERE id = ?`
+          ).bind(msg.body.substring(0, 120), session.role === 'visitor' ? 1 : 0, convId).run();
 
           // Notifier les agents si message du visiteur
           if (session.role === 'visitor') {
@@ -149,7 +158,7 @@ export class WebchatRoom {
               await createNotification(
                 this.env, admin.id, '💬 Webchat',
                 `${session.name}: "${msg.body.substring(0, 80)}"`,
-                '💬', `/inbox?channel=webchat`, lead.client_id
+                '💬', `/conversations`, lead.client_id
               );
             }
           }
