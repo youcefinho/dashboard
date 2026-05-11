@@ -67,6 +67,7 @@ describe('Templates Module', () => {
     prepare: vi.fn().mockReturnThis(),
     bind: vi.fn().mockReturnThis(),
     first: vi.fn(),
+    all: vi.fn().mockResolvedValue({ results: [] }),
   };
   const mockEnv = { DB: mockDb } as unknown as Env;
 
