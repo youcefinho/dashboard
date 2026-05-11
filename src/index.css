@@ -393,14 +393,164 @@ select option { background: var(--bg-surface); color: var(--text-primary); }
 *, *::before, *::after { transition-property: background-color, border-color, box-shadow; transition-duration: 0s; }
 [data-transitioning] *, [data-transitioning] *::before, [data-transitioning] *::after { transition-duration: 0.3s !important; }
 
-/* ── Responsive mobile ───────────────────────────────────── */
+/* ── Responsive mobile — Sprint 9 ────────────────────────── */
 
+/* Safe area pour iPhone notch */
+body {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Tables scrollables horizontalement sur mobile */
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+/* Touch targets minimum 44px (WCAG AAA) */
+@media (max-width: 768px) {
+  button, a, [role="button"], select, input[type="checkbox"], input[type="radio"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  input, select, textarea {
+    font-size: 16px !important; /* Empêche le zoom auto iOS */
+  }
+}
+
+/* Petit mobile : < 640px */
 @media (max-width: 640px) {
   table { font-size: 12px; }
-  th, td { padding: 8px 10px; }
+  th, td { padding: 8px 10px; white-space: nowrap; }
   .card { border-radius: var(--radius-md); }
-  td:first-child { border-top-left-radius: var(--radius-sm); border-bottom-left-radius: var(--radius-sm); }
-  td:last-child { border-top-right-radius: var(--radius-sm); border-bottom-right-radius: var(--radius-sm); }
+
+  /* Grilles — passer en 1 colonne */
+  .grid-cols-2, .grid-cols-3, .grid-cols-4 {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Header — réduire padding */
+  header { padding-left: 12px !important; padding-right: 12px !important; }
+
+  /* Stat cards — horizontal scroll */
+  .stat-cards-row {
+    display: flex;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 12px;
+    padding-bottom: 8px;
+    scroll-snap-type: x mandatory;
+  }
+  .stat-cards-row > * {
+    flex: 0 0 75%;
+    scroll-snap-align: start;
+  }
+
+  /* Masquer les hover effects sur mobile (touch) */
+  .card-lift:hover {
+    transform: none;
+    box-shadow: var(--shadow-sm);
+  }
+
+  /* Modals — plein écran mobile */
+  .modal-content {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0 !important;
+    max-height: 90vh !important;
+    margin-top: auto !important;
+  }
+
+  /* Command palette — plein largeur */
+  .cmd-palette {
+    max-width: 100% !important;
+    border-radius: 0 !important;
+  }
+  .cmd-overlay {
+    padding-top: 0 !important;
+    align-items: flex-start !important;
+  }
+}
+
+/* Tablette : 641px — 1024px */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .grid-cols-4 { grid-template-columns: repeat(2, 1fr) !important; }
+  .grid-cols-3 { grid-template-columns: repeat(2, 1fr) !important; }
+}
+
+/* Sidebar mobile overlay */
+@media (max-width: 1023px) {
+  .sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    background: oklch(0 0 0 / 0.4);
+    backdrop-filter: blur(4px);
+    z-index: 40;
+    animation: fadeIn 0.15s ease-out;
+  }
+  .sidebar-panel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 260px;
+    z-index: 50;
+    transform: translateX(0);
+    transition: transform 0.25s var(--ease-out);
+  }
+  .sidebar-panel.closed {
+    transform: translateX(-100%);
+  }
+}
+
+/* Bottom navigation mobile (optionnel — activé via classe .mobile-nav) */
+.mobile-bottom-nav {
+  display: none;
+}
+@media (max-width: 768px) {
+  .mobile-bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 56px;
+    padding-bottom: env(safe-area-inset-bottom);
+    background: var(--bg-surface);
+    border-top: 1px solid var(--border-subtle);
+    z-index: 50;
+    justify-content: space-around;
+    align-items: center;
+  }
+  .mobile-bottom-nav a {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    font-size: 10px;
+    color: var(--text-muted);
+    text-decoration: none;
+    padding: 4px 12px;
+    min-width: 44px;
+  }
+  .mobile-bottom-nav a.active {
+    color: var(--brand-primary);
+  }
+  /* Ajouter du padding bottom au main quand le nav mobile est visible */
+  main {
+    padding-bottom: calc(56px + env(safe-area-inset-bottom));
+  }
+}
+
+/* Print — masquer navigation + actions */
+@media print {
+  nav, .sidebar-panel, .sidebar-overlay, header, .mobile-bottom-nav,
+  button, .no-print { display: none !important; }
+  main { padding: 0 !important; }
+  .card { box-shadow: none !important; border: 1px solid #ddd !important; page-break-inside: avoid; }
 }
 
 /* ── Animations Intralys (Dashboard) ─────────────────────── */

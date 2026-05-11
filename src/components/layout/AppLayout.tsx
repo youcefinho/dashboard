@@ -7,6 +7,7 @@ import { CommandPalette } from '@/components/CommandPalette';
 import { useTheme } from '@/lib/useTheme';
 import { getNotifications, markNotificationRead, markAllNotificationsRead, type NotificationItem } from '@/lib/api';
 import { Search, Bell, Moon, Sun, Menu, Plus } from 'lucide-react';
+import { MobileBottomNav } from './MobileBottomNav';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -227,6 +228,7 @@ export function AppLayout({ children, title }: AppLayoutProps) {
       </main>
 
       <CommandPalette isOpen={cmdOpen} onClose={() => setCmdOpen(false)} />
+      <MobileBottomNav />
     </div>
   );
 }
