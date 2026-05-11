@@ -1,15 +1,17 @@
-// ── Page Tâches — Gestion des tâches ────────────────────────
+// ── Page Tâches — Refonte Sprint Design 2 (D2.6) ────────────
 
 import { useState, useEffect } from 'react';
 import { Link } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Input, Badge } from '@/components/ui';
+import { Card, Button, Badge } from '@/components/ui';
+import { Input } from '@/components/ui/Input';
 import { getTasks, createTask, updateTask, deleteTask } from '@/lib/api';
 import {
   type Task, type TaskPriority, type TaskStatus,
   TASK_PRIORITY_LABELS, TASK_PRIORITY_COLORS, TASK_PRIORITY_ICONS,
   TASK_STATUS_LABELS, TASK_STATUS_ICONS,
 } from '@/lib/types';
+import { ListTodo, AlertTriangle, CalendarDays, CheckCircle2, Plus, Trash2, LayoutList, Kanban } from 'lucide-react';
 
 export function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -87,73 +89,58 @@ export function TasksPage() {
   return (
     <AppLayout title="Tâches">
       {/* KPIs */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-        <Card className="p-4 text-center">
-          <p className="text-2xl font-bold text-[var(--text-primary)]">{tasks.length}</p>
-          <p className="text-xs text-[var(--text-muted)]">Total</p>
-        </Card>
-        <Card className="p-4 text-center">
-          <p className="text-2xl font-bold text-[var(--danger)]">{overdueTasks.length}</p>
-          <p className="text-xs text-[var(--text-muted)]">En retard</p>
-        </Card>
-        <Card className="p-4 text-center">
-          <p className="text-2xl font-bold text-[var(--warning)]">{todayTasks.length}</p>
-          <p className="text-xs text-[var(--text-muted)]">Aujourd'hui</p>
-        </Card>
-        <Card className="p-4 text-center">
-          <p className="text-2xl font-bold text-[var(--success)]">{doneTasks.length}</p>
-          <p className="text-xs text-[var(--text-muted)]">Terminées</p>
-        </Card>
+      <div className="flex flex-wrap items-center gap-3 mb-5">
+        {[
+          { icon: ListTodo, v: tasks.length, l: 'Total', c: 'var(--brand-primary)', bg: 'var(--brand-tint)' },
+          { icon: AlertTriangle, v: overdueTasks.length, l: 'En retard', c: 'var(--danger)', bg: 'var(--danger-soft)' },
+          { icon: CalendarDays, v: todayTasks.length, l: "Aujourd'hui", c: 'var(--warning)', bg: 'var(--warning-soft)' },
+          { icon: CheckCircle2, v: doneTasks.length, l: 'Terminées', c: 'var(--success)', bg: 'var(--success-soft)' },
+        ].map(s => (
+          <div key={s.l} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-xs font-medium">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: s.bg }}>
+              <s.icon size={14} style={{ color: s.c }} />
+            </div>
+            <div>
+              <p className="font-bold text-[var(--text-primary)]">{s.v}</p>
+              <p className="text-[9px] text-[var(--text-muted)] uppercase tracking-wider">{s.l}</p>
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <h2 className="text-lg font-semibold">📋 Tâches</h2>
-          {/* Filtres */}
-          <div className="flex gap-1 ml-4">
-            {(['all', 'todo', 'in_progress', 'done'] as const).map(f => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`px-3 py-1 text-xs rounded-full cursor-pointer transition-colors ${
-                  filter === f
-                    ? 'bg-[var(--brand-primary)] text-white'
-                    : 'bg-[var(--bg-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                }`}
-              >
-                {f === 'all' ? 'Toutes' : TASK_STATUS_LABELS[f]}
-              </button>
-            ))}
-          </div>
-        </div>
-        <Button size="sm" onClick={() => setShowNewTask(!showNewTask)}>
-          + Nouvelle tâche
-        </Button>
-      </div>
-
-      {/* Tri + Vue mode */}
-      <div className="flex items-center gap-3 mb-4">
-        <div className="flex items-center gap-1.5">
-          <span className="text-[10px] text-[var(--text-muted)] uppercase">Trier :</span>
-          {(['due_date', 'priority', 'status'] as const).map(s => (
-            <button key={s} onClick={() => setSortBy(s)}
-              className={`px-2 py-0.5 text-[10px] rounded-full cursor-pointer transition-colors ${sortBy === s ? 'bg-[var(--brand-primary)] text-white' : 'bg-[var(--bg-subtle)] text-[var(--text-muted)]'}`}>
-              {s === 'due_date' ? '📅 Date' : s === 'priority' ? '🚨 Priorité' : '📊 Statut'}
+          {/* Quick views */}
+          {(['all', 'todo', 'in_progress', 'done'] as const).map(f => (
+            <button key={f} onClick={() => setFilter(f)}
+              className={`px-3 py-1.5 text-[11px] rounded-lg font-medium cursor-pointer transition-all
+                ${filter === f ? 'bg-[var(--brand-primary)] text-white shadow-sm' : 'bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-[var(--text-muted)] hover:border-[var(--brand-primary)]'}`}>
+              {f === 'all' ? 'Toutes' : TASK_STATUS_LABELS[f]}
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-1 ml-auto">
-          <button onClick={() => setViewMode('list')}
-            className={`p-1.5 rounded cursor-pointer transition-colors ${viewMode === 'list' ? 'bg-[var(--brand-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>
-            ☰
-          </button>
-          <button onClick={() => setViewMode('kanban')}
-            className={`p-1.5 rounded cursor-pointer transition-colors ${viewMode === 'kanban' ? 'bg-[var(--brand-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>
-            ▦
-          </button>
+        <div className="flex items-center gap-2">
+          {/* Sort */}
+          <div className="flex items-center gap-1 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-lg p-0.5">
+            {(['due_date', 'priority', 'status'] as const).map(s => (
+              <button key={s} onClick={() => setSortBy(s)}
+                className={`px-2 py-1 text-[10px] rounded-md font-medium cursor-pointer transition-all
+                  ${sortBy === s ? 'bg-[var(--brand-tint)] text-[var(--brand-primary)]' : 'text-[var(--text-muted)]'}`}>
+                {s === 'due_date' ? 'Date' : s === 'priority' ? 'Priorité' : 'Statut'}
+              </button>
+            ))}
+          </div>
+          {/* View mode */}
+          <div className="flex items-center bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-lg p-0.5">
+            <button onClick={() => setViewMode('list')} className={`p-1.5 rounded-md cursor-pointer transition-all ${viewMode === 'list' ? 'bg-[var(--brand-primary)] text-white' : 'text-[var(--text-muted)]'}`}><LayoutList size={14} /></button>
+            <button onClick={() => setViewMode('kanban')} className={`p-1.5 rounded-md cursor-pointer transition-all ${viewMode === 'kanban' ? 'bg-[var(--brand-primary)] text-white' : 'text-[var(--text-muted)]'}`}><Kanban size={14} /></button>
+          </div>
+          <Button size="sm" leftIcon={<Plus size={14} />} onClick={() => setShowNewTask(!showNewTask)}>Tâche</Button>
         </div>
       </div>
+
+
 
       {/* Formulaire nouvelle tâche */}
       {showNewTask && (
@@ -267,11 +254,9 @@ export function TasksPage() {
               {/* Actions */}
               <button
                 onClick={() => handleDelete(task.id)}
-                className="p-1 text-[var(--text-muted)] hover:text-[var(--danger)] transition-colors cursor-pointer shrink-0"
+                className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-[var(--danger-soft)] transition-all cursor-pointer shrink-0"
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
-                </svg>
+                <Trash2 size={14} />
               </button>
             </Card>
           ))

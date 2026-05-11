@@ -1,21 +1,23 @@
-// ── Page Settings — Configuration enrichie ──────────────────
+// ── Page Settings — Refonte Sprint Design 2 (D2.7) ──────────
 
 import { useState } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Badge, Input } from '@/components/ui';
+import { Card, Button, Badge } from '@/components/ui';
+import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/lib/auth';
 import { getLeads } from '@/lib/api';
+import { User, Bell, Shield, Palette, Webhook, Keyboard, Settings } from 'lucide-react';
 
 type SettingsTab = 'profil' | 'notifications' | 'securite' | 'apparence' | 'webhook' | 'raccourcis' | 'systeme';
 
-const TABS: { id: SettingsTab; icon: string; label: string; adminOnly?: boolean }[] = [
-  { id: 'profil', icon: '👤', label: 'Profil' },
-  { id: 'notifications', icon: '🔔', label: 'Notifications' },
-  { id: 'securite', icon: '🔒', label: 'Sécurité' },
-  { id: 'apparence', icon: '🎨', label: 'Apparence' },
-  { id: 'webhook', icon: '🔗', label: 'Webhook', adminOnly: true },
-  { id: 'raccourcis', icon: '⌨️', label: 'Raccourcis' },
-  { id: 'systeme', icon: '⚙️', label: 'Système' },
+const TABS: { id: SettingsTab; icon: typeof User; label: string; group: string; adminOnly?: boolean }[] = [
+  { id: 'profil', icon: User, label: 'Mon profil', group: 'COMPTE' },
+  { id: 'notifications', icon: Bell, label: 'Notifications', group: 'COMPTE' },
+  { id: 'securite', icon: Shield, label: 'Sécurité', group: 'COMPTE' },
+  { id: 'apparence', icon: Palette, label: 'Apparence', group: 'CONFIGURATION' },
+  { id: 'webhook', icon: Webhook, label: 'Webhook', group: 'AVANCÉ', adminOnly: true },
+  { id: 'raccourcis', icon: Keyboard, label: 'Raccourcis', group: 'AVANCÉ' },
+  { id: 'systeme', icon: Settings, label: 'Système', group: 'AVANCÉ' },
 ];
 
 export function SettingsPage() {
@@ -81,20 +83,29 @@ export function SettingsPage() {
         {visibleTabs.map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)}
             className={`px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer border whitespace-nowrap shrink-0 transition-all ${activeTab === tab.id ? 'bg-[var(--brand-primary)] text-white border-[var(--brand-primary)]' : 'border-[var(--border-subtle)] text-[var(--text-muted)]'}`}>
-            {tab.icon} {tab.label}
+            <tab.icon size={13} /> {tab.label}
           </button>
         ))}
       </div>
 
       <div className="flex gap-6 max-w-5xl">
-        {/* Sidebar navigation — desktop only */}
-        <nav className="hidden md:block w-48 shrink-0 space-y-1">
-          {visibleTabs.map(tab => (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-              className={`w-full flex items-center gap-2 px-3 py-2 rounded-[var(--radius-md)] text-sm text-left cursor-pointer transition-colors ${activeTab === tab.id ? 'bg-[var(--brand-primary)]/10 text-[var(--brand-primary)] font-medium' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]'}`}>
-              <span>{tab.icon}</span> {tab.label}
-            </button>
-          ))}
+        {/* Sidebar navigation — desktop */}
+        <nav className="hidden md:block w-52 shrink-0">
+          {(() => {
+            const groups = [...new Set(visibleTabs.map(t => t.group))];
+            return groups.map(group => (
+              <div key={group} className="mb-4">
+                <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-[0.12em] px-3 mb-1.5">{group}</p>
+                {visibleTabs.filter(t => t.group === group).map(tab => (
+                  <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] text-left cursor-pointer transition-all mb-0.5
+                      ${activeTab === tab.id ? 'bg-[var(--brand-tint)] text-[var(--brand-primary)] font-medium' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]'}`}>
+                    <tab.icon size={15} /> {tab.label}
+                  </button>
+                ))}
+              </div>
+            ));
+          })()}
         </nav>
 
         {/* Content */}
