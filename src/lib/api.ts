@@ -1198,26 +1198,7 @@ export async function aiScoreLead(leadId: string): Promise<ApiResponse<{ score: 
   return apiFetch<{ score: number; reason: string }>(`/ai/score/${leadId}`, { method: 'POST' });
 }
 
-export async function aiGenerate(data: {
-  action: 'email_followup' | 'generate_proposal' | 'social_post' | 'objection_handler' | 'sms_followup';
-  context?: Record<string, unknown>;
-  lead_id?: string;
-  client_id?: string;
-}): Promise<ApiResponse<Record<string, unknown>>> {
-  return apiFetch<Record<string, unknown>>('/ai/generate', {
-    method: 'POST', body: JSON.stringify(data),
-  });
-}
-
-export async function aiSuggestWorkflow(description: string): Promise<ApiResponse<{
-  name: string;
-  trigger_type: string;
-  steps: Array<Record<string, unknown>>;
-}>> {
-  return apiFetch<{ name: string; trigger_type: string; steps: Array<Record<string, unknown>> }>('/ai/suggest-workflow', {
-    method: 'POST', body: JSON.stringify({ description }),
-  });
-}
+// aiGenerate et aiSuggestWorkflow → déplacés en Sprint 6 (fin de fichier)
 
 // ── Documents & E-Signature (P3.2) ──────────────────────────
 
@@ -1334,4 +1315,134 @@ export async function unregisterDevice(token: string): Promise<ApiResponse<{ suc
   return apiFetch<{ success: boolean }>('/devices', { method: 'DELETE', body: JSON.stringify({ token }) });
 }
 
+// ── Sprint 6 : AI Content Generator (D2) ────────────────────
 
+export type AiAction = 'email_followup' | 'email_welcome' | 'sms_followup' | 'social_post' | 'objection_handler' | 'meeting_agenda' | 'proposal_intro' | 'recap_call';
+
+export async function aiGenerate(params: {
+  action: AiAction;
+  context?: string;
+  lead_id?: string;
+  client_id?: string;
+  brand_voice?: string;
+}): Promise<ApiResponse<{ content: string; action: string }>> {
+  return apiFetch<{ content: string; action: string }>('/ai/generate', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
+}
+
+export async function aiSuggestWorkflow(prompt: string): Promise<ApiResponse<{ steps: Array<Record<string, unknown>> }>> {
+  return apiFetch<{ steps: Array<Record<string, unknown>> }>('/ai/suggest-workflow', {
+    method: 'POST',
+    body: JSON.stringify({ prompt }),
+  });
+}
+
+// ── Sprint 6 : Dashboard Layouts (D4) ───────────────────────
+
+export interface DashboardLayout {
+  id: string;
+  user_id: string;
+  client_id: string | null;
+  name: string;
+  layout_json: string;
+  is_default: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function getDashboardLayouts(clientId?: string): Promise<ApiResponse<DashboardLayout[]>> {
+  const qs = clientId ? `?client_id=${clientId}` : '';
+  return apiFetch<DashboardLayout[]>(`/dashboard/layouts${qs}`);
+}
+
+export async function createDashboardLayout(params: {
+  name: string;
+  layout_json: string;
+  client_id?: string;
+  is_default?: boolean;
+}): Promise<ApiResponse<{ id: string }>> {
+  return apiFetch<{ id: string }>('/dashboard/layouts', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
+}
+
+export async function updateDashboardLayout(id: string, params: {
+  name?: string;
+  layout_json?: string;
+  is_default?: boolean;
+}): Promise<ApiResponse<{ success: boolean }>> {
+  return apiFetch<{ success: boolean }>(`/dashboard/layouts/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(params),
+  });
+}
+
+export async function deleteDashboardLayout(id: string): Promise<ApiResponse<{ success: boolean }>> {
+  return apiFetch<{ success: boolean }>(`/dashboard/layouts/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+// ── Sprint 6 : Industry Packs (D7) ─────────────────────────
+
+export interface IndustryPack {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  icon: string;
+  industries: string;
+  is_published: number;
+}
+
+export interface PackInstallResult {
+  success: boolean;
+  pack_name: string;
+  installed: {
+    custom_fields: number;
+    workflows: number;
+    templates: number;
+    smart_lists: number;
+    skipped: number;
+  };
+  message: string;
+}
+
+export async function getPacks(): Promise<ApiResponse<IndustryPack[]>> {
+  return apiFetch<IndustryPack[]>('/packs');
+}
+
+export async function getPackDetail(slug: string): Promise<ApiResponse<IndustryPack & { snapshot: Record<string, unknown> }>> {
+  return apiFetch<IndustryPack & { snapshot: Record<string, unknown> }>(`/packs/${slug}`);
+}
+
+export async function installPack(slug: string, clientId: string): Promise<ApiResponse<PackInstallResult>> {
+  return apiFetch<PackInstallResult>(`/packs/${slug}/install`, {
+    method: 'POST',
+    body: JSON.stringify({ client_id: clientId }),
+  });
+}
+
+// ── Sprint 6 : SMS Signing (D5) ────────────────────────────
+
+export async function sendSigningSms(docId: string): Promise<ApiResponse<{ success: boolean; sms_sent_to: string; sign_url: string }>> {
+  return apiFetch<{ success: boolean; sms_sent_to: string; sign_url: string }>(`/documents/${docId}/send-sms`, {
+    method: 'POST',
+  });
+}
+
+// ── Sprint 6 : Client business config (D1) ─────────────────
+
+export async function updateClientBusinessConfig(clientId: string, config: {
+  business_type?: string;
+  brand_voice?: string;
+  scoring_prompt_extra?: string;
+}): Promise<ApiResponse<{ success: boolean }>> {
+  return apiFetch<{ success: boolean }>(`/clients/${clientId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(config),
+  });
+}
