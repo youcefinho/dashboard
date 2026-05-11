@@ -2,6 +2,7 @@
 // Notes multiples par lead — Sprint 2
 import type { Env } from './types';
 import { sanitizeInput, json } from './helpers';
+import { autoEnrollForTrigger } from './workflows';
 
 // ── Handlers ────────────────────────────────────────────────
 
@@ -50,6 +51,8 @@ export async function handleCreateLeadNote(
   await env.DB.prepare(
     "UPDATE leads SET last_activity_at = datetime('now') WHERE id = ?"
   ).bind(leadId).run();
+
+  await autoEnrollForTrigger(env, 'note_added', leadId);
 
   return json({ data: { id } }, 201);
 }

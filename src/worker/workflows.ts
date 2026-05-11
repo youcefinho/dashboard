@@ -338,18 +338,52 @@ async function advanceEnrollment(env: Env, enrollment: Record<string, unknown>):
     return;
   }
 
-  let nextAt: string;
+  let nextAt: Date;
   if (nextStep.step_type === 'wait') {
-    let delay = 0;
-    try { delay = (JSON.parse(nextStep.config as string) as { delay_minutes?: number }).delay_minutes || 0; } catch { /* */ }
-    nextAt = new Date(Date.now() + delay * 60_000).toISOString();
+    let config: any = {};
+    try { config = JSON.parse(nextStep.config as string); } catch { /* */ }
+    
+    if (config.wait_type === 'until_date' && config.wait_date) {
+      nextAt = new Date(config.wait_date);
+    } else if (config.wait_type === 'until_time' && config.wait_time) {
+      nextAt = new Date();
+      const [h, m] = config.wait_time.split(':');
+      nextAt.setHours(parseInt(h, 10), parseInt(m, 10), 0, 0);
+      if (nextAt < new Date()) nextAt.setDate(nextAt.getDate() + 1);
+    } else if (config.wait_type === 'for_event') {
+       nextAt = new Date(Date.now() + 365 * 24 * 3600 * 1000); 
+    } else {
+      let delay = config.delay_minutes || 0;
+      nextAt = new Date(Date.now() + delay * 60_000);
+    }
   } else {
-    nextAt = new Date().toISOString();
+    nextAt = new Date();
+  }
+
+  const workflow = await env.DB.prepare('SELECT trigger_config FROM workflows WHERE id = ?').bind(workflowId).first() as Record<string, unknown>;
+  if (workflow && workflow.trigger_config) {
+     let wfConfig: any = {};
+     try { wfConfig = JSON.parse(workflow.trigger_config as string); } catch {}
+     if (wfConfig.quiet_hours_start && wfConfig.quiet_hours_end) {
+        const startH = parseInt(wfConfig.quiet_hours_start.split(':')[0], 10);
+        const endH = parseInt(wfConfig.quiet_hours_end.split(':')[0], 10);
+        const currentH = nextAt.getHours();
+        let inQuiet = false;
+        if (startH > endH) {
+           inQuiet = currentH >= startH || currentH < endH;
+        } else {
+           inQuiet = currentH >= startH && currentH < endH;
+        }
+        if (inQuiet) {
+           if (currentH >= startH && startH > endH) nextAt.setDate(nextAt.getDate() + 1);
+           nextAt.setHours(endH, 0, 0, 0);
+        }
+     }
   }
 
   await env.DB.prepare(
     "UPDATE workflow_enrollments SET current_step_id = ?, next_action_at = ? WHERE id = ?"
-  ).bind(nextStep.id as string, nextAt, enrollmentId).run();
+  ).bind(nextStep.id as string, nextAt.toISOString(), enrollmentId).run();
 }
 
 async function executeStep(env: Env, step: Record<string, unknown>, lead: Record<string, unknown>, _enrollmentId: string): Promise<string | null> {
@@ -532,6 +566,83 @@ async function executeStep(env: Env, step: Record<string, unknown>, lead: Record
         ).bind(lead.id as string, lead.client_id as string, JSON.stringify({ to_stage: stageId, by: 'workflow' })).run();
       }
       return 'main';
+    }
+    case 'create_task': {
+      const title = interpolate(String(config.title || 'Nouvelle tâche'));
+      const desc = interpolate(String(config.description || ''));
+      await env.DB.prepare(
+        "INSERT INTO tasks (id, title, description, priority, status, lead_id, client_id, assigned_to) VALUES (?, ?, ?, ?, 'todo', ?, ?, ?)"
+      ).bind(crypto.randomUUID(), title, desc, config.priority || 'medium', lead.id as string, lead.client_id as string, config.assigned_to || '').run();
+      return 'main';
+    }
+
+    case 'create_appointment': {
+      const title = interpolate(String(config.title || 'Nouveau RDV'));
+      const days = parseInt(String(config.days_from_now || '1'), 10);
+      const startAt = new Date(Date.now() + days * 86400000).toISOString();
+      const endAt = new Date(Date.now() + days * 86400000 + 3600000).toISOString();
+      await env.DB.prepare(
+        "INSERT INTO appointments (id, lead_id, client_id, title, start_time, end_time, type, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'scheduled')"
+      ).bind(crypto.randomUUID(), lead.id as string, lead.client_id as string, title, startAt, endAt, config.type || 'meeting').run();
+      return 'main';
+    }
+
+    case 'create_opportunity': {
+      await env.DB.prepare('UPDATE leads SET lifecycle_stage = "opportunity", deal_value = ?, updated_at = datetime("now") WHERE id = ?')
+        .bind(parseFloat(String(config.deal_value || '0')), lead.id as string).run();
+      return 'main';
+    }
+
+    case 'update_opportunity': {
+      if (config.deal_value) {
+         await env.DB.prepare('UPDATE leads SET deal_value = ?, updated_at = datetime("now") WHERE id = ?')
+           .bind(parseFloat(String(config.deal_value || '0')), lead.id as string).run();
+      }
+      return 'main';
+    }
+
+    case 'update_custom_field': {
+      const fieldId = String(config.field_id || '');
+      const val = interpolate(String(config.value || ''));
+      if (fieldId && val) {
+        await env.DB.prepare(
+          "INSERT INTO lead_custom_fields (lead_id, field_id, value) VALUES (?, ?, ?) ON CONFLICT(lead_id, field_id) DO UPDATE SET value = excluded.value"
+        ).bind(lead.id as string, fieldId, val).run();
+      }
+      return 'main';
+    }
+
+    case 'trigger_another_workflow': {
+      const targetWfId = String(config.workflow_id || '');
+      if (targetWfId) {
+        await env.DB.prepare(
+           "INSERT INTO workflow_enrollments (id, workflow_id, lead_id, status) VALUES (?, ?, ?, 'active')"
+        ).bind(crypto.randomUUID(), targetWfId, lead.id as string).run();
+      }
+      return 'main';
+    }
+
+    case 'end_other_workflow': {
+      const targetWfId = String(config.workflow_id || '');
+      if (targetWfId) {
+        await env.DB.prepare(
+           "UPDATE workflow_enrollments SET status = 'cancelled' WHERE workflow_id = ? AND lead_id = ? AND status = 'active'"
+        ).bind(targetWfId, lead.id as string).run();
+      }
+      return 'main';
+    }
+
+    case 'ai_action':
+    case 'math_operation':
+    case 'add_to_smart_list':
+      // Mocks for now as they require external or complex services not fully wired
+      return 'main';
+
+    case 'goal_reached': {
+       await env.DB.prepare(
+           "UPDATE workflow_enrollments SET status = 'completed', completed_at = datetime('now') WHERE id = ?"
+       ).bind(_enrollmentId).run();
+       return 'main';
     }
 
     default:

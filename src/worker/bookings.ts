@@ -1,6 +1,7 @@
 // ── Module Bookings — Intralys CRM ──────────────────────────
 import type { Env } from './types';
 import { sanitizeInput, json, audit, createNotification } from './helpers';
+import { autoEnrollForTrigger } from './workflows';
 
 export async function handlePublicBookingPage(env: Env, url: URL): Promise<Response> {
   const slug = url.pathname.replace('/api/book/', '');
@@ -53,6 +54,8 @@ export async function handlePublicCreateBooking(request: Request, env: Env): Pro
      VALUES (?, ?, ?, ?, ?, 'booking', 'qualified', 'pipeline-default', 'stage-qualified')`
   ).bind(leadId, page.client_id as string, sanitizeInput(body.guest_name, 100),
     sanitizeInput(body.guest_email, 200).toLowerCase(), sanitizeInput(body.guest_phone || '', 30)).run();
+
+  await autoEnrollForTrigger(env, 'appointment_booked', leadId);
 
   const { results: admins } = await env.DB.prepare("SELECT id FROM users WHERE role = 'admin' AND is_active = 1").all();
   for (const admin of (admins || []) as Array<{ id: string }>) {

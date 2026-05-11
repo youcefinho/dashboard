@@ -321,12 +321,17 @@ export async function handlePatchLead(
           let cfg: { pipeline_id?: string; stage_id?: string } = {};
           try { cfg = JSON.parse(wf.trigger_config); } catch { /* */ }
           
-          const matchPipeline = !cfg.pipeline_id || cfg.pipeline_id === newPipelineId;
-          const matchStage = !cfg.stage_id || cfg.stage_id === newStageId;
-          
-          if (matchPipeline && matchStage) {
+          if (!cfg.pipeline_id || (cfg.pipeline_id === newPipelineId && (!cfg.stage_id || cfg.stage_id === newStageId))) {
             await autoEnrollFn(env, wf.id, leadId);
           }
+        }
+        
+        // Trigger opportunity_status_changed (nouveau trigger Phase C)
+        const { results: oppWfs } = await env.DB.prepare(
+          "SELECT id FROM workflows WHERE is_active = 1 AND trigger_type = 'opportunity_status_changed'"
+        ).all();
+        for (const wf of (oppWfs || []) as Array<{ id: string }>) {
+          await autoEnrollFn(env, wf.id, leadId);
         }
       }
     } catch { /* non critique */ }

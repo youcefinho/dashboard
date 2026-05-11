@@ -1,5 +1,6 @@
 import type { Env } from './types';
 import { json } from './helpers';
+import { autoEnrollForTrigger } from './workflows';
 
 // Hash function for Facebook CAPI (SHA-256)
 async function hashData(data: string): Promise<string> {
@@ -104,6 +105,11 @@ export async function handleTrackOpen(
     `UPDATE messages SET opened_at = datetime('now'), status = 'read' WHERE id = ? AND opened_at IS NULL`
   ).bind(messageId).run();
 
+  const msg = await env.DB.prepare('SELECT lead_id FROM messages WHERE id = ?').bind(messageId).first() as { lead_id: string } | null;
+  if (msg && msg.lead_id) {
+    await autoEnrollForTrigger(env, 'email_opened', msg.lead_id);
+  }
+
   // Return a 1x1 transparent GIF
   const pixel = Uint8Array.from([
     0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x01, 0x00, 0x01, 0x00,
@@ -143,6 +149,11 @@ export async function handleTrackClick(
   await env.DB.prepare(
     `UPDATE messages SET clicked_at = datetime('now') WHERE id = ? AND clicked_at IS NULL`
   ).bind(messageId).run();
+
+  const msg = await env.DB.prepare('SELECT lead_id FROM messages WHERE id = ?').bind(messageId).first() as { lead_id: string } | null;
+  if (msg && msg.lead_id) {
+    await autoEnrollForTrigger(env, 'link_clicked', msg.lead_id);
+  }
 
   return Response.redirect(targetUrl, 302);
 }

@@ -283,6 +283,22 @@ export async function handleInboundSms(request: Request, env: Env): Promise<Resp
       `UPDATE conversations SET last_message_at = datetime('now'), last_message_preview = ?, unread_count = unread_count + 1, updated_at = datetime('now') WHERE id = ?`
     ).bind(sanitizedBody.substring(0, 120), convId).run();
 
+    // Stop on reply (Workflows)
+    const activeEnrollments = await env.DB.prepare(
+      `SELECT we.id, w.trigger_config FROM workflow_enrollments we
+       JOIN workflows w ON we.workflow_id = w.id
+       WHERE we.lead_id = ? AND we.status = 'active'`
+    ).bind(lead.id).all();
+    if (activeEnrollments.results) {
+      for (const enr of activeEnrollments.results as any[]) {
+         let config: any = {};
+         try { config = JSON.parse(enr.trigger_config || '{}'); } catch {}
+         if (config.stop_on_reply) {
+            await env.DB.prepare("UPDATE workflow_enrollments SET status = 'cancelled' WHERE id = ?").bind(enr.id).run();
+         }
+      }
+    }
+
     // Notifier les admins
     const { results: admins } = await env.DB.prepare(
       "SELECT id FROM users WHERE role = 'admin' AND is_active = 1"
@@ -339,6 +355,22 @@ export async function handleInboundEmail(request: Request, env: Env): Promise<Re
     await env.DB.prepare(
       `UPDATE conversations SET last_message_at = datetime('now'), last_message_preview = ?, unread_count = unread_count + 1, updated_at = datetime('now') WHERE id = ?`
     ).bind(bodyText.substring(0, 120), convId).run();
+
+    // Stop on reply (Workflows)
+    const activeEnrollments = await env.DB.prepare(
+      `SELECT we.id, w.trigger_config FROM workflow_enrollments we
+       JOIN workflows w ON we.workflow_id = w.id
+       WHERE we.lead_id = ? AND we.status = 'active'`
+    ).bind(lead.id).all();
+    if (activeEnrollments.results) {
+      for (const enr of activeEnrollments.results as any[]) {
+         let config: any = {};
+         try { config = JSON.parse(enr.trigger_config || '{}'); } catch {}
+         if (config.stop_on_reply) {
+            await env.DB.prepare("UPDATE workflow_enrollments SET status = 'cancelled' WHERE id = ?").bind(enr.id).run();
+         }
+      }
+    }
 
     // Notifier les admins
     const { results: admins } = await env.DB.prepare(

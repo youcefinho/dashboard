@@ -1,6 +1,7 @@
 // ── Module Appointments — Intralys CRM ──────────────────────
 import type { Env } from './types';
 import { sanitizeInput, json } from './helpers';
+import { autoEnrollForTrigger } from './workflows';
 
 export async function handleGetAppointments(
   env: Env,
@@ -44,6 +45,15 @@ export async function handleCreateAppointment(
   const type = sanitizeInput(body.type as string, 20) || 'meeting';
   const clientId = sanitizeInput(body.client_id as string, 100);
 
+  const calendarId = body.calendar_id ? String(body.calendar_id) : null;
+  const assigneeUserId = body.assignee_user_id ? String(body.assignee_user_id) : null;
+  const attendeesJson = body.attendees ? JSON.stringify(body.attendees) : '[]';
+  const conferenceLink = body.conference_link ? sanitizeInput(String(body.conference_link), 300) : null;
+  const recurringRule = body.recurring_rule ? sanitizeInput(String(body.recurring_rule), 100) : null;
+  const reminderMinutes = body.reminder_minutes !== undefined ? Number(body.reminder_minutes) : 60;
+  const bufferBefore = body.buffer_before_min !== undefined ? Number(body.buffer_before_min) : 0;
+  const bufferAfter = body.buffer_after_min !== undefined ? Number(body.buffer_after_min) : 0;
+
   if (!title || !startTime || !endTime) {
     return json({ error: 'Titre, heure de début et de fin requis' }, 400);
   }
@@ -56,9 +66,12 @@ export async function handleCreateAppointment(
   const id = crypto.randomUUID();
 
   await env.DB.prepare(
-    `INSERT INTO appointments (id, lead_id, client_id, title, description, start_time, end_time, location, type)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-  ).bind(id, body.lead_id as string || null, clientId || '', title, description, startTime, endTime, location, type).run();
+    `INSERT INTO appointments (id, lead_id, client_id, title, description, start_time, end_time, location, type, calendar_id, assignee_user_id, attendees_json, conference_link, recurring_rule, reminder_minutes, buffer_before_min, buffer_after_min)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).bind(
+    id, body.lead_id as string || null, clientId || '', title, description, startTime, endTime, location, type,
+    calendarId, assigneeUserId, attendeesJson, conferenceLink, recurringRule, reminderMinutes, bufferBefore, bufferAfter
+  ).run();
 
   // Log d'activité si lié à un lead
   if (body.lead_id) {
@@ -66,6 +79,9 @@ export async function handleCreateAppointment(
       `INSERT INTO activity_log (lead_id, client_id, user_id, action, details)
        VALUES (?, ?, ?, 'appointment_created', ?)`
     ).bind(body.lead_id as string, clientId || '', auth.userId, JSON.stringify({ appointment_id: id, title })).run();
+    
+    // Workflow Trigger
+    await autoEnrollForTrigger(env, 'appointment_booked', body.lead_id as string);
   }
 
   return json({ data: { id } }, 201);
@@ -96,7 +112,11 @@ export async function handleUpdateAppointment(
     }
   }
   if (body.notes !== undefined) { updates.push('notes = ?'); params.push(sanitizeInput(body.notes as string, 2000)); }
-
+  if (body.calendar_id !== undefined) { updates.push('calendar_id = ?'); params.push(body.calendar_id ? String(body.calendar_id) : null); }
+  if (body.assignee_user_id !== undefined) { updates.push('assignee_user_id = ?'); params.push(body.assignee_user_id ? String(body.assignee_user_id) : null); }
+  if (body.attendees !== undefined) { updates.push('attendees_json = ?'); params.push(JSON.stringify(body.attendees)); }
+  if (body.conference_link !== undefined) { updates.push('conference_link = ?'); params.push(body.conference_link ? sanitizeInput(String(body.conference_link), 300) : null); }
+  if (body.recurring_rule !== undefined) { updates.push('recurring_rule = ?'); params.push(body.recurring_rule ? sanitizeInput(String(body.recurring_rule), 100) : null); }
   if (updates.length === 0) {
     return json({ error: 'Aucune modification' }, 400);
   }
@@ -116,6 +136,9 @@ export async function handleUpdateAppointment(
         `INSERT INTO activity_log (lead_id, client_id, user_id, action, details)
          VALUES (?, ?, ?, 'appointment_updated', ?)`
       ).bind(appt.lead_id, appt.client_id, auth.userId, JSON.stringify({ appointment_id: appointmentId, status: body.status, title: appt.title })).run();
+      
+      if (body.status === 'cancelled') await autoEnrollForTrigger(env, 'appointment_cancelled', appt.lead_id);
+      if (body.status === 'no_show') await autoEnrollForTrigger(env, 'appointment_no_show', appt.lead_id);
     }
   }
 
@@ -133,5 +156,37 @@ export async function handleDeleteAppointment(
 
   await env.DB.prepare('DELETE FROM appointments WHERE id = ?').bind(appointmentId).run();
 
+  return json({ data: { success: true } });
+}
+
+export async function handleRescheduleAppointment(
+  request: Request, env: Env, auth: { userId: string }, appointmentId: string
+): Promise<Response> {
+  const body = await request.json() as Record<string, unknown>;
+  if (!body.start_time || !body.end_time) return json({ error: 'start_time et end_time requis' }, 400);
+
+  await env.DB.prepare(
+    "UPDATE appointments SET start_time = ?, end_time = ?, updated_at = datetime('now') WHERE id = ?"
+  ).bind(String(body.start_time), String(body.end_time), appointmentId).run();
+
+  const appt = await env.DB.prepare('SELECT lead_id, client_id, title FROM appointments WHERE id = ?').bind(appointmentId).first() as { lead_id: string | null; client_id: string; title: string } | null;
+  if (appt?.lead_id) {
+    await env.DB.prepare(
+      `INSERT INTO activity_log (lead_id, client_id, user_id, action, details) VALUES (?, ?, ?, 'appointment_rescheduled', ?)`
+    ).bind(appt.lead_id, appt.client_id, auth.userId, JSON.stringify({ appointment_id: appointmentId, title: appt.title })).run();
+  }
+  return json({ data: { success: true } });
+}
+
+export async function handleSendReminderNow(env: Env, _auth: { userId: string }, appointmentId: string): Promise<Response> {
+  const appt = await env.DB.prepare('SELECT * FROM appointments WHERE id = ?').bind(appointmentId).first() as Record<string, unknown>;
+  if (!appt) return json({ error: 'Introuvable' }, 404);
+  
+  // Simulation d'envoi de rappel manuel (Email/SMS). A implémenter plus tard dans Phase C / D.
+  if (appt.lead_id) {
+    await env.DB.prepare(
+      `INSERT INTO activity_log (lead_id, client_id, user_id, action, details) VALUES (?, ?, ?, 'appointment_reminder_sent', ?)`
+    ).bind(appt.lead_id as string, appt.client_id as string, _auth.userId, JSON.stringify({ appointment_id: appointmentId })).run();
+  }
   return json({ data: { success: true } });
 }

@@ -1,6 +1,7 @@
 // ── Module Forms — Intralys CRM ─────────────────────────────
 import type { Env } from './types';
 import { sanitizeInput, json, audit } from './helpers';
+import { autoEnrollForTrigger } from './workflows';
 
 export async function handlePublicFormGet(env: Env, url: URL): Promise<Response> {
   const slug = url.pathname.replace('/api/form/', '');
@@ -34,6 +35,7 @@ export async function handlePublicFormSubmit(request: Request, env: Env): Promis
       sanitizeInput(d.email || '', 200).toLowerCase(), sanitizeInput(d.phone || d.telephone || '', 30),
       sanitizeInput(d.message || d.note || '', 2000)).run();
     await env.DB.prepare('UPDATE form_submissions SET lead_id = ? WHERE id = ?').bind(leadId, subId).run();
+    await autoEnrollForTrigger(env, 'form_submitted', leadId);
   }
 
   return json({ data: { id: subId, success_message: form.success_message, redirect_url: form.redirect_url } }, 201);
