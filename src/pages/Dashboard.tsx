@@ -1,6 +1,6 @@
 // ── Page Dashboard — Vue globale (Sprint Design v2 — Maquette) ──
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -9,12 +9,55 @@ import {
   STATUS_LABELS, STATUS_COLORS, TYPE_LABELS,
   type DashboardStats, type Lead, type Client,
 } from '@/lib/types';
-import { XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 import {
   TrendingUp, TrendingDown, Users, Target, DollarSign, Zap,
-  Download, ArrowRight, Filter,
+  Download, ArrowRight, Filter, Settings2,
+  ChevronUp, ChevronDown, Eye, EyeOff,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
+
+// ── Types widgets configurables ──────────────────────────────
+type WidgetId = 'stats' | 'clients' | 'chart' | 'activity' | 'contacts' | 'pipeline_donut' | 'top_sources';
+
+interface WidgetConfig {
+  id: WidgetId;
+  label: string;
+  icon: string;
+  visible: boolean;
+  order: number;
+}
+
+const DEFAULT_WIDGETS: WidgetConfig[] = [
+  { id: 'stats', label: 'KPIs principaux', icon: '📊', visible: true, order: 0 },
+  { id: 'clients', label: 'Sous-comptes clients', icon: '🏢', visible: true, order: 1 },
+  { id: 'chart', label: 'Graphique acquisition', icon: '📈', visible: true, order: 2 },
+  { id: 'activity', label: 'Activité récente', icon: '⚡', visible: true, order: 3 },
+  { id: 'pipeline_donut', label: 'Répartition pipeline', icon: '🎯', visible: true, order: 4 },
+  { id: 'top_sources', label: 'Top sources', icon: '🔗', visible: true, order: 5 },
+  { id: 'contacts', label: 'Derniers contacts', icon: '👥', visible: true, order: 6 },
+];
+
+function loadWidgetConfig(): WidgetConfig[] {
+  try {
+    const stored = localStorage.getItem('intralys_dashboard_widgets');
+    if (stored) {
+      const parsed = JSON.parse(stored) as WidgetConfig[];
+      // Fusionner avec les defaults pour les nouveaux widgets
+      const ids = new Set(parsed.map(w => w.id));
+      const merged = [...parsed];
+      for (const dw of DEFAULT_WIDGETS) {
+        if (!ids.has(dw.id)) merged.push(dw);
+      }
+      return merged.sort((a, b) => a.order - b.order);
+    }
+  } catch { /* fallback */ }
+  return DEFAULT_WIDGETS;
+}
+
+function saveWidgetConfig(config: WidgetConfig[]) {
+  localStorage.setItem('intralys_dashboard_widgets', JSON.stringify(config));
+}
 
 // ── Couleurs avatars gradient (multi-couleurs maquette) ──────
 const AVATAR_GRADIENTS = [
@@ -38,8 +81,34 @@ export function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [period, setPeriod] = useState<'7d' | '30d' | '90d'>('30d');
+  const [showConfig, setShowConfig] = useState(false);
+  const [widgets, setWidgets] = useState<WidgetConfig[]>(loadWidgetConfig);
   const navigate = useNavigate();
   const { user } = useAuth();
+
+  const updateWidgets = useCallback((fn: (prev: WidgetConfig[]) => WidgetConfig[]) => {
+    setWidgets(prev => {
+      const next = fn(prev);
+      saveWidgetConfig(next);
+      return next;
+    });
+  }, []);
+
+  const toggleWidget = (id: WidgetId) => updateWidgets(prev =>
+    prev.map(w => w.id === id ? { ...w, visible: !w.visible } : w)
+  );
+
+  const moveWidget = (id: WidgetId, dir: -1 | 1) => updateWidgets(prev => {
+    const idx = prev.findIndex(w => w.id === id);
+    if (idx < 0) return prev;
+    const target = idx + dir;
+    if (target < 0 || target >= prev.length) return prev;
+    const next = [...prev];
+    [next[idx]!, next[target]!] = [next[target]!, next[idx]!];
+    return next.map((w, i) => ({ ...w, order: i }));
+  });
+
+  const isVisible = (id: WidgetId) => widgets.find(w => w.id === id)?.visible !== false;
 
   useEffect(() => {
     async function load() {
@@ -86,6 +155,17 @@ export function DashboardPage() {
   const prevCount = Math.max(1, Math.round(periodLeads.length * 0.8));
   const growthPct = Math.round(((periodLeads.length - prevCount) / prevCount) * 100);
 
+  // Données pour le donut pipeline
+  const pipelineData = Object.entries(
+    allLeads.reduce((acc, l) => { acc[l.status] = (acc[l.status] || 0) + 1; return acc; }, {} as Record<string, number>)
+  ).map(([status, count]) => ({ name: (STATUS_LABELS as Record<string, string>)[status] || status, value: count, color: (STATUS_COLORS as Record<string, string>)[status] || 'var(--text-muted)' }));
+
+  // Top sources
+  const sourceData = Object.entries(
+    allLeads.reduce((acc, l) => { const s = l.source || 'direct'; acc[s] = (acc[s] || 0) + 1; return acc; }, {} as Record<string, number>)
+  ).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  const sourceTotal = sourceData.reduce((s, [, c]) => s + c, 0);
+
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Bonjour' : hour < 18 ? 'Bon après-midi' : 'Bonsoir';
 
@@ -124,11 +204,66 @@ export function DashboardPage() {
                 style={{ border: '1px solid var(--border-default)', color: 'var(--text-secondary)' }}>
                 <Download size={16} /> Exporter
               </button>
+              <button onClick={() => setShowConfig(!showConfig)}
+                className={`h-9 w-9 rounded-lg flex items-center justify-center transition cursor-pointer ${showConfig ? 'bg-[var(--brand-primary)] text-white' : 'hover:bg-[var(--bg-subtle)]'}`}
+                style={!showConfig ? { border: '1px solid var(--border-default)', color: 'var(--text-secondary)' } : {}}
+                title="Configurer les widgets">
+                <Settings2 size={16} />
+              </button>
             </div>
           </div>
         </div>
 
-        {/* ═══ 4 Stat cards (maquette : icône carrée + sparkline + delta badge) ═══ */}
+        {/* ═══ Panneau de configuration des widgets ═══ */}
+        {showConfig && (
+          <div className="mb-4 p-4 rounded-xl animate-fade-in" style={{ background: 'var(--bg-surface)', border: '1px solid var(--brand-primary)', borderStyle: 'dashed' }}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold flex items-center gap-2"><Settings2 size={14} className="text-[var(--brand-primary)]" /> Personnaliser le dashboard</h3>
+              <button onClick={() => updateWidgets(() => DEFAULT_WIDGETS)} className="text-[10px] text-[var(--text-muted)] hover:text-[var(--brand-primary)] cursor-pointer">Réinitialiser</button>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {widgets.map((w, idx) => (
+                <div key={w.id} className={`flex items-center gap-2 p-2 rounded-lg border transition-all ${
+                  w.visible ? 'border-[var(--brand-primary)]/30 bg-[var(--brand-primary)]/5' : 'border-[var(--border-subtle)] opacity-50'
+                }`}>
+                  <button onClick={() => toggleWidget(w.id)} className="cursor-pointer shrink-0" title={w.visible ? 'Masquer' : 'Afficher'}>
+                    {w.visible ? <Eye size={14} className="text-[var(--brand-primary)]" /> : <EyeOff size={14} className="text-[var(--text-muted)]" />}
+                  </button>
+                  <span className="text-xs flex-1 truncate">{w.icon} {w.label}</span>
+                  <div className="flex flex-col">
+                    <button onClick={() => moveWidget(w.id, -1)} disabled={idx === 0} className="text-[var(--text-muted)] hover:text-[var(--brand-primary)] cursor-pointer disabled:opacity-20"><ChevronUp size={12} /></button>
+                    <button onClick={() => moveWidget(w.id, 1)} disabled={idx === widgets.length - 1} className="text-[var(--text-muted)] hover:text-[var(--brand-primary)] cursor-pointer disabled:opacity-20"><ChevronDown size={12} /></button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ═══ Rendu conditionnel par widget (dans l'ordre configuré) ═══ */}
+        {widgets.filter(w => w.visible).map(w => {
+          switch (w.id) {
+            case 'stats': return <DashboardStatsWidgets key={w.id} />
+            case 'clients': return <DashboardClientsWidget key={w.id} />
+            case 'chart': return <DashboardChartWidget key={w.id} />
+            case 'activity': return null; // rendu inline avec chart
+            case 'pipeline_donut': return <DashboardPipelineDonut key={w.id} />
+            case 'top_sources': return null; // rendu inline avec pipeline_donut
+            case 'contacts': return <DashboardContactsWidget key={w.id} />
+            default: return null;
+          }
+        })}
+
+        {/* Les widgets chart+activity et pipeline+sources sont couplés en grids 2/3+1/3 */}
+
+      </>
+    </AppLayout>
+  );
+
+  // ── Sous-composants widgets inlines ──────────────────────────
+
+  function DashboardStatsWidgets() {
+    return (
         <div className="grid grid-cols-4 gap-4 mb-6">
           {isLoading ? (
             Array.from({ length: 4 }).map((_, i) => (
@@ -153,9 +288,12 @@ export function DashboardPage() {
             </>
           )}
         </div>
+    );
+  }
 
-        {/* ═══ Sub-accounts row (mini-cartes clients maquette) ═══ */}
-        {!isLoading && clients.length > 0 && (
+  function DashboardClientsWidget() {
+    if (isLoading || clients.length === 0) return null;
+    return (
           <div className="grid grid-cols-6 gap-3 mb-6">
             {clients.slice(0, 5).map((client, i) => {
               const leadCount = stats?.leads_by_client?.find(c => c.client_name === client.name)?.count ?? 0;
@@ -182,9 +320,11 @@ export function DashboardPage() {
               </div>
             </div>
           </div>
-        )}
+    );
+  }
 
-        {/* ═══ Grid 2/3 chart + 1/3 activité (maquette) ═══ */}
+  function DashboardChartWidget() {
+    return (
         <div className="grid grid-cols-3 gap-4 mb-6">
           {/* Chart stacked bar */}
           <div className="col-span-2 p-6 rounded-xl card-lift" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
@@ -252,8 +392,68 @@ export function DashboardPage() {
             </button>
           </div>
         </div>
+    );
+  }
 
-        {/* ═══ Contacts table (maquette : avatars gradient, Source/Valeur/Score) ═══ */}
+  function DashboardPipelineDonut() {
+    return (
+        <div className="grid grid-cols-3 gap-4 mb-6">
+          {/* Donut pipeline */}
+          <div className="col-span-2 p-6 rounded-xl card-lift" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
+            <h3 className="text-base font-semibold mb-4">Répartition pipeline</h3>
+            {isLoading ? <Skeleton className="h-48 w-full" /> : pipelineData.length > 0 ? (
+              <div className="flex items-center gap-8">
+                <ResponsiveContainer width={180} height={180}>
+                  <PieChart>
+                    <Pie data={pipelineData} cx="50%" cy="50%" innerRadius={55} outerRadius={80} dataKey="value" paddingAngle={3} strokeWidth={0}>
+                      {pipelineData.map((entry, idx) => <Cell key={idx} fill={entry.color} />)}
+                    </Pie>
+                    <Tooltip contentStyle={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: '8px', fontSize: '12px' }} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="space-y-2">
+                  {pipelineData.map(d => (
+                    <div key={d.name} className="flex items-center gap-2">
+                      <span className="w-3 h-3 rounded-sm shrink-0" style={{ background: d.color }} />
+                      <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{d.name}</span>
+                      <span className="text-xs font-semibold ml-auto" style={{ fontVariantNumeric: 'tabular-nums' }}>{d.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : <p className="text-sm text-[var(--text-muted)]">Aucune donnée pipeline</p>}
+          </div>
+
+          {/* Top sources */}
+          {isVisible('top_sources') && (
+          <div className="p-6 rounded-xl card-lift" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
+            <h3 className="text-base font-semibold mb-4">🔗 Top sources</h3>
+            <div className="space-y-3">
+              {sourceData.map(([source, count]) => {
+                const pct = sourceTotal > 0 ? Math.round((count / sourceTotal) * 100) : 0;
+                const labels: Record<string, string> = { website: '🌐 Site web', facebook: '📘 Facebook', google: '🔍 Google', referral: '🤝 Référence', direct: '🔗 Direct', instagram: '📷 Instagram' };
+                return (
+                  <div key={source}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{labels[source] || source}</span>
+                      <span className="text-xs font-semibold" style={{ fontVariantNumeric: 'tabular-nums' }}>{count} ({pct}%)</span>
+                    </div>
+                    <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--bg-muted)' }}>
+                      <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: 'var(--brand-primary)' }} />
+                    </div>
+                  </div>
+                );
+              })}
+              {sourceData.length === 0 && <p className="text-xs text-[var(--text-muted)]">Aucune donnée</p>}
+            </div>
+          </div>
+          )}
+        </div>
+    );
+  }
+
+  function DashboardContactsWidget() {
+    return (
         <div className="rounded-xl overflow-hidden card-lift" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
           <div className="px-6 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
             <div>
@@ -338,10 +538,8 @@ export function DashboardPage() {
             </tbody>
           </table>
         </div>
-
-      </>
-    </AppLayout>
-  );
+    );
+  }
 }
 
 // ── StatCard style maquette (icône carrée + sparkline SVG + delta badge) ──
