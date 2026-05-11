@@ -1,8 +1,9 @@
 // ── Module Scoring — Intralys CRM ───────────────────────────
-// Multi-score profiles (Q.4) — Sprint 2 Phase 2.0
+// Multi-score profiles + AI scoring contextualisé (Sprint 6 D1)
 import type { Env } from './types';
 import { json } from './helpers';
 import { autoEnrollForTrigger } from './workflows';
+import { scoreLeadAI } from './ai';
 
 // ── Types ───────────────────────────────────────────────────
 
@@ -120,7 +121,7 @@ export async function handleGetLeadScores(
   return json({ data: results || [] });
 }
 
-// Recalculer le score d'un lead
+// Recalculer le score d'un lead (D1 : scoring contextualisé)
 export async function handleRecomputeLeadScore(
   env: Env, _auth: { role: string }, leadId: string
 ): Promise<Response> {
@@ -131,17 +132,41 @@ export async function handleRecomputeLeadScore(
 
   if (!lead) return json({ error: 'Lead non trouvé' }, 404);
 
-  // Charger les profils actifs
+  // Charger le contexte business du client
   const clientId = lead.client_id as string;
+  const client = await env.DB.prepare(
+    'SELECT business_type, brand_voice, scoring_prompt_extra FROM clients WHERE id = ?'
+  ).bind(clientId).first() as { business_type?: string; brand_voice?: string; scoring_prompt_extra?: string } | null;
+
+  const businessContext = {
+    business_type: client?.business_type || 'B2B générique',
+    brand_voice: client?.brand_voice || 'Professionnel et québécois',
+    scoring_prompt_extra: client?.scoring_prompt_extra || '',
+  };
+
+  // Charger les profils actifs
   const { results: profiles } = await env.DB.prepare(
     'SELECT * FROM score_profiles WHERE is_active = 1 AND (client_id = ? OR client_id IS NULL)'
   ).bind(clientId).all();
 
-  const scores: Array<{ profile_id: string; name: string; score: number }> = [];
+  const scores: Array<{ profile_id: string; name: string; score: number; method: string }> = [];
 
   for (const profile of ((profiles || []) as unknown as ScoreProfile[])) {
     const formula = JSON.parse(profile.formula) as ScoreFormula;
-    const score = computeScore(lead, formula);
+    let score: number;
+    let method = 'rule-based';
+
+    // Si profil IA (formula.weights.ai_score), utiliser l'IA avec contexte business
+    if ('ai_score' in formula.weights && formula.weights.ai_score > 0) {
+      try {
+        score = await scoreLeadAI(env, lead, [], businessContext);
+        method = 'ai-contextualized';
+      } catch {
+        score = computeScore(lead, formula); // fallback règles
+      }
+    } else {
+      score = computeScore(lead, formula);
+    }
 
     // Upsert le score
     await env.DB.prepare(
@@ -150,7 +175,7 @@ export async function handleRecomputeLeadScore(
        ON CONFLICT (lead_id, profile_id) DO UPDATE SET score = ?, computed_at = datetime('now')`
     ).bind(leadId, profile.id, score, score).run();
 
-    scores.push({ profile_id: profile.id, name: profile.name, score });
+    scores.push({ profile_id: profile.id, name: profile.name, score, method });
   }
 
   // Mettre à jour le score principal du lead (profil par défaut)
@@ -266,15 +291,15 @@ export async function seedDefaultScoreProfiles(env: Env): Promise<void> {
       is_default: 1,
     },
     {
-      name: 'Score prospect',
-      description: 'Score spécifique pour les leads entrants',
-      formula: { weights: { type_buy: 30, has_budget: 25, response_time_24h: 20, meeting_booked: 25 } },
+      name: 'Score chaud (IA)',
+      description: 'Score IA contextualisé selon le type de business — détecte les leads prêts à acheter',
+      formula: { weights: { ai_score: 100 } },
       is_default: 0,
     },
     {
-      name: 'Score client',
-      description: 'Score spécifique pour les clients',
-      formula: { weights: { type_sell: 30, has_property_address: 25, has_property_value: 25, engagement_7d: 20 } },
+      name: 'Score qualifié',
+      description: 'Score de qualification avancé — profil complet, engagement et intention d\'achat',
+      formula: { weights: { has_phone: 10, has_email: 5, has_budget: 20, engagement_7d: 20, source_referral: 15, meeting_booked: 30 } },
       is_default: 0,
     },
   ];
