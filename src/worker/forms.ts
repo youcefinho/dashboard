@@ -163,6 +163,13 @@ export async function handleGetForms(env: Env, auth: { role: string }): Promise<
   return json({ data: results || [] });
 }
 
+export async function handleGetForm(env: Env, auth: { role: string }, formId: string): Promise<Response> {
+  if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
+  const form = await env.DB.prepare('SELECT * FROM forms WHERE id = ?').bind(formId).first();
+  if (!form) return json({ error: 'Formulaire introuvable' }, 404);
+  return json({ data: form });
+}
+
 export async function handleCreateForm(request: Request, env: Env, auth: { role: string; userId: string }): Promise<Response> {
   if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
   const body = await request.json() as Record<string, unknown>;

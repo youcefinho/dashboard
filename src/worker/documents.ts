@@ -260,6 +260,68 @@ export async function handleCreateDocument(
   return json({ data: { id: docId, token, sign_url: `/sign/${token}` } }, 201);
 }
 
+export async function handleGenerateOaciq(
+  request: Request, env: Env, auth: { userId: string; role: string }
+): Promise<Response> {
+  if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
+
+  const body = await request.json() as Record<string, unknown>;
+  const leadId = body.lead_id as string;
+  
+  if (!leadId) return json({ error: 'lead_id requis' }, 400);
+
+  const lead = await env.DB.prepare('SELECT * FROM leads WHERE id = ?').bind(leadId).first() as Record<string, unknown> | null;
+  if (!lead) return json({ error: 'Lead introuvable' }, 404);
+  const client = await env.DB.prepare('SELECT * FROM clients WHERE id = ?').bind(lead.client_id as string).first() as Record<string, unknown> | null;
+
+  const title = `Mandat de courtage exclusif - ${lead.name}`;
+  const amfText = client?.amf_certificate ? `Numéro de permis AMF/OACIQ: ${client.amf_certificate}` : '';
+  
+  const oaciqTemplateHtml = `
+    <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px;">
+      <h1 style="text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px;">Mandat de courtage exclusif - OACIQ</h1>
+      <p style="text-align: right;"><strong>Date:</strong> {{date}}</p>
+      
+      <h3>1. Identification des parties</h3>
+      <p><strong>Le Courtier:</strong> ${client?.name || '______________________'} (${amfText})</p>
+      <p><strong>Le Vendeur:</strong> {{lead_name}}</p>
+      <p><strong>Téléphone:</strong> {{lead_phone}} | <strong>Email:</strong> {{lead_email}}</p>
+      
+      <h3>2. Objet du mandat</h3>
+      <p>Le Vendeur donne au Courtier le mandat exclusif de vendre sa propriété aux conditions stipulées en annexe.</p>
+      
+      <h3>3. Rémunération</h3>
+      <p>La rétribution du Courtier est fixée à ______ % du prix de vente, payable à la signature de l'acte de vente.</p>
+      
+      <br><br><br>
+      <div style="display: flex; justify-content: space-between; margin-top: 50px;">
+        <div style="width: 45%; border-top: 1px solid #000; padding-top: 10px; text-align: center;">Signature du Courtier</div>
+        <div style="width: 45%; border-top: 1px solid #000; padding-top: 10px; text-align: center;">Signature du Vendeur ({{lead_name}})</div>
+      </div>
+    </div>
+  `;
+
+  const vars: Record<string, string> = {
+    lead_name: lead.name as string || '',
+    lead_email: lead.email as string || '',
+    lead_phone: lead.phone as string || '',
+    date: new Date().toLocaleDateString('fr-CA')
+  };
+  
+  const bodyHtml = interpolateVars(oaciqTemplateHtml, vars);
+  const docId = crypto.randomUUID();
+  const token = crypto.randomUUID();
+  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+
+  await env.DB.prepare(
+    `INSERT INTO documents (id, template_id, lead_id, client_id, title, body_html, token, expires_at, created_by)
+     VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?)`
+  ).bind(docId, leadId, lead.client_id as string, title, bodyHtml, token, expiresAt, auth.userId).run();
+
+  await audit(env, auth.userId, 'document.create', 'document', docId, { title, lead_id: leadId, type: 'oaciq_mandate' });
+  return json({ data: { id: docId, token, sign_url: `/sign/${token}` } }, 201);
+}
+
 export async function handleSendDocument(
   request: Request, env: Env, auth: { userId: string; role: string }, docId: string
 ): Promise<Response> {

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, Button, Badge } from '@/components/ui';
 import { Input } from '@/components/ui/Input';
-import { getDocuments, createDocument, sendDocument, getDocumentTemplates, sendSigningSms, type Document, type DocumentTemplate, getLeads } from '@/lib/api';
+import { getDocuments, createDocument, sendDocument, getDocumentTemplates, sendSigningSms, apiFetch, type Document, type DocumentTemplate, getLeads } from '@/lib/api';
 import { FileSignature, Plus, Mail, Eye, CheckCircle, Clock, MessageSquare } from 'lucide-react';
 
 function timeAgo(dateStr: string) {
@@ -68,6 +68,31 @@ export function DocumentsPage() {
       console.error(e);
       alert('Erreur lors de la création ou de l\'envoi');
     }
+    setIsCreating(false);
+  };
+
+  const [isGeneratingOaciq, setIsGeneratingOaciq] = useState(false);
+  const handleGenerateOaciq = async () => {
+    if (!selectedLead) {
+      alert("Veuillez sélectionner un lead.");
+      return;
+    }
+    setIsGeneratingOaciq(true);
+    try {
+      const res = await apiFetch<any>('/documents/generate-oaciq', {
+        method: 'POST',
+        body: JSON.stringify({ lead_id: selectedLead })
+      });
+      if (res.data?.id) {
+        setIsCreating(false);
+        setSelectedLead('');
+        void loadData();
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Erreur lors de la génération du mandat OACIQ');
+    }
+    setIsGeneratingOaciq(false);
   };
 
   const getStatusBadge = (status: string) => {
@@ -134,11 +159,19 @@ export function DocumentsPage() {
               />
             </div>
 
-            <div className="flex gap-2 justify-end pt-2">
-              <Button variant="secondary" onClick={() => setIsCreating(false)}>Annuler</Button>
-              <Button onClick={() => void handleCreateAndSend()} disabled={!selectedTemplate || !selectedLead || !docTitle}>
-                <Mail size={16} className="mr-2" /> Créer & Envoyer par email
-              </Button>
+            <div className="flex flex-col gap-3 pt-2 border-t border-[var(--border-subtle)] mt-2">
+              <div className="flex gap-2 justify-between items-center">
+                <Button variant="secondary" onClick={() => handleGenerateOaciq()} disabled={!selectedLead || isGeneratingOaciq} className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border-indigo-200">
+                  <FileSignature size={16} className="mr-2" /> 
+                  {isGeneratingOaciq ? 'Génération...' : 'Générer Mandat OACIQ'}
+                </Button>
+                <div className="flex gap-2">
+                  <Button variant="secondary" onClick={() => setIsCreating(false)}>Annuler</Button>
+                  <Button onClick={() => void handleCreateAndSend()} disabled={!selectedTemplate || !selectedLead || !docTitle}>
+                    <Mail size={16} className="mr-2" /> Créer & Envoyer par email
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
         </Card>
