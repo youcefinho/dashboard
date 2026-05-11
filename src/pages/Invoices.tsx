@@ -96,6 +96,33 @@ export function InvoicesPage() {
         <Button onClick={() => setShowAdd(true)}>+ Nouvelle facture</Button>
       </div>
 
+      {/* KPIs */}
+      {invoices.length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+          {[
+            { label: 'Total facturé', value: invoices.reduce((s, i) => s + i.amount, 0), icon: '💰', color: 'var(--brand-primary)' },
+            { label: 'Payé', value: invoices.filter(i => i.status === 'paid').reduce((s, i) => s + i.amount, 0), icon: '✅', color: 'var(--success)' },
+            { label: 'En attente', value: invoices.filter(i => i.status === 'sent').reduce((s, i) => s + i.amount, 0), icon: '⏳', color: 'var(--warning)' },
+            { label: 'Brouillons', value: invoices.filter(i => i.status === 'draft').length, icon: '📝', color: 'var(--text-muted)', isCurrency: false },
+          ].map((kpi, idx) => (
+            <Card key={idx} className="p-4">
+              <div className="flex items-center gap-3">
+                <span className="text-xl">{kpi.icon}</span>
+                <div>
+                  <p className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-semibold">{kpi.label}</p>
+                  <p className="text-lg font-bold mt-0.5" style={{ color: kpi.color }}>
+                    {kpi.isCurrency === false
+                      ? kpi.value
+                      : kpi.value.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' })
+                    }
+                  </p>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+
       <Card className="overflow-hidden">
         {isLoading ? (
           <div className="p-8 text-center text-[var(--text-muted)] animate-pulse">Chargement des factures...</div>
