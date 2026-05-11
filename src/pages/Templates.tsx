@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, Button, Badge, Skeleton, EmptyState, Input, Modal } from '@/components/ui';
 import { getTemplates, createTemplate, updateTemplate, deleteTemplate } from '@/lib/api';
+import { Wand2 } from 'lucide-react';
 import type { EmailTemplate, TemplateCategory } from '@/lib/types';
 import { TEMPLATE_CATEGORY_LABELS, TEMPLATE_CATEGORIES } from '@/lib/types';
 
@@ -43,6 +44,7 @@ export function TemplatesPage() {
   const [formBody, setFormBody] = useState('');
   const [formCategory, setFormCategory] = useState<TemplateCategory>('general');
   const [isSaving, setIsSaving] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [editorTab, setEditorTab] = useState<'code' | 'preview'>('code');
 
   const loadTemplates = useCallback(async () => {
@@ -272,9 +274,22 @@ export function TemplatesPage() {
           <div>
             <div className="flex items-center justify-between mb-1">
               <label className="text-xs font-medium text-[var(--text-secondary)]">Contenu</label>
-              <div className="flex bg-[var(--bg-subtle)] rounded p-0.5">
-                <button onClick={() => setEditorTab('code')} className={`px-2 py-0.5 text-[10px] rounded cursor-pointer ${editorTab === 'code' ? 'bg-[var(--brand-primary)] text-white' : 'text-[var(--text-muted)]'}`}>{'</>'}Code</button>
-                <button onClick={() => setEditorTab('preview')} className={`px-2 py-0.5 text-[10px] rounded cursor-pointer ${editorTab === 'preview' ? 'bg-[var(--brand-primary)] text-white' : 'text-[var(--text-muted)]'}`}>👁️ Aperçu</button>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" onClick={async () => {
+                  setIsGenerating(true);
+                  try {
+                    const res = await fetch('/api/ai/generate', { method: 'POST', body: JSON.stringify({ action: 'email_followup', context: formName || 'Template email' }) });
+                    const data = await res.json() as any;
+                    if (data?.data?.content) setFormBody(data.data.content);
+                  } catch (e) { console.error(e); }
+                  setIsGenerating(false);
+                }} isLoading={isGenerating} leftIcon={<Wand2 size={12} className="text-[#A855F7]" />} className="h-[24px] text-[10px] px-2 py-0 border border-[var(--border-subtle)] bg-white hover:bg-purple-50">
+                  Générer avec IA
+                </Button>
+                <div className="flex bg-[var(--bg-subtle)] rounded p-0.5">
+                  <button onClick={() => setEditorTab('code')} className={`px-2 py-0.5 text-[10px] rounded cursor-pointer ${editorTab === 'code' ? 'bg-[var(--brand-primary)] text-white' : 'text-[var(--text-muted)]'}`}>{'</>'}Code</button>
+                  <button onClick={() => setEditorTab('preview')} className={`px-2 py-0.5 text-[10px] rounded cursor-pointer ${editorTab === 'preview' ? 'bg-[var(--brand-primary)] text-white' : 'text-[var(--text-muted)]'}`}>👁️ Aperçu</button>
+                </div>
               </div>
             </div>
             {editorTab === 'code' ? (

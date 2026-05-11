@@ -112,10 +112,36 @@ export default {
       const signMatch = path.match(/^\/api\/sign\/([^/]+)$/);
       if (signMatch && method === 'GET') return await handlePublicGetDocument(env, signMatch[1]!);
       if (signMatch && method === 'POST') return await handlePublicSignDocument(request, env, signMatch[1]!);
+      // Voice
+      const { handleVoiceTwiml, handleVoiceRecording } = await import('./worker/voice');
+      if (path === '/api/voice/twiml' && method === 'POST') return await handleVoiceTwiml(request, env);
+      if (path === '/api/voice/webhook/record' && method === 'POST') return await handleVoiceRecording(request, env);
+
+      // Meta (Facebook / Instagram)
+      const { handleMetaOauthStart, handleMetaOauthCallback, handleMetaWebhook } = await import('./worker/meta');
+      if (path === '/api/meta/oauth/start' && method === 'GET') return await handleMetaOauthStart(env, auth, url);
+      if (path === '/api/meta/oauth/callback' && method === 'GET') return await handleMetaOauthCallback(request, env, auth);
+      if (path === '/api/meta/webhook') return await handleMetaWebhook(request, env);
+      
+      // Tracking (P3.5)
+      if (path === '/api/track/conversion' && method === 'POST') {
+        const { handleTrackConversion } = await import('./worker/tracking');
+        return await handleTrackConversion(request, env);
+      }
+
+      // Billing & Invoicing (P3.8)
+      if (path === '/api/webhook/stripe' && method === 'POST') {
+        const { handleStripeWebhook } = await import('./worker/billing');
+        return await handleStripeWebhook(request, env);
+      }
+
       // Webchat — routes publiques
       if (path === '/api/webchat/ws') return await handleWebchatConnect(request, env, url);
       if (path === '/api/webchat/prechat' && method === 'POST') return await handleWebchatPrechat(request, env);
-      if (path === '/api/webchat/widget.js' && method === 'GET') return handleWebchatWidget(env, url);
+      if (path === '/api/webchat/widget.js') {
+        const { handleWebchatWidget } = await import('./worker/webchat');
+        return handleWebchatWidget(env, url);
+      }
     } catch (err) {
       console.error('Erreur route publique:', err);
       return json({ error: 'Erreur serveur' }, 500);
@@ -209,10 +235,16 @@ async function routeProtected(
   // Tags & Activity
   if (path === '/api/tags' && method === 'GET') return handleGetAllTags(env, auth);
   if (path === '/api/activity' && method === 'GET') return handleGetActivity(env, auth, url);
-  if (path === '/api/pipeline' && method === 'GET') return handleGetPipeline(env, auth);
+  if (path === '/api/pipeline' && method === 'GET') return handleGetPipeline(env, auth, url);
 
   // Messages / Inbox
   if (path === '/api/messages' && method === 'GET') return handleGetInboxMessages(env, auth, url);
+
+  // Compliance (CASL, Loi 25)
+  if (path === '/api/unsubscribes' && method === 'GET') return handleGetUnsubscribes(env, auth, url);
+  if (path === '/api/consent' && method === 'GET') return handleGetConsent(env, auth, url);
+  if (path === '/api/consent' && method === 'POST') return handleLogConsent(request, env, auth);
+
 
   // Conversations (Sprint 3)
   if (path === '/api/conversations' && method === 'GET') return handleGetConversations(env, auth, url);
@@ -344,6 +376,41 @@ async function routeProtected(
   // Routes /api/gbp/* retournent 404 par défaut (handler absent)
 
   // Meta (FB/IG)
+      // Billing & Invoicing (P3.8)
+      if (path === '/api/invoices' && method === 'GET') {
+        const { handleGetInvoices } = await import('./worker/billing');
+        return await handleGetInvoices(env, auth);
+      }
+      if (path === '/api/invoices' && method === 'POST') {
+        const { handleCreateInvoice } = await import('./worker/billing');
+        return await handleCreateInvoice(request, env, auth);
+      }
+      if (path.match(/^\/api\/invoices\/[a-zA-Z0-9_-]+\/status$/) && method === 'PATCH') {
+        const invoiceId = path.split('/')[3];
+        const { handleUpdateInvoiceStatus } = await import('./worker/billing');
+        return await handleUpdateInvoiceStatus(request, env, auth, invoiceId);
+      }
+
+      // SaaS Configurator (P3.9)
+      if (path === '/api/agencies' && method === 'GET') {
+        const { handleGetAgencies } = await import('./worker/saas');
+        return await handleGetAgencies(env, auth);
+      }
+      if (path === '/api/agencies' && method === 'POST') {
+        const { handleCreateAgency } = await import('./worker/saas');
+        return await handleCreateAgency(request, env, auth);
+      }
+
+      // AI Features (P3.6)
+      if (path === '/api/ai/generate' && method === 'POST') {
+        const { handleAiGenerate } = await import('./worker/ai');
+        return await handleAiGenerate(request, env);
+      }
+      if (path === '/api/ai/suggest-workflow' && method === 'POST') {
+        const { handleAiSuggestWorkflow } = await import('./worker/ai');
+        return await handleAiSuggestWorkflow(request, env);
+      }
+
   if (path === '/api/meta/oauth/start' && method === 'GET') {
     const { handleMetaOauthStart } = await import('./worker/meta');
     return await handleMetaOauthStart(env, auth, url);
@@ -408,6 +475,41 @@ async function routeProtected(
   if (path === '/api/score-profiles' && method === 'POST') return handleCreateScoreProfile(request, env, auth);
   const spMatch = path.match(/^\/api\/score-profiles\/([^/]+)$/);
   if (spMatch && method === 'PATCH') return handleUpdateScoreProfile(request, env, auth, spMatch[1]!);
+
+  // Mobile Prep (P3.10)
+  // Soft delete / trash
+  const softDeleteMatch = path.match(/^\/api\/leads\/([^/]+)\/trash$/);
+  if (softDeleteMatch && method === 'POST') {
+    const { handleSoftDeleteLead } = await import('./worker/mobile');
+    return await handleSoftDeleteLead(env, auth, softDeleteMatch[1]!);
+  }
+  const restoreMatch = path.match(/^\/api\/leads\/([^/]+)\/restore$/);
+  if (restoreMatch && method === 'POST') {
+    const { handleRestoreLead } = await import('./worker/mobile');
+    return await handleRestoreLead(env, auth, restoreMatch[1]!);
+  }
+  if (path === '/api/trash' && method === 'GET') {
+    const { handleGetTrash } = await import('./worker/mobile');
+    return await handleGetTrash(env, auth);
+  }
+  if (path === '/api/trash/empty' && method === 'POST') {
+    const { handleEmptyTrash } = await import('./worker/mobile');
+    return await handleEmptyTrash(env, auth);
+  }
+  // Device tokens (push notifications)
+  if (path === '/api/devices' && method === 'POST') {
+    const { handleRegisterDevice } = await import('./worker/mobile');
+    return await handleRegisterDevice(request, env, auth);
+  }
+  if (path === '/api/devices' && method === 'DELETE') {
+    const { handleUnregisterDevice } = await import('./worker/mobile');
+    return await handleUnregisterDevice(request, env, auth);
+  }
+  // SSE events stream
+  if (path === '/api/events/stream' && method === 'GET') {
+    const { handleEventsStream } = await import('./worker/mobile');
+    return await handleEventsStream(env, auth);
+  }
 
   // Debug (à retirer avant prod)
   if (path === '/api/debug/run-cron' && method === 'GET') {

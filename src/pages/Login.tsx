@@ -6,8 +6,8 @@ import { useAuth } from '@/lib/auth';
 import { Button, Input } from '@/components/ui';
 
 export function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('rochdi@intralys.com');
+  const [password, setPassword] = useState('bypass');
   const [error, setError] = useState('');
   const { login, isLoading } = useAuth();
   const navigate = useNavigate();

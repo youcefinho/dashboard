@@ -3,6 +3,7 @@ import { Resend } from 'resend';
 import type { Env } from './types';
 import { sanitizeInput, json, audit, sendSms, createNotification, isLeadDnd } from './helpers';
 import { findOrCreateConversation } from './conversations';
+import { isUnsubscribed, generateCaslFooter, generateAmfDisclaimer, generateUnsubscribeToken } from './compliance';
 import type { DndChannel } from './helpers';
 
 export async function handleGetLeadMessages(
@@ -55,6 +56,28 @@ export async function handleSendMessage(
     if (dndBlocked) {
       return json({ error: `Envoi bloqué : le lead a activé DND pour le canal ${channel}` }, 403);
     }
+
+    const emailValue = String(lead.email || '');
+    const phoneValue = String(lead.phone || '');
+    const isUnsub = await isUnsubscribed(env, emailValue, phoneValue, channel);
+    if (isUnsub) {
+      return json({ error: `Envoi bloqué (CASL) : contact désabonné pour ${channel}` }, 403);
+    }
+  }
+
+  // Récupérer les options du client pour l'AMF
+  const clientData = await env.DB.prepare('SELECT amf_certificate, amf_disclaimer_required FROM clients WHERE id = ?').bind(lead.client_id).first() as { amf_certificate?: string; amf_disclaimer_required?: number } | null;
+
+  let finalMessageBody = messageBody;
+  if (channel === 'email' && typeof env.WEBHOOK_SECRET === 'string') {
+    const unsubToken = generateUnsubscribeToken(String(lead.email), env.WEBHOOK_SECRET);
+    const domain = env.ALLOWED_ORIGINS.split(',')[0] || 'http://localhost:5173';
+    const unsubUrl = `${domain}/unsubscribe/${unsubToken}`;
+    finalMessageBody += generateCaslFooter(unsubUrl);
+
+    if (clientData?.amf_disclaimer_required && clientData?.amf_certificate) {
+      finalMessageBody += generateAmfDisclaimer(clientData.amf_certificate);
+    }
   }
 
   const messageId = crypto.randomUUID();
@@ -66,7 +89,7 @@ export async function handleSendMessage(
     if (env.USE_MOCKS === 'true') {
       const { mockSendEmail } = await import('./mocks/mock-resend');
       const mockResult = await mockSendEmail(env, leadId, lead.client_id as string, {
-        to: [lead.email as string], subject: subject || 'Message de votre courtier', html: messageBody,
+        to: [lead.email as string], subject: subject || 'Message de votre courtier', html: finalMessageBody,
       });
       externalId = mockResult.data.id;
       status = 'mock-sent';
@@ -77,7 +100,7 @@ export async function handleSendMessage(
           from: 'Intralys CRM <noreply@intralys.com>',
           to: [lead.email as string],
           subject: subject || 'Message de votre courtier',
-          html: messageBody,
+          html: finalMessageBody,
         });
         if (emailResult.data) {
           externalId = emailResult.data.id;

@@ -399,4 +399,67 @@ select option { background: var(--bg-surface); color: var(--text-primary); }
   table { font-size: 12px; }
   th, td { padding: 8px 10px; }
   .card { border-radius: var(--radius-md); }
+  td:first-child { border-top-left-radius: var(--radius-sm); border-bottom-left-radius: var(--radius-sm); }
+  td:last-child { border-top-right-radius: var(--radius-sm); border-bottom-right-radius: var(--radius-sm); }
 }
+
+/* ── Animations Intralys (Dashboard) ─────────────────────── */
+
+@keyframes shimmer-h {
+  0%   { transform: translateX(-100%); opacity: 0; }
+  50%  { transform: translateX(100%);  opacity: 0.4; }
+  100% { transform: translateX(100%);  opacity: 0; }
+}
+@keyframes float-blob {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  33%      { transform: translateY(-15px) rotate(120deg); }
+  66%      { transform: translateY(10px) rotate(240deg); }
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.6; transform: scale(1.15); }
+}
+
+.pulse-live {
+  animation: pulse-dot 2s infinite;
+}
+
+.card-lift {
+  transition: transform 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
+}
+.card-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px oklch(0 0 0 / 0.05), 0 4px 10px oklch(0 0 0 / 0.02);
+}
+
+.shimmer-bg {
+  position: relative;
+}
+.shimmer-bg::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  animation: shimmer-h 3s infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.blob {
+  position: absolute;
+  filter: blur(40px);
+  border-radius: 50%;
+  animation: float-blob 10s ease-in-out infinite;
+  z-index: 0;
+}
+
+.btn-gradient {
+  background: linear-gradient(135deg, var(--brand-primary) 0%, var(--info) 100%);
+  box-shadow: 0 2px 8px rgba(0, 157, 219, 0.25);
+  transition: all 0.2s var(--ease-out);
+}
+.btn-gradient:hover {
+  box-shadow: 0 4px 12px rgba(0, 157, 219, 0.4);
+  transform: translateY(-1px);
+}
+

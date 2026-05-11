@@ -6,15 +6,21 @@ import { Card, Button, Badge } from '@/components/ui';
 import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/lib/auth';
 import { getLeads } from '@/lib/api';
-import { User, Bell, Shield, Palette, Webhook, Keyboard, Settings } from 'lucide-react';
+import { User, Bell, Shield, Palette, Webhook, Keyboard, Settings, Columns } from 'lucide-react';
+import { PipelineSettings } from '@/components/settings/PipelineSettings';
+import { ComplianceSettings } from './settings/ComplianceSettings';
+import { CustomFieldsSettings } from './settings/CustomFieldsSettings';
 
-type SettingsTab = 'profil' | 'notifications' | 'securite' | 'apparence' | 'webhook' | 'raccourcis' | 'systeme';
+type SettingsTab = 'profil' | 'notifications' | 'securite' | 'apparence' | 'pipelines' | 'custom_fields' | 'conformite' | 'webhook' | 'raccourcis' | 'systeme';
 
 const TABS: { id: SettingsTab; icon: typeof User; label: string; group: string; adminOnly?: boolean }[] = [
   { id: 'profil', icon: User, label: 'Mon profil', group: 'COMPTE' },
   { id: 'notifications', icon: Bell, label: 'Notifications', group: 'COMPTE' },
   { id: 'securite', icon: Shield, label: 'Sécurité', group: 'COMPTE' },
   { id: 'apparence', icon: Palette, label: 'Apparence', group: 'CONFIGURATION' },
+  { id: 'pipelines', icon: Columns, label: 'Pipelines', group: 'CONFIGURATION', adminOnly: true },
+  { id: 'custom_fields', icon: Webhook, label: 'Champs Persos', group: 'CONFIGURATION', adminOnly: true },
+  { id: 'conformite', icon: Shield, label: 'Conformité', group: 'CONFIGURATION', adminOnly: true },
   { id: 'webhook', icon: Webhook, label: 'Webhook', group: 'AVANCÉ', adminOnly: true },
   { id: 'raccourcis', icon: Keyboard, label: 'Raccourcis', group: 'AVANCÉ' },
   { id: 'systeme', icon: Settings, label: 'Système', group: 'AVANCÉ' },
@@ -176,6 +182,9 @@ export function SettingsPage() {
             </Card>
           )}
 
+          {/* Conformité (P3.1) */}
+          {activeTab === 'conformite' && <ComplianceSettings />}
+
           {/* Sécurité */}
           {activeTab === 'securite' && (
             <>
@@ -254,6 +263,10 @@ export function SettingsPage() {
                 </div>
               </div>
             </Card>
+          )}
+          {/* Pipelines */}
+          {activeTab === 'pipelines' && isAdmin && (
+            <PipelineSettings />
           )}
 
           {/* Webhook */}
@@ -363,6 +376,9 @@ export function SettingsPage() {
               )}
             </>
           )}
+
+          {/* ── CHAMPS PERSOS ── */}
+          {activeTab === 'custom_fields' && <CustomFieldsSettings />}
         </div>
       </div>
     </AppLayout>

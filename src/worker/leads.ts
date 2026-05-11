@@ -212,6 +212,18 @@ export async function handlePatchLead(
     }
   }
 
+  // Phase C — Multi-Pipelines
+  if (body.pipeline_id !== undefined) {
+    updates.push('pipeline_id = ?');
+    params.push(sanitizeInput(body.pipeline_id as string, 100));
+    activities.push({ action: 'pipeline_changed', details: JSON.stringify({ pipeline_id: body.pipeline_id }) });
+  }
+  if (body.stage_id !== undefined) {
+    updates.push('stage_id = ?');
+    params.push(sanitizeInput(body.stage_id as string, 100));
+    activities.push({ action: 'stage_changed', details: JSON.stringify({ stage_id: body.stage_id }) });
+  }
+
   // Q.1 — DND (Do Not Disturb)
   if (body.dnd !== undefined) {
     updates.push('dnd = ?');
@@ -387,17 +399,29 @@ export async function handleBulkLeads(
   return json({ data: { success: true, affected } });
 }
 
-export async function handleGetPipeline(env: Env, auth: { role: string }): Promise<Response> {
+export async function handleGetPipeline(env: Env, auth: { role: string }, url: URL): Promise<Response> {
   if (auth.role !== 'admin') {
     return json({ error: 'Accès réservé aux administrateurs' }, 403);
   }
 
-  const { results } = await env.DB.prepare(
-    `SELECT l.*, c.name as client_name FROM leads l
-     LEFT JOIN clients c ON l.client_id = c.id
-     WHERE l.status NOT IN ('closed', 'lost')
-     ORDER BY l.created_at DESC`
-  ).all();
+  const pipelineId = url.searchParams.get('pipeline_id');
+  let query = `SELECT l.*, c.name as client_name FROM leads l
+               LEFT JOIN clients c ON l.client_id = c.id
+               WHERE l.status NOT IN ('closed', 'lost')`;
+  const params: string[] = [];
+
+  if (pipelineId) {
+    query += ' AND l.pipeline_id = ?';
+    params.push(pipelineId);
+  } else {
+    // Si pas de pipeline spécifié, fallback sur le pipeline par défaut
+    query += ` AND (l.pipeline_id IS NULL OR l.pipeline_id = (SELECT id FROM pipelines WHERE is_default = 1 LIMIT 1))`;
+  }
+
+  query += ' ORDER BY l.created_at DESC';
+
+  const stmt = env.DB.prepare(query);
+  const { results } = params.length > 0 ? await stmt.bind(...params).all() : await stmt.all();
 
   return json({ data: results || [] });
 }

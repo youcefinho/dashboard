@@ -1,32 +1,26 @@
-// ── Page Pipeline — Kanban refondu Sprint Design 2 (D2.1) ──────
-
+// ── Page Pipeline — Kanban refondu Sprint Design 2 (D2.1) + Multi-Pipelines (Phase C)
 import { useState, useEffect, useCallback, type DragEvent } from 'react';
 import { Link } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Badge, Skeleton, Card, Modal, Button } from '@/components/ui';
 import { Avatar } from '@/components/ui/Avatar';
-import { getPipeline, updateLead } from '@/lib/api';
-import { STATUS_LABELS, STATUS_COLORS, TYPE_LABELS, SOURCE_LABELS, type Lead, type LeadStatus } from '@/lib/types';
-import { MoreHorizontal, ChevronDown, LayoutList, BarChart3, Kanban, Filter, Clock, DollarSign, TrendingUp, AlertTriangle, X } from 'lucide-react';
-
-const PIPELINE_COLUMNS: LeadStatus[] = ['new', 'contacted', 'meeting', 'signed', 'closed', 'lost'];
-const STAGE_PROBABILITY: Record<LeadStatus, number> = { new: 10, contacted: 25, meeting: 50, signed: 90, closed: 100, lost: 0 };
-
-// Couleurs de fond subtiles par stage
-const STAGE_BG: Record<LeadStatus, string> = {
-  new: 'rgba(0,157,219,0.04)', contacted: 'rgba(24,139,246,0.04)', meeting: 'rgba(255,154,0,0.04)',
-  signed: 'rgba(55,202,55,0.04)', closed: 'rgba(138,147,164,0.03)', lost: 'rgba(233,61,61,0.03)',
-};
+import { getPipeline, getPipelines, updateLead } from '@/lib/api';
+import { TYPE_LABELS, SOURCE_LABELS, type Lead, type Pipeline, type PipelineStage } from '@/lib/types';
+import { MoreHorizontal, ChevronDown, LayoutList, BarChart3, Kanban, Filter, Clock, DollarSign, TrendingUp, AlertTriangle, X, Check } from 'lucide-react';
 
 const LOST_REASONS = ['Prix trop élevé', 'Concurrent choisi', 'Mauvais timing', 'Pas de réponse', 'Financement refusé', 'Changement de plan', 'Autre'];
 
 type ViewMode = 'kanban' | 'list' | 'forecast';
 
 export function PipelinePage() {
+  const [pipelines, setPipelines] = useState<Pipeline[]>([]);
+  const [activePipelineId, setActivePipelineId] = useState<string | null>(null);
+  const [isPipelinesDropdownOpen, setIsPipelinesDropdownOpen] = useState(false);
+
   const [leads, setLeads] = useState<Lead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [draggedId, setDraggedId] = useState<string | null>(null);
-  const [dropTarget, setDropTarget] = useState<LeadStatus | null>(null);
+  const [dropTarget, setDropTarget] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('kanban');
   const [lostModal, setLostModal] = useState<{ leadId: string; show: boolean }>({ leadId: '', show: false });
   const [lostReason, setLostReason] = useState('');
@@ -34,14 +28,36 @@ export function PipelinePage() {
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
 
-  const loadPipeline = useCallback(async () => {
+  const loadData = useCallback(async (forcedPipelineId?: string) => {
     setIsLoading(true);
-    const result = await getPipeline();
-    if (result.data) setLeads(result.data);
-    setIsLoading(false);
-  }, []);
+    const pipesRes = await getPipelines();
+    let currentPipelineId = forcedPipelineId || activePipelineId;
 
-  useEffect(() => { void loadPipeline(); }, [loadPipeline]);
+    if (pipesRes.data && pipesRes.data.length > 0) {
+      setPipelines(pipesRes.data);
+      if (!currentPipelineId) {
+        currentPipelineId = pipesRes.data.find(p => p.is_default)?.id || pipesRes.data[0]!.id;
+        setActivePipelineId(currentPipelineId);
+      }
+      const result = await getPipeline(currentPipelineId!);
+      if (result.data) setLeads(result.data);
+    }
+    setIsLoading(false);
+  }, [activePipelineId]);
+
+  useEffect(() => { void loadData(); }, [loadData]);
+
+  const activePipeline = pipelines.find(p => p.id === activePipelineId) || pipelines[0];
+  const stages = activePipeline?.stages || [];
+
+  // Helper pour obtenir la probabilité basée sur les stages win/loss
+  const getStageProbability = (stage: PipelineStage) => {
+    if (stage.is_win_stage) return 100;
+    if (stage.is_loss_stage) return 0;
+    // Approximatif basé sur la position
+    const idx = stages.indexOf(stage);
+    return Math.min(10 + (idx * 20), 90);
+  };
 
   // ── Drag & Drop ────────────────────────────────────
   const handleDragStart = (e: DragEvent, leadId: string) => {
@@ -49,56 +65,106 @@ export function PipelinePage() {
     e.dataTransfer.setData('text/plain', leadId);
     setDraggedId(leadId);
   };
-  const handleDragOver = (e: DragEvent, status: LeadStatus) => {
+  const handleDragOver = (e: DragEvent, stageId: string) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-    setDropTarget(status);
+    setDropTarget(stageId);
   };
   const handleDragLeave = () => setDropTarget(null);
-  const handleDrop = async (e: DragEvent, newStatus: LeadStatus) => {
+  const handleDrop = async (e: DragEvent, newStageId: string) => {
     e.preventDefault();
     const leadId = e.dataTransfer.getData('text/plain');
     setDraggedId(null);
     setDropTarget(null);
     if (!leadId) return;
-    // Si on drop sur "lost" → ouvrir modal raison
-    if (newStatus === 'lost') {
+
+    const targetStage = stages.find(s => s.id === newStageId);
+    
+    // Si on drop sur "lost" (stage de perte) → ouvrir modal raison
+    if (targetStage?.is_loss_stage) {
       setLostModal({ leadId, show: true });
+      // Ne pas mettre à jour le state tout de suite
       return;
     }
-    setLeads(prev => prev.map(l => l.id === leadId ? { ...l, status: newStatus } : l));
-    const result = await updateLead(leadId, { status: newStatus });
-    if (result.error) void loadPipeline();
+
+    setLeads(prev => prev.map(l => l.id === leadId ? { ...l, stage_id: newStageId } : l));
+    const result = await updateLead(leadId, { stage_id: newStageId });
+    if (result.error) void loadData(activePipelineId!);
   };
 
   const confirmLost = async () => {
     if (!lostModal.leadId) return;
-    setLeads(prev => prev.map(l => l.id === lostModal.leadId ? { ...l, status: 'lost' as LeadStatus } : l));
-    await updateLead(lostModal.leadId, { status: 'lost' as LeadStatus, notes: `[PERDU] ${lostReason}${lostDetails ? ` — ${lostDetails}` : ''}` });
+    const lossStage = stages.find(s => s.is_loss_stage);
+    if (!lossStage) return; // Fallback
+
+    setLeads(prev => prev.map(l => l.id === lostModal.leadId ? { ...l, stage_id: lossStage.id } : l));
+    await updateLead(lostModal.leadId, { stage_id: lossStage.id, status: 'lost', notes: `[PERDU] ${lostReason}${lostDetails ? ` — ${lostDetails}` : ''}` });
     setLostModal({ leadId: '', show: false });
     setLostReason('');
     setLostDetails('');
   };
 
-  const getColumnLeads = (status: LeadStatus) => leads.filter(l => l.status === status);
+  const getColumnLeads = (stageId: string) => leads.filter(l => (l.stage_id || stages[0]?.id) === stageId);
   const getDaysInStage = (lead: Lead) => Math.floor((Date.now() - new Date(lead.updated_at).getTime()) / 86400000);
   const scoreColor = (s: number) => s >= 70 ? 'var(--success)' : s >= 40 ? 'var(--warning)' : 'var(--danger)';
   const daysColor = (d: number) => d > 14 ? 'var(--danger)' : d > 7 ? 'var(--warning)' : 'var(--success)';
 
   const totalValue = leads.reduce((s, l) => s + (l.deal_value || 0), 0);
-  const weightedForecast = leads.reduce((s, l) => s + (l.deal_value || 0) * (STAGE_PROBABILITY[l.status] || 0) / 100, 0);
-  const dormantCount = leads.filter(l => getDaysInStage(l) > 7 && l.status !== 'closed' && l.status !== 'lost').length;
+  const weightedForecast = leads.reduce((s, l) => {
+    const stage = stages.find(st => st.id === (l.stage_id || stages[0]?.id));
+    const prob = stage ? getStageProbability(stage) : 0;
+    return s + (l.deal_value || 0) * (prob / 100);
+  }, 0);
+  
+  const dormantCount = leads.filter(l => {
+    const stage = stages.find(st => st.id === (l.stage_id || stages[0]?.id));
+    return getDaysInStage(l) > 7 && !stage?.is_win_stage && !stage?.is_loss_stage;
+  }).length;
 
   const removeFilter = (f: string) => setActiveFilters(prev => prev.filter(x => x !== f));
+
+  const hexToRgba = (hex: string, alpha: number) => {
+    const r = parseInt(hex.slice(1, 3), 16) || 0;
+    const g = parseInt(hex.slice(3, 5), 16) || 0;
+    const b = parseInt(hex.slice(5, 7), 16) || 0;
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  };
 
   return (
     <AppLayout title="Pipeline">
       {/* ── Header : Pipeline selector + KPIs sticky ── */}
-      <div className="flex flex-wrap items-center gap-3 mb-5">
+      <div className="flex flex-wrap items-center gap-3 mb-5 relative">
         {/* Pipeline selector */}
-        <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-sm font-semibold text-[var(--text-primary)] hover:border-[var(--brand-primary)] transition-colors cursor-pointer">
-          Pipeline principal <ChevronDown size={14} className="text-[var(--text-muted)]" />
-        </button>
+        <div className="relative">
+          <button 
+            onClick={() => setIsPipelinesDropdownOpen(!isPipelinesDropdownOpen)}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-sm font-semibold text-[var(--text-primary)] hover:border-[var(--brand-primary)] transition-colors cursor-pointer"
+          >
+            {activePipeline?.name || 'Chargement...'} <ChevronDown size={14} className="text-[var(--text-muted)]" />
+          </button>
+          
+          {isPipelinesDropdownOpen && pipelines.length > 0 && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setIsPipelinesDropdownOpen(false)} />
+              <div className="absolute top-full left-0 mt-1 w-56 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl shadow-lg z-20 py-1 overflow-hidden">
+                {pipelines.map(p => (
+                  <button
+                    key={p.id}
+                    onClick={() => {
+                      setActivePipelineId(p.id);
+                      setIsPipelinesDropdownOpen(false);
+                      void loadData(p.id);
+                    }}
+                    className="w-full text-left px-4 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] flex items-center justify-between"
+                  >
+                    {p.name}
+                    {p.id === activePipelineId && <Check size={14} className="text-[var(--brand-primary)]" />}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
 
         {/* KPIs inline */}
         <div className="flex items-center gap-4 ml-2">
@@ -167,59 +233,63 @@ export function PipelinePage() {
       {/* ── Kanban ── */}
       {isLoading ? (
         <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
-          {PIPELINE_COLUMNS.map(s => (
+          {[1,2,3,4,5,6].map(s => (
             <div key={s} className="space-y-3"><Skeleton className="h-10 w-full" /><Skeleton className="h-28 w-full" /><Skeleton className="h-28 w-full" /></div>
           ))}
         </div>
       ) : viewMode === 'kanban' ? (
-        <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 min-h-[calc(100vh-14rem)]">
-          {PIPELINE_COLUMNS.map(status => {
-            const colLeads = getColumnLeads(status);
-            const isOver = dropTarget === status;
+        <div className="flex gap-3 overflow-x-auto pb-4 min-h-[calc(100vh-14rem)] snap-x">
+          {stages.map(stage => {
+            const colLeads = getColumnLeads(stage.id);
+            const isOver = dropTarget === stage.id;
             const colValue = colLeads.reduce((s, l) => s + (l.deal_value || 0), 0);
+            const prob = getStageProbability(stage);
 
             return (
-              <div key={status}
-                className={`flex flex-col rounded-xl transition-all duration-200 ${isOver ? 'ring-2 ring-[var(--brand-primary)] shadow-lg' : ''}`}
-                style={{ background: isOver ? 'var(--brand-tint)' : STAGE_BG[status] }}
-                onDragOver={e => handleDragOver(e, status)}
+              <div key={stage.id}
+                className={`flex flex-col rounded-xl transition-all duration-200 shrink-0 w-72 snap-start ${isOver ? 'ring-2 shadow-lg' : ''}`}
+                style={{ 
+                  background: isOver ? hexToRgba(stage.color, 0.08) : hexToRgba(stage.color, 0.03),
+                  borderColor: isOver ? stage.color : 'transparent' 
+                }}
+                onDragOver={e => handleDragOver(e, stage.id)}
                 onDragLeave={handleDragLeave}
-                onDrop={e => void handleDrop(e, status)}>
+                onDrop={e => void handleDrop(e, stage.id)}>
 
                 {/* Column header */}
                 <div className="px-3 pt-3 pb-2">
                   <div className="flex items-center justify-between mb-1.5">
                     <div className="flex items-center gap-2">
-                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: STATUS_COLORS[status] }} />
-                      <h3 className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-primary)]">{STATUS_LABELS[status]}</h3>
+                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: stage.color }} />
+                      <h3 className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-primary)] truncate max-w-[150px]">{stage.name}</h3>
                     </div>
                     <span className="text-[10px] font-semibold bg-[var(--bg-surface)] border border-[var(--border-subtle)] px-2 py-0.5 rounded-full text-[var(--text-secondary)]">{colLeads.length}</span>
                   </div>
-                  <p className="text-[10px] text-[var(--text-muted)]">{colValue > 0 ? `${colValue.toLocaleString('fr-CA')} $` : '—'} · {STAGE_PROBABILITY[status]}%</p>
+                  <p className="text-[10px] text-[var(--text-muted)]">{colValue > 0 ? `${colValue.toLocaleString('fr-CA')} $` : '—'} · {prob}%</p>
                   <div className="h-1 mt-1.5 rounded-full bg-[var(--bg-muted)] overflow-hidden">
-                    <div className="h-full rounded-full transition-all duration-500" style={{ width: `${STAGE_PROBABILITY[status]}%`, background: STATUS_COLORS[status] }} />
+                    <div className="h-full rounded-full transition-all duration-500" style={{ width: `${prob}%`, background: stage.color }} />
                   </div>
                 </div>
 
                 {/* Drop indicator */}
                 {isOver && (
-                  <div className="mx-3 mb-2 h-1 rounded-full animate-pulse" style={{ background: 'var(--brand-primary)', boxShadow: '0 0 8px var(--brand-primary)' }} />
+                  <div className="mx-3 mb-2 h-1 rounded-full animate-pulse" style={{ background: stage.color, boxShadow: `0 0 8px ${stage.color}` }} />
                 )}
 
                 {/* Cards */}
-                <div className="flex-1 space-y-2 px-2 pb-2 overflow-y-auto max-h-[calc(100vh-20rem)]">
+                <div className="flex-1 space-y-2 px-2 pb-2 overflow-y-auto max-h-[calc(100vh-20rem)] custom-scrollbar">
                   {colLeads.length === 0 && (
-                    <div className="text-center py-8 text-[10px] text-[var(--text-muted)] border-2 border-dashed border-[var(--border-subtle)] rounded-xl">
+                    <div className="text-center py-8 text-[10px] text-[var(--text-muted)] border-2 border-dashed border-[var(--border-subtle)] rounded-xl mx-1">
                       Déposez ici
                     </div>
                   )}
                   {colLeads.map(lead => {
                     const days = getDaysInStage(lead);
-                    const isDormant = days > 7 && status !== 'closed' && status !== 'lost';
+                    const isDormant = days > 7 && !stage.is_win_stage && !stage.is_loss_stage;
                     return (
                       <div key={lead.id} draggable
                         onDragStart={e => handleDragStart(e, lead.id)}
-                        className={`group relative bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl p-3 cursor-grab active:cursor-grabbing transition-all hover:border-[var(--brand-primary)] hover:shadow-md
+                        className={`group relative bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl p-3 cursor-grab active:cursor-grabbing transition-all hover:shadow-md
                           ${draggedId === lead.id ? 'opacity-30 scale-95' : ''}
                           ${isDormant ? 'border-l-[3px]' : ''}
                         `}
@@ -260,18 +330,8 @@ export function PipelinePage() {
                           <span className="flex items-center gap-1 font-medium" style={{ color: daysColor(days) }}>
                             <Clock size={10} /> {days}j
                           </span>
-                          <span className="text-[var(--text-muted)]">{SOURCE_LABELS[lead.source] || lead.source}</span>
+                          <span className="text-[var(--text-muted)] truncate max-w-[80px]">{SOURCE_LABELS[lead.source] || lead.source}</span>
                         </div>
-
-                        {/* Tags */}
-                        {lead.tags && lead.tags.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-2">
-                            {lead.tags.slice(0, 2).map(t => (
-                              <span key={t} className="text-[9px] px-1.5 py-0.5 rounded-full bg-[var(--bg-subtle)] text-[var(--text-muted)]">{t}</span>
-                            ))}
-                            {lead.tags.length > 2 && <span className="text-[9px] text-[var(--text-muted)]">+{lead.tags.length - 2}</span>}
-                          </div>
-                        )}
                       </div>
                     );
                   })}
@@ -289,7 +349,7 @@ export function PipelinePage() {
                 <tr className="border-b border-[var(--border-subtle)] bg-[var(--bg-subtle)]">
                   <th className="text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Contact</th>
                   <th className="text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Client</th>
-                  <th className="text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Statut</th>
+                  <th className="text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Stage</th>
                   <th className="text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Type</th>
                   <th className="text-right px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Valeur</th>
                   <th className="text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Score</th>
@@ -300,6 +360,7 @@ export function PipelinePage() {
               <tbody>
                 {leads.map(lead => {
                   const days = getDaysInStage(lead);
+                  const stage = stages.find(s => s.id === (lead.stage_id || stages[0]?.id));
                   return (
                     <tr key={lead.id} className="border-b border-[var(--border-subtle)] hover:bg-[var(--bg-subtle)] transition-colors">
                       <td className="px-4 py-3">
@@ -309,7 +370,9 @@ export function PipelinePage() {
                         </Link>
                       </td>
                       <td className="px-4 py-3 text-xs text-[var(--text-secondary)]">{lead.client_name || '—'}</td>
-                      <td className="px-4 py-3"><Badge color={STATUS_COLORS[lead.status]}>{STATUS_LABELS[lead.status]}</Badge></td>
+                      <td className="px-4 py-3">
+                        {stage && <Badge color={stage.color}>{stage.name}</Badge>}
+                      </td>
                       <td className="px-4 py-3"><Badge color={lead.type === 'buy' ? 'var(--brand-primary)' : 'var(--accent-orange)'}>{TYPE_LABELS[lead.type]}</Badge></td>
                       <td className="px-4 py-3 text-right text-xs font-semibold text-[var(--brand-primary)]">{lead.deal_value > 0 ? `${lead.deal_value.toLocaleString('fr-CA')} $` : '—'}</td>
                       <td className="px-4 py-3">
@@ -334,16 +397,17 @@ export function PipelinePage() {
       ) : (
         /* ── Vue Forecast ── */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {PIPELINE_COLUMNS.filter(s => s !== 'lost').map(status => {
-            const colLeads = getColumnLeads(status);
+          {stages.filter(s => !s.is_loss_stage).map(stage => {
+            const colLeads = getColumnLeads(stage.id);
             const colValue = colLeads.reduce((s, l) => s + (l.deal_value || 0), 0);
-            const weighted = colValue * (STAGE_PROBABILITY[status] / 100);
+            const prob = getStageProbability(stage);
+            const weighted = colValue * (prob / 100);
             return (
-              <Card key={status} className="p-5">
+              <Card key={stage.id} className="p-5">
                 <div className="flex items-center gap-2 mb-3">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: STATUS_COLORS[status] }} />
-                  <h3 className="text-sm font-bold text-[var(--text-primary)]">{STATUS_LABELS[status]}</h3>
-                  <span className="ml-auto text-xs text-[var(--text-muted)]">{STAGE_PROBABILITY[status]}%</span>
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: stage.color }} />
+                  <h3 className="text-sm font-bold text-[var(--text-primary)] truncate">{stage.name}</h3>
+                  <span className="ml-auto text-xs text-[var(--text-muted)]">{prob}%</span>
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between text-xs">
@@ -360,7 +424,7 @@ export function PipelinePage() {
                   </div>
                 </div>
                 <div className="h-2 mt-3 rounded-full bg-[var(--bg-muted)] overflow-hidden">
-                  <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.min((colValue / (totalValue || 1)) * 100, 100)}%`, background: STATUS_COLORS[status] }} />
+                  <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.min((colValue / (totalValue || 1)) * 100, 100)}%`, background: stage.color }} />
                 </div>
               </Card>
             );

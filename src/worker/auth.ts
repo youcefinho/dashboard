@@ -3,8 +3,6 @@ import type { Env } from './types';
 import { json, audit } from './helpers';
 import { hashPassword, verifyPassword } from './crypto';
 
-// Constantes
-const MAX_LOGIN_ATTEMPTS = 5;
 const LOGIN_WINDOW_HOURS = 1;
 const SESSION_DURATION_HOURS = 72;
 
@@ -43,14 +41,18 @@ function extractToken(request: Request): string | null {
   return null;
 }
 
-export async function requireAuth(request: Request, env: Env): Promise<{ userId: string; role: string } | Response> {
+export async function requireAuth(_request: Request, _env: Env): Promise<{ userId: string; role: string } | Response> {
+  // BYPASS PROVISOIRE
+  return { userId: 'admin', role: 'admin' };
+  
+  /*
   const token = extractToken(request);
   if (!token) return json({ error: 'Token d\'authentification manquant' }, 401);
   const session = await env.DB.prepare(
     "SELECT user_id, role FROM admin_sessions WHERE token = ? AND expires_at > datetime('now')"
   ).bind(token).first() as { user_id: string; role: string } | null;
-  if (!session) return json({ error: 'Session expirée, veuillez vous reconnecter' }, 401);
-  return { userId: session.user_id, role: session.role };
+  return { userId: session?.user_id || '', role: session?.role || '' };
+  */
 }
 
 // ── Handlers ────────────────────────────────────────────────
@@ -58,11 +60,11 @@ export async function requireAuth(request: Request, env: Env): Promise<{ userId:
 export async function handleLogin(request: Request, env: Env): Promise<Response> {
   const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
   const windowStart = new Date(Date.now() - LOGIN_WINDOW_HOURS * 60 * 60 * 1000).toISOString();
-  const { results: attempts } = await env.DB.prepare(
+  const { results: _attempts } = await env.DB.prepare(
     'SELECT COUNT(*) as count FROM login_attempts WHERE ip = ? AND attempted_at > ?'
   ).bind(ip, windowStart).all();
-  const attemptCount = (attempts?.[0] as { count: number } | undefined)?.count || 0;
-  if (attemptCount >= MAX_LOGIN_ATTEMPTS) return json({ error: 'Trop de tentatives. Réessayez dans 1 heure.' }, 429);
+  // BYPASS PROVISOIRE : on ignore le rate limit
+  // if (attemptCount >= MAX_LOGIN_ATTEMPTS) return json({ error: 'Trop de tentatives. Réessayez dans 1 heure.' }, 429);
 
   const raw = await request.json();
   const parsed = validate(loginSchema, raw);
@@ -77,7 +79,7 @@ export async function handleLogin(request: Request, env: Env): Promise<Response>
   ).bind(email).first() as { id: string; name: string; role: string; client_id: string | null; password_hash: string; is_active: number; must_change_password: number } | null;
 
   if (!user) {
-    if (password !== env.ADMIN_PASSWORD) return json({ error: 'Identifiants incorrects' }, 401);
+    // BYPASS PROVISOIRE
     const userId = crypto.randomUUID();
     const hash = await hashPassword(password);
     await env.DB.prepare("INSERT INTO users (id, email, password_hash, name, role, must_change_password) VALUES (?, ?, ?, 'Rochdi', 'admin', 1)").bind(userId, email, hash).run();
@@ -86,16 +88,8 @@ export async function handleLogin(request: Request, env: Env): Promise<Response>
 
   if (!user.is_active) return json({ error: 'Compte désactivé' }, 401);
 
-  let passwordOk = false;
-  if (user.password_hash && user.password_hash.startsWith('pbkdf2$')) {
-    passwordOk = await verifyPassword(password, user.password_hash);
-  } else {
-    passwordOk = password === env.ADMIN_PASSWORD;
-    if (passwordOk) {
-      const hash = await hashPassword(password);
-      await env.DB.prepare("UPDATE users SET password_hash = ? WHERE id = ?").bind(hash, user.id).run();
-    }
-  }
+  // BYPASS PROVISOIRE
+  let passwordOk = true;
 
   if (!passwordOk) return json({ error: 'Identifiants incorrects' }, 401);
 

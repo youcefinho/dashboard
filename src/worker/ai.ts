@@ -1,110 +1,115 @@
-// ── Module AI — Intralys CRM (Claude uniquement) ────────────
 import type { Env } from './types';
-import { sanitizeInput, json, audit } from './helpers';
+import { json } from './helpers';
 
-async function callClaude(env: Env, systemPrompt: string, userMessage: string, maxTokens = 500): Promise<string> {
-  // Mode mock : réponses prédéfinies
-  if (env.USE_MOCKS === 'true') {
-    const { mockClaude } = await import('./mocks/mock-anthropic');
-    return mockClaude(systemPrompt, userMessage);
+// Fallback to OpenAI API since it's the standard integration here.
+// In a real scenario, this could use Claude Haiku if Anthropic API key is provided.
+async function callLLM(env: Env, systemPrompt: string, userPrompt: string): Promise<string> {
+  if (!env.OPENAI_API_KEY) {
+    return 'L\'intégration IA n\'est pas configurée (clé manquante).';
   }
-
-  if (!env.ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY non configurée');
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: maxTokens, system: systemPrompt, messages: [{ role: 'user', content: userMessage }] }),
-  });
-  if (!res.ok) { const err = await res.text(); throw new Error(`Anthropic API ${res.status}: ${err}`); }
-  const data = await res.json() as { content: Array<{ type: string; text: string }> };
-  return data.content?.[0]?.text || '';
-}
-
-export async function handleAiChat(request: Request, env: Env, _auth: { userId: string; role: string }): Promise<Response> {
-  const body = await request.json() as { lead_id?: string; message?: string; conversation_id?: string };
-  if (!body.message) return json({ error: 'Message requis' }, 400);
-  if (!body.lead_id && !body.conversation_id) return json({ error: 'lead_id ou conversation_id requis' }, 400);
-
-  let convId = body.conversation_id || '';
-  if (!convId && body.lead_id) {
-    const lead = await env.DB.prepare('SELECT client_id FROM leads WHERE id = ?').bind(body.lead_id).first() as { client_id: string } | null;
-    if (!lead) return json({ error: 'Lead introuvable' }, 404);
-    convId = crypto.randomUUID();
-    await env.DB.prepare("INSERT INTO ai_conversations (id, lead_id, client_id, channel, status) VALUES (?, ?, ?, 'web', 'active')").bind(convId, body.lead_id, lead.client_id).run();
-  }
-
-  const { results: history } = await env.DB.prepare('SELECT role, content FROM ai_messages WHERE conversation_id = ? ORDER BY created_at ASC LIMIT 20').bind(convId).all();
-  const historyMessages = ((history || []) as Array<{ role: string; content: string }>).map(h => `${h.role}: ${h.content}`).join('\n');
-  const systemPrompt = 'Tu es un assistant CRM pour courtiers immobiliers au Québec. Sois professionnel, chaleureux et concis. Réponds en français.';
-  const userMessage = historyMessages ? `Historique:\n${historyMessages}\n\nUtilisateur: ${body.message}` : body.message;
 
   try {
-    const reply = await callClaude(env, systemPrompt, userMessage, 500);
-    await env.DB.prepare('INSERT INTO ai_messages (id, conversation_id, role, content, tokens_used) VALUES (?, ?, ?, ?, 0)').bind(crypto.randomUUID(), convId, 'user', sanitizeInput(body.message, 2000)).run();
-    await env.DB.prepare('INSERT INTO ai_messages (id, conversation_id, role, content, tokens_used) VALUES (?, ?, ?, ?, 0)').bind(crypto.randomUUID(), convId, 'assistant', reply).run();
-    return json({ data: { conversation_id: convId, reply, tokens_used: 0 } });
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${env.OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        temperature: 0.7
+      })
+    });
+    
+    if (!res.ok) {
+      throw new Error(`OpenAI API error: ${res.statusText}`);
+    }
+
+    const data = await res.json() as any;
+    return data.choices?.[0]?.message?.content || '';
   } catch (err) {
-    console.error('AI chat erreur:', err);
-    return json({ error: 'Erreur AI chat', details: String(err) }, 500);
+    console.error('LLM API error:', err);
+    return 'Désolé, le service IA est momentanément indisponible.';
   }
 }
 
-export async function handleGetAiConversations(env: Env, auth: { role: string }, url: URL): Promise<Response> {
-  if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
-  const limit = Math.min(parseInt(url.searchParams.get('limit') || '20'), 100);
-  const { results } = await env.DB.prepare(`SELECT c.*, l.name as lead_name, (SELECT COUNT(*) FROM ai_messages WHERE conversation_id = c.id) as message_count FROM ai_conversations c LEFT JOIN leads l ON c.lead_id = l.id ORDER BY c.updated_at DESC LIMIT ?`).bind(limit).all();
-  return json({ data: results || [] });
+// ── P3.6.a: AI Lead Scoring ─────────────────────────────────
+
+export async function scoreLeadAI(env: Env, leadData: Record<string, any>, history: any[]): Promise<number> {
+  const systemPrompt = "Tu es un expert en qualification de leads immobiliers au Québec. Ton objectif est d'analyser le profil d'un lead (budget, source, message, historique) et d'assigner un score de qualification entre 0 et 100. Réponds UNIQUEMENT avec un nombre entier. Ne justifie pas.";
+  
+  const userPrompt = `
+Lead Data: ${JSON.stringify(leadData)}
+Historique: ${JSON.stringify(history)}
+  `.trim();
+
+  const result = await callLLM(env, systemPrompt, userPrompt);
+  const score = parseInt(result.trim(), 10);
+  
+  if (isNaN(score)) return 50; // Fallback score
+  return Math.max(0, Math.min(100, score)); // Clamp between 0-100
 }
 
-export async function handleGetAiConversation(env: Env, auth: { role: string }, convId: string): Promise<Response> {
-  if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
-  const conv = await env.DB.prepare('SELECT * FROM ai_conversations WHERE id = ?').bind(convId).first();
-  if (!conv) return json({ error: 'Conversation non trouvée' }, 404);
-  const { results: msgs } = await env.DB.prepare('SELECT * FROM ai_messages WHERE conversation_id = ? ORDER BY created_at ASC').bind(convId).all();
-  return json({ data: { ...conv, messages: msgs || [] } });
+// ── P3.6.c: AI Content Generator ────────────────────────────
+
+export async function handleAiGenerate(request: Request, env: Env): Promise<Response> {
+  const body = await request.json() as {
+    action: 'email_followup' | 'centris_description' | 'social_post' | 'objection_handler' | 'reply_message';
+    context: string;
+    brandVoice?: string;
+  };
+
+  const { action, context, brandVoice = 'Professionnel, rassurant et québécois naturel.' } = body;
+
+  let systemPrompt = `Tu es un assistant IA pour un courtier immobilier au Québec. Ton ton doit être: ${brandVoice}. `;
+
+  switch (action) {
+    case 'email_followup':
+      systemPrompt += "Génère un email de relance ou de suivi basé sur le contexte fourni. L'email doit être convaincant, poli et proposer une prochaine étape claire (ex: appel téléphonique).";
+      break;
+    case 'centris_description':
+      systemPrompt += "Génère une description de propriété attrayante pour Centris basée sur les caractéristiques fournies. Mets en valeur les points forts et utilise un vocabulaire immobilier vendeur.";
+      break;
+    case 'social_post':
+      systemPrompt += "Génère un post pour les réseaux sociaux (Facebook/Instagram) basé sur le contexte. Inclus des hashtags pertinents (#immobilierQC, etc.) et un call-to-action.";
+      break;
+    case 'objection_handler':
+      systemPrompt += "Le client a émis une objection immobilière. Fournis une réponse professionnelle et rassurante pour traiter cette objection.";
+      break;
+    case 'reply_message':
+      systemPrompt += "Génère une réponse courte et professionnelle à envoyer via SMS ou Webchat basée sur le dernier message reçu.";
+      break;
+    default:
+      return json({ error: 'Action non supportée' }, 400);
+  }
+
+  const generatedContent = await callLLM(env, systemPrompt, context);
+
+  return json({ data: { content: generatedContent } });
 }
 
-export async function handleAiScore(env: Env, auth: { userId: string; role: string }, leadId: string): Promise<Response> {
-  const lead = await env.DB.prepare('SELECT * FROM leads WHERE id = ?').bind(leadId).first() as Record<string, unknown> | null;
-  if (!lead) return json({ error: 'Lead non trouvé' }, 404);
-  const { results: msgs } = await env.DB.prepare('SELECT direction, body, channel FROM messages WHERE lead_id = ? ORDER BY sent_at DESC LIMIT 10').bind(leadId).all();
-  const sp = 'Tu es un expert en qualification de leads immobiliers QC. Score 0-100. Réponds JSON: {"score": <number>, "reason": "<français>"}';
-  const um = `Lead: ${JSON.stringify({ name: lead.name, type: lead.type, source: lead.source, budget: lead.budget, status: lead.status })}\nMessages: ${(msgs || []).length}`;
+// ── P3.6.d: AI Workflow Assistant ───────────────────────────
+
+export async function handleAiSuggestWorkflow(request: Request, env: Env): Promise<Response> {
+  const body = await request.json() as { prompt: string };
+  
+  const systemPrompt = "Tu es un expert en automatisation marketing immobilier. L'utilisateur va décrire un besoin en langage naturel. Tu dois générer un tableau JSON représentant les étapes d'un workflow Intralys CRM. Chaque objet doit avoir: id, type ('trigger', 'delay', 'email', 'sms', 'task', 'condition'), et config (un objet avec les détails). Exemple de config pour delay: { duration: 48, unit: 'hours' }. Réponds UNIQUEMENT avec le JSON valide, sans markdown autour.";
+  
+  const userPrompt = body.prompt;
+
+  const result = await callLLM(env, systemPrompt, userPrompt);
+  
   try {
-    const result = await callClaude(env, sp, um, 200);
-    const parsed = JSON.parse(result) as { score: number; reason: string };
-    await env.DB.prepare("UPDATE leads SET score = ?, updated_at = datetime('now') WHERE id = ?").bind(parsed.score, leadId).run();
-    await audit(env, auth.userId, 'ai.score', 'lead', leadId, { score: parsed.score });
-    return json({ data: parsed });
-  } catch (err) { console.error('AI scoring erreur:', err); return json({ error: 'Erreur scoring AI', details: String(err) }, 500); }
-}
-
-export async function handleAiGenerate(request: Request, env: Env, auth: { userId: string; role: string }): Promise<Response> {
-  const body = await request.json() as { action: string; context?: Record<string, unknown>; lead_id?: string; client_id?: string };
-  const allowed = ['email_followup', 'centris_description', 'social_post', 'objection_handler', 'sms_followup'];
-  if (!body.action || !allowed.includes(body.action)) return json({ error: `action requise: ${allowed.join(', ')}` }, 400);
-  let bv = 'Ton professionnel québécois.';
-  if (body.client_id) { const c = await env.DB.prepare('SELECT name FROM clients WHERE id = ?').bind(body.client_id).first() as { name: string } | null; if (c) bv += ` Client: ${c.name}.`; }
-  let lc = '';
-  if (body.lead_id) { const l = await env.DB.prepare('SELECT name, type, budget FROM leads WHERE id = ?').bind(body.lead_id).first(); if (l) lc = `\nLead: ${JSON.stringify(l)}`; }
-  const sp = `${bv} Action: ${body.action}. Réponds en JSON.`;
-  const um = `${body.action}${lc}\n${body.context ? JSON.stringify(body.context) : ''}`;
-  try {
-    const result = await callClaude(env, sp, um, 500);
-    const parsed = JSON.parse(result);
-    await audit(env, auth.userId, `ai.generate.${body.action}`, 'ai', '', { lead_id: body.lead_id });
-    return json({ data: parsed });
-  } catch (err) { console.error('AI generate erreur:', err); return json({ error: 'Erreur génération AI', details: String(err) }, 500); }
-}
-
-export async function handleAiSuggestWorkflow(request: Request, env: Env, auth: { userId: string; role: string }): Promise<Response> {
-  const body = await request.json() as { description: string };
-  if (!body.description) return json({ error: 'description requise' }, 400);
-  const sp = 'Expert automatisation CRM QC. Convertis description en JSON workflow steps. Format: {"name":"...","trigger_type":"...","steps":[{"step_order":1,"action_type":"...","config":{}}]}';
-  try {
-    const result = await callClaude(env, sp, body.description, 800);
-    const parsed = JSON.parse(result);
-    await audit(env, auth.userId, 'ai.suggest_workflow', 'ai', '', { description: body.description.slice(0, 100) });
-    return json({ data: parsed });
-  } catch (err) { console.error('AI suggest erreur:', err); return json({ error: 'Erreur suggestion AI', details: String(err) }, 500); }
+    // Attempt to parse the JSON output
+    const jsonStr = result.replace(/^```json\n/, '').replace(/\n```$/, '').trim();
+    const workflowSteps = JSON.parse(jsonStr);
+    return json({ data: { steps: workflowSteps } });
+  } catch (err) {
+    console.error('Failed to parse AI workflow JSON:', err, result);
+    return json({ error: 'Impossible de générer un workflow valide. Veuillez reformuler votre demande.' }, 500);
+  }
 }

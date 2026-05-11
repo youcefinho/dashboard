@@ -24,7 +24,11 @@ const ReportsPage = lazy(() => import('@/pages/Reports').then(m => ({ default: m
 const TasksPage = lazy(() => import('@/pages/Tasks').then(m => ({ default: m.TasksPage })));
 const ChangePasswordPage = lazy(() => import('@/pages/ChangePassword').then(m => ({ default: m.ChangePasswordPage })));
 const DocumentsPage = lazy(() => import('@/pages/Documents').then(m => ({ default: m.DocumentsPage })));
+const DocumentTemplatesPage = lazy(() => import('@/pages/DocumentTemplates').then(m => ({ default: m.DocumentTemplatesPage })));
+const SignDocumentPage = lazy(() => import('@/pages/SignDocument').then(m => ({ default: m.SignDocumentPage })));
 const ReviewsPage = lazy(() => import('@/pages/Reviews').then(m => ({ default: m.ReviewsPage })));
+const InvoicesPage = lazy(() => import('@/pages/Invoices').then(m => ({ default: m.InvoicesPage })));
+const AgenciesPage = lazy(() => import('@/pages/Agencies').then(m => ({ default: m.AgenciesPage })));
 
 // ── Spinner de chargement ──────────────────────────────────
 
@@ -182,10 +186,38 @@ const documentsRoute = createRoute({
   component: () => (<LazyGuard><DocumentsPage /></LazyGuard>),
 });
 
+const documentTemplatesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/documents/templates',
+  component: () => (<LazyGuard><DocumentTemplatesPage /></LazyGuard>),
+});
+
+const signDocumentRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/sign/$token',
+  component: () => (
+    <Suspense fallback={<PageLoader />}>
+      <SignDocumentPage />
+    </Suspense>
+  ),
+});
+
 const reviewsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/reviews',
   component: () => (<LazyGuard><ReviewsPage /></LazyGuard>),
+});
+
+const invoicesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/invoices',
+  component: () => (<LazyGuard><InvoicesPage /></LazyGuard>),
+});
+
+const agenciesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/agencies',
+  component: () => (<LazyGuard><AgenciesPage /></LazyGuard>),
 });
 
 // ── Router ──────────────────────────────────────────────────
@@ -211,7 +243,11 @@ const routeTree = rootRoute.addChildren([
   changePasswordRoute,
   settingsRoute,
   documentsRoute,
+  documentTemplatesRoute,
+  signDocumentRoute,
   reviewsRoute,
+  invoicesRoute,
+  agenciesRoute,
 ]);
 
 const router = createRouter({ routeTree });

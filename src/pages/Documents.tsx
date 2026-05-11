@@ -1,370 +1,202 @@
-// ── Page Documents — Gestion documents & e-sign ─────────────
-
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Button, Card, Badge, Modal, Input, EmptyState } from '@/components/ui';
-import { apiFetch } from '@/lib/api';
+import { Card, Button, Badge } from '@/components/ui';
+import { Input } from '@/components/ui/Input';
+import { getDocuments, createDocument, sendDocument, getDocumentTemplates, type Document, type DocumentTemplate, getLeads } from '@/lib/api';
+import { FileSignature, Plus, Mail, Eye, CheckCircle, Clock } from 'lucide-react';
 
-interface DocTemplate {
-  id: string;
-  name: string;
-  body_html: string;
-  fields: string;
-  created_at: string;
+function timeAgo(dateStr: string) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  if (days === 0) return "Aujourd'hui";
+  if (days === 1) return "Hier";
+  return `Il y a ${days} jours`;
 }
-
-interface Document {
-  id: string;
-  template_id: string;
-  lead_id: string;
-  lead_name?: string;
-  lead_email?: string;
-  template_name?: string;
-  status: string;
-  sign_token?: string;
-  signed_at?: string;
-  created_at: string;
-}
-
-interface FileItem {
-  id: string;
-  filename: string;
-  content_type: string;
-  size: number;
-  uploaded_by: string;
-  created_at: string;
-}
-
-type Tab = 'documents' | 'templates' | 'files';
 
 export function DocumentsPage() {
-  const [tab, setTab] = useState<Tab>('documents');
   const [documents, setDocuments] = useState<Document[]>([]);
-  const [templates, setTemplates] = useState<DocTemplate[]>([]);
-  const [files, setFiles] = useState<FileItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showNewTemplate, setShowNewTemplate] = useState(false);
-  const [showNewDoc, setShowNewDoc] = useState(false);
-  const [newTemplateName, setNewTemplateName] = useState('');
-  const [newTemplateBody, setNewTemplateBody] = useState('');
-  const [newDocTemplateId, setNewDocTemplateId] = useState('');
-  const [newDocLeadId, setNewDocLeadId] = useState('');
+  const [templates, setTemplates] = useState<DocumentTemplate[]>([]);
+  const [leads, setLeads] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isCreating, setIsCreating] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState('');
+  const [selectedLead, setSelectedLead] = useState('');
+  const [docTitle, setDocTitle] = useState('');
 
-  const loadDocuments = useCallback(async () => {
-    setLoading(true);
+  const loadData = async () => {
+    setIsLoading(true);
     try {
-      const [docsRes, tplRes, filesRes] = await Promise.all([
-        apiFetch('/api/documents'),
-        apiFetch('/api/document-templates'),
-        apiFetch('/api/files'),
+      const [docsRes, tplsRes, leadsRes] = await Promise.all([
+        getDocuments(),
+        getDocumentTemplates(),
+        getLeads()
       ]);
-      if (docsRes.data) setDocuments(docsRes.data as Document[]);
-      if (tplRes.data) setTemplates(tplRes.data as DocTemplate[]);
-      if (filesRes.data) setFiles(filesRes.data as FileItem[]);
-    } catch { /* silencieux */ }
-    setLoading(false);
+      setDocuments(docsRes.data || []);
+      setTemplates(tplsRes.data || []);
+      setLeads(leadsRes.data || []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadData();
   }, []);
 
-  useEffect(() => { void loadDocuments(); }, [loadDocuments]);
-
-  const createTemplate = async () => {
-    if (!newTemplateName) return;
-    await apiFetch('/api/document-templates', {
-      method: 'POST',
-      body: JSON.stringify({ name: newTemplateName, body_html: newTemplateBody || '<p>Contenu du document</p>', fields: '[]' }),
-    });
-    setShowNewTemplate(false);
-    setNewTemplateName('');
-    setNewTemplateBody('');
-    void loadDocuments();
+  const handleCreateAndSend = async () => {
+    if (!selectedTemplate || !selectedLead || !docTitle) return;
+    try {
+      // 1. Créer le document
+      const docRes = await createDocument({
+        template_id: selectedTemplate,
+        lead_id: selectedLead,
+        title: docTitle
+      });
+      
+      if (docRes.data?.id) {
+        // 2. L'envoyer
+        await sendDocument(docRes.data.id);
+        setIsCreating(false);
+        setDocTitle('');
+        setSelectedLead('');
+        setSelectedTemplate('');
+        void loadData();
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Erreur lors de la création ou de l\'envoi');
+    }
   };
 
-  const createDocument = async () => {
-    if (!newDocTemplateId || !newDocLeadId) return;
-    await apiFetch('/api/documents', {
-      method: 'POST',
-      body: JSON.stringify({ template_id: newDocTemplateId, lead_id: newDocLeadId }),
-    });
-    setShowNewDoc(false);
-    setNewDocTemplateId('');
-    setNewDocLeadId('');
-    void loadDocuments();
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'signed': return <Badge color="var(--success)"><span className="flex items-center gap-1"><CheckCircle size={12} /> Signé</span></Badge>;
+      case 'viewed': return <Badge color="var(--warning)"><span className="flex items-center gap-1"><Eye size={12} /> Vu</span></Badge>;
+      case 'sent': return <Badge color="var(--brand-primary)"><span className="flex items-center gap-1"><Mail size={12} /> Envoyé</span></Badge>;
+      case 'expired': return <Badge color="var(--danger)">Expiré</Badge>;
+      default: return <Badge color="var(--text-muted)"><span className="flex items-center gap-1"><Clock size={12} /> Brouillon</span></Badge>;
+    }
   };
-
-  const sendDocument = async (docId: string) => {
-    await apiFetch(`/api/documents/${docId}/send`, { method: 'POST', body: JSON.stringify({}) });
-    void loadDocuments();
-  };
-
-  const deleteTemplate = async (id: string) => {
-    await apiFetch(`/api/document-templates/${id}`, { method: 'DELETE' });
-    void loadDocuments();
-  };
-
-  const deleteFile = async (id: string) => {
-    await apiFetch(`/api/files/${id}`, { method: 'DELETE' });
-    void loadDocuments();
-  };
-
-  const uploadFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const formData = new FormData();
-    formData.append('file', file);
-    await fetch('/api/files', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
-      body: formData,
-    });
-    void loadDocuments();
-  };
-
-  const statusBadge = (status: string) => {
-    const colors: Record<string, string> = {
-      draft: 'var(--text-muted)',
-      sent: 'var(--info)',
-      signed: 'var(--success)',
-      expired: 'var(--danger)',
-    };
-    const labels: Record<string, string> = {
-      draft: 'Brouillon',
-      sent: 'Envoyé',
-      signed: 'Signé',
-      expired: 'Expiré',
-    };
-    return <Badge color={colors[status]}>{labels[status] || status}</Badge>;
-  };
-
-  const formatSize = (bytes: number) => {
-    if (bytes < 1024) return `${bytes} o`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} Ko`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`;
-  };
-
-  const tabs: { key: Tab; label: string; count: number }[] = [
-    { key: 'documents', label: 'Documents', count: documents.length },
-    { key: 'templates', label: 'Templates', count: templates.length },
-    { key: 'files', label: 'Fichiers', count: files.length },
-  ];
 
   return (
-    <AppLayout title="Documents">
-      {/* En-tête avec onglets */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <div className="flex gap-1 bg-[var(--bg-subtle)] p-1 rounded-[var(--radius-lg)]">
-          {tabs.map(t => (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              className={`px-4 py-2 text-sm font-medium rounded-[var(--radius-md)] transition-all cursor-pointer ${
-                tab === t.key
-                  ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-[var(--shadow-xs)]'
-                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-              }`}
-            >
-              {t.label}
-              <span className="ml-2 text-xs opacity-60">{t.count}</span>
-            </button>
-          ))}
+    <AppLayout title="Documents & E-signature">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <FileSignature className="text-[var(--brand-primary)]" />
+            Documents
+          </h1>
+          <p className="text-[var(--text-secondary)] text-sm mt-1">Gérez vos contrats et mandats envoyés pour signature.</p>
         </div>
-
-        <div className="flex gap-2">
-          {tab === 'documents' && (
-            <Button onClick={() => setShowNewDoc(true)} size="sm">
-              + Nouveau document
-            </Button>
-          )}
-          {tab === 'templates' && (
-            <Button onClick={() => setShowNewTemplate(true)} size="sm">
-              + Nouveau template
-            </Button>
-          )}
-          {tab === 'files' && (
-            <label className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-[var(--brand-primary)] text-white rounded-[var(--radius-md)] cursor-pointer hover:bg-[var(--color-accent-hover)] transition-all">
-              📎 Upload
-              <input type="file" className="hidden" onChange={uploadFile} />
-            </label>
-          )}
-        </div>
+        {!isCreating && (
+          <Button onClick={() => setIsCreating(true)} className="gap-2">
+            <Plus size={16} /> Envoyer un document
+          </Button>
+        )}
       </div>
 
-      {/* Contenu selon l'onglet */}
-      {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1,2,3].map(i => (
-            <div key={i} className="skeleton h-40 rounded-[var(--radius-lg)]" />
-          ))}
-        </div>
-      ) : (
-        <>
-          {/* Documents */}
-          {tab === 'documents' && (
-            documents.length === 0 ? (
-              <EmptyState
-                icon={<span className="text-4xl">📄</span>}
-                title="Aucun document"
-                description="Créez un document à partir d'un template pour l'envoyer à un lead."
-                action={<Button onClick={() => setShowNewDoc(true)} size="sm">+ Nouveau document</Button>}
-              />
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {documents.map(doc => (
-                  <Card key={doc.id} className="flex flex-col gap-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold truncate">{doc.template_name || 'Document'}</p>
-                        <p className="text-xs text-[var(--text-muted)] truncate">{doc.lead_name || doc.lead_id}</p>
-                      </div>
-                      {statusBadge(doc.status)}
-                    </div>
-                    <div className="text-xs text-[var(--text-muted)]">
-                      Créé le {new Date(doc.created_at).toLocaleDateString('fr-CA')}
-                      {doc.signed_at && (
-                        <span className="ml-2 text-[var(--success)]">
-                          ✅ Signé le {new Date(doc.signed_at).toLocaleDateString('fr-CA')}
-                        </span>
-                      )}
-                    </div>
-                    {doc.status === 'draft' && (
-                      <Button size="sm" variant="secondary" onClick={() => void sendDocument(doc.id)}>
-                        ✉️ Envoyer pour signature
-                      </Button>
-                    )}
-                  </Card>
-                ))}
-              </div>
-            )
-          )}
+      {isCreating && (
+        <Card className="p-6 mb-6 animate-fade-in border border-[var(--brand-primary)] max-w-2xl">
+          <h3 className="text-lg font-bold mb-4">Envoyer un document pour signature</h3>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Modèle de document</label>
+              <select 
+                value={selectedTemplate} 
+                onChange={e => setSelectedTemplate(e.target.value)}
+                className="w-full p-2 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-md)] text-sm"
+              >
+                <option value="">Sélectionner un modèle...</option>
+                {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium mb-1">Lead destinataire</label>
+              <select 
+                value={selectedLead} 
+                onChange={e => setSelectedLead(e.target.value)}
+                className="w-full p-2 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-md)] text-sm"
+              >
+                <option value="">Sélectionner un lead...</option>
+                {leads.map(l => <option key={l.id} value={l.id}>{l.name} ({l.email})</option>)}
+              </select>
+            </div>
 
-          {/* Templates */}
-          {tab === 'templates' && (
-            templates.length === 0 ? (
-              <EmptyState
-                icon={<span className="text-4xl">📋</span>}
-                title="Aucun template"
-                description="Les templates définissent la structure de vos documents."
-                action={<Button onClick={() => setShowNewTemplate(true)} size="sm">+ Nouveau template</Button>}
+            <div>
+              <label className="block text-sm font-medium mb-1">Titre du document</label>
+              <Input 
+                placeholder="Ex: Mandat de courtage acheteur - Jean Dupont" 
+                value={docTitle} 
+                onChange={e => setDocTitle(e.target.value)} 
               />
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {templates.map(tpl => (
-                  <Card key={tpl.id} className="flex flex-col gap-3">
-                    <div className="flex items-start justify-between">
-                      <p className="text-sm font-semibold">{tpl.name}</p>
-                      <button
-                        onClick={() => void deleteTemplate(tpl.id)}
-                        className="p-1 text-[var(--text-muted)] hover:text-[var(--danger)] transition-colors cursor-pointer"
-                        title="Supprimer"
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
-                        </svg>
-                      </button>
-                    </div>
-                    <p className="text-xs text-[var(--text-muted)]">
-                      Créé le {new Date(tpl.created_at).toLocaleDateString('fr-CA')}
-                    </p>
-                  </Card>
-                ))}
-              </div>
-            )
-          )}
+            </div>
 
-          {/* Fichiers */}
-          {tab === 'files' && (
-            files.length === 0 ? (
-              <EmptyState
-                icon={<span className="text-4xl">📁</span>}
-                title="Aucun fichier"
-                description="Uploadez des fichiers pour les associer à vos leads."
-                action={
-                  <label className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-[var(--brand-primary)] text-white rounded-[var(--radius-md)] cursor-pointer hover:bg-[var(--color-accent-hover)] transition-all">
-                    📎 Upload
-                    <input type="file" className="hidden" onChange={uploadFile} />
-                  </label>
-                }
-              />
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-[var(--border-subtle)]">
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Nom</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Type</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Taille</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Date</th>
-                      <th className="text-right py-3 px-4"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {files.map(file => (
-                      <tr key={file.id} className="border-b border-[var(--border-subtle)] hover:bg-[var(--bg-subtle)] transition-colors">
-                        <td className="py-3 px-4 font-medium">{file.filename}</td>
-                        <td className="py-3 px-4 text-[var(--text-secondary)]">{file.content_type}</td>
-                        <td className="py-3 px-4 text-[var(--text-secondary)]">{formatSize(file.size)}</td>
-                        <td className="py-3 px-4 text-[var(--text-muted)]">{new Date(file.created_at).toLocaleDateString('fr-CA')}</td>
-                        <td className="py-3 px-4 text-right">
-                          <button
-                            onClick={() => void deleteFile(file.id)}
-                            className="p-1 text-[var(--text-muted)] hover:text-[var(--danger)] transition-colors cursor-pointer"
-                          >
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
-                            </svg>
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )
-          )}
-        </>
+            <div className="flex gap-2 justify-end pt-2">
+              <Button variant="secondary" onClick={() => setIsCreating(false)}>Annuler</Button>
+              <Button onClick={() => void handleCreateAndSend()} disabled={!selectedTemplate || !selectedLead || !docTitle}>
+                <Mail size={16} className="mr-2" /> Créer & Envoyer par email
+              </Button>
+            </div>
+          </div>
+        </Card>
       )}
 
-      {/* Modal — Nouveau template */}
-      <Modal isOpen={showNewTemplate} onClose={() => setShowNewTemplate(false)} title="Nouveau template">
-        <div className="space-y-4">
-          <Input label="Nom du template" value={newTemplateName} onChange={e => setNewTemplateName(e.target.value)} placeholder="Ex: Promesse d'achat" />
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-[var(--text-secondary)]">Contenu HTML</label>
-            <textarea
-              value={newTemplateBody}
-              onChange={e => setNewTemplateBody(e.target.value)}
-              placeholder="<p>Contenu du document...</p>"
-              rows={6}
-              className="w-full px-3 py-2.5 text-sm bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] focus:border-[var(--brand-primary)] focus:ring-1 focus:ring-[var(--brand-primary)] focus:outline-none font-mono"
-            />
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="secondary" onClick={() => setShowNewTemplate(false)}>Annuler</Button>
-            <Button onClick={() => void createTemplate()}>Créer</Button>
-          </div>
+      {isLoading ? (
+        <div className="text-center py-10 text-[var(--text-muted)]">Chargement...</div>
+      ) : documents.length === 0 && !isCreating ? (
+        <div className="text-center py-12 bg-[var(--bg-surface)] border border-dashed border-[var(--border-default)] rounded-[var(--radius-lg)]">
+          <FileSignature size={48} className="mx-auto text-[var(--text-muted)] mb-4" />
+          <h3 className="text-lg font-medium text-[var(--text-primary)]">Aucun document</h3>
+          <p className="text-[var(--text-secondary)] mt-1 mb-4">Envoyez votre premier document pour signature.</p>
+          <Button onClick={() => setIsCreating(true)}>Envoyer un document</Button>
         </div>
-      </Modal>
-
-      {/* Modal — Nouveau document */}
-      <Modal isOpen={showNewDoc} onClose={() => setShowNewDoc(false)} title="Nouveau document">
-        <div className="space-y-4">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-[var(--text-secondary)]">Template</label>
-            <select
-              value={newDocTemplateId}
-              onChange={e => setNewDocTemplateId(e.target.value)}
-              className="w-full px-3 py-2.5 text-sm bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] focus:border-[var(--brand-primary)] focus:outline-none"
-            >
-              <option value="">Sélectionner un template...</option>
-              {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-            </select>
-          </div>
-          <Input label="ID du lead" value={newDocLeadId} onChange={e => setNewDocLeadId(e.target.value)} placeholder="ID du lead destinataire" />
-          <div className="flex justify-end gap-2">
-            <Button variant="secondary" onClick={() => setShowNewDoc(false)}>Annuler</Button>
-            <Button onClick={() => void createDocument()}>Créer</Button>
-          </div>
+      ) : (
+        <div className="card p-0 overflow-hidden">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-[var(--border-subtle)] bg-[var(--bg-canvas)] text-[var(--text-muted)]">
+                <th className="py-3 px-4 font-medium">Titre</th>
+                <th className="py-3 px-4 font-medium">Destinataire</th>
+                <th className="py-3 px-4 font-medium">Statut</th>
+                <th className="py-3 px-4 font-medium">Date</th>
+                <th className="py-3 px-4 font-medium text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[var(--border-subtle)]">
+              {documents.map(doc => (
+                <tr key={doc.id} className="hover:bg-[var(--bg-subtle)] transition-colors">
+                  <td className="py-3 px-4 font-medium">
+                    <div className="flex items-center gap-2">
+                      <FileSignature size={16} className="text-[var(--text-muted)]" />
+                      {doc.title}
+                    </div>
+                  </td>
+                  <td className="py-3 px-4">
+                    <p className="text-sm">{doc.lead_name}</p>
+                    <p className="text-xs text-[var(--text-muted)]">{doc.lead_email}</p>
+                  </td>
+                  <td className="py-3 px-4">{getStatusBadge(doc.status)}</td>
+                  <td className="py-3 px-4 text-[var(--text-secondary)]">
+                    {doc.status === 'signed' && doc.signed_at 
+                      ? timeAgo(doc.signed_at) 
+                      : doc.status === 'sent' && doc.sent_at 
+                        ? timeAgo(doc.sent_at) 
+                        : timeAgo(doc.created_at)}
+                  </td>
+                  <td className="py-3 px-4 text-right">
+                    <Button variant="secondary" size="sm" onClick={() => window.open(`/sign/${doc.token}`, '_blank')}>
+                      Voir
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-      </Modal>
+      )}
     </AppLayout>
   );
 }

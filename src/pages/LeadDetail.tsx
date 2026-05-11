@@ -5,7 +5,7 @@ import { useParams, useNavigate } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, Button, Badge, Skeleton, EmptyState } from '@/components/ui';
 import { Avatar } from '@/components/ui/Avatar';
-import { getLeadDetail, updateLead, addTag, removeTag, getAppointments, getTasks, updateTask, getLeadNotes, createLeadNote, deleteLeadNote, getLeadScores, getLeadCustomFields } from '@/lib/api';
+import { getLeadDetail, updateLead, addTag, removeTag, getAppointments, getTasks, updateTask, getLeadNotes, createLeadNote, deleteLeadNote, getLeadScores, getLeadCustomFields, apiFetch } from '@/lib/api';
 import { ConversationPanel } from '@/components/conversations/ConversationPanel';
 import {
   STATUS_LABELS, STATUS_COLORS, TYPE_LABELS, SOURCE_LABELS,
@@ -92,6 +92,20 @@ export function LeadDetailPage() {
   const handleRemoveTag = async (tag: string) => {
     await removeTag(leadId, tag);
     void loadLead();
+  };
+
+  const handleForgetLead = async () => {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer les données personnelles de ce lead (Droit à l\'oubli / Loi 25) ? Cette action est irréversible.')) return;
+    try {
+      await apiFetch(`/leads/${leadId}/forget`, { method: 'POST' });
+      navigate({ to: '/leads' });
+    } catch (e) {
+      alert('Erreur lors de la suppression');
+    }
+  };
+
+  const handleExportPii = () => {
+    window.open(`/api/leads/${leadId}/export-pii`, '_blank');
   };
 
   const timeAgo = (dateStr: string): string => {
@@ -237,9 +251,29 @@ export function LeadDetailPage() {
                 {lead.utm_campaign && <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--bg-subtle)] text-[var(--text-muted)]">campaign: {lead.utm_campaign}</span>}
               </div>
             )}
+
+            {/* Champs Personnalisés (P3.4) */}
+            <div className="mt-4 pt-4 border-t border-[var(--border-subtle)]">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">Champs Personnalisés</h3>
+                <button className="text-[10px] text-[var(--brand-primary)] hover:underline cursor-pointer">Gérer les champs</button>
+              </div>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                {(lead as any).custom_fields && (lead as any).custom_fields.length > 0 ? (
+                  ((lead as any).custom_fields as {id: string, name: string, value: string}[]).map(cf => (
+                    <div key={cf.id}>
+                      <p className="text-[var(--text-muted)] text-[10px] uppercase tracking-wider mb-0.5">{cf.name}</p>
+                      <p>{cf.value}</p>
+                    </div>
+                  ))
+                ) : (
+                  <div className="col-span-2 text-xs text-[var(--text-muted)] italic">Aucun champ personnalisé défini pour ce lead.</div>
+                )}
+              </div>
+            </div>
           </Card>
 
-          {/* Onglets */}
+          {/* Onglets (Activité, Emails, Tâches, etc.) */}
           <div className="flex gap-1 border-b border-[var(--border-subtle)] overflow-x-auto">
             {([['details', 'Détails'], ['notes', `Notes (${leadNotes.length})`], ['conversations', 'Conversations'], ['scores', 'Scores'], ['activity', 'Activité']] as const).map(([key, label]) => (
               <button key={key} onClick={() => setActiveTab(key as typeof activeTab)}
@@ -640,6 +674,19 @@ export function LeadDetailPage() {
               <div className="flex justify-between"><span className="text-[var(--text-muted)]">Mis à jour</span><span>{new Date(lead.updated_at).toLocaleDateString('fr-CA')}</span></div>
               <div className="flex justify-between"><span className="text-[var(--text-muted)]">Source</span><span>{SOURCE_LABELS[lead.source] || lead.source}</span></div>
               <div className="flex justify-between"><span className="text-[var(--text-muted)]">ID</span><span className="font-mono truncate ml-2">{lead.id.slice(0, 8)}</span></div>
+            </div>
+          </Card>
+
+          {/* Conformité (Loi 25) */}
+          <Card className="p-4">
+            <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">⚖️ Loi 25 (Québec)</h3>
+            <div className="space-y-2">
+              <Button size="sm" variant="secondary" className="w-full justify-center" onClick={handleExportPii}>
+                Exporter données (JSON)
+              </Button>
+              <Button size="sm" className="w-full justify-center bg-[color-mix(in_oklch,var(--danger)_10%,transparent)] text-[var(--danger)] hover:bg-[color-mix(in_oklch,var(--danger)_20%,transparent)] border border-[color-mix(in_oklch,var(--danger)_30%,transparent)]" onClick={handleForgetLead}>
+                Droit à l'oubli
+              </Button>
             </div>
           </Card>
         </div>

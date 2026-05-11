@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, Briefcase, MessageSquare, Mail,
   Zap, FileText, Star, CalendarDays, CheckSquare, Plug,
   BarChart3, Settings, LogOut, ChevronLeft, ChevronRight,
-  UserCircle,
+  UserCircle, CreditCard,
 } from 'lucide-react';
 
 interface NavSection {
@@ -25,8 +25,10 @@ const NAV_SECTIONS: NavSection[] = [
     label: 'WORKSPACE',
     items: [
       { path: '/leads', label: 'Leads', icon: <Users size={18} /> },
+      { path: '/agencies', label: 'Agences', icon: <Briefcase size={18} />, adminOnly: true },
       { path: '/clients', label: 'Clients', icon: <UserCircle size={18} />, adminOnly: true },
       { path: '/pipeline', label: 'Pipeline', icon: <Briefcase size={18} /> },
+      { path: '/invoices', label: 'Factures', icon: <CreditCard size={18} /> },
       { path: '/conversations', label: 'Conversations', icon: <MessageSquare size={18} /> },
     ],
   },
@@ -41,6 +43,7 @@ const NAV_SECTIONS: NavSection[] = [
     label: 'INSIGHTS',
     items: [
       { path: '/documents', label: 'Documents', icon: <FileText size={18} /> },
+      { path: '/documents/templates', label: 'Modèles docs', icon: <FileText size={18} /> },
       { path: '/reviews', label: 'Avis', icon: <Star size={18} /> },
       { path: '/calendar', label: 'Calendrier', icon: <CalendarDays size={18} /> },
       { path: '/tasks', label: 'Tâches', icon: <CheckSquare size={18} /> },

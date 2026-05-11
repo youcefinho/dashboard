@@ -10,7 +10,7 @@ interface IntegrationConfig {
   icon: string;
   description: string;
   status: 'active' | 'inactive' | 'pending';
-  category: 'ads' | 'calendar' | 'data' | 'automation';
+  category: 'ads' | 'calendar' | 'data' | 'automation' | 'communications';
   fields: { key: string; label: string; placeholder: string; type?: string }[];
   docsUrl?: string;
 }
@@ -75,6 +75,26 @@ const INTEGRATIONS: IntegrationConfig[] = [
       { key: 'webhook_url', label: 'Webhook URL Slack', placeholder: 'https://hooks.slack.com/services/...' },
     ],
   },
+  {
+    id: 'webchat', name: 'Webchat Widget', icon: '💬', category: 'communications',
+    description: 'Ajoutez un chat en direct sur votre site web pour parler aux visiteurs.',
+    status: 'inactive',
+    fields: [],
+  },
+  {
+    id: 'meta_messaging', name: 'Messenger & Instagram', icon: '📱', category: 'communications',
+    description: 'Centralisez vos messages Facebook Messenger et Instagram DM.',
+    status: 'inactive',
+    fields: [],
+  },
+  {
+    id: 'twilio_voice', name: 'Twilio Voice', icon: '📞', category: 'communications',
+    description: 'Recevez des appels, enregistrez les messages vocaux et obtenez la transcription texte.',
+    status: 'inactive',
+    fields: [
+      { key: 'twilio_number', label: 'Numéro Twilio', placeholder: '+1 819 555-0000' }
+    ],
+  },
 ];
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -82,9 +102,10 @@ const CATEGORY_LABELS: Record<string, string> = {
   calendar: '📅 Calendrier',
   data: '📊 Données',
   automation: '⚡ Automation',
+  communications: '💬 Communications',
 };
 
-type FilterCategory = 'all' | 'ads' | 'calendar' | 'data' | 'automation';
+type FilterCategory = 'all' | 'ads' | 'calendar' | 'data' | 'automation' | 'communications';
 
 export function IntegrationsPage() {
   const [configs, setConfigs] = useState<Record<string, Record<string, string>>>({});
@@ -181,7 +202,7 @@ X-Client-Id: <id_courtier>`}</pre>
 
       {/* Filtres catégorie */}
       <div className="flex gap-2 mb-6 flex-wrap">
-        {(['all', 'ads', 'calendar', 'data', 'automation'] as const).map(cat => (
+        {(['all', 'ads', 'calendar', 'data', 'automation', 'communications'] as const).map(cat => (
           <button key={cat} onClick={() => setFilterCategory(cat)}
             className={`px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer border transition-all ${filterCategory === cat ? 'bg-[var(--brand-primary)] text-white border-[var(--brand-primary)]' : 'border-[var(--border-subtle)] text-[var(--text-muted)]'}`}>
             {cat === 'all' ? `Toutes (${INTEGRATIONS.length})` : `${CATEGORY_LABELS[cat]} (${INTEGRATIONS.filter(i => i.category === cat).length})`}
@@ -249,6 +270,20 @@ X-Client-Id: <id_courtier>`}</pre>
                         </Button>
                       </div>
                     </>
+                  ) : integration.id === 'meta_messaging' ? (
+                    <div className="text-center py-4 bg-[var(--bg-subtle)] rounded-[var(--radius-md)]">
+                      <p className="text-sm text-[var(--text-muted)] mb-3">Connectez-vous à Facebook pour lier votre page et compte Instagram.</p>
+                      <Button onClick={() => window.location.href = '/api/meta/oauth/start'} className="bg-[#1877F2] hover:bg-[#1877F2]/90 text-white border-none">
+                        Connecter avec Facebook
+                      </Button>
+                    </div>
+                  ) : integration.id === 'webchat' ? (
+                    <div className="text-center py-4 bg-[var(--bg-subtle)] rounded-[var(--radius-md)]">
+                      <p className="text-sm font-medium mb-2">Code du widget à intégrer :</p>
+                      <code className="block p-3 bg-black/50 text-green-400 text-xs text-left rounded overflow-x-auto whitespace-pre">
+{`<script src="${window.location.origin}/api/webchat/widget.js?client_id=VOTRE_ID" defer></script>`}
+                      </code>
+                    </div>
                   ) : (
                     <div className="text-center py-4 bg-[var(--bg-subtle)] rounded-[var(--radius-md)]">
                       <p className="text-sm text-[var(--text-muted)]">Utilisez l'URL webhook universelle ci-dessus pour connecter cette intégration.</p>

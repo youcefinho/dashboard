@@ -4,7 +4,8 @@
 export interface Env {
   DB: D1Database;
   ADMIN_PASSWORD: string;
-  RESEND_API_KEY: string;
+  RESEND_API_KEY?: string;
+  OPENAI_API_KEY?: string;
   WEBHOOK_SECRET: string;
   NOTIFICATION_EMAIL: string;
   ALLOWED_ORIGINS: string;

@@ -362,15 +362,15 @@ src/
 |---|---|---|---|
 | P3.0 | Refactor worker.ts en modules | ✅ done | 8970ad9 |
 | P3.1 | Conformité QC (CASL + Loi 25 + AMF) | ✅ done | 66155ea |
-| P3.2 | Documents & e-signature | ⬜ skip MVP | — |
-| P3.3 | Conversations multi-canal complètes | ⬜ skip MVP | — |
+| P3.2 | Documents & e-signature | ✅ done | (Sprint P4) |
+| P3.3 | Conversations multi-canal complètes | ✅ done | (webchat/voice/meta) |
 | P3.4 | Smart Lists + Custom Fields UI | ✅ done | b9003ab |
-| P3.5 | Attribution server-side (CAPI + GAds) | ⬜ skip MVP | — |
+| P3.5 | Attribution server-side (CAPI + GAds) | ✅ done | (tracking.ts) |
 | P3.6 | AI features (scoring + content + workflow) | ✅ done | 55e9b6e |
-| P3.7 | Workflow canvas 2D + branches | ⬜ skip MVP | — |
-| P3.8 | Payments Stripe Connect | ⬜ skip MVP | — |
-| P3.9 | SaaS configurator | ⬜ skip MVP | — |
-| P3.10 | Mobile prep (soft delete + push backend + OpenAPI) | ⬜ skip MVP | — |
+| P3.7 | Workflow canvas 2D + branches | ✅ done | (ReactFlow) |
+| P3.8 | Payments Stripe Connect | ✅ done | (billing.ts) |
+| P3.9 | SaaS configurator | ✅ done | (saas.ts) |
+| P3.10 | Mobile prep (soft delete + push backend + SSE) | ✅ done | (mobile.ts) |
 
 ---
 

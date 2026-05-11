@@ -100,6 +100,34 @@ export interface LeadTag {
   created_at: string;
 }
 
+// ── Multi-Pipelines ──────────────────────────
+
+export interface PipelineStage {
+  id: string;
+  pipeline_id: string;
+  name: string;
+  slug: string;
+  color: string;
+  position: number;
+  is_win_stage: number;
+  is_loss_stage: number;
+  created_at: string;
+  updated_at: string;
+  lead_count?: number;
+}
+
+export interface Pipeline {
+  id: string;
+  client_id: string | null;
+  name: string;
+  description: string;
+  position: number;
+  is_default: number;
+  created_at: string;
+  updated_at: string;
+  stages?: PipelineStage[];
+}
+
 export interface ActivityLogEntry {
   id: number;
   lead_id: string;

@@ -106,7 +106,7 @@ export async function handleGetBroadcastDetail(env: Env, auth: { role: string },
 export async function processBroadcastQueueJob(batch: MessageBatch<any>, env: Env): Promise<void> {
   // Optionnel: importer Resend statiquement en haut
   const { Resend } = await import('resend');
-  const { generateUnsubscribeToken, generateCaslFooter, generateAmfDisclaimer } = await import('./compliance');
+  const { generateUnsubscribeToken, generateCaslFooter, generateAmfDisclaimer, isUnsubscribed } = await import('./compliance');
 
   for (const message of batch.messages) {
     const job = message.body;
@@ -121,6 +121,11 @@ export async function processBroadcastQueueJob(batch: MessageBatch<any>, env: En
     if (env.USE_MOCKS === 'true') {
       for (const lead of leads) {
         try {
+          const isUnsub = await isUnsubscribed(env, lead.email, lead.phone, 'email');
+          if (isUnsub) {
+            failed++;
+            continue;
+          }
           const personalizedHtml = htmlContent.replace(/\{\{nom\}\}/g, lead.name || '').replace(/\{\{name\}\}/g, lead.name || '').replace(/\{\{email\}\}/g, lead.email || '');
           await env.DB.prepare(
             `INSERT INTO messages (id, lead_id, client_id, direction, channel, subject, body, status, sent_by, external_id)
@@ -136,9 +141,12 @@ export async function processBroadcastQueueJob(batch: MessageBatch<any>, env: En
       
       const promises = leads.map(async (lead: any) => {
         try {
+          const isUnsub = await isUnsubscribed(env, lead.email, lead.phone, 'email');
+          if (isUnsub) throw new Error('Unsubscribed');
+
           const personalizedHtml = htmlContent.replace(/\{\{nom\}\}/g, lead.name || '').replace(/\{\{name\}\}/g, lead.name || '').replace(/\{\{email\}\}/g, lead.email || '');
           const unsubToken = generateUnsubscribeToken(lead.email, env.WEBHOOK_SECRET || 'intralys');
-          const unsubUrl = `${origin}/api/unsubscribe/${unsubToken}`;
+          const unsubUrl = `${origin}/unsubscribe/${unsubToken}`;
           const caslFooter = generateCaslFooter(unsubUrl);
           let amfFooter = '';
           if (clientId) {

@@ -12,7 +12,7 @@ import {
   PieChart, Pie, Cell, AreaChart, Area, Legend,
 } from 'recharts';
 
-type ReportTab = 'funnel' | 'sources' | 'performance' | 'trends';
+type ReportTab = 'funnel' | 'sources' | 'performance' | 'trends' | 'attribution';
 
 export function ReportsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -93,6 +93,7 @@ export function ReportsPage() {
   const tabs: { id: ReportTab; label: string; icon: typeof BarChart3 }[] = [
     { id: 'funnel', label: 'Funnel', icon: BarChart3 },
     { id: 'sources', label: 'Sources', icon: Target },
+    { id: 'attribution', label: 'Attribution', icon: DollarSign },
     { id: 'performance', label: 'Courtiers', icon: Trophy },
     { id: 'trends', label: 'Tendances', icon: TrendingUp },
   ];
@@ -228,6 +229,78 @@ export function ReportsPage() {
                 })}
             </div>
           </Card>
+        </div>
+      )}
+
+      {/* ── Attribution (P3.5) ────────────────────── */}
+      {activeTab === 'attribution' && (
+        <div className="space-y-4">
+          <Card className="p-5 bg-gradient-to-br from-[var(--bg-surface)] to-[var(--brand-tint)] border-[var(--brand-primary)]/30">
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="text-sm font-semibold mb-1 text-[var(--brand-primary)]">🎯 Attribution Server-Side (CAPI)</h3>
+                <p className="text-xs text-[var(--text-muted)] max-w-xl">
+                  Intralys contourne les bloqueurs de pub (AdBlock, iOS 14+) en envoyant les conversions directement depuis nos serveurs vers Facebook et Google Ads.
+                </p>
+              </div>
+              <Badge color="var(--success)">Actif</Badge>
+            </div>
+          </Card>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <Card className="p-5">
+              <h3 className="text-sm font-semibold mb-4">💰 ROI par Source (Mock)</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead>
+                    <tr className="border-b border-[var(--border-subtle)] text-[11px] text-[var(--text-muted)] uppercase tracking-wider">
+                      <th className="py-2">Source</th>
+                      <th className="py-2 text-right">Dépense</th>
+                      <th className="py-2 text-right">CPA</th>
+                      <th className="py-2 text-right">CA Généré</th>
+                      <th className="py-2 text-right">ROAS</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-b border-[var(--border-subtle)] hover:bg-[var(--bg-subtle)]">
+                      <td className="py-2 font-medium">Facebook Ads</td>
+                      <td className="py-2 text-right">1 500 $</td>
+                      <td className="py-2 text-right text-[var(--danger)]">45 $</td>
+                      <td className="py-2 text-right text-[var(--success)]">42 000 $</td>
+                      <td className="py-2 text-right font-bold text-[var(--brand-primary)]">28x</td>
+                    </tr>
+                    <tr className="border-b border-[var(--border-subtle)] hover:bg-[var(--bg-subtle)]">
+                      <td className="py-2 font-medium">Google Ads</td>
+                      <td className="py-2 text-right">800 $</td>
+                      <td className="py-2 text-right text-[var(--danger)]">60 $</td>
+                      <td className="py-2 text-right text-[var(--success)]">18 000 $</td>
+                      <td className="py-2 text-right font-bold text-[var(--brand-primary)]">22x</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+
+            <Card className="p-5">
+              <h3 className="text-sm font-semibold mb-4">📡 Événements envoyés récemments</h3>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-2.5 bg-[var(--bg-subtle)] rounded-[var(--radius-sm)] border-l-2 border-[#1877f2]">
+                  <div>
+                    <p className="text-xs font-semibold text-[#1877f2]">Facebook CAPI</p>
+                    <p className="text-[10px] text-[var(--text-muted)]">Event: Lead (Signé)</p>
+                  </div>
+                  <span className="text-[10px] text-[var(--success)] font-medium bg-[var(--success)]/10 px-2 py-0.5 rounded">Success 200 OK</span>
+                </div>
+                <div className="flex items-center justify-between p-2.5 bg-[var(--bg-subtle)] rounded-[var(--radius-sm)] border-l-2 border-[#DB4437]">
+                  <div>
+                    <p className="text-xs font-semibold text-[#DB4437]">Google Ads API</p>
+                    <p className="text-[10px] text-[var(--text-muted)]">Event: Conversion</p>
+                  </div>
+                  <span className="text-[10px] text-[var(--success)] font-medium bg-[var(--success)]/10 px-2 py-0.5 rounded">Success 200 OK</span>
+                </div>
+              </div>
+            </Card>
+          </div>
         </div>
       )}
 

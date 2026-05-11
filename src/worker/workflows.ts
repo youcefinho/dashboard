@@ -202,7 +202,7 @@ export async function handleEnrollLead(
   }
 
   const firstStep = await env.DB.prepare(
-    'SELECT id, config, step_type FROM workflow_steps WHERE workflow_id = ? ORDER BY step_order ASC LIMIT 1'
+    'SELECT id, config, step_type FROM workflow_steps WHERE workflow_id = ? AND (parent_step_id IS NULL OR parent_step_id = \'trigger_1\') ORDER BY step_order ASC LIMIT 1'
   ).bind(workflowId).first() as { id: string; config: string; step_type: string } | null;
 
   const enrollmentId = crypto.randomUUID();
@@ -238,7 +238,7 @@ export async function autoEnroll(env: Env, workflowId: string, leadId: string): 
   ).bind(workflowId, leadId).first();
   if (exists) return;
   const firstStep = await env.DB.prepare(
-    'SELECT id, config, step_type FROM workflow_steps WHERE workflow_id = ? ORDER BY step_order ASC LIMIT 1'
+    'SELECT id, config, step_type FROM workflow_steps WHERE workflow_id = ? AND (parent_step_id IS NULL OR parent_step_id = \'trigger_1\') ORDER BY step_order ASC LIMIT 1'
   ).bind(workflowId).first() as { id: string; config: string; step_type: string } | null;
   if (!firstStep) return;
   let nextAt = new Date().toISOString();
@@ -291,17 +291,27 @@ async function advanceEnrollment(env: Env, enrollment: Record<string, unknown>):
     ? await env.DB.prepare('SELECT * FROM workflow_steps WHERE id = ?').bind(currentStepId).first() as Record<string, unknown> | null
     : null;
 
+  let branchTaken: string | null = 'main';
   if (step) {
-    await executeStep(env, step, lead, enrollmentId);
+    branchTaken = await executeStep(env, step, lead, enrollmentId);
     await env.DB.prepare(
       `INSERT INTO workflow_execution_log (enrollment_id, step_id, status) VALUES (?, ?, 'executed')`
     ).bind(enrollmentId, step.id as string).run();
   }
 
-  const currentOrder = (step?.step_order as number) || 0;
-  const nextStep = await env.DB.prepare(
-    'SELECT * FROM workflow_steps WHERE workflow_id = ? AND step_order > ? ORDER BY step_order ASC LIMIT 1'
-  ).bind(workflowId, currentOrder).first() as Record<string, unknown> | null;
+  // Find next step based on parent_step_id and branch
+  let nextStep: Record<string, unknown> | null = null;
+  if (step) {
+    nextStep = await env.DB.prepare(
+      'SELECT * FROM workflow_steps WHERE workflow_id = ? AND parent_step_id = ? AND branch = ? LIMIT 1'
+    ).bind(workflowId, step.id as string, branchTaken || 'main').first() as Record<string, unknown> | null;
+  } else {
+    // Fallback if no step
+    const currentOrder = 0;
+    nextStep = await env.DB.prepare(
+      'SELECT * FROM workflow_steps WHERE workflow_id = ? AND step_order > ? ORDER BY step_order ASC LIMIT 1'
+    ).bind(workflowId, currentOrder).first() as Record<string, unknown> | null;
+  }
 
   if (!nextStep) {
     await env.DB.prepare(
@@ -324,7 +334,7 @@ async function advanceEnrollment(env: Env, enrollment: Record<string, unknown>):
   ).bind(nextStep.id as string, nextAt, enrollmentId).run();
 }
 
-async function executeStep(env: Env, step: Record<string, unknown>, lead: Record<string, unknown>, _enrollmentId: string): Promise<void> {
+async function executeStep(env: Env, step: Record<string, unknown>, lead: Record<string, unknown>, _enrollmentId: string): Promise<string | null> {
   const stepType = step.step_type as string;
   let config: Record<string, unknown> = {};
   try { config = JSON.parse(step.config as string); } catch { /* */ }
@@ -334,18 +344,34 @@ async function executeStep(env: Env, step: Record<string, unknown>, lead: Record
 
   switch (stepType) {
     case 'wait':
-      return;
+      return 'main';
+
+    case 'condition': {
+      const field = String(config.field || '');
+      const operator = String(config.operator || 'equals');
+      const value = String(config.value || '');
+      const leadVal = String(lead[field] || '');
+      let isTrue = false;
+      
+      if (operator === 'equals') isTrue = leadVal.toLowerCase() === value.toLowerCase();
+      else if (operator === 'not_equals') isTrue = leadVal.toLowerCase() !== value.toLowerCase();
+      else if (operator === 'contains') isTrue = leadVal.toLowerCase().includes(value.toLowerCase());
+      else if (operator === 'greater_than') isTrue = parseFloat(leadVal) > parseFloat(value);
+      else if (operator === 'less_than') isTrue = parseFloat(leadVal) < parseFloat(value);
+      
+      return isTrue ? 'true' : 'false';
+    }
 
     case 'send_email': {
-      if (!env.RESEND_API_KEY) return;
+      if (!env.RESEND_API_KEY) return 'main';
       // Vérification DND email
       const emailDnd = await isLeadDnd(env, lead.id as string, 'email');
-      if (emailDnd) return;
+      if (emailDnd) return 'main';
       const tplId = config.template_id as string;
       const tpl = tplId
         ? await env.DB.prepare('SELECT subject, body_html FROM email_templates WHERE id = ?').bind(tplId).first() as { subject: string; body_html: string } | null
         : null;
-      if (!tpl) return;
+      if (!tpl) return 'main';
       try {
         const resend = new Resend(env.RESEND_API_KEY);
         await resend.emails.send({
@@ -365,14 +391,14 @@ async function executeStep(env: Env, step: Record<string, unknown>, lead: Record
            VALUES (?, ?, 'failed', ?)`
         ).bind(_enrollmentId, step.id as string, JSON.stringify({ error: String(err) })).run();
       }
-      return;
+      return 'main';
     }
 
     case 'send_sms': {
-      if (!lead.phone) return;
+      if (!lead.phone) return 'main';
       // Vérification DND SMS
       const smsDnd = await isLeadDnd(env, lead.id as string, 'sms');
-      if (smsDnd) return;
+      if (smsDnd) return 'main';
       const smsBody = config.message ? interpolate(config.message as string) : `Bonjour ${lead.name}, merci pour votre intérêt !`;
       try {
         const result = await sendSms(env, lead.phone as string, smsBody);
@@ -390,7 +416,7 @@ async function executeStep(env: Env, step: Record<string, unknown>, lead: Record
       } catch (err) {
         console.error('Workflow send_sms failed:', err);
       }
-      return;
+      return 'main';
     }
 
     case 'add_tag':
@@ -398,14 +424,14 @@ async function executeStep(env: Env, step: Record<string, unknown>, lead: Record
         await env.DB.prepare('INSERT OR IGNORE INTO lead_tags (lead_id, tag) VALUES (?, ?)')
           .bind(lead.id as string, String(config.tag).toLowerCase()).run();
       }
-      return;
+      return 'main';
 
     case 'remove_tag':
       if (config.tag) {
         await env.DB.prepare('DELETE FROM lead_tags WHERE lead_id = ? AND tag = ?')
           .bind(lead.id as string, String(config.tag).toLowerCase()).run();
       }
-      return;
+      return 'main';
 
     case 'change_status':
       if (config.status && ['new', 'contacted', 'meeting', 'signed', 'closed', 'lost'].includes(config.status as string)) {
@@ -415,7 +441,7 @@ async function executeStep(env: Env, step: Record<string, unknown>, lead: Record
           "INSERT INTO activity_log (lead_id, client_id, action, details) VALUES (?, ?, 'status_change', ?)"
         ).bind(lead.id as string, lead.client_id as string, JSON.stringify({ to: config.status, by: 'workflow' })).run();
       }
-      return;
+      return 'main';
 
     case 'notify':
       await env.DB.prepare(
@@ -428,11 +454,11 @@ async function executeStep(env: Env, step: Record<string, unknown>, lead: Record
         `/leads/${lead.id}`,
         lead.client_id as string,
       ).run();
-      return;
+      return 'main';
 
     case 'webhook': {
       const url = String(config.url || '');
-      if (!url || !url.startsWith('https://')) return;
+      if (!url || !url.startsWith('https://')) return 'main';
       try {
         await fetch(url, {
           method: String(config.method || 'POST'),
@@ -442,10 +468,10 @@ async function executeStep(env: Env, step: Record<string, unknown>, lead: Record
       } catch (err) {
         console.warn('Webhook step failed', err);
       }
-      return;
+      return 'main';
     }
 
     default:
-      return;
+      return 'main';
   }
 }
