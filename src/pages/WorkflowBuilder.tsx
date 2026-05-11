@@ -240,9 +240,40 @@ export function WorkflowBuilderPage() {
               ) : (
                 <div className="text-xs text-[var(--text-muted)]">
                   Configuration détaillée pour le nœud : {selectedNodeId}
-                  <div className="mt-4 p-3 bg-[var(--bg-subtle)] rounded border border-dashed border-[var(--border-subtle)] text-center">
-                    Settings Panel (Mock)
-                  </div>
+                  
+                  {nodes.find(n => n.id === selectedNodeId)?.data?.stepType === 'send_internal_email' ? (
+                    <div className="mt-4 space-y-3">
+                      <div>
+                        <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Destinataire (Email)</label>
+                        <Input 
+                          placeholder="admin@intralys.com" 
+                          value={(nodes.find(n => n.id === selectedNodeId)?.data?.config as any)?.to_email || ''}
+                          onChange={(e) => setNodes(nds => nds.map(n => n.id === selectedNodeId ? { ...n, data: { ...n.data, config: { ...(n.data.config as any), to_email: e.target.value } } } : n))}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Sujet</label>
+                        <Input 
+                          placeholder="Nouveau lead : {{name}}" 
+                          value={(nodes.find(n => n.id === selectedNodeId)?.data?.config as any)?.subject || ''}
+                          onChange={(e) => setNodes(nds => nds.map(n => n.id === selectedNodeId ? { ...n, data: { ...n.data, config: { ...(n.data.config as any), subject: e.target.value } } } : n))}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Message</label>
+                        <textarea 
+                          className="w-full min-h-[100px] p-2 text-xs bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-lg focus:outline-none focus:border-[var(--brand-primary)]"
+                          placeholder="Le lead {{name}} a été gagné !"
+                          value={(nodes.find(n => n.id === selectedNodeId)?.data?.config as any)?.body || ''}
+                          onChange={(e) => setNodes(nds => nds.map(n => n.id === selectedNodeId ? { ...n, data: { ...n.data, config: { ...(n.data.config as any), body: e.target.value } } } : n))}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-4 p-3 bg-[var(--bg-subtle)] rounded border border-dashed border-[var(--border-subtle)] text-center">
+                      Settings Panel (Mock) pour {(nodes.find(n => n.id === selectedNodeId)?.data?.stepType as string) || 'déclencheur'}
+                    </div>
+                  )}
                 </div>
               )}
             </Card>
@@ -274,11 +305,11 @@ export function WorkflowBuilderPage() {
           {STEP_TYPES.map((st) => (
             <button
               key={st}
-              onClick={() => addStep(st)}
+              onClick={() => addStep(st as StepType)}
               className="p-3 text-left border border-[var(--border-subtle)] rounded-[var(--radius-md)] hover:border-[var(--brand-primary)] hover:bg-[var(--brand-primary)]/5 transition-all cursor-pointer"
             >
-              <p className="text-lg mb-1">{STEP_TYPE_ICONS[st]}</p>
-              <p className="text-xs font-medium">{STEP_TYPE_LABELS[st]}</p>
+              <p className="text-lg mb-1">{STEP_TYPE_ICONS[st as StepType]}</p>
+              <p className="text-xs font-medium">{STEP_TYPE_LABELS[st as StepType]}</p>
             </button>
           ))}
         </div>

@@ -443,8 +443,8 @@ export async function deleteTemplate(
 
 // ── Phase 3 : Workflows & Automations ────────────────────
 
-export async function getWorkflows(): Promise<ApiResponse<Workflow[]>> {
-  return apiFetch<Workflow[]>('/workflows');
+export async function getWorkflows(folderId?: string): Promise<ApiResponse<Workflow[]>> {
+  return apiFetch<Workflow[]>(folderId ? `/workflows?folder_id=${folderId}` : '/workflows');
 }
 
 export async function getWorkflow(id: string): Promise<ApiResponse<Workflow & { steps: WorkflowStep[]; enrollments: WorkflowEnrollment[] }>> {

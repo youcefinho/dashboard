@@ -291,6 +291,18 @@ export async function handlePatchLead(
         }
       }
     } catch { /* non critique */ }
+    
+    // Trigger deal_won si le statut passe à won
+    if (body.status === 'won' && autoEnrollFn) {
+      try {
+        const { results: wonWfs } = await env.DB.prepare(
+          "SELECT id FROM workflows WHERE is_active = 1 AND trigger_type = 'deal_won'"
+        ).all();
+        for (const wf of (wonWfs || []) as Array<{ id: string }>) {
+          await autoEnrollFn(env, wf.id, leadId);
+        }
+      } catch { /* non critique */ }
+    }
   }
 
   // Trigger workflows sur changement de stage pipeline

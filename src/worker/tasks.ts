@@ -1,6 +1,7 @@
 // ── Module Tasks — Intralys CRM ─────────────────────────────
 import type { Env } from './types';
 import { sanitizeInput, json, audit } from './helpers';
+import { autoEnrollForTrigger } from './workflows';
 
 export async function handleGetTasks(env: Env, auth: { userId: string; role: string }, url: URL): Promise<Response> {
   const status = url.searchParams.get('status');
@@ -79,4 +80,25 @@ export async function handleDeleteTask(env: Env, auth: { userId: string; role: s
   await env.DB.prepare('DELETE FROM tasks WHERE id = ?').bind(taskId).run();
   await audit(env, auth.userId, 'task.delete', 'task', taskId);
   return json({ data: { success: true } });
+}
+
+export async function processOverdueTasks(env: Env): Promise<void> {
+  // Trouver les tâches en retard (échues il y a moins de 24h pour éviter de spammer les vieilles tâches)
+  const { results: overdueTasks } = await env.DB.prepare(
+    `SELECT t.id, t.lead_id FROM tasks t
+     WHERE t.status != 'done' 
+       AND t.due_date < datetime('now') 
+       AND t.due_date > datetime('now', '-1 day')
+       AND t.lead_id IS NOT NULL`
+  ).all();
+
+  if (overdueTasks && overdueTasks.length > 0) {
+    for (const task of (overdueTasks as Array<{ id: string; lead_id: string }>)) {
+      try {
+        await autoEnrollForTrigger(env, 'task_overdue', task.lead_id);
+      } catch (err) {
+        console.error('Failed to trigger task_overdue', err);
+      }
+    }
+  }
 }

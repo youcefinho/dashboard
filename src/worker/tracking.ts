@@ -87,3 +87,62 @@ export async function handleTrackConversion(request: Request, env: Env): Promise
 
   return json(results);
 }
+
+export async function handleTrackOpen(
+  env: Env,
+  messageId: string,
+  request: Request
+): Promise<Response> {
+  const ip = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || 'unknown';
+  const userAgent = request.headers.get('User-Agent') || 'unknown';
+
+  await env.DB.prepare(
+    `INSERT INTO message_events (message_id, event_type, ip, user_agent) VALUES (?, 'open', ?, ?)`
+  ).bind(messageId, ip, userAgent).run();
+
+  await env.DB.prepare(
+    `UPDATE messages SET opened_at = datetime('now'), status = 'read' WHERE id = ? AND opened_at IS NULL`
+  ).bind(messageId).run();
+
+  // Return a 1x1 transparent GIF
+  const pixel = Uint8Array.from([
+    0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x01, 0x00, 0x01, 0x00,
+    0x80, 0x00, 0x00, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x2c,
+    0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x02,
+    0x02, 0x44, 0x01, 0x00, 0x3b
+  ]);
+
+  return new Response(pixel, {
+    headers: {
+      'Content-Type': 'image/gif',
+      'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+      'Pragma': 'no-cache'
+    }
+  });
+}
+
+export async function handleTrackClick(
+  env: Env,
+  messageId: string,
+  request: Request
+): Promise<Response> {
+  const url = new URL(request.url);
+  const targetUrl = url.searchParams.get('url');
+
+  if (!targetUrl) {
+    return new Response('Missing URL', { status: 400 });
+  }
+
+  const ip = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || 'unknown';
+  const userAgent = request.headers.get('User-Agent') || 'unknown';
+
+  await env.DB.prepare(
+    `INSERT INTO message_events (message_id, event_type, url, ip, user_agent) VALUES (?, 'click', ?, ?, ?)`
+  ).bind(messageId, targetUrl, ip, userAgent).run();
+
+  await env.DB.prepare(
+    `UPDATE messages SET clicked_at = datetime('now') WHERE id = ? AND clicked_at IS NULL`
+  ).bind(messageId).run();
+
+  return Response.redirect(targetUrl, 302);
+}

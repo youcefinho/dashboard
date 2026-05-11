@@ -37,7 +37,7 @@ import {
   handleGetSmartLists, handleCreateSmartList, handleDeleteSmartList, handleExecuteSmartList
 } from './worker/custom-fields';
 import { handleGetAppointments, handleCreateAppointment, handleUpdateAppointment, handleDeleteAppointment } from './worker/appointments';
-import { handleGetTasks, handleCreateTask, handlePatchTask, handleDeleteTask } from './worker/tasks';
+import { handleGetTasks, handleCreateTask, handlePatchTask, handleDeleteTask, processOverdueTasks } from './worker/tasks';
 import { handleGetNotifications, handleReadNotification, handleReadAllNotifications } from './worker/notifications';
 import { handleReportsOverview, handleReportsSources, handleReportsConversion } from './worker/reports';
 import {
@@ -133,10 +133,20 @@ export default {
       if (path === '/api/meta/oauth/callback' && method === 'GET') return await handleMetaOauthCallback(request, env, auth);
       if (path === '/api/meta/webhook') return await handleMetaWebhook(request, env);
       
-      // Tracking (P3.5)
+      // Tracking (P3.5 & Sprint 4)
       if (path === '/api/track/conversion' && method === 'POST') {
         const { handleTrackConversion } = await import('./worker/tracking');
         return await handleTrackConversion(request, env);
+      }
+      const trackOpenMatch = path.match(/^\/api\/t\/o\/([^/]+)$/);
+      if (trackOpenMatch && method === 'GET') {
+        const { handleTrackOpen } = await import('./worker/tracking');
+        return await handleTrackOpen(env, trackOpenMatch[1]!, request);
+      }
+      const trackClickMatch = path.match(/^\/api\/t\/c\/([^/]+)$/);
+      if (trackClickMatch && method === 'GET') {
+        const { handleTrackClick } = await import('./worker/tracking');
+        return await handleTrackClick(env, trackClickMatch[1]!, request);
       }
 
       // Billing & Invoicing (P3.8)
@@ -179,6 +189,7 @@ export default {
 
   async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
     ctx.waitUntil(processWorkflowQueue(env));
+    ctx.waitUntil(processOverdueTasks(env));
     // Seed des profils de scoring par défaut (idempotent)
     ctx.waitUntil(seedDefaultScoreProfiles(env));
     // Nettoyage automatique de la corbeille (leads supprimés > 30 jours)

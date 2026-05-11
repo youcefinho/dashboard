@@ -25,10 +25,10 @@ export function WorkflowsPage() {
 
   const load = useCallback(async () => {
     setIsLoading(true);
-    const r = await getWorkflows();
+    const r = await getWorkflows(folderFilter === 'all' ? undefined : folderFilter);
     if (r.data) setWorkflows(r.data);
     setIsLoading(false);
-  }, []);
+  }, [folderFilter]);
 
   useEffect(() => { void load(); }, [load]);
 

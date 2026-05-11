@@ -2,6 +2,7 @@
 // Multi-score profiles (Q.4) — Sprint 2 Phase 2.0
 import type { Env } from './types';
 import { json } from './helpers';
+import { autoEnrollForTrigger } from './workflows';
 
 // ── Types ───────────────────────────────────────────────────
 
@@ -161,6 +162,13 @@ export async function handleRecomputeLeadScore(
         'UPDATE leads SET score = ? WHERE id = ?'
       ).bind(defaultScore.score, leadId).run();
     }
+  }
+
+  // Auto-enroll workflows for score changes
+  try {
+    await autoEnrollForTrigger(env, 'lead_score_changed', leadId);
+  } catch (err) {
+    console.error('Failed to trigger score change workflows', err);
   }
 
   return json({ data: scores });

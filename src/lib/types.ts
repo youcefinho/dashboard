@@ -234,11 +234,11 @@ export interface EmailTemplate {
 
 // ── Phase 3 : Automations & Workflows ──────────────────────
 
-export const TRIGGER_TYPES = ['lead_created', 'status_changed', 'pipeline_stage_changed', 'tag_added', 'form_submitted', 'score_threshold'] as const;
+export const TRIGGER_TYPES = ['lead_created', 'status_changed', 'pipeline_stage_changed', 'tag_added', 'form_submitted', 'score_threshold', 'lead_score_changed', 'deal_won', 'task_overdue'] as const;
 export type TriggerType = typeof TRIGGER_TYPES[number];
 
 export const STEP_TYPES = [
-  'send_email', 'send_sms', 'wait', 'condition', 'add_tag', 'remove_tag', 
+  'send_email', 'send_internal_email', 'send_sms', 'wait', 'condition', 'add_tag', 'remove_tag', 
   'change_status', 'assign', 'notify', 'webhook', 'update_pipeline', 'update_stage'
 ] as const;
 export type StepType = typeof STEP_TYPES[number];
@@ -596,6 +596,9 @@ export const TRIGGER_LABELS: Record<TriggerType, string> = {
   tag_added: 'Tag ajouté',
   form_submitted: 'Formulaire soumis',
   score_threshold: 'Score atteint',
+  lead_score_changed: 'Score modifié',
+  deal_won: 'Gagné (Deal won)',
+  task_overdue: 'Tâche en retard',
 };
 
 export const TRIGGER_ICONS: Record<TriggerType, string> = {
@@ -605,10 +608,14 @@ export const TRIGGER_ICONS: Record<TriggerType, string> = {
   tag_added: '🏷️',
   form_submitted: '📋',
   score_threshold: '📊',
+  lead_score_changed: '📈',
+  deal_won: '🎉',
+  task_overdue: '⏰',
 };
 
 export const STEP_TYPE_LABELS: Record<StepType, string> = {
   send_email: 'Envoyer email',
+  send_internal_email: 'Email interne',
   send_sms: 'Envoyer SMS',
   wait: 'Attendre',
   condition: 'Condition',
@@ -624,6 +631,7 @@ export const STEP_TYPE_LABELS: Record<StepType, string> = {
 
 export const STEP_TYPE_ICONS: Record<StepType, string> = {
   send_email: '📧',
+  send_internal_email: '📨',
   send_sms: '💬',
   wait: '⏳',
   condition: '🔀',

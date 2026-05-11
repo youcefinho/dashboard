@@ -6,6 +6,19 @@ import { findOrCreateConversation } from './conversations';
 import { isUnsubscribed, generateCaslFooter, generateAmfDisclaimer, generateUnsubscribeToken } from './compliance';
 import type { DndChannel } from './helpers';
 
+export function wrapEmailWithTracking(html: string, messageId: string, domain: string): string {
+  const trackedHtml = html.replace(/href=["'](https?:\/\/[^"']+)["']/g, (match, url) => {
+    if (url.includes('/api/unsubscribe/') || url.includes('/api/t/c/')) return match;
+    const trackingUrl = `${domain}/api/t/c/${messageId}?url=${encodeURIComponent(url)}`;
+    return `href="${trackingUrl}"`;
+  });
+  const pixel = `<img src="${domain}/api/t/o/${messageId}" width="1" height="1" style="display:none;" />`;
+  if (trackedHtml.includes('</body>')) {
+    return trackedHtml.replace('</body>', `${pixel}</body>`);
+  }
+  return trackedHtml + pixel;
+}
+
 export async function handleGetLeadMessages(
   env: Env,
   _auth: { userId: string; role: string },
@@ -83,6 +96,11 @@ export async function handleSendMessage(
   const messageId = crypto.randomUUID();
   let status = 'sent';
   let externalId = '';
+
+  if (channel === 'email') {
+    const domain = env.ALLOWED_ORIGINS?.split(',')[0] || 'http://localhost:5173';
+    finalMessageBody = wrapEmailWithTracking(finalMessageBody, messageId, domain);
+  }
 
   // Envoi réel via Resend (email) ou Twilio (SMS) — ou mocks en dev
   if (channel === 'email') {

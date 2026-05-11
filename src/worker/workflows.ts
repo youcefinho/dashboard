@@ -5,20 +5,27 @@ import { sanitizeInput, json, sendSms, isLeadDnd } from './helpers';
 
 export async function handleGetWorkflows(
   env: Env,
-  _auth: { userId: string; role: string }
+  _auth: { userId: string; role: string },
+  url: URL
 ): Promise<Response> {
-  const { results } = await env.DB.prepare(
-    `SELECT w.*,
+  const folderId = url.searchParams.get('folder_id');
+  let query = `SELECT w.*,
        (SELECT COUNT(*) FROM workflow_steps WHERE workflow_id = w.id) as steps_count,
        (SELECT COUNT(*) FROM workflow_enrollments WHERE workflow_id = w.id AND status = 'active') as active_enrollments,
        (SELECT COUNT(*) FROM workflow_execution_log el
         JOIN workflow_enrollments we ON el.enrollment_id = we.id
         WHERE we.workflow_id = w.id) as total_executions
-     FROM workflows w
-     ORDER BY w.created_at DESC`
-  ).all();
-
-  return json({ data: results || [] });
+     FROM workflows w`;
+  
+  if (folderId) {
+    query += ` WHERE w.folder_id = ? ORDER BY w.created_at DESC`;
+    const { results } = await env.DB.prepare(query).bind(folderId).all();
+    return json({ data: results || [] });
+  } else {
+    query += ` ORDER BY w.created_at DESC`;
+    const { results } = await env.DB.prepare(query).all();
+    return json({ data: results || [] });
+  }
 }
 
 export async function handleGetWorkflowDetail(
@@ -251,6 +258,17 @@ export async function autoEnroll(env: Env, workflowId: string, leadId: string): 
   ).bind(crypto.randomUUID(), workflowId, leadId, firstStep.id, nextAt).run();
 }
 
+export async function autoEnrollForTrigger(env: Env, triggerType: string, leadId: string): Promise<void> {
+  const { results: workflows } = await env.DB.prepare(
+    "SELECT id FROM workflows WHERE is_active = 1 AND trigger_type = ?"
+  ).bind(triggerType).all();
+  if (workflows && workflows.length > 0) {
+    for (const w of workflows as { id: string }[]) {
+      await autoEnroll(env, w.id, leadId);
+    }
+  }
+}
+
 // ── Workflow Queue Processor ────────────────────────────────
 
 export async function processWorkflowQueue(env: Env): Promise<void> {
@@ -386,6 +404,29 @@ async function executeStep(env: Env, step: Record<string, unknown>, lead: Record
         ).bind(crypto.randomUUID(), lead.id as string, lead.client_id as string, interpolate(tpl.subject), interpolate(tpl.body_html)).run();
       } catch (err) {
         console.error('Workflow send_email failed:', err);
+        await env.DB.prepare(
+          `INSERT INTO workflow_execution_log (enrollment_id, step_id, status, result)
+           VALUES (?, ?, 'failed', ?)`
+        ).bind(_enrollmentId, step.id as string, JSON.stringify({ error: String(err) })).run();
+      }
+      return 'main';
+    }
+
+    case 'send_internal_email': {
+      if (!env.RESEND_API_KEY) return 'main';
+      const toEmail = config.to_email as string || 'admin@intralys.com';
+      const subject = config.subject as string || 'Notification Système';
+      const body = config.body as string || 'Nouvelle notification pour {{name}}';
+      try {
+        const resend = new Resend(env.RESEND_API_KEY);
+        await resend.emails.send({
+          from: 'Intralys System <system@intralys.com>',
+          to: [toEmail],
+          subject: interpolate(subject),
+          html: interpolate(body),
+        });
+      } catch (err) {
+        console.error('Workflow send_internal_email failed:', err);
         await env.DB.prepare(
           `INSERT INTO workflow_execution_log (enrollment_id, step_id, status, result)
            VALUES (?, ?, 'failed', ?)`

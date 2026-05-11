@@ -1,20 +1,23 @@
 // ── WorkflowDetail — Vue détaillée d'un workflow avec steps ─
 
 import { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from '@tanstack/react-router';
+import { useParams, useNavigate, Link } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, Button, Badge, Skeleton, EmptyState } from '@/components/ui';
 import { getWorkflow, toggleWorkflow } from '@/lib/api';
 import type { Workflow, WorkflowStep, WorkflowEnrollment, TriggerType, StepType, EnrollmentStatus } from '@/lib/types';
 import { TRIGGER_LABELS, TRIGGER_ICONS, STEP_TYPE_LABELS, STEP_TYPE_ICONS, ENROLLMENT_STATUS_LABELS } from '@/lib/types';
+import { Activity, Settings, Users, GitMerge } from 'lucide-react';
 
 type WorkflowWithDetails = Workflow & { steps: WorkflowStep[]; enrollments: WorkflowEnrollment[] };
+type TabType = 'sequence' | 'config' | 'enrollments' | 'analytics';
 
 export function WorkflowDetailPage() {
   const { workflowId } = useParams({ strict: false }) as { workflowId: string };
   const navigate = useNavigate();
   const [workflow, setWorkflow] = useState<WorkflowWithDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<TabType>('sequence');
 
   const loadWorkflow = useCallback(async () => {
     setIsLoading(true);
@@ -121,9 +124,34 @@ export function WorkflowDetailPage() {
             </div>
           </Card>
 
-          {/* ── Flowchart des steps ──────────────────────── */}
-          <Card className="p-5">
-            <h3 className="text-sm font-semibold mb-4">🔗 Séquence d'étapes ({steps.length})</h3>
+          {/* ── Tabs Navigation ── */}
+          <div className="flex items-center gap-1 border-b border-[var(--border-subtle)] overflow-x-auto hide-scrollbar pb-px">
+            {[
+              { id: 'sequence', label: 'Séquence', icon: GitMerge },
+              { id: 'config', label: 'Configuration', icon: Settings },
+              { id: 'enrollments', label: 'Inscrits', icon: Users },
+              { id: 'analytics', label: 'Analytique', icon: Activity },
+            ].map(t => (
+              <button key={t.id} onClick={() => setActiveTab(t.id as TabType)}
+                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap
+                  ${activeTab === t.id 
+                    ? 'border-[var(--brand-primary)] text-[var(--brand-primary)]' 
+                    : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--border-subtle)]'
+                  }`}>
+                <t.icon size={15} /> {t.label}
+              </button>
+            ))}
+          </div>
+
+          {/* ── Tab Content ── */}
+          {activeTab === 'sequence' && (
+            <Card className="p-5">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-sm font-semibold">Séquence ({steps.length} étapes)</h3>
+                <Link to={`/workflows/${workflow.id}/edit`}>
+                  <Button size="sm" variant="secondary">Éditer le workflow</Button>
+                </Link>
+              </div>
             {steps.length === 0 ? (
               <p className="text-sm text-[var(--text-muted)]">Aucune étape configurée.</p>
             ) : (
@@ -174,7 +202,76 @@ export function WorkflowDetailPage() {
                 })}
               </div>
             )}
-          </Card>
+            </Card>
+          )}
+
+          {activeTab === 'config' && (
+            <Card className="p-5 space-y-4">
+              <h3 className="text-sm font-semibold">Configuration du déclencheur</h3>
+              <div className="bg-[var(--bg-subtle)] p-4 rounded-[var(--radius-md)] text-sm">
+                <p><span className="text-[var(--text-muted)]">Type:</span> {TRIGGER_LABELS[workflow.trigger_type as TriggerType]}</p>
+                <p className="mt-2"><span className="text-[var(--text-muted)]">Filtre JSON:</span></p>
+                <pre className="mt-1 p-2 bg-[var(--bg-surface)] rounded text-xs overflow-x-auto text-[var(--text-primary)]">
+                  {workflow.trigger_config || '{}'}
+                </pre>
+              </div>
+            </Card>
+          )}
+
+          {activeTab === 'enrollments' && (
+            <Card className="p-5">
+              <h3 className="text-sm font-semibold mb-4">Leads inscrits ({enrollments.length})</h3>
+              {enrollments.length === 0 ? (
+                <p className="text-sm text-[var(--text-muted)]">Aucun lead inscrit.</p>
+              ) : (
+                <table className="w-full text-sm text-left">
+                  <thead className="text-[var(--text-muted)] border-b border-[var(--border-subtle)]">
+                    <tr>
+                      <th className="pb-2 font-medium">Lead</th>
+                      <th className="pb-2 font-medium">Inscrit le</th>
+                      <th className="pb-2 font-medium">Statut</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {enrollments.map(enr => (
+                      <tr key={enr.id} className="border-b border-[var(--border-subtle)] last:border-0">
+                        <td className="py-3 font-medium">{enr.lead_name || enr.lead_id}</td>
+                        <td className="py-3 text-[var(--text-muted)]" title={new Date(enr.enrolled_at + 'Z').toLocaleString('fr-CA')}>{timeAgo(enr.enrolled_at)}</td>
+                        <td className="py-3">
+                          <Badge color={
+                            enr.status === 'active' ? 'var(--success)' : 
+                            enr.status === 'completed' ? 'var(--info)' : 'var(--text-muted)'
+                          }>
+                            {ENROLLMENT_STATUS_LABELS[enr.status as EnrollmentStatus]}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </Card>
+          )}
+
+          {activeTab === 'analytics' && (
+            <Card className="p-5">
+              <h3 className="text-sm font-semibold mb-4">Performance du workflow</h3>
+              <div className="grid grid-cols-3 gap-4 mb-6">
+                <div className="p-4 bg-[var(--bg-subtle)] rounded-[var(--radius-md)]">
+                  <p className="text-[var(--text-muted)] text-xs mb-1">Inscrits totaux</p>
+                  <p className="text-2xl font-bold">{enrollments.length}</p>
+                </div>
+                <div className="p-4 bg-[var(--bg-subtle)] rounded-[var(--radius-md)]">
+                  <p className="text-[var(--text-muted)] text-xs mb-1">En cours (Actifs)</p>
+                  <p className="text-2xl font-bold text-[var(--success)]">{enrollments.filter(e => e.status === 'active').length}</p>
+                </div>
+                <div className="p-4 bg-[var(--bg-subtle)] rounded-[var(--radius-md)]">
+                  <p className="text-[var(--text-muted)] text-xs mb-1">Terminés</p>
+                  <p className="text-2xl font-bold text-[var(--info)]">{enrollments.filter(e => e.status === 'completed').length}</p>
+                </div>
+              </div>
+            </Card>
+          )}
         </div>
 
         {/* Colonne latérale */}
@@ -212,33 +309,7 @@ export function WorkflowDetailPage() {
             </div>
           </Card>
 
-          {/* Enrollments récents */}
-          <Card className="p-4">
-            <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">
-              Leads inscrits ({enrollments.length})
-            </h3>
-            {enrollments.length === 0 ? (
-              <p className="text-xs text-[var(--text-muted)]">Aucun lead inscrit dans ce workflow.</p>
-            ) : (
-              <div className="space-y-2 max-h-64 overflow-y-auto">
-                {enrollments.slice(0, 20).map((enr) => (
-                  <div key={enr.id} className="flex items-center justify-between text-xs p-2 bg-[var(--bg-subtle)] rounded-[var(--radius-sm)]">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{enr.lead_name || enr.lead_id.slice(0, 8)}</p>
-                      <p className="text-[var(--text-muted)]">{timeAgo(enr.enrolled_at)}</p>
-                    </div>
-                    <Badge color={
-                      enr.status === 'active' ? 'var(--success)' : 
-                      enr.status === 'completed' ? 'var(--info)' :
-                      enr.status === 'cancelled' ? 'var(--danger)' : 'var(--text-muted)'
-                    }>
-                      {ENROLLMENT_STATUS_LABELS[enr.status as EnrollmentStatus]}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
+          {/* Enrollments overview removed from sidebar, moved to tab */}
 
           {/* Infos */}
           <Card className="p-4">
