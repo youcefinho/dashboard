@@ -191,6 +191,14 @@ export async function handleSendConversationMessage(
   // Pour l'instant, on enregistre le message — l'envoi réel est délégué au module messages existant
   if (channel === 'internal_note') {
     status = 'delivered';
+  } else if (channel === 'facebook' || channel === 'instagram') {
+    const { sendMetaMessage } = await import('./meta');
+    try {
+      const metaRes = await sendMetaMessage(env, conv.lead_id as string, conv.client_id as string, messageBody, channel, auth.userId);
+      return json({ data: { id: metaRes.message_id, success: true, status: 'delivered' } });
+    } catch (e: any) {
+      return json({ error: 'Meta error: ' + e.message }, 500);
+    }
   }
 
   await env.DB.prepare(

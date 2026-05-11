@@ -13,6 +13,8 @@ export interface Env {
   TWILIO_PHONE_NUMBER: string;
   ANTHROPIC_API_KEY: string;
   USE_MOCKS: string;
+  META_APP_ID?: string;
+  META_APP_SECRET?: string;
   FILES: R2Bucket;
   WEBCHAT_ROOMS: DurableObjectNamespace;
   BROADCAST_QUEUE: Queue;

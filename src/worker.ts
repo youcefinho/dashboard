@@ -96,6 +96,10 @@ export default {
     try {
       if (path === '/api/webhook/sms' && method === 'POST') return await handleInboundSms(request, env);
       if (path === '/api/webhook/email' && method === 'POST') return await handleInboundEmail(request, env);
+      if (path === '/api/webhook/meta' && (method === 'GET' || method === 'POST')) {
+        const { handleMetaWebhook } = await import('./worker/meta');
+        return await handleMetaWebhook(request, env);
+      }
       if (path === '/api/webhook/lead' && method === 'POST') return await handleWebhookLead(request, env);
       if (path.startsWith('/api/book/') && method === 'GET') return await handlePublicBookingPage(env, url);
       if (path === '/api/book' && method === 'POST') return await handlePublicCreateBooking(request, env);
@@ -338,6 +342,16 @@ async function routeProtected(
 
   // Google Business Profile — V2 backlog (désactivé Sprint Consolidation)
   // Routes /api/gbp/* retournent 404 par défaut (handler absent)
+
+  // Meta (FB/IG)
+  if (path === '/api/meta/oauth/start' && method === 'GET') {
+    const { handleMetaOauthStart } = await import('./worker/meta');
+    return await handleMetaOauthStart(env, auth, url);
+  }
+  if (path === '/api/meta/oauth/callback' && method === 'GET') {
+    const { handleMetaOauthCallback } = await import('./worker/meta');
+    return await handleMetaOauthCallback(request, env, auth);
+  }
 
   // Reviews & Reputation (P4.6)
   if (path === '/api/reviews' && method === 'GET') return handleGetReviews(env, auth, url);
