@@ -15,6 +15,7 @@ export interface Env {
   USE_MOCKS: string;
   FILES: R2Bucket;
   WEBCHAT_ROOMS: DurableObjectNamespace;
+  BROADCAST_QUEUE: Queue;
   // V2 backlog (désactivés Sprint Consolidation)
   // OPENAI_API_KEY: string;
   // GOOGLE_CLIENT_ID: string;

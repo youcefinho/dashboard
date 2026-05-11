@@ -47,7 +47,7 @@ import {
 } from './worker/custom-fields';
 import { handleGetSubAccounts, handleCreateSubAccount, handleUpdateSubAccount, handleCreateSnapshot, handleApplySnapshot, handleGetWhitelabel, handleUpdateWhitelabel, handleWidgetScript } from './worker/sub-accounts';
 // gcal.ts et gbp.ts déplacés en _v2-backlog/ (Sprint Consolidation)
-import { handleEmailBroadcast, handleBroadcastHistory } from './worker/broadcast';
+import { handleEmailBroadcast, handleGetBroadcasts, handleGetBroadcastDetail } from './worker/broadcast';
 import { handleDashboardStats, handleTotpSetup, handleTotpVerify, handleTotpDisable, handleSendSmsRoute, handleCsvImport, handleExportCsv as handleExportCsvDash } from './worker/dashboard';
 import { handleWebhookLead } from './worker/leads';
 import {
@@ -142,6 +142,13 @@ export default {
     // Seed des profils de scoring par défaut (idempotent)
     ctx.waitUntil(seedDefaultScoreProfiles(env));
   },
+
+  async queue(batch: MessageBatch<any>, env: Env): Promise<void> {
+    const { processBroadcastQueueJob } = await import('./worker/broadcast');
+    if (batch.queue === 'intralys-broadcast') {
+      await processBroadcastQueueJob(batch, env);
+    }
+  }
 } satisfies ExportedHandler<Env>;
 
 // ── Routeur protégé ─────────────────────────────────────────
@@ -279,7 +286,9 @@ async function routeProtected(
 
   // Broadcast
   if (path === '/api/broadcast' && method === 'POST') return handleEmailBroadcast(request, env, auth);
-  if (path === '/api/broadcast/history' && method === 'GET') return handleBroadcastHistory(env, auth, url);
+  if (path === '/api/broadcasts' && method === 'GET') return handleGetBroadcasts(env, auth, url);
+  const broadcastMatch = path.match(/^\/api\/broadcasts\/([^/]+)$/);
+  if (broadcastMatch && method === 'GET') return handleGetBroadcastDetail(env, auth, broadcastMatch[1]!);
 
   // Booking Pages
   if (path === '/api/booking-pages' && method === 'GET') return handleGetBookingPages(env, auth);

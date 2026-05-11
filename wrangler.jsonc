@@ -38,6 +38,10 @@
     "ALLOWED_ORIGINS": "https://crm.intralys.com,https://intralys-dashboard.pages.dev",
     "USE_MOCKS": "true"
   },
+  "queues": {
+    "producers": [{ "binding": "BROADCAST_QUEUE", "queue": "intralys-broadcast" }],
+    "consumers": [{ "queue": "intralys-broadcast", "max_batch_size": 10, "max_batch_timeout": 30 }]
+  },
   "triggers": {
     "crons": ["*/5 * * * *"]
   }
