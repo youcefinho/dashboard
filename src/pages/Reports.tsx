@@ -1,4 +1,4 @@
-// ── ReportsPage — Analytics avancés avec Recharts ───────────
+// ── ReportsPage — Refonte Sprint Design 2 (D2.8) ──────────
 
 import { useState, useEffect, useCallback } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -6,6 +6,7 @@ import { Card, Badge, Skeleton } from '@/components/ui';
 import { getLeads, getClients } from '@/lib/api';
 import type { Lead, Client } from '@/lib/types';
 import { STATUS_LABELS, STATUS_COLORS } from '@/lib/types';
+import { BarChart3, Target, Trophy, TrendingUp, Users, DollarSign, Percent, Activity } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, AreaChart, Area, Legend,
@@ -89,11 +90,11 @@ export function ReportsPage() {
     });
   }
 
-  const tabs: { id: ReportTab; label: string; icon: string }[] = [
-    { id: 'funnel', label: 'Funnel', icon: '📊' },
-    { id: 'sources', label: 'Sources', icon: '🎯' },
-    { id: 'performance', label: 'Courtiers', icon: '🏆' },
-    { id: 'trends', label: 'Tendances', icon: '📈' },
+  const tabs: { id: ReportTab; label: string; icon: typeof BarChart3 }[] = [
+    { id: 'funnel', label: 'Funnel', icon: BarChart3 },
+    { id: 'sources', label: 'Sources', icon: Target },
+    { id: 'performance', label: 'Courtiers', icon: Trophy },
+    { id: 'trends', label: 'Tendances', icon: TrendingUp },
   ];
 
   if (isLoading) {
@@ -108,54 +109,44 @@ export function ReportsPage() {
 
   return (
     <AppLayout title="Rapports">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <h1 className="text-xl font-bold">📈 Rapports</h1>
-          <Badge>{totalLeads} leads</Badge>
-          <Badge color="var(--success)">{conversionRate}% conversion</Badge>
+      <div className="flex items-center justify-between mb-5">
+        <div className="flex flex-wrap items-center gap-3">
+          {[
+            { icon: Users, v: totalLeads, l: 'Total leads', c: 'var(--brand-primary)', bg: 'var(--brand-tint)' },
+            { icon: Activity, v: leadsThisMonth, l: 'Ce mois', c: 'var(--success)', bg: 'var(--success-soft)' },
+            { icon: Percent, v: `${conversionRate}%`, l: 'Conversion', c: 'var(--info)', bg: 'var(--info-soft)' },
+            { icon: DollarSign, v: `${totalPipelineValue.toLocaleString('fr-CA')} $`, l: 'Pipeline', c: 'var(--warning)', bg: 'var(--warning-soft)' },
+            { icon: Target, v: avgScore, l: 'Score moy.', c: 'var(--brand-primary)', bg: 'var(--brand-tint)' },
+          ].map(s => (
+            <div key={s.l} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-xs font-medium">
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: s.bg }}>
+                <s.icon size={14} style={{ color: s.c }} />
+              </div>
+              <div>
+                <p className="font-bold text-[var(--text-primary)]">{s.v}</p>
+                <p className="text-[9px] text-[var(--text-muted)] uppercase tracking-wider">{s.l}</p>
+              </div>
+            </div>
+          ))}
         </div>
-        <div className="flex gap-1">
+        <div className="flex gap-1 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-lg p-0.5">
           {(['30d', '90d', '12m'] as const).map(p => (
             <button key={p} onClick={() => setPeriod(p)}
-              className={`px-3 py-1 text-xs rounded-full cursor-pointer transition-colors ${period === p ? 'bg-[var(--brand-primary)] text-white' : 'bg-[var(--bg-subtle)] text-[var(--text-muted)]'}`}>
+              className={`px-3 py-1.5 text-[11px] rounded-md font-medium cursor-pointer transition-all
+                ${period === p ? 'bg-[var(--brand-primary)] text-white shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>
               {p === '30d' ? '30j' : p === '90d' ? '90j' : '12 mois'}
             </button>
           ))}
         </div>
       </div>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
-        <Card className="p-3 text-center">
-          <p className="text-xl font-bold text-[var(--brand-primary)]">{totalLeads}</p>
-          <p className="text-[10px] text-[var(--text-muted)] uppercase">Total leads</p>
-        </Card>
-        <Card className="p-3 text-center">
-          <p className="text-xl font-bold text-[var(--success)]">{leadsThisMonth}</p>
-          <p className="text-[10px] text-[var(--text-muted)] uppercase">Ce mois</p>
-        </Card>
-        <Card className="p-3 text-center">
-          <p className="text-xl font-bold text-[var(--info)]">{conversionRate}%</p>
-          <p className="text-[10px] text-[var(--text-muted)] uppercase">Conversion</p>
-        </Card>
-        <Card className="p-3 text-center">
-          <p className="text-xl font-bold text-[var(--warning)]">{totalPipelineValue.toLocaleString('fr-CA')} $</p>
-          <p className="text-[10px] text-[var(--text-muted)] uppercase">Pipeline</p>
-        </Card>
-        <Card className="p-3 text-center">
-          <p className="text-xl font-bold text-[var(--brand-primary)]">{avgScore}</p>
-          <p className="text-[10px] text-[var(--text-muted)] uppercase">Score moyen</p>
-        </Card>
-      </div>
-
       {/* Tabs */}
-      <div className="flex bg-[var(--bg-subtle)] rounded-[var(--radius-md)] p-0.5 mb-6">
+      <div className="flex bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-lg p-0.5 mb-6">
         {tabs.map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-            className={`flex-1 px-4 py-2 text-sm rounded-[var(--radius-sm)] cursor-pointer transition-colors ${
-              activeTab === tab.id ? 'bg-[var(--brand-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
-            }`}>
-            {tab.icon} {tab.label}
+            className={`flex-1 flex items-center justify-center gap-1.5 px-4 py-2 text-[13px] rounded-md cursor-pointer transition-all
+              ${activeTab === tab.id ? 'bg-[var(--brand-primary)] text-white shadow-sm font-medium' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>
+            <tab.icon size={15} /> {tab.label}
           </button>
         ))}
       </div>
