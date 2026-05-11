@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'bun:test';
-import { handleGetPreferences, handleUpdatePreferences, handleGetApiKeys, handleCreateApiKey, handleGetWebhooks, handleCreateWebhook } from '../src/worker/settings';
-import { handleGetUsers, handleInviteUser, handleUpdateUserRole } from '../src/worker/team';
+import { handleGetPreferences, handleUpdatePreferences, handleGetApiKeys, handleCreateApiKey, handleGetWebhooks, handleCreateWebhook } from '../settings';
+import { handleGetUsers, handleInviteUser, handleUpdateUserRole } from '../team';
 
 // Mock Env
 const mockDb = {

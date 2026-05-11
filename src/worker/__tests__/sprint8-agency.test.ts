@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'bun:test';
-import { handleGetClients, handleCreateClient } from '../src/worker/leads';
+import { handleGetClients, handleCreateClient } from '../leads';
 
 // Mock Env
 const mockDb = {

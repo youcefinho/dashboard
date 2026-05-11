@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'bun:test';
-import { handleGetSavedReports, handleCreateSavedReport, handleDeleteSavedReport } from '../src/worker/reports';
+import { handleGetSavedReports, handleCreateSavedReport, handleDeleteSavedReport } from '../reports';
 
 // Mock Env
 const mockDb = {
