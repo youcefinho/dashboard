@@ -19,7 +19,7 @@ import {
   handleGetLeadMessages, handleSendMessage,
   handleGetInboxMessages, handleInboundSms, handleInboundEmail,
 } from './worker/messages';
-import { handleGetTemplates, handleCreateTemplate, handleUpdateTemplate, handleDeleteTemplate } from './worker/templates';
+import { handleGetTemplates, handleCreateTemplate, handleUpdateTemplate, handleDeleteTemplate, handleDuplicateTemplate, handleSendTestEmail } from './worker/templates';
 import {
   handleGetPipelines, handleCreatePipeline, handleUpdatePipeline, handleDeletePipeline,
   handleGetPipelineStages, handleCreatePipelineStage, handleUpdatePipelineStage, handleDeletePipelineStage,
@@ -40,12 +40,13 @@ import {
 import { handleGetAppointments, handleCreateAppointment, handleUpdateAppointment, handleDeleteAppointment } from './worker/appointments';
 import { handleGetTasks, handleCreateTask, handlePatchTask, handleDeleteTask, processOverdueTasks } from './worker/tasks';
 import { handleGetNotifications, handleReadNotification, handleReadAllNotifications } from './worker/notifications';
-import { handleReportsOverview, handleReportsSources, handleReportsConversion } from './worker/reports';
+import { handleReportsOverview, handleReportsSources, handleReportsConversion, handleGetSavedReports, handleCreateSavedReport, handleDeleteSavedReport } from './worker/reports';
 import {
   handleGetBookingPages, handleCreateBookingPage, handleUpdateBookingPage, handleDeleteBookingPage,
   handleGetBookings, handlePublicBookingPage, handlePublicCreateBooking,
 } from './worker/bookings';
-import { handleGetForms, handleCreateForm, handleUpdateForm, handleDeleteForm, handleGetFormSubmissions, handlePublicFormGet, handlePublicFormSubmit } from './worker/forms';
+import { handleGetForms, handleGetForm, handleGetFormStats, handleCreateForm, handleUpdateForm, handleDeleteForm, handleGetFormSubmissions, handlePublicFormGet, handlePublicFormSubmit } from './worker/forms';
+import { handleGetTriggerLinks, handleCreateTriggerLink, handleDeleteTriggerLink, handleTriggerLinkClick, handleGetTriggerLinkStats } from './worker/trigger-links';
 import { handleAiGenerate, handleAiSuggestWorkflow } from './worker/ai';
 import { handlePublicUnsubscribe, handleGetUnsubscribes, handleLogConsent, handleGetConsent, handleForgetLead, handleExportPii } from './worker/compliance';
 import {
@@ -84,6 +85,15 @@ import {
   handleCreateConversation, handleSendConversationMessage, handleUpdateConversation,
 } from './worker/conversations';
 
+import {
+  handleGetPreferences, handleUpdatePreferences, handleGetSessions, handleRevokeSession,
+  handleGetApiKeys, handleCreateApiKey, handleRevokeApiKey,
+  handleGetWebhooks, handleCreateWebhook, handleDeleteWebhook,
+  handleGetClientCompliance, handleUpdateClientCompliance
+} from './worker/settings';
+
+import { handleGetUsers, handleInviteUser, handleUpdateUserRole, handleDeleteUser, handleGetRoles } from './worker/team';
+
 // Export Durable Object pour Cloudflare
 export { WebchatRoom };
 
@@ -115,6 +125,10 @@ export default {
       if (path === '/api/book' && method === 'POST') return await handlePublicCreateBooking(request, env);
       if (path.startsWith('/api/form/') && method === 'GET') return await handlePublicFormGet(env, url);
       if (path === '/api/form/submit' && method === 'POST') return await handlePublicFormSubmit(request, env);
+      
+      // Trigger Links Public Redirect
+      const linkMatch = path.match(/^\/l\/([^/]+)$/);
+      if (linkMatch && method === 'GET') return await handleTriggerLinkClick(request, env, linkMatch[1]!);
       if (path === '/api/widget.js' && method === 'GET') return await handleWidgetScript(env, url);
       const unsubMatch = path.match(/^\/api\/unsubscribe\/(.+)$/);
       if (unsubMatch && method === 'GET') return await handlePublicUnsubscribe(env, unsubMatch[1]!);
@@ -299,6 +313,10 @@ async function routeProtected(
   const tplMatch = path.match(/^\/api\/templates\/([^/]+)$/);
   if (tplMatch && method === 'PATCH') return handleUpdateTemplate(request, env, auth, tplMatch[1]!);
   if (tplMatch && method === 'DELETE') return handleDeleteTemplate(env, auth, tplMatch[1]!);
+  const dupMatch = path.match(/^\/api\/templates\/([^/]+)\/duplicate$/);
+  if (dupMatch && method === 'POST') return handleDuplicateTemplate(request, env, auth, dupMatch[1]!);
+  const testEmailMatch = path.match(/^\/api\/templates\/([^/]+)\/test$/);
+  if (testEmailMatch && method === 'POST') return handleSendTestEmail(request, env, auth, testEmailMatch[1]!);
 
   if (path === '/api/snippets' && method === 'GET') { const { handleGetSnippets } = await import('./worker/snippets'); return await handleGetSnippets(env, auth); }
   if (path === '/api/snippets' && method === 'POST') { const { handleCreateSnippet } = await import('./worker/snippets'); return await handleCreateSnippet(request, env, auth); }
@@ -417,6 +435,11 @@ async function routeProtected(
   if (path === '/api/reports/overview' && method === 'GET') return handleReportsOverview(env, auth, url);
   if (path === '/api/reports/sources' && method === 'GET') return handleReportsSources(env, auth, url);
   if (path === '/api/reports/conversion' && method === 'GET') return handleReportsConversion(env, auth, url);
+  
+  if (path === '/api/reports/saved' && method === 'GET') return handleGetSavedReports(env, auth);
+  if (path === '/api/reports/saved' && method === 'POST') return handleCreateSavedReport(request, env, auth);
+  const savedReportMatch = path.match(/^\/api\/reports\/saved\/([^/]+)$/);
+  if (savedReportMatch && method === 'DELETE') return handleDeleteSavedReport(env, auth, savedReportMatch[1]!);
 
   // Broadcast
   if (path === '/api/broadcast' && method === 'POST') return handleEmailBroadcast(request, env, auth);
@@ -437,10 +460,21 @@ async function routeProtected(
   if (path === '/api/forms' && method === 'GET') return handleGetForms(env, auth);
   if (path === '/api/forms' && method === 'POST') return handleCreateForm(request, env, auth);
   const formMatch = path.match(/^\/api\/forms\/([^/]+)$/);
+  if (formMatch && method === 'GET') return handleGetForm(env, auth, formMatch[1]!);
   if (formMatch && method === 'PATCH') return handleUpdateForm(request, env, auth, formMatch[1]!);
   if (formMatch && method === 'DELETE') return handleDeleteForm(env, auth, formMatch[1]!);
+  const statsFormMatch = path.match(/^\/api\/forms\/([^/]+)\/stats$/);
+  if (statsFormMatch && method === 'GET') return handleGetFormStats(env, auth, statsFormMatch[1]!);
   const submissionsMatch = path.match(/^\/api\/forms\/([^/]+)\/submissions$/);
   if (submissionsMatch && method === 'GET') return handleGetFormSubmissions(env, auth, submissionsMatch[1]!, url);
+
+  // Trigger Links
+  if (path === '/api/trigger-links' && method === 'GET') return handleGetTriggerLinks(env, auth, url);
+  if (path === '/api/trigger-links' && method === 'POST') return handleCreateTriggerLink(request, env, auth);
+  const tlMatch = path.match(/^\/api\/trigger-links\/([^/]+)$/);
+  if (tlMatch && method === 'DELETE') return handleDeleteTriggerLink(env, auth, tlMatch[1]!);
+  const tlStatsMatch = path.match(/^\/api\/trigger-links\/([^/]+)\/stats$/);
+  if (tlStatsMatch && method === 'GET') return handleGetTriggerLinkStats(env, auth, tlStatsMatch[1]!);
 
 
   // Custom Fields
@@ -560,16 +594,58 @@ async function routeProtected(
   if (dtMatch && method === 'DELETE') return handleDeleteDocumentTemplate(env, auth, dtMatch[1]!);
   if (path === '/api/documents' && method === 'GET') return handleGetDocuments(env, auth, url);
   if (path === '/api/documents' && method === 'POST') return handleCreateDocument(request, env, auth);
+  const docsMatch = path.match(/^\/api\/documents\/([^/]+)$/);
+  if (docsMatch && method === 'DELETE') { const { handleDeleteDocument } = await import('./worker/documents'); return await handleDeleteDocument(env, auth, docsMatch[1]!); }
+  if (path === '/api/documents/generate-oaciq' && method === 'POST') { const { handleGenerateOaciq } = await import('./worker/documents'); return await handleGenerateOaciq(request, env, auth); }
   const docSendMatch = path.match(/^\/api\/documents\/([^/]+)\/send$/);
   if (docSendMatch && method === 'POST') return handleSendDocument(request, env, auth, docSendMatch[1]!);
-
-
-
   // Score Profiles (Phase 2.0)
   if (path === '/api/score-profiles' && method === 'GET') return handleGetScoreProfiles(env, auth, url);
   if (path === '/api/score-profiles' && method === 'POST') return handleCreateScoreProfile(request, env, auth);
   const spMatch = path.match(/^\/api\/score-profiles\/([^/]+)$/);
   if (spMatch && method === 'PATCH') return handleUpdateScoreProfile(request, env, auth, spMatch[1]!);
+
+  // Settings & Compliance
+  if (path === '/api/settings/preferences' && method === 'GET') return handleGetPreferences(request, env);
+  if (path === '/api/settings/preferences' && method === 'PATCH') return handleUpdatePreferences(request, env);
+  if (path === '/api/settings/compliance' && method === 'GET') return handleGetClientCompliance(request, env, auth);
+  if (path === '/api/settings/compliance' && method === 'PATCH') return handleUpdateClientCompliance(request, env, auth);
+  
+  // Properties / Centris
+  if (path === '/api/properties' && method === 'GET') {
+    const { handleGetProperties } = await import('./worker/properties');
+    return await handleGetProperties(request, env, auth);
+  }
+  if (path === '/api/properties/centris-sync' && method === 'POST') {
+    const { handleSyncCentris } = await import('./worker/properties');
+    return await handleSyncCentris(request, env, auth);
+  }
+  const propMatch = path.match(/^\/api\/properties\/([^/]+)$/);
+  if (propMatch && method === 'DELETE') {
+    const { handleDeleteProperty } = await import('./worker/properties');
+    return await handleDeleteProperty(env, auth, propMatch[1]!);
+  }
+
+  if (path === '/api/settings/sessions' && method === 'GET') return handleGetSessions(request, env);
+  const sessionMatch = path.match(/^\/api\/settings\/sessions\/([^/]+)$/);
+  if (sessionMatch && method === 'DELETE') return handleRevokeSession(request, env);
+  
+  if (path === '/api/settings/api-keys' && method === 'GET') return handleGetApiKeys(request, env);
+  if (path === '/api/settings/api-keys' && method === 'POST') return handleCreateApiKey(request, env);
+  const apiKeyMatch = path.match(/^\/api\/settings\/api-keys\/([^/]+)$/);
+  if (apiKeyMatch && method === 'DELETE') return handleRevokeApiKey(request, env);
+
+  if (path === '/api/settings/webhooks' && method === 'GET') return handleGetWebhooks(request, env);
+  if (path === '/api/settings/webhooks' && method === 'POST') return handleCreateWebhook(request, env);
+  const webhookMatch = path.match(/^\/api\/settings\/webhooks\/([^/]+)$/);
+  if (webhookMatch && method === 'DELETE') return handleDeleteWebhook(request, env);
+
+  if (path === '/api/team/users' && method === 'GET') return handleGetUsers(request, env);
+  if (path === '/api/team/invites' && method === 'POST') return handleInviteUser(request, env);
+  const userMatch = path.match(/^\/api\/team\/users\/([^/]+)$/);
+  if (userMatch && method === 'PATCH') return handleUpdateUserRole(request, env);
+  if (userMatch && method === 'DELETE') return handleDeleteUser(request, env);
+  if (path === '/api/team/roles' && method === 'GET') return handleGetRoles(request, env);
 
   // Mobile Prep (P3.10)
   // Soft delete / trash

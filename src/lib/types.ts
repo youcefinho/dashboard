@@ -449,12 +449,14 @@ export interface DashboardStats {
   pending_leads: number;
   conversion_rate: number;
   total_deal_value: number;
+  revenue_value: number;
   avg_conversion_days: number;
   leads_by_client: Array<{ client_name: string; count: number }>;
   leads_by_status: Array<{ status: LeadStatus; count: number }>;
   leads_by_day: Array<{ date: string; count: number }>;
-  leads_by_source: Array<{ source: string; count: number }>;
+  leads_by_source: Array<{ source: string; count: number; value: number }>;
   conversion_by_status: Array<{ status: string; count: number; pct: number }>;
+  activity_feed: ActivityLogEntry[];
 }
 
 export interface LeadDetail extends Lead {

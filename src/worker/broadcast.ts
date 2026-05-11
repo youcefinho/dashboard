@@ -127,10 +127,22 @@ export async function processBroadcastQueueJob(batch: MessageBatch<any>, env: En
             continue;
           }
           const personalizedHtml = htmlContent.replace(/\{\{nom\}\}/g, lead.name || '').replace(/\{\{name\}\}/g, lead.name || '').replace(/\{\{email\}\}/g, lead.email || '');
+          const unsubToken = generateUnsubscribeToken(lead.email, env.WEBHOOK_SECRET || 'intralys');
+          const unsubUrl = `${origin}/unsubscribe/${unsubToken}`;
+          const caslFooter = generateCaslFooter(unsubUrl);
+          
+          let amfFooter = '';
+          if (clientId) {
+            const client = await env.DB.prepare('SELECT amf_certificate, amf_disclaimer_required FROM clients WHERE id = ?').bind(clientId).first() as { amf_certificate?: string; amf_disclaimer_required?: number } | null;
+            if (client?.amf_disclaimer_required && client.amf_certificate) amfFooter = generateAmfDisclaimer(client.amf_certificate);
+          }
+          
+          const finalHtml = personalizedHtml + amfFooter + caslFooter;
+          
           await env.DB.prepare(
             `INSERT INTO messages (id, lead_id, client_id, direction, channel, subject, body, status, sent_by, external_id)
              VALUES (?, ?, ?, 'outbound', 'email', ?, ?, 'mock-sent', ?, ?)`
-          ).bind(crypto.randomUUID(), lead.id, clientId || '', subject!.replace(/\{\{nom\}\}/g, lead.name || ''), personalizedHtml, authUserId, 'mock-broadcast-' + broadcastId).run();
+          ).bind(crypto.randomUUID(), lead.id, clientId || '', subject!.replace(/\{\{nom\}\}/g, lead.name || ''), finalHtml, authUserId, 'mock-broadcast-' + broadcastId).run();
           sent++;
         } catch (err) {
           failed++;

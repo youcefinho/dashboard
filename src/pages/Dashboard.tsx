@@ -6,7 +6,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { getDashboardStats, getLeads, getClients } from '@/lib/api';
 import {
-  STATUS_LABELS, STATUS_COLORS, TYPE_LABELS,
+  STATUS_LABELS, STATUS_COLORS, ACTIVITY_LABELS,
   type DashboardStats, type Lead, type Client,
 } from '@/lib/types';
 import { XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
@@ -78,6 +78,7 @@ export function DashboardPage() {
   const [recentLeads, setRecentLeads] = useState<Lead[]>([]);
   const [allLeads, setAllLeads] = useState<Lead[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
+
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [period, setPeriod] = useState<'7d' | '30d' | '90d'>('30d');
@@ -114,7 +115,7 @@ export function DashboardPage() {
     async function load() {
       setIsLoading(true);
       const [statsR, leadsR, clientsR] = await Promise.all([
-        getDashboardStats(), getLeads({}), getClients(),
+        getDashboardStats(), getLeads({}), getClients()
       ]);
       if (statsR.error) setError(statsR.error);
       else if (statsR.data) setStats(statsR.data);
@@ -149,7 +150,7 @@ export function DashboardPage() {
     );
   }
 
-  const totalPipelineValue = allLeads.reduce((s, l) => s + (l.deal_value || 0), 0);
+
   const periodDays = period === '7d' ? 7 : period === '30d' ? 30 : 90;
   const periodLeads = allLeads.filter(l => (Date.now() - new Date(l.created_at).getTime()) / 86400000 <= periodDays);
   const prevCount = Math.max(1, Math.round(periodLeads.length * 0.8));
@@ -161,10 +162,8 @@ export function DashboardPage() {
   ).map(([status, count]) => ({ name: (STATUS_LABELS as Record<string, string>)[status] || status, value: count, color: (STATUS_COLORS as Record<string, string>)[status] || 'var(--text-muted)' }));
 
   // Top sources
-  const sourceData = Object.entries(
-    allLeads.reduce((acc, l) => { const s = l.source || 'direct'; acc[s] = (acc[s] || 0) + 1; return acc; }, {} as Record<string, number>)
-  ).sort((a, b) => b[1] - a[1]).slice(0, 5);
-  const sourceTotal = sourceData.reduce((s, [, c]) => s + c, 0);
+  const sourceData = stats?.leads_by_source || [];
+  const sourceTotal = sourceData.reduce((s, d) => s + d.count, 0);
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Bonjour' : hour < 18 ? 'Bon après-midi' : 'Bonsoir';
@@ -276,15 +275,15 @@ export function DashboardPage() {
               <StatCardMockup label="Total contacts" value={stats?.total_leads ?? 0}
                 icon={<Users size={20} />} iconBg="var(--brand-tint)" iconColor="var(--brand-primary)"
                 delta={`+${growthPct}%`} deltaUp sparkColor="#009DDB" sparkData={sparkPts} />
-              <StatCardMockup label="Pipeline value" value={`${(totalPipelineValue / 1000).toFixed(0)}K $`}
+              <StatCardMockup label="Pipeline value" value={`${((stats?.total_deal_value ?? 0) / 1000).toFixed(1)}K $`}
                 icon={<DollarSign size={20} />} iconBg="var(--success-soft)" iconColor="var(--success)"
                 delta="+28.3%" deltaUp sparkColor="#37CA37" sparkData={sparkPts.slice(-7)} />
               <StatCardMockup label="Taux conversion" value={`${stats?.conversion_rate ?? 0}%`}
                 icon={<Target size={20} />} iconBg="var(--accent-orange-soft)" iconColor="var(--accent-orange)"
                 delta="-2.1%" deltaUp={false} sparkColor="#D96E27" sparkData={[8,10,7,12,9,15,12,18]} />
-              <StatCardMockup label="Workflows actifs" value={periodLeads.length}
+              <StatCardMockup label="Revenu (Mois)" value={`${((stats?.revenue_value ?? 0) / 1000).toFixed(1)}K $`}
                 icon={<Zap size={20} />} iconBg="var(--info-soft)" iconColor="var(--info)"
-                delta="+18.0%" deltaUp sparkColor="#188BF6" sparkData={[20,18,15,16,10,12,7,5]} />
+                delta="+12.0%" deltaUp sparkColor="#188BF6" sparkData={[20,18,15,16,10,12,7,5]} />
             </>
           )}
         </div>
@@ -363,24 +362,29 @@ export function DashboardPage() {
             <div className="space-y-4">
               {isLoading ? (
                 Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)
-              ) : recentLeads.length > 0 ? (
-                recentLeads.slice(0, 5).map((lead, i) => (
-                  <div key={lead.id} className="flex gap-3 cursor-pointer" onClick={() => void navigate({ to: `/leads/${lead.id}` })}>
+              ) : stats?.activity_feed && stats.activity_feed.length > 0 ? (
+                stats.activity_feed.slice(0, 5).map((activity, i) => {
+                  let details = {} as Record<string, string>;
+                  try { details = JSON.parse(activity.details); } catch {}
+                  return (
+                  <div key={activity.id} className="flex gap-3 cursor-pointer">
                     <div className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-semibold shrink-0"
                       style={{ background: AVATAR_GRADIENTS[i % AVATAR_GRADIENTS.length], color: 'white' }}>
-                      {getInitials(lead.name)}
+                      {getInitials(activity.user_name || 'Sys')}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-xs leading-relaxed">
-                        <span className="font-semibold">{lead.name}</span>{' '}
-                        <span style={{ color: 'var(--text-secondary)' }}>a soumis un formulaire</span>
+                        <span className="font-semibold">{activity.user_name || 'Système'}</span>{' '}
+                        <span style={{ color: 'var(--text-secondary)' }}>
+                           {ACTIVITY_LABELS[activity.action] || activity.action}
+                        </span>
                       </div>
                       <div className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
-                        {timeAgo(lead.created_at)} · {TYPE_LABELS[lead.type]}
+                        {timeAgo(activity.created_at)} · {details.name || details.email || details.to || ''}
                       </div>
                     </div>
                   </div>
-                ))
+                )})
               ) : (
                 <p className="text-xs text-center py-4" style={{ color: 'var(--text-muted)' }}>Aucune activité</p>
               )}
@@ -429,14 +433,17 @@ export function DashboardPage() {
           <div className="p-6 rounded-xl card-lift" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
             <h3 className="text-base font-semibold mb-4">🔗 Top sources</h3>
             <div className="space-y-3">
-              {sourceData.map(([source, count]) => {
+              {sourceData.map(({ source, count, value }) => {
                 const pct = sourceTotal > 0 ? Math.round((count / sourceTotal) * 100) : 0;
                 const labels: Record<string, string> = { website: '🌐 Site web', facebook: '📘 Facebook', google: '🔍 Google', referral: '🤝 Référence', direct: '🔗 Direct', instagram: '📷 Instagram' };
                 return (
                   <div key={source}>
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{labels[source] || source}</span>
-                      <span className="text-xs font-semibold" style={{ fontVariantNumeric: 'tabular-nums' }}>{count} ({pct}%)</span>
+                      <div className="flex flex-col items-end">
+                        <span className="text-xs font-semibold" style={{ fontVariantNumeric: 'tabular-nums' }}>{count} ({pct}%)</span>
+                        <span className="text-[10px]" style={{ color: 'var(--success)' }}>{(value / 1000).toFixed(1)}K $</span>
+                      </div>
                     </div>
                     <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--bg-muted)' }}>
                       <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: 'var(--brand-primary)' }} />

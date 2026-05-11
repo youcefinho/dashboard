@@ -5,21 +5,72 @@ import { verifyPassword, base32Encode, verifyTotp } from './crypto';
 
 // ── Dashboard Stats ─────────────────────────────────────────
 
-export async function handleDashboardStats(env: Env, auth: { role: string }): Promise<Response> {
-  if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
-  const totalResult = await env.DB.prepare('SELECT COUNT(*) as count FROM leads').all();
+export async function handleDashboardStats(env: Env, auth: { role: string; userId: string }): Promise<Response> {
+  let condition = '';
+  const params: string[] = [];
+  
+  if (auth.role !== 'admin') {
+    const user = await env.DB.prepare('SELECT client_id FROM users WHERE id = ?').bind(auth.userId).first() as { client_id: string } | null;
+    if (user?.client_id) {
+      condition = 'WHERE client_id = ?';
+      params.push(user.client_id);
+    } else {
+      condition = 'WHERE 1=0'; // No client_id, no data
+    }
+  }
+
+  const totalResult = await env.DB.prepare(`SELECT COUNT(*) as count FROM leads ${condition}`).bind(...params).all();
   const totalLeads = (totalResult.results?.[0] as { count: number } | undefined)?.count || 0;
-  const newResult = await env.DB.prepare("SELECT COUNT(*) as count FROM leads WHERE created_at > datetime('now', '-7 days')").all();
+  
+  const newResult = await env.DB.prepare(`SELECT COUNT(*) as count FROM leads ${condition ? condition + ' AND' : 'WHERE'} created_at > datetime('now', '-7 days')`).bind(...params).all();
   const newLeads7d = (newResult.results?.[0] as { count: number } | undefined)?.count || 0;
-  const pendingResult = await env.DB.prepare("SELECT COUNT(*) as count FROM leads WHERE status IN ('new', 'contacted')").all();
+  
+  const pendingResult = await env.DB.prepare(`SELECT COUNT(*) as count FROM leads ${condition ? condition + ' AND' : 'WHERE'} status IN ('new', 'contacted', 'meeting')`).bind(...params).all();
   const pendingLeads = (pendingResult.results?.[0] as { count: number } | undefined)?.count || 0;
-  const signedResult = await env.DB.prepare("SELECT COUNT(*) as count FROM leads WHERE status = 'won'").all();
+  
+  const signedResult = await env.DB.prepare(`SELECT COUNT(*) as count FROM leads ${condition ? condition + ' AND' : 'WHERE'} status = 'won'`).bind(...params).all();
   const signedLeads = (signedResult.results?.[0] as { count: number } | undefined)?.count || 0;
   const conversionRate = totalLeads > 0 ? Math.round((signedLeads / totalLeads) * 100) : 0;
+  
+  // Pipeline Value (deals that are not won or lost)
+  const pipelineResult = await env.DB.prepare(`SELECT SUM(deal_value) as value FROM leads ${condition ? condition + ' AND' : 'WHERE'} status NOT IN ('won', 'lost')`).bind(...params).all();
+  const pipelineValue = (pipelineResult.results?.[0] as { value: number } | undefined)?.value || 0;
+
+  // Revenue (won deals)
+  const revenueResult = await env.DB.prepare(`SELECT SUM(deal_value) as value FROM leads ${condition ? condition + ' AND' : 'WHERE'} status = 'won'`).bind(...params).all();
+  const revenueValue = (revenueResult.results?.[0] as { value: number } | undefined)?.value || 0;
+
   const byClientResult = await env.DB.prepare(`SELECT c.name as client_name, COUNT(l.id) as count FROM clients c LEFT JOIN leads l ON c.id = l.client_id WHERE c.is_active = 1 GROUP BY c.id ORDER BY count DESC`).all();
-  const byStatusResult = await env.DB.prepare('SELECT status, COUNT(*) as count FROM leads GROUP BY status').all();
-  const byDayResult = await env.DB.prepare(`SELECT date(created_at) as date, COUNT(*) as count FROM leads WHERE created_at > datetime('now', '-30 days') GROUP BY date(created_at) ORDER BY date ASC`).all();
-  return json({ data: { total_leads: totalLeads, new_leads_7d: newLeads7d, pending_leads: pendingLeads, conversion_rate: conversionRate, total_deal_value: 0, avg_conversion_days: 0, leads_by_client: byClientResult.results || [], leads_by_status: byStatusResult.results || [], leads_by_day: byDayResult.results || [], leads_by_source: [], conversion_by_status: [] } });
+  
+  const byStatusResult = await env.DB.prepare(`SELECT status, COUNT(*) as count FROM leads ${condition} GROUP BY status`).bind(...params).all();
+  
+  const byDayResult = await env.DB.prepare(`SELECT date(created_at) as date, COUNT(*) as count FROM leads ${condition ? condition + ' AND' : 'WHERE'} created_at > datetime('now', '-30 days') GROUP BY date(created_at) ORDER BY date ASC`).bind(...params).all();
+  
+  const bySourceResult = await env.DB.prepare(`SELECT source, COUNT(*) as count, SUM(deal_value) as value FROM leads ${condition} GROUP BY source ORDER BY count DESC LIMIT 5`).bind(...params).all();
+
+  // Activity Feed
+  let activityQuery = `SELECT a.*, u.name as user_name FROM activity_log a LEFT JOIN users u ON a.user_id = u.id`;
+  if (condition) activityQuery += ` ${condition.replace('client_id', 'a.client_id')}`;
+  activityQuery += ` ORDER BY a.created_at DESC LIMIT 15`;
+  const activityResult = await env.DB.prepare(activityQuery).bind(...params).all();
+
+  return json({ 
+    data: { 
+      total_leads: totalLeads, 
+      new_leads_7d: newLeads7d, 
+      pending_leads: pendingLeads, 
+      conversion_rate: conversionRate, 
+      total_deal_value: pipelineValue,
+      revenue_value: revenueValue,
+      avg_conversion_days: 0, 
+      leads_by_client: byClientResult.results || [], 
+      leads_by_status: byStatusResult.results || [], 
+      leads_by_day: byDayResult.results || [], 
+      leads_by_source: bySourceResult.results || [], 
+      conversion_by_status: [],
+      activity_feed: activityResult.results || []
+    } 
+  });
 }
 
 // ── Clients CRUD ────────────────────────────────────────────
