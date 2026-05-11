@@ -18,16 +18,41 @@ export function ComplianceSettings() {
   const [unsubscribes, setUnsubscribes] = useState<Unsubscribe[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const [isSaving, setIsSaving] = useState(false);
+
   useEffect(() => {
+    // Load unsubscribes
     apiFetch<Unsubscribe[]>('/unsubscribes')
       .then(res => {
         setUnsubscribes(res.data || []);
       })
       .finally(() => setIsLoading(false));
+      
+    // Load compliance settings
+    apiFetch<any>('/settings/compliance')
+      .then(res => {
+        if (res.data) {
+          setAmfCert(res.data.amf_certificate || '');
+          setAmfRequired(res.data.amf_disclaimer_required === 1);
+        }
+      });
   }, []);
 
   const handleSaveAmf = async () => {
-    // TODO: Sauvegarder dans le client courant
+    setIsSaving(true);
+    try {
+      await apiFetch('/settings/compliance', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          amf_certificate: amfCert,
+          amf_disclaimer_required: amfRequired ? 1 : 0
+        })
+      });
+      // Afficher toast success
+    } catch (err) {
+      console.error(err);
+    }
+    setIsSaving(false);
   };
 
   const handleExportUnsubscribes = () => {
@@ -90,7 +115,9 @@ export function ComplianceSettings() {
               placeholder="ex: 123456" 
             />
           )}
-          <Button onClick={handleSaveAmf} disabled={amfRequired && !amfCert}>Sauvegarder</Button>
+          <Button onClick={handleSaveAmf} disabled={isSaving || (amfRequired && !amfCert)}>
+            {isSaving ? 'Enregistrement...' : 'Sauvegarder'}
+          </Button>
         </div>
       </div>
 

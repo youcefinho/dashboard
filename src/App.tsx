@@ -34,6 +34,8 @@ const VisitModePage = lazy(() => import('@/pages/VisitMode').then(m => ({ defaul
 const EmailBuilderPage = lazy(() => import('@/pages/EmailBuilder').then(m => ({ default: m.EmailBuilderPage })));
 const FormBuilderPage = lazy(() => import('@/pages/FormBuilder').then(m => ({ default: m.FormBuilderPage })));
 const TriggerLinksPage = lazy(() => import('@/pages/TriggerLinks').then(m => ({ default: m.TriggerLinksPage })));
+const PublicFormPage = lazy(() => import('@/pages/PublicForm').then(m => ({ default: m.PublicFormPage })));
+const PropertiesPage = lazy(() => import('@/pages/Properties').then(m => ({ default: m.PropertiesPage })));
 
 // ── Spinner de chargement ──────────────────────────────────
 
@@ -141,6 +143,16 @@ const workflowsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/workflows',
   component: () => (<LazyGuard><WorkflowsPage /></LazyGuard>),
+});
+
+const publicFormRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/f/$slug',
+  component: () => (
+    <Suspense fallback={<PageLoader />}>
+      <PublicFormPage />
+    </Suspense>
+  ),
 });
 
 const workflowDetailRoute = createRoute({
@@ -261,6 +273,12 @@ const triggerLinksRoute = createRoute({
 
 // ── Router ──────────────────────────────────────────────────
 
+const propertiesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/properties',
+  component: () => (<LazyGuard><PropertiesPage /></LazyGuard>),
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
@@ -292,6 +310,8 @@ const routeTree = rootRoute.addChildren([
   emailBuilderRoute,
   formBuilderRoute,
   triggerLinksRoute,
+  publicFormRoute,
+  propertiesRoute,
 ]);
 
 const router = createRouter({ routeTree });

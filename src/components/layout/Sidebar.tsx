@@ -25,6 +25,7 @@ const NAV_SECTIONS: NavSection[] = [
     label: 'WORKSPACE',
     items: [
       { path: '/leads', label: 'Leads', icon: <Users size={18} /> },
+      { path: '/properties', label: 'Propriétés', icon: <Briefcase size={18} /> },
       { path: '/agencies', label: 'Agences', icon: <Briefcase size={18} />, adminOnly: true },
       { path: '/clients', label: 'Clients', icon: <UserCircle size={18} />, adminOnly: true },
       { path: '/pipeline', label: 'Pipeline', icon: <Briefcase size={18} /> },
