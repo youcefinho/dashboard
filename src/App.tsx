@@ -29,6 +29,7 @@ const SignDocumentPage = lazy(() => import('@/pages/SignDocument').then(m => ({ 
 const ReviewsPage = lazy(() => import('@/pages/Reviews').then(m => ({ default: m.ReviewsPage })));
 const InvoicesPage = lazy(() => import('@/pages/Invoices').then(m => ({ default: m.InvoicesPage })));
 const AgenciesPage = lazy(() => import('@/pages/Agencies').then(m => ({ default: m.AgenciesPage })));
+const TrashPage = lazy(() => import('@/pages/Trash').then(m => ({ default: m.TrashPage })));
 
 // ── Spinner de chargement ──────────────────────────────────
 
@@ -220,6 +221,12 @@ const agenciesRoute = createRoute({
   component: () => (<LazyGuard><AgenciesPage /></LazyGuard>),
 });
 
+const trashRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/trash',
+  component: () => (<LazyGuard><TrashPage /></LazyGuard>),
+});
+
 // ── Router ──────────────────────────────────────────────────
 
 const routeTree = rootRoute.addChildren([
@@ -248,6 +255,7 @@ const routeTree = rootRoute.addChildren([
   reviewsRoute,
   invoicesRoute,
   agenciesRoute,
+  trashRoute,
 ]);
 
 const router = createRouter({ routeTree });

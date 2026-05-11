@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, Briefcase, MessageSquare, Mail,
   Zap, FileText, Star, CalendarDays, CheckSquare, Plug,
   BarChart3, Settings, LogOut, ChevronLeft, ChevronRight,
-  UserCircle, CreditCard,
+  UserCircle, CreditCard, Trash2,
 } from 'lucide-react';
 
 interface NavSection {
@@ -54,6 +54,7 @@ const NAV_SECTIONS: NavSection[] = [
   {
     items: [
       { path: '/settings', label: 'Paramètres', icon: <Settings size={18} /> },
+      { path: '/trash', label: 'Corbeille', icon: <Trash2 size={18} /> },
     ],
   },
 ];

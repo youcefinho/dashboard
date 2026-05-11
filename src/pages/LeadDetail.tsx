@@ -5,7 +5,7 @@ import { useParams, useNavigate } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, Button, Badge, Skeleton, EmptyState } from '@/components/ui';
 import { Avatar } from '@/components/ui/Avatar';
-import { getLeadDetail, updateLead, addTag, removeTag, getAppointments, getTasks, updateTask, getLeadNotes, createLeadNote, deleteLeadNote, getLeadScores, getLeadCustomFields, apiFetch } from '@/lib/api';
+import { getLeadDetail, updateLead, addTag, removeTag, getAppointments, getTasks, updateTask, getLeadNotes, createLeadNote, deleteLeadNote, getLeadScores, getLeadCustomFields, softDeleteLead, apiFetch } from '@/lib/api';
 import { ConversationPanel } from '@/components/conversations/ConversationPanel';
 import {
   STATUS_LABELS, STATUS_COLORS, TYPE_LABELS, SOURCE_LABELS,
@@ -16,7 +16,7 @@ import {
   type LeadDetail, type LeadStatus, type ActivityType, type Appointment, type Task,
   type LeadNote, type LeadScore, type CustomFieldValue, type LifecycleStage,
 } from '@/lib/types';
-import { ArrowLeft, Star, Phone, Mail, CalendarPlus, CheckSquare } from 'lucide-react';
+import { ArrowLeft, Star, Phone, Mail, CalendarPlus, CheckSquare, Trash2 } from 'lucide-react';
 
 export function LeadDetailPage() {
   const { leadId } = useParams({ strict: false }) as { leadId: string };
@@ -196,6 +196,18 @@ export function LeadDetailPage() {
                   </Badge>
                 )}
                 {lead.dnd ? <span title="Ne pas déranger" className="text-sm">🔕</span> : null}
+                <button
+                  onClick={async () => {
+                    if (confirm('Déplacer ce lead vers la corbeille ?')) {
+                      const res = await softDeleteLead(leadId);
+                      if (!res.error) void navigate({ to: '/leads' });
+                    }
+                  }}
+                  className="p-1.5 rounded-md text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-[var(--danger)]/10 cursor-pointer transition-all"
+                  title="Supprimer le lead"
+                >
+                  <Trash2 size={16} />
+                </button>
               </div>
             </div>
 
