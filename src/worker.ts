@@ -63,8 +63,9 @@ import {
   handleUploadFile, handleGetFile, handleGetFiles, handleDeleteFile,
   handleGetDocumentTemplates, handleCreateDocumentTemplate, handleUpdateDocumentTemplate, handleDeleteDocumentTemplate,
   handleGetDocuments, handleCreateDocument, handleSendDocument,
-  handlePublicGetDocument, handlePublicSignDocument,
+  handlePublicGetDocument, handlePublicSignDocument, handleSendSigningSms,
 } from './worker/documents';
+import { handleGetPacks, handleGetPackDetail, handleInstallPack } from './worker/packs';
 import {
   handleGetReviewRequests, handleCreateReviewRequest, handleBulkReviewRequest,
   handleGetReviews, handleGetReviewStats, handleSuggestReviewReply, handleReplyToReview,
@@ -603,6 +604,53 @@ async function routeProtected(
   if (path === '/api/events/stream' && method === 'GET') {
     const { handleEventsStream } = await import('./worker/mobile');
     return await handleEventsStream(env, auth);
+  }
+
+  // D5 — SMS signing link
+  const docSmsMatch = path.match(/^\/api\/documents\/([^/]+)\/send-sms$/);
+  if (docSmsMatch && method === 'POST') return handleSendSigningSms(request, env, auth, docSmsMatch[1]!);
+
+  // D7 — Industry Packs
+  if (path === '/api/packs' && method === 'GET') return handleGetPacks(env, auth);
+  const packSlugMatch = path.match(/^\/api\/packs\/([^/]+)$/);
+  if (packSlugMatch && method === 'GET') return handleGetPackDetail(env, auth, packSlugMatch[1]!);
+  const packInstallMatch = path.match(/^\/api\/packs\/([^/]+)\/install$/);
+  if (packInstallMatch && method === 'POST') return handleInstallPack(request, env, auth, packInstallMatch[1]!);
+
+  // D4 — Dashboard layouts
+  if (path === '/api/dashboard/layouts' && method === 'GET') {
+    const userId = auth.userId;
+    const clientId = url.searchParams.get('client_id');
+    let q = 'SELECT * FROM dashboard_layouts WHERE user_id = ?';
+    const p: string[] = [userId];
+    if (clientId) { q += ' AND (client_id = ? OR client_id IS NULL)'; p.push(clientId); }
+    q += ' ORDER BY is_default DESC, updated_at DESC';
+    const { results } = await env.DB.prepare(q).bind(...p).all();
+    return json({ data: results || [] });
+  }
+  if (path === '/api/dashboard/layouts' && method === 'POST') {
+    const body = await request.json() as { name?: string; layout_json?: string; client_id?: string; is_default?: boolean };
+    const id = crypto.randomUUID();
+    await env.DB.prepare(
+      `INSERT INTO dashboard_layouts (id, user_id, client_id, name, layout_json, is_default) VALUES (?, ?, ?, ?, ?, ?)`
+    ).bind(id, auth.userId, body.client_id || null, body.name || 'Mon dashboard', body.layout_json || '[]', body.is_default ? 1 : 0).run();
+    return json({ data: { id } }, 201);
+  }
+  const dashLayoutMatch = path.match(/^\/api\/dashboard\/layouts\/([^/]+)$/);
+  if (dashLayoutMatch && method === 'PATCH') {
+    const body = await request.json() as { name?: string; layout_json?: string; is_default?: boolean };
+    const updates: string[] = ["updated_at = datetime('now')"];
+    const params: unknown[] = [];
+    if (body.name) { updates.push('name = ?'); params.push(body.name); }
+    if (body.layout_json) { updates.push('layout_json = ?'); params.push(body.layout_json); }
+    if (body.is_default !== undefined) { updates.push('is_default = ?'); params.push(body.is_default ? 1 : 0); }
+    params.push(dashLayoutMatch[1]!);
+    await env.DB.prepare(`UPDATE dashboard_layouts SET ${updates.join(', ')} WHERE id = ?`).bind(...params).run();
+    return json({ data: { success: true } });
+  }
+  if (dashLayoutMatch && method === 'DELETE') {
+    await env.DB.prepare('DELETE FROM dashboard_layouts WHERE id = ? AND user_id = ?').bind(dashLayoutMatch[1]!, auth.userId).run();
+    return json({ data: { success: true } });
   }
 
   // Debug (à retirer avant prod)
