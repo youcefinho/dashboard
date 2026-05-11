@@ -1,6 +1,6 @@
-// ── Page Leads — Liste globale (Sprint Design) ──────────────
+// ── Page Leads — Liste globale + Vue Carte (Sprint 6 D3) ─────
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, Button, Badge, Skeleton, EmptyState, Modal } from '@/components/ui';
@@ -8,7 +8,154 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Input } from '@/components/ui/Input';
 import { getLeads, getClients, updateLead, exportLeadsCsv } from '@/lib/api';
 import { STATUS_LABELS, STATUS_COLORS, SOURCE_LABELS, LEAD_STATUSES, type Lead, type LeadStatus, type Client, type SmartList } from '@/lib/types';
-import { Search, X, Download, Save, LayoutGrid, LayoutList, MoreHorizontal, ArrowUpDown, ChevronUp, ChevronDown, StickyNote, Users, UserPlus, Zap } from 'lucide-react';
+import { Search, X, Download, Save, LayoutGrid, LayoutList, Map, MoreHorizontal, ArrowUpDown, ChevronUp, ChevronDown, StickyNote, Users, UserPlus, Zap, ExternalLink } from 'lucide-react';
+
+// Fixtures mock pour leads sans coordonnées (mode mock QC)
+const QC_FIXTURES: Array<{ lat: number; lng: number; city: string }> = [
+  { lat: 45.5017, lng: -73.5673, city: 'Montréal' },
+  { lat: 46.8139, lng: -71.2080, city: 'Québec' },
+  { lat: 45.4765, lng: -75.7013, city: 'Gatineau' },
+  { lat: 45.3504, lng: -72.5185, city: 'Sherbrooke' },
+  { lat: 45.6894, lng: -73.7486, city: 'Laval' },
+  { lat: 45.5590, lng: -73.7339, city: 'Montréal-Nord' },
+  { lat: 45.3975, lng: -75.6919, city: 'Hull' },
+  { lat: 46.3432, lng: -72.5480, city: 'Trois-Rivières' },
+];
+
+// Composant Map (Mapbox ou fallback SVG mock)
+function LeadsMapView({ leads }: { leads: Lead[] }) {
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const [mapError, setMapError] = useState(false);
+  const [selectedPin, setSelectedPin] = useState<Lead | null>(null);
+
+  // Enrichir les leads avec des coordonnées mock si manquantes
+  const enrichedLeads = leads.slice(0, 50).map((lead, i) => ({
+    ...lead,
+    lat: (lead as Lead & { lat?: number }).lat || QC_FIXTURES[i % QC_FIXTURES.length]!.lat + (Math.random() - 0.5) * 0.1,
+    lng: (lead as Lead & { lng?: number }).lng || QC_FIXTURES[i % QC_FIXTURES.length]!.lng + (Math.random() - 0.5) * 0.1,
+  }));
+
+  // Essayer de charger Mapbox si token dispo (runtime, pas bundlé)
+  useEffect(() => {
+    const token = (import.meta.env as Record<string, string>)['VITE_MAPBOX_TOKEN'];
+    if (!token || !mapContainer.current) {
+      setMapError(true);
+      return;
+    }
+    // Charger mapbox-gl via CDN si pas déjà disponible
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const win = window as any;
+    if (win.mapboxgl) {
+      initMap(win.mapboxgl, token);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js';
+    script.onload = () => initMap(win.mapboxgl, token);
+    script.onerror = () => setMapError(true);
+    document.head.appendChild(script);
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css';
+    document.head.appendChild(link);
+    return () => { document.head.removeChild(script); };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function initMap(mapboxGl: any, token: string) {
+    if (!mapContainer.current) return;
+    mapboxGl.accessToken = token;
+    const map = new mapboxGl.Map({
+      container: mapContainer.current,
+      style: 'mapbox://styles/mapbox/dark-v11',
+      center: [-73.5673, 45.5017],
+      zoom: 7,
+    });
+    enrichedLeads.forEach((lead: Lead & { lat: number; lng: number }) => {
+      const marker = new mapboxGl.Marker({ color: lead.score >= 70 ? '#10b981' : lead.score >= 40 ? '#f59e0b' : '#ef4444' })
+        .setLngLat([lead.lng, lead.lat])
+        .setPopup(new mapboxGl.Popup().setHTML(
+          `<strong>${lead.name}</strong><br/><span style="font-size:11px">${STATUS_LABELS[lead.status] || lead.status}</span>`
+        ))
+        .addTo(map);
+      marker.getElement().addEventListener('click', () => setSelectedPin(lead));
+    });
+  }
+
+  if (mapError || !((import.meta.env as Record<string, string>)['VITE_MAPBOX_TOKEN'])) {
+    // Fallback : grille SVG mock avec punaises
+    const scoreColor = (s: number) => s >= 70 ? '#10b981' : s >= 40 ? '#f59e0b' : '#ef4444';
+    return (
+      <div className="relative bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-lg)] overflow-hidden" style={{ height: 520 }}>
+        {/* Fond carte stylisée mock */}
+        <svg width="100%" height="100%" viewBox="0 0 800 520" className="opacity-30">
+          <rect width="800" height="520" fill="#1e293b" />
+          {/* Quadrillage */}
+          {Array.from({ length: 10 }).map((_, i) => (
+            <g key={i}>
+              <line x1={i * 80} y1="0" x2={i * 80} y2="520" stroke="#334155" strokeWidth="1" />
+              <line x1="0" y1={i * 52} x2="800" y2={i * 52} stroke="#334155" strokeWidth="1" />
+            </g>
+          ))}
+          <text x="400" y="260" textAnchor="middle" fill="#64748b" fontSize="14" fontFamily="system-ui">
+            Carte Québec (mode mock)
+          </text>
+        </svg>
+        {/* Pins mock */}
+        <div className="absolute inset-0 p-4">
+          {enrichedLeads.slice(0, 20).map((lead, i) => {
+            const x = 5 + (i % 6) * 16 + Math.random() * 4;
+            const y = 10 + Math.floor(i / 6) * 22 + Math.random() * 4;
+            return (
+              <button key={lead.id}
+                onClick={() => setSelectedPin(prev => prev?.id === lead.id ? null : lead)}
+                style={{ left: `${x}%`, top: `${y}%`, position: 'absolute' }}
+                className="group relative">
+                <div className="w-5 h-5 rounded-full border-2 border-white shadow-lg transition-transform group-hover:scale-125"
+                  style={{ background: scoreColor(lead.score) }} />
+              </button>
+            );
+          })}
+        </div>
+        {/* Légende */}
+        <div className="absolute bottom-4 left-4 flex items-center gap-3 bg-gray-900/80 backdrop-blur px-3 py-2 rounded-lg text-xs">
+          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-green-500" /> Score ≥70</span>
+          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-yellow-500" /> 40-69</span>
+          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-red-500" /> &lt;40</span>
+          <span className="text-gray-400 ml-2">| Configurez VITE_MAPBOX_TOKEN pour la vraie carte</span>
+        </div>
+        {/* Popup */}
+        {selectedPin && (
+          <div className="absolute top-4 right-4 bg-[var(--bg-canvas)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] p-3 shadow-lg max-w-48 z-10">
+            <p className="font-semibold text-sm text-[var(--text-primary)]">{selectedPin.name}</p>
+            <p className="text-xs text-[var(--text-muted)]">{selectedPin.email}</p>
+            <p className="text-xs mt-1" style={{ color: scoreColor(selectedPin.score) }}>Score : {selectedPin.score}</p>
+            <Link to={`/leads/${selectedPin.id}`}
+              className="flex items-center gap-1 text-xs text-[var(--brand-primary)] mt-1.5 hover:underline">
+              <ExternalLink size={10} /> Voir le profil
+            </Link>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative rounded-[var(--radius-lg)] overflow-hidden" style={{ height: 520 }}>
+      <div ref={mapContainer} style={{ width: '100%', height: '100%' }} />
+      {selectedPin && (
+        <div className="absolute top-4 right-4 bg-[var(--bg-canvas)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] p-3 shadow-lg max-w-48 z-10">
+          <p className="font-semibold text-sm text-[var(--text-primary)]">{selectedPin.name}</p>
+          <p className="text-xs text-[var(--text-muted)]">{selectedPin.email}</p>
+          <Link to={`/leads/${selectedPin.id}`}
+            className="flex items-center gap-1 text-xs text-[var(--brand-primary)] mt-1.5 hover:underline">
+            <ExternalLink size={10} /> Voir le profil
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function LeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -24,7 +171,7 @@ export function LeadsPage() {
   const [smartLists, setSmartLists] = useState<SmartList[]>(() => {
     try { return JSON.parse(localStorage.getItem('intralys_smart_lists') || '[]') as SmartList[]; } catch { return []; }
   });
-  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
+  const [viewMode, setViewMode] = useState<'table' | 'cards' | 'map'>('table');
   const [sortBy, setSortBy] = useState<'name' | 'score' | 'created_at' | 'deal_value'>('created_at');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
@@ -130,6 +277,11 @@ export function LeadsPage() {
             className={`p-1.5 rounded-[var(--radius-xs)] cursor-pointer transition-all ${viewMode === 'cards' ? 'bg-[var(--brand-primary)] text-white' : 'text-[var(--text-muted)] hover:bg-[var(--bg-subtle)]'}`}>
             <LayoutGrid size={16} />
           </button>
+          <button onClick={() => setViewMode('map')}
+            className={`p-1.5 rounded-[var(--radius-xs)] cursor-pointer transition-all ${viewMode === 'map' ? 'bg-[var(--brand-primary)] text-white' : 'text-[var(--text-muted)] hover:bg-[var(--bg-subtle)]'}`}
+            title="Vue carte (Mapbox)">
+            <Map size={16} />
+          </button>
         </div>
       </div>
 
@@ -191,6 +343,9 @@ export function LeadsPage() {
       ) : leads.length === 0 ? (
         <EmptyState icon={<Users size={48} />} title="Aucun lead trouvé" description="Aucun lead ne correspond à vos filtres."
           action={<Button variant="secondary" onClick={() => { setSearch(''); setStatusFilter(''); }}>Réinitialiser</Button>} />
+      ) : viewMode === 'map' ? (
+        /* ── Vue Carte ── */
+        <LeadsMapView leads={sortedLeads} />
       ) : viewMode === 'cards' ? (
         /* ── Vue Cartes ── */
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
