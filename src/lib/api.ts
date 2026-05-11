@@ -1,6 +1,6 @@
 // ── Client API — Helpers pour appeler le worker ─────────────
 
-import type { ApiResponse, Client, Lead, LeadDetail, DashboardStats, ActivityLogEntry, Message, EmailTemplate, Workflow, WorkflowStep, WorkflowEnrollment, Appointment, Task, LeadNote, LeadScore, CustomFieldValue, Conversation, ConversationStatus, Pipeline, PipelineStage } from './types';
+import type { ApiResponse, Client, Lead, LeadDetail, DashboardStats, ActivityLogEntry, Message, EmailTemplate, Workflow, WorkflowStep, WorkflowEnrollment, Appointment, Task, LeadNote, LeadScore, CustomFieldValue, Conversation, ConversationStatus, Pipeline, PipelineStage, CustomFieldDef, SmartList } from './types';
 
 const API_BASE = '/api';
 
@@ -635,10 +635,10 @@ export async function getPipelines(): Promise<ApiResponse<Pipeline[]>> {
   return apiFetch<Pipeline[]>('/pipelines');
 }
 
-export async function createPipeline(name: string, description?: string): Promise<ApiResponse<{ id: string; success: boolean }>> {
+export async function createPipeline(data: { name: string; client_id?: string; color?: string; is_default?: boolean }): Promise<ApiResponse<{ id: string; success: boolean }>> {
   return apiFetch<{ id: string; success: boolean }>('/pipelines', {
     method: 'POST',
-    body: JSON.stringify({ name, description }),
+    body: JSON.stringify(data),
   });
 }
 
@@ -655,7 +655,7 @@ export async function deletePipeline(id: string): Promise<ApiResponse<{ success:
   });
 }
 
-export async function createPipelineStage(pipelineId: string, data: { name: string; slug: string; color?: string }): Promise<ApiResponse<{ id: string; success: boolean }>> {
+export async function createPipelineStage(pipelineId: string, data: { name: string; color?: string; probability?: number; wip_limit?: number; sla_days?: number }): Promise<ApiResponse<{ id: string; success: boolean }>> {
   return apiFetch<{ id: string; success: boolean }>(`/pipelines/${pipelineId}/stages`, {
     method: 'POST',
     body: JSON.stringify(data),
@@ -672,6 +672,24 @@ export async function updatePipelineStage(pipelineId: string, stageId: string, d
 export async function deletePipelineStage(pipelineId: string, stageId: string): Promise<ApiResponse<{ success: boolean }>> {
   return apiFetch<{ success: boolean }>(`/pipelines/${pipelineId}/stages/${stageId}`, {
     method: 'DELETE',
+  });
+}
+
+export async function reorderPipelineStages(pipelineId: string, stages: { id: string; sort_order: number }[]): Promise<ApiResponse<{ success: boolean }>> {
+  return apiFetch<{ success: boolean }>(`/pipelines/${pipelineId}/stages/reorder`, {
+    method: 'POST',
+    body: JSON.stringify({ stages }),
+  });
+}
+
+export async function getLostReasons(): Promise<ApiResponse<{ id: string; label: string; sort_order: number }[]>> {
+  return apiFetch<{ id: string; label: string; sort_order: number }[]>('/lost-reasons');
+}
+
+export async function createLostReason(data: { label: string; client_id: string }): Promise<ApiResponse<{ id: string; success: boolean }>> {
+  return apiFetch<{ id: string; success: boolean }>('/lost-reasons', {
+    method: 'POST',
+    body: JSON.stringify(data),
   });
 }
 
@@ -968,9 +986,9 @@ export async function exportLeadPii(leadId: string): Promise<ApiResponse<Record<
 
 // ── Custom Fields (P3.4) ────────────────────────────────────
 
-export async function getCustomFields(clientId?: string): Promise<ApiResponse<Array<Record<string, unknown>>>> {
+export async function getCustomFields(clientId?: string): Promise<ApiResponse<CustomFieldDef[]>> {
   const params = clientId ? `?client_id=${clientId}` : '';
-  return apiFetch<Array<Record<string, unknown>>>(`/custom-fields${params}`);
+  return apiFetch<CustomFieldDef[]>(`/custom-fields${params}`);
 }
 
 export async function createCustomField(data: {
@@ -982,7 +1000,7 @@ export async function createCustomField(data: {
   });
 }
 
-export async function updateCustomField(fieldId: string, data: Record<string, unknown>): Promise<ApiResponse<{ success: boolean }>> {
+export async function updateCustomField(fieldId: string, data: Partial<CustomFieldDef>): Promise<ApiResponse<{ success: boolean }>> {
   return apiFetch<{ success: boolean }>(`/custom-fields/${fieldId}`, {
     method: 'PATCH', body: JSON.stringify(data),
   });
@@ -1002,8 +1020,8 @@ export async function setLeadCustomFields(leadId: string, fields: Array<{ field_
 
 // ── Smart Lists (P3.4) ──────────────────────────────────────
 
-export async function getSmartLists(): Promise<ApiResponse<Array<Record<string, unknown>>>> {
-  return apiFetch<Array<Record<string, unknown>>>('/smart-lists');
+export async function getSmartLists(): Promise<ApiResponse<SmartList[]>> {
+  return apiFetch<SmartList[]>('/smart-lists');
 }
 
 export async function createSmartList(data: {
@@ -1018,11 +1036,11 @@ export async function deleteSmartList(listId: string): Promise<ApiResponse<{ suc
   return apiFetch<{ success: boolean }>(`/smart-lists/${listId}`, { method: 'DELETE' });
 }
 
-export async function executeSmartList(listId: string, params?: { limit?: number; offset?: number }): Promise<ApiResponse<Array<Record<string, unknown>>>> {
+export async function executeSmartList(listId: string, params?: { limit?: number; offset?: number }): Promise<ApiResponse<{ data: any[]; total: number; filters: Record<string, unknown> }>> {
   const search = new URLSearchParams();
   if (params?.limit) search.set('limit', params.limit.toString());
   if (params?.offset) search.set('offset', params.offset.toString());
-  return apiFetch<Array<Record<string, unknown>>>(`/smart-lists/${listId}/execute?${search.toString()}`);
+  return apiFetch<{ data: any[]; total: number; filters: Record<string, unknown> }>(`/smart-lists/${listId}/execute?${search.toString()}`);
 }
 
 // ── AI Features (P3.6) ──────────────────────────────────────
@@ -1032,7 +1050,7 @@ export async function aiScoreLead(leadId: string): Promise<ApiResponse<{ score: 
 }
 
 export async function aiGenerate(data: {
-  action: 'email_followup' | 'centris_description' | 'social_post' | 'objection_handler' | 'sms_followup';
+  action: 'email_followup' | 'generate_proposal' | 'social_post' | 'objection_handler' | 'sms_followup';
   context?: Record<string, unknown>;
   lead_id?: string;
   client_id?: string;
@@ -1166,3 +1184,5 @@ export async function registerDevice(token: string, platform?: string): Promise<
 export async function unregisterDevice(token: string): Promise<ApiResponse<{ success: boolean }>> {
   return apiFetch<{ success: boolean }>('/devices', { method: 'DELETE', body: JSON.stringify({ token }) });
 }
+
+

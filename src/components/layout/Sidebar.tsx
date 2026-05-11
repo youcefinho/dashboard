@@ -171,7 +171,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             {!collapsed && (
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-white truncate">{user?.name || 'Admin'}</p>
-                <p className="text-[10px] text-[var(--text-inverse-mut)] truncate">{isAdmin ? 'Administrateur' : 'Courtier'}</p>
+                <p className="text-[10px] text-[var(--text-inverse-mut)] truncate">{isAdmin ? 'Administrateur' : 'Utilisateur'}</p>
               </div>
             )}
             {!collapsed && (

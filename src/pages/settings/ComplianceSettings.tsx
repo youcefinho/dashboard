@@ -63,13 +63,13 @@ export function ComplianceSettings() {
           Conformité & Légal
         </h2>
         <p className="text-sm text-[var(--text-secondary)] mt-1">
-          Gérez vos listes de désabonnement (CASL) et vos mentions légales (AMF).
+          Gérez vos listes de désabonnement (CASL) et vos mentions légales.
         </p>
       </div>
 
       <div className="card p-6">
         <h3 className="text-sm font-bold mb-4 flex items-center gap-2">
-          <Shield size={16} /> Mentions AMF
+          <Shield size={16} /> Mentions Légales
         </h3>
         <div className="space-y-4">
           <div className="flex items-center gap-2">
@@ -80,11 +80,11 @@ export function ComplianceSettings() {
               onChange={(e: any) => setAmfRequired(e.target.checked)} 
               className="rounded border-[var(--border-default)]"
             />
-            <label htmlFor="amf-req" className="text-sm">Activer le disclaimer AMF automatique dans les emails</label>
+            <label htmlFor="amf-req" className="text-sm">Activer les mentions légales automatiques dans les emails</label>
           </div>
           {amfRequired && (
             <Input 
-              label="Numéro de certificat AMF" 
+              label="Texte de la mention légale (ex: Numéro de permis, AMF, etc.)" 
               value={amfCert} 
               onChange={(e: any) => setAmfCert(e.target.value)} 
               placeholder="ex: 123456" 

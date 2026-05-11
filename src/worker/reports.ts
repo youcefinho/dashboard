@@ -23,7 +23,7 @@ export async function handleReportsOverview(
   ).bind(...params).first() as { count: number };
 
   const convertedLeads = await env.DB.prepare(
-    `SELECT COUNT(*) as count FROM leads WHERE status IN ('signed','closed') AND created_at >= ?${clientFilter}`
+    `SELECT COUNT(*) as count FROM leads WHERE status IN ('won','closed') AND created_at >= ?${clientFilter}`
   ).bind(...params).first() as { count: number };
 
   const lostLeads = await env.DB.prepare(
@@ -32,7 +32,7 @@ export async function handleReportsOverview(
 
   const avgConversion = await env.DB.prepare(
     `SELECT AVG(JULIANDAY(updated_at) - JULIANDAY(created_at)) as avg_days
-     FROM leads WHERE status IN ('signed','closed') AND created_at >= ?${clientFilter}`
+     FROM leads WHERE status IN ('won','closed') AND created_at >= ?${clientFilter}`
   ).bind(...params).first() as { avg_days: number | null };
 
   const { results: dailyLeads } = await env.DB.prepare(
@@ -88,9 +88,9 @@ export async function handleReportsSources(
     `SELECT
        source,
        COUNT(*) as total_leads,
-       SUM(CASE WHEN status IN ('signed','closed') THEN 1 ELSE 0 END) as converted,
+       SUM(CASE WHEN status IN ('won','closed') THEN 1 ELSE 0 END) as converted,
        SUM(CASE WHEN status = 'lost' THEN 1 ELSE 0 END) as lost,
-       ROUND(SUM(CASE WHEN status IN ('signed','closed') THEN 1.0 ELSE 0 END) / COUNT(*) * 100, 1) as conversion_rate
+       ROUND(SUM(CASE WHEN status IN ('won','closed') THEN 1.0 ELSE 0 END) / COUNT(*) * 100, 1) as conversion_rate
      FROM leads WHERE created_at >= ?
      GROUP BY source ORDER BY total_leads DESC`
   ).bind(since).all();
@@ -110,8 +110,8 @@ export async function handleReportsConversion(
   const stages = [
     { status: 'new', label: 'Nouveaux' },
     { status: 'contacted', label: 'Contactés' },
-    { status: 'meeting', label: 'Rendez-vous' },
-    { status: 'signed', label: 'Signés' },
+    { status: 'qualified', label: 'Qualifié' },
+    { status: 'won', label: 'Gagné' },
     { status: 'closed', label: 'Fermés' },
   ];
 

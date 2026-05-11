@@ -128,7 +128,7 @@ export function DocumentsPage() {
             <div>
               <label className="block text-sm font-medium mb-1">Titre du document</label>
               <Input 
-                placeholder="Ex: Mandat de courtage acheteur - Jean Dupont" 
+                placeholder="Ex: Contrat de prestation de services - Jean Dupont" 
                 value={docTitle} 
                 onChange={e => setDocTitle(e.target.value)} 
               />

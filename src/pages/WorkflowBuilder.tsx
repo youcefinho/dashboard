@@ -1,9 +1,9 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, Button, Input, Modal } from '@/components/ui';
-import { createWorkflow } from '@/lib/api';
-import type { TriggerType, StepType } from '@/lib/types';
+import { createWorkflow, getPipelines } from '@/lib/api';
+import type { TriggerType, StepType, Pipeline } from '@/lib/types';
 import { TRIGGER_LABELS, TRIGGER_ICONS, STEP_TYPE_LABELS, STEP_TYPE_ICONS, STEP_TYPES, TRIGGER_TYPES } from '@/lib/types';
 import { ReactFlow, Controls, Background, applyNodeChanges, applyEdgeChanges, addEdge, Handle, Position } from '@xyflow/react';
 import type { Node, Edge, Connection, NodeTypes, NodeChange, EdgeChange } from '@xyflow/react';
@@ -77,6 +77,13 @@ export function WorkflowBuilderPage() {
   const navigate = useNavigate();
   const [name, setName] = useState('');
   const [description, _setDescription] = useState('');
+  const [triggerConfig, setTriggerConfig] = useState<Record<string, any>>({});
+  
+  // States for pipeline trigger
+  const [pipelines, setPipelines] = useState<Pipeline[]>([]);
+  useEffect(() => {
+    getPipelines().then(res => { if (res.data) setPipelines(res.data); });
+  }, []);
   
   // React Flow state
   const [nodes, setNodes] = useState<Node[]>(initialNodes);
@@ -143,7 +150,7 @@ export function WorkflowBuilderPage() {
       name: name.trim(),
       description: description.trim(),
       trigger_type: (triggerNode?.data.triggerType as TriggerType) || 'lead_created',
-      trigger_config: '{}',
+      trigger_config: JSON.stringify(triggerConfig),
       steps: stepsData, // Extended API required here in real backend
     });
 
@@ -185,11 +192,43 @@ export function WorkflowBuilderPage() {
                     value={(nodes.find(n => n.type === 'trigger')?.data.triggerType as string) || 'lead_created'}
                     onChange={(e) => {
                       setNodes(nds => nds.map(n => n.type === 'trigger' ? { ...n, data: { ...n.data, triggerType: e.target.value } } : n));
+                      setTriggerConfig({});
                     }}
-                    className="w-full px-2 py-1.5 text-xs bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded focus:outline-none"
+                    className="w-full px-2 py-1.5 text-xs bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded focus:outline-none mb-3"
                   >
                     {TRIGGER_TYPES.map(tt => <option key={tt} value={tt}>{TRIGGER_LABELS[tt]}</option>)}
                   </select>
+
+                  {(nodes.find(n => n.type === 'trigger')?.data.triggerType === 'pipeline_stage_changed') && (
+                    <div className="p-3 bg-[var(--bg-subtle)] border border-[var(--border-subtle)] rounded-lg space-y-3">
+                      <div>
+                        <label className="block text-[10px] font-semibold text-[var(--text-secondary)] mb-1 uppercase tracking-wider">Pipeline</label>
+                        <select 
+                          value={triggerConfig.pipeline_id || ''} 
+                          onChange={e => setTriggerConfig(prev => ({ ...prev, pipeline_id: e.target.value, stage_id: '' }))}
+                          className="w-full px-2 py-1.5 text-xs bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded focus:outline-none"
+                        >
+                          <option value="">N'importe quel pipeline</option>
+                          {pipelines.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                        </select>
+                      </div>
+                      {triggerConfig.pipeline_id && (
+                        <div>
+                          <label className="block text-[10px] font-semibold text-[var(--text-secondary)] mb-1 uppercase tracking-wider">Étape (Stage)</label>
+                          <select 
+                            value={triggerConfig.stage_id || ''} 
+                            onChange={e => setTriggerConfig(prev => ({ ...prev, stage_id: e.target.value }))}
+                            className="w-full px-2 py-1.5 text-xs bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded focus:outline-none"
+                          >
+                            <option value="">N'importe quelle étape</option>
+                            {pipelines.find(p => p.id === triggerConfig.pipeline_id)?.stages?.map(s => (
+                              <option key={s.id} value={s.id}>{s.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </Card>

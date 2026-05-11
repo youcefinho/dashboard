@@ -8,7 +8,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { getLeadDetail, updateLead, addTag, removeTag, getAppointments, getTasks, updateTask, getLeadNotes, createLeadNote, deleteLeadNote, getLeadScores, getLeadCustomFields, softDeleteLead, apiFetch } from '@/lib/api';
 import { ConversationPanel } from '@/components/conversations/ConversationPanel';
 import {
-  STATUS_LABELS, STATUS_COLORS, TYPE_LABELS, SOURCE_LABELS,
+  STATUS_LABELS, STATUS_COLORS, SOURCE_LABELS,
   ACTIVITY_LABELS, ACTIVITY_ICONS, LEAD_STATUSES,
   LIFECYCLE_LABELS, LIFECYCLE_COLORS, NOTE_CATEGORY_LABELS, NOTE_CATEGORY_ICONS,
   APPOINTMENT_TYPE_ICONS, APPOINTMENT_TYPE_LABELS, APPOINTMENT_STATUS_LABELS,
@@ -186,8 +186,8 @@ export function LeadDetailPage() {
                   className="p-1 cursor-pointer hover:scale-110 transition-transform" title={lead.favorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}>
                   <Star size={18} className={lead.favorite ? 'fill-[var(--warning)] text-[var(--warning)]' : 'text-[var(--text-muted)]'} />
                 </button>
-                <Badge color={lead.type === 'buy' ? 'var(--brand-primary)' : 'var(--accent-orange)'}>
-                  {TYPE_LABELS[lead.type]}
+                <Badge color={lead.type === 'inbound' ? 'var(--brand-primary)' : 'var(--warning)'}>
+                  {lead.type === 'inbound' ? 'Entrant' : lead.type === 'customer' ? 'Client' : lead.type}
                 </Badge>
                 <Badge color={STATUS_COLORS[lead.status]}>{STATUS_LABELS[lead.status]}</Badge>
                 {lead.lifecycle_stage && (

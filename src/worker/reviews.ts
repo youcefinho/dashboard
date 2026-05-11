@@ -120,7 +120,7 @@ export async function handleBulkReviewRequest(
   // Trouver tous les leads signés sans demande récente
   let query = `SELECT l.id, l.name, l.email, l.client_id
                FROM leads l
-               WHERE l.status = 'signed'
+               WHERE l.status = 'won'
                AND l.email IS NOT NULL AND l.email != ''
                AND (l.dnd = 0 OR l.dnd IS NULL)
                AND l.id NOT IN (
@@ -229,7 +229,7 @@ export async function handleSuggestReviewReply(
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20250401',
         max_tokens: 300,
-        system: `Tu es l'assistant d'un courtier immobilier québécois. Rédige une réponse courte, professionnelle et chaleureuse à un avis Google. Tutoie le client. Reste bref (3-4 phrases max). Ton québécois naturel.`,
+        system: `Tu es l'assistant d'une PME québécoise. Rédige une réponse courte, professionnelle et chaleureuse à un avis Google. Tutoie le client. Reste bref (3-4 phrases max). Ton québécois naturel.`,
         messages: [{ role: 'user', content: `Avis ${review.rating} étoiles de ${review.author_name}: "${review.comment || '(pas de commentaire)'}"\n\nRédige une réponse appropriée.` }],
       }),
     });

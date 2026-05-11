@@ -49,7 +49,7 @@ export function PipelineSettings() {
 
   const handleCreatePipeline = async () => {
     if (!newPipelineName.trim()) return;
-    const res = await createPipeline(newPipelineName.trim(), '');
+    const res = await createPipeline({ name: newPipelineName.trim() });
     if (res.data?.success) {
       setNewPipelineName('');
       setIsCreatingPipeline(false);
@@ -82,17 +82,13 @@ export function PipelineSettings() {
 
   const handleCreateStage = async () => {
     if (!activePipeline || !newStageName.trim()) return;
-    const slug = newStageName.trim().toLowerCase().replace(/\s+/g, '-');
     const is_win_stage = newStageType === 'win';
     const is_loss_stage = newStageType === 'loss';
     
     await createPipelineStage(activePipeline.id, { 
       name: newStageName.trim(), 
-      slug, 
       color: newStageColor,
-      // @ts-ignore : L'API accepte ces champs boolean, le TS de createPipelineStage est partiel.
-      is_win_stage,
-      is_loss_stage
+      probability: is_win_stage ? 100 : is_loss_stage ? 0 : 50
     });
     
     setNewStageName('');
@@ -104,14 +100,10 @@ export function PipelineSettings() {
 
   const handleUpdateStage = async (stageId: string) => {
     if (!activePipeline || !editStageName.trim()) return;
-    const slug = editStageName.trim().toLowerCase().replace(/\s+/g, '-');
-    
     await updatePipelineStage(activePipeline.id, stageId, { 
       name: editStageName.trim(), 
-      slug, 
       color: editStageColor,
-      is_win_stage: editStageType === 'win' ? 1 : 0,
-      is_loss_stage: editStageType === 'loss' ? 1 : 0
+      probability: editStageType === 'win' ? 100 : editStageType === 'loss' ? 0 : 50
     });
     
     setEditingStageId(null);
@@ -259,8 +251,8 @@ export function PipelineSettings() {
 
                 <div className="space-y-2">
                   {(activePipeline.stages || []).map((stage, idx) => {
-                    const isWin = stage.is_win_stage === 1;
-                    const isLoss = stage.is_loss_stage === 1;
+                    const isWin = stage.probability === 100;
+                    const isLoss = stage.probability === 0;
                     const typeLabel = isWin ? 'Gagné' : isLoss ? 'Perdu' : 'Normal';
                     const isEditing = editingStageId === stage.id;
 

@@ -1,10 +1,10 @@
 // ── Types partagés Intralys CRM ─────────────────────────────
 
 // Statuts possibles du pipeline
-export const LEAD_STATUSES = ['new', 'contacted', 'meeting', 'signed', 'closed', 'lost'] as const;
+export const LEAD_STATUSES = ['new', 'contacted', 'qualified', 'won', 'closed', 'lost'] as const;
 export type LeadStatus = typeof LEAD_STATUSES[number];
 
-export const LEAD_TYPES = ['buy', 'sell'] as const;
+export const LEAD_TYPES = ['inbound', 'qualified', 'customer'] as const;
 export type LeadType = typeof LEAD_TYPES[number];
 
 export const USER_ROLES = ['admin', 'broker'] as const;
@@ -106,14 +106,22 @@ export interface PipelineStage {
   id: string;
   pipeline_id: string;
   name: string;
-  slug: string;
   color: string;
   position: number;
-  is_win_stage: number;
-  is_loss_stage: number;
+  probability: number;
+  wip_limit: number | null;
+  sla_days: number | null;
   created_at: string;
   updated_at: string;
   lead_count?: number;
+}
+
+export interface LostReason {
+  id: string;
+  client_id: string;
+  label: string;
+  sort_order: number;
+  created_at: string;
 }
 
 export interface Pipeline {
@@ -226,12 +234,12 @@ export interface EmailTemplate {
 
 // ── Phase 3 : Automations & Workflows ──────────────────────
 
-export const TRIGGER_TYPES = ['lead_created', 'status_changed', 'tag_added', 'form_submitted', 'score_threshold'] as const;
+export const TRIGGER_TYPES = ['lead_created', 'status_changed', 'pipeline_stage_changed', 'tag_added', 'form_submitted', 'score_threshold'] as const;
 export type TriggerType = typeof TRIGGER_TYPES[number];
 
 export const STEP_TYPES = [
-  'send_email', 'send_sms', 'wait', 'condition',
-  'add_tag', 'remove_tag', 'change_status', 'assign', 'notify', 'webhook',
+  'send_email', 'send_sms', 'wait', 'condition', 'add_tag', 'remove_tag', 
+  'change_status', 'assign', 'notify', 'webhook', 'update_pipeline', 'update_stage'
 ] as const;
 export type StepType = typeof STEP_TYPES[number];
 
@@ -311,15 +319,18 @@ export interface Task {
 
 // ── Phase 7 : Champs personnalisés ─────────────────────────
 
-export const CUSTOM_FIELD_TYPES = ['text', 'number', 'select', 'date', 'checkbox'] as const;
+export const CUSTOM_FIELD_TYPES = ['text', 'textarea', 'number', 'date', 'select', 'multiselect', 'boolean'] as const;
 export type CustomFieldType = typeof CUSTOM_FIELD_TYPES[number];
 
 export interface CustomFieldDef {
   id: string;
+  client_id: string;
   name: string;
+  slug: string;
   field_type: CustomFieldType;
-  options: string[];  // pour type 'select'
+  options: string[];
   is_required: boolean;
+  sort_order: number;
 }
 
 export interface CustomFieldValue {
@@ -333,16 +344,13 @@ export interface CustomFieldValue {
 
 export interface SmartList {
   id: string;
+  user_id: string;
+  client_id: string;
   name: string;
-  filters: {
-    status?: string;
-    source?: string;
-    client_id?: string;
-    search?: string;
-    tag?: string;
-  };
+  filters: Record<string, unknown>;
   count?: number;
   created_at: string;
+  updated_at?: string;
 }
 
 // ── Phase 4 : Calendrier & RDV ─────────────────────────────
@@ -439,8 +447,8 @@ export interface PipelineData {
 export const STATUS_LABELS: Record<LeadStatus, string> = {
   new: 'Nouveau',
   contacted: 'Contacté',
-  meeting: 'RDV',
-  signed: 'Signé',
+  qualified: 'Qualifié',
+  won: 'Gagné',
   closed: 'Fermé',
   lost: 'Perdu',
 };
@@ -448,15 +456,16 @@ export const STATUS_LABELS: Record<LeadStatus, string> = {
 export const STATUS_COLORS: Record<LeadStatus, string> = {
   new: 'var(--brand-primary)',
   contacted: 'var(--info)',
-  meeting: 'var(--warning)',
-  signed: 'var(--success)',
+  qualified: 'var(--warning)',
+  won: 'var(--success)',
   closed: 'var(--text-muted)',
   lost: 'var(--danger)',
 };
 
 export const TYPE_LABELS: Record<LeadType, string> = {
-  buy: 'Acheteur',
-  sell: 'Vendeur',
+  inbound: 'Entrant',
+  qualified: 'Qualifié',
+  customer: 'Client',
 };
 
 export const SOURCE_LABELS: Record<string, string> = {
@@ -583,6 +592,7 @@ export const TEMPLATE_CATEGORY_LABELS: Record<TemplateCategory, string> = {
 export const TRIGGER_LABELS: Record<TriggerType, string> = {
   lead_created: 'Lead créé',
   status_changed: 'Statut modifié',
+  pipeline_stage_changed: 'Étape Pipeline modifiée',
   tag_added: 'Tag ajouté',
   form_submitted: 'Formulaire soumis',
   score_threshold: 'Score atteint',
@@ -591,6 +601,7 @@ export const TRIGGER_LABELS: Record<TriggerType, string> = {
 export const TRIGGER_ICONS: Record<TriggerType, string> = {
   lead_created: '🆕',
   status_changed: '🔄',
+  pipeline_stage_changed: '🔀',
   tag_added: '🏷️',
   form_submitted: '📋',
   score_threshold: '📊',
@@ -607,6 +618,8 @@ export const STEP_TYPE_LABELS: Record<StepType, string> = {
   assign: 'Assigner',
   notify: 'Notifier',
   webhook: 'Webhook',
+  update_pipeline: 'Changer Pipeline',
+  update_stage: 'Changer Étape',
 };
 
 export const STEP_TYPE_ICONS: Record<StepType, string> = {
@@ -620,6 +633,8 @@ export const STEP_TYPE_ICONS: Record<StepType, string> = {
   assign: '👤',
   notify: '🔔',
   webhook: '🌐',
+  update_pipeline: '🔀',
+  update_stage: '⏭️',
 };
 
 export const ENROLLMENT_STATUS_LABELS: Record<EnrollmentStatus, string> = {
@@ -694,3 +709,4 @@ export const TASK_STATUS_ICONS: Record<TaskStatus, string> = {
   in_progress: '🔄',
   done: '✅',
 };
+

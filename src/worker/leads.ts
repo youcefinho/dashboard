@@ -70,11 +70,11 @@ export async function handleGetClientLeads(
   let query = 'SELECT * FROM leads WHERE client_id = ?';
   const params: string[] = [clientId];
 
-  if (status && ['new', 'contacted', 'meeting', 'signed', 'closed', 'lost'].includes(status)) {
+  if (status && ['new', 'contacted', 'qualified', 'won', 'closed', 'lost'].includes(status)) {
     query += ' AND status = ?';
     params.push(status);
   }
-  if (type && ['buy', 'sell'].includes(type)) {
+  if (type && ['inbound', 'qualified', 'customer'].includes(type)) {
     query += ' AND type = ?';
     params.push(type);
   }
@@ -109,7 +109,7 @@ export async function handleGetLeads(env: Env, auth: { role: string }, url: URL)
                LEFT JOIN clients c ON l.client_id = c.id WHERE 1=1`;
   const params: (string | number)[] = [];
 
-  if (status && ['new', 'contacted', 'meeting', 'signed', 'closed', 'lost'].includes(status)) {
+  if (status && ['new', 'contacted', 'qualified', 'won', 'closed', 'lost'].includes(status)) {
     query += ' AND l.status = ?';
     params.push(status);
   }
@@ -169,13 +169,15 @@ export async function handlePatchLead(
   }
 
   const body = await request.json() as Record<string, unknown>;
+  const oldLead = await env.DB.prepare('SELECT pipeline_id, stage_id FROM leads WHERE id = ?').bind(leadId).first() as { pipeline_id: string | null; stage_id: string | null } | null;
+  if (!oldLead) return json({ error: 'Lead introuvable' }, 404);
   const updates: string[] = [];
   const params: (string | number)[] = [];
   const activities: Array<{ action: string; details: string }> = [];
 
   if (body.status !== undefined) {
     const status = body.status as string;
-    if (!['new', 'contacted', 'meeting', 'signed', 'closed', 'lost'].includes(status)) {
+    if (!['new', 'contacted', 'qualified', 'won', 'closed', 'lost'].includes(status)) {
       return json({ error: 'Statut invalide' }, 400);
     }
     updates.push('status = ?');
@@ -289,9 +291,40 @@ export async function handlePatchLead(
         }
       }
     } catch { /* non critique */ }
+  }
 
-    // Notification pour les admins si statut important
-    const importantStatuses = ['signed', 'closed'];
+  // Trigger workflows sur changement de stage pipeline
+  if ((body.pipeline_id !== undefined || body.stage_id !== undefined) && autoEnrollFn) {
+    try {
+      const { results: wfs } = await env.DB.prepare(
+        "SELECT id, trigger_config FROM workflows WHERE is_active = 1 AND trigger_type = 'pipeline_stage_changed'"
+      ).all();
+      
+      const newPipelineId = body.pipeline_id || oldLead.pipeline_id;
+      const newStageId = body.stage_id || oldLead.stage_id;
+      
+      // On ne déclenche que si ça a réellement changé
+      if (newPipelineId !== oldLead.pipeline_id || newStageId !== oldLead.stage_id) {
+        for (const wf of (wfs || []) as Array<{ id: string; trigger_config: string }>) {
+          let cfg: { pipeline_id?: string; stage_id?: string } = {};
+          try { cfg = JSON.parse(wf.trigger_config); } catch { /* */ }
+          
+          const matchPipeline = !cfg.pipeline_id || cfg.pipeline_id === newPipelineId;
+          const matchStage = !cfg.stage_id || cfg.stage_id === newStageId;
+          
+          if (matchPipeline && matchStage) {
+            await autoEnrollFn(env, wf.id, leadId);
+          }
+        }
+      }
+    } catch { /* non critique */ }
+  }
+
+
+
+  // Notification pour les admins si statut important
+  if (body.status !== undefined) {
+    const importantStatuses = ['won', 'closed'];
     if (importantStatuses.includes(body.status as string)) {
       try {
         const lead = await env.DB.prepare('SELECT name, client_id FROM leads WHERE id = ?').bind(leadId).first() as { name: string; client_id: string } | null;
@@ -299,9 +332,9 @@ export async function handlePatchLead(
           const { results: admins } = await env.DB.prepare(
             "SELECT id FROM users WHERE role = 'admin' AND is_active = 1"
           ).all();
-          const statusLabel = body.status === 'signed' ? '✍️ Signé' : '🏁 Fermé';
+          const statusLabel = body.status === 'won' ? '🏆 Gagné' : '🏁 Fermé';
           for (const admin of (admins || []) as Array<{ id: string }>) {
-            await createNotification(env, admin.id, `Lead ${statusLabel}`, `${lead.name} est passé à "${body.status}"`, body.status === 'signed' ? '✍️' : '🏁', `/leads/${leadId}`, lead.client_id);
+            await createNotification(env, admin.id, `Lead ${statusLabel}`, `${lead.name} est passé à "${body.status}"`, body.status === 'won' ? '🏆' : '🏁', `/leads/${leadId}`, lead.client_id);
           }
         }
       } catch { /* non critique */ }
@@ -342,7 +375,7 @@ export async function handleBulkLeads(
 
   switch (body.action) {
     case 'change_status': {
-      const validStatuses = ['new', 'contacted', 'meeting', 'signed', 'closed', 'lost'];
+      const validStatuses = ['new', 'contacted', 'qualified', 'won', 'closed', 'lost'];
       if (!body.value || !validStatuses.includes(body.value)) {
         return json({ error: 'Statut invalide' }, 400);
       }
@@ -607,8 +640,8 @@ export async function handleWebhookLead(request: Request, env: Env): Promise<Res
   const email = sanitizeInput(String(body.email || ''), 255);
   const phone = sanitizeInput(String(body.phone || ''), 30);
   const message = sanitizeInput(String(body.message || ''), 2000);
-  const typeRaw = String(body.type || 'buy').toLowerCase();
-  const type = ['buy', 'sell', 'invest'].includes(typeRaw) ? typeRaw : 'buy';
+  const typeRaw = String(body.type || 'inbound').toLowerCase();
+  const type = ['inbound', 'qualified', 'customer'].includes(typeRaw) ? typeRaw : 'inbound';
 
   if (!name || !email) {
     return json({ error: 'name and email are required' }, 400);

@@ -37,7 +37,7 @@ export function generateCaslFooter(unsubscribeUrl: string): string {
 export function generateAmfDisclaimer(certificate: string): string {
   return `
     <div style="margin-top:24px;padding:12px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;font-size:10px;color:#6b7280;text-align:center;">
-      <p style="margin:0;">Inscrit à l'Autorité des marchés financiers (AMF) — Certificat n° ${sanitizeHtml(certificate)}</p>
+      <p style="margin:0;">Mentions légales : ${sanitizeHtml(certificate)}</p>
       <p style="margin:4px 0 0;">Les rendements passés ne garantissent pas les rendements futurs. Consultez un conseiller qualifié avant toute décision.</p>
     </div>
   `;

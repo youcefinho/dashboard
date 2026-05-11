@@ -40,7 +40,7 @@ async function callLLM(env: Env, systemPrompt: string, userPrompt: string): Prom
 // ── P3.6.a: AI Lead Scoring ─────────────────────────────────
 
 export async function scoreLeadAI(env: Env, leadData: Record<string, any>, history: any[]): Promise<number> {
-  const systemPrompt = "Tu es un expert en qualification de leads immobiliers au Québec. Ton objectif est d'analyser le profil d'un lead (budget, source, message, historique) et d'assigner un score de qualification entre 0 et 100. Réponds UNIQUEMENT avec un nombre entier. Ne justifie pas.";
+  const systemPrompt = "Tu es un expert en qualification de leads B2B/B2C au Québec. Ton objectif est d'analyser le profil d'un lead (budget, source, message, historique) et d'assigner un score de qualification entre 0 et 100. Réponds UNIQUEMENT avec un nombre entier. Ne justifie pas.";
   
   const userPrompt = `
 Lead Data: ${JSON.stringify(leadData)}
@@ -58,24 +58,24 @@ Historique: ${JSON.stringify(history)}
 
 export async function handleAiGenerate(request: Request, env: Env): Promise<Response> {
   const body = await request.json() as {
-    action: 'email_followup' | 'centris_description' | 'social_post' | 'objection_handler' | 'reply_message';
+    action: 'email_followup' | 'generate_proposal' | 'social_post' | 'objection_handler' | 'reply_message';
     context: string;
     brandVoice?: string;
   };
 
   const { action, context, brandVoice = 'Professionnel, rassurant et québécois naturel.' } = body;
 
-  let systemPrompt = `Tu es un assistant IA pour un courtier immobilier au Québec. Ton ton doit être: ${brandVoice}. `;
+  let systemPrompt = `Tu es un assistant IA pour une PME au Québec. Ton ton doit être: ${brandVoice}. `;
 
   switch (action) {
     case 'email_followup':
       systemPrompt += "Génère un email de relance ou de suivi basé sur le contexte fourni. L'email doit être convaincant, poli et proposer une prochaine étape claire (ex: appel téléphonique).";
       break;
-    case 'centris_description':
-      systemPrompt += "Génère une description de propriété attrayante pour Centris basée sur les caractéristiques fournies. Mets en valeur les points forts et utilise un vocabulaire immobilier vendeur.";
+    case 'generate_proposal':
+      systemPrompt += "Génère une proposition commerciale attrayante basée sur le contexte. Mets en valeur les points forts de notre service et incite à l'action.";
       break;
     case 'social_post':
-      systemPrompt += "Génère un post pour les réseaux sociaux (Facebook/Instagram) basé sur le contexte. Inclus des hashtags pertinents (#immobilierQC, etc.) et un call-to-action.";
+      systemPrompt += "Génère un post pour les réseaux sociaux (Facebook/Instagram) basé sur le contexte. Inclus des hashtags pertinents et un call-to-action.";
       break;
     case 'objection_handler':
       systemPrompt += "Le client a émis une objection immobilière. Fournis une réponse professionnelle et rassurante pour traiter cette objection.";
@@ -97,7 +97,7 @@ export async function handleAiGenerate(request: Request, env: Env): Promise<Resp
 export async function handleAiSuggestWorkflow(request: Request, env: Env): Promise<Response> {
   const body = await request.json() as { prompt: string };
   
-  const systemPrompt = "Tu es un expert en automatisation marketing immobilier. L'utilisateur va décrire un besoin en langage naturel. Tu dois générer un tableau JSON représentant les étapes d'un workflow Intralys CRM. Chaque objet doit avoir: id, type ('trigger', 'delay', 'email', 'sms', 'task', 'condition'), et config (un objet avec les détails). Exemple de config pour delay: { duration: 48, unit: 'hours' }. Réponds UNIQUEMENT avec le JSON valide, sans markdown autour.";
+  const systemPrompt = "Tu es un expert en automatisation marketing. L'utilisateur va décrire un besoin en langage naturel. Tu dois générer un tableau JSON représentant les étapes d'un workflow Intralys CRM. Chaque objet doit avoir: id, type ('trigger', 'delay', 'email', 'sms', 'task', 'condition'), et config (un objet avec les détails). Exemple de config pour delay: { duration: 48, unit: 'hours' }. Réponds UNIQUEMENT avec le JSON valide, sans markdown autour.";
   
   const userPrompt = body.prompt;
 

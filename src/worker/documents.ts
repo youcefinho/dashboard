@@ -377,7 +377,7 @@ export async function handlePublicSignDocument(
   // Construire l'audit trail
   const trail = JSON.parse(doc.audit_trail as string || '[]') as Array<Record<string, unknown>>;
   trail.push({
-    action: 'signed',
+    action: 'won',
     ip,
     user_agent: userAgent,
     timestamp,
@@ -388,7 +388,7 @@ export async function handlePublicSignDocument(
   // Mettre à jour le document
   await env.DB.prepare(
     `UPDATE documents
-     SET status = 'signed', signed_at = ?, signature_data = ?, audit_trail = ?
+     SET status = 'won', signed_at = ?, signature_data = ?, audit_trail = ?
      WHERE id = ?`
   ).bind(timestamp, body.signature, JSON.stringify(trail), doc.id as string).run();
 

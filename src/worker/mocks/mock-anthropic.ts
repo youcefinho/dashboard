@@ -30,7 +30,7 @@ export function mockClaude(systemPrompt: string, userMessage: string): string {
   if (lower.includes('email_followup') || lower.includes('email') && lower.includes('followup')) {
     return JSON.stringify({
       subject: 'Suite à votre demande — Rencontre stratégique gratuite',
-      body: `Bonjour {{nom}},\n\nMerci d'avoir manifesté votre intérêt pour nos services immobiliers.\n\nJ'aimerais vous proposer une rencontre stratégique gratuite de 30 minutes pour discuter de votre projet. C'est sans engagement et confidentiel.\n\nQuand seriez-vous disponible cette semaine ?\n\nAu plaisir,\nVotre courtier`,
+      body: `Bonjour {{nom}},\n\nMerci d'avoir manifesté votre intérêt pour nos services.\n\nJ'aimerais vous proposer une rencontre stratégique gratuite de 30 minutes pour discuter de votre projet. C'est sans engagement et confidentiel.\n\nQuand seriez-vous disponible cette semaine ?\n\nAu plaisir,\nVotre conseiller`,
       tone: 'professionnel_chaleureux'
     });
   }
@@ -51,8 +51,8 @@ export function mockClaude(systemPrompt: string, userMessage: string): string {
     });
   }
 
-  // Détection description Centris
-  if (lower.includes('centris') || lower.includes('description')) {
+  // Détection proposition commerciale
+  if (lower.includes('proposition') || lower.includes('offre')) {
     return JSON.stringify({
       title: 'Magnifique propriété avec vue panoramique',
       description: 'Superbe maison unifamiliale de 4 chambres située dans un quartier recherché. Rénovée avec goût, cette propriété offre des espaces de vie lumineux, une cuisine moderne avec îlot central, et un grand terrain paysagé. Proche des écoles, parcs et services.',
@@ -63,9 +63,9 @@ export function mockClaude(systemPrompt: string, userMessage: string): string {
   // Détection social post
   if (lower.includes('social_post') || lower.includes('social')) {
     return JSON.stringify({
-      post: '🏠 Nouvelle inscription ! Magnifique propriété à Gatineau — 4 chambres, terrain boisé, vue sur la rivière. Prix demandé : 485 000 $. Contactez-moi pour une visite privée ! 📞 #immobilier #gatineau #courtier',
+      post: '🚀 Nouveau service disponible ! Contactez-nous pour découvrir comment nous pouvons transformer votre entreprise. #entreprise #croissance',
       platform: 'instagram',
-      hashtags: ['immobilier', 'gatineau', 'courtier', 'maisonsàvendre']
+      hashtags: ['entreprise', 'croissance', 'pme']
     });
   }
 

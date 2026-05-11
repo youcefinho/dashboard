@@ -7,6 +7,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { getPipeline, getPipelines, updateLead } from '@/lib/api';
 import { TYPE_LABELS, SOURCE_LABELS, type Lead, type Pipeline, type PipelineStage } from '@/lib/types';
 import { MoreHorizontal, ChevronDown, LayoutList, BarChart3, Kanban, Filter, Clock, DollarSign, TrendingUp, AlertTriangle, X, Check } from 'lucide-react';
+import { ForecastView } from '@/components/pipelines/ForecastView';
 
 const LOST_REASONS = ['Prix trop élevé', 'Concurrent choisi', 'Mauvais timing', 'Pas de réponse', 'Financement refusé', 'Changement de plan', 'Autre'];
 
@@ -50,10 +51,11 @@ export function PipelinePage() {
   const activePipeline = pipelines.find(p => p.id === activePipelineId) || pipelines[0];
   const stages = activePipeline?.stages || [];
 
-  // Helper pour obtenir la probabilité basée sur les stages win/loss
+  // Helper pour obtenir la probabilité
   const getStageProbability = (stage: PipelineStage) => {
-    if (stage.is_win_stage) return 100;
-    if (stage.is_loss_stage) return 0;
+    if (stage.probability !== undefined && stage.probability !== null) return stage.probability;
+    if (stage.probability === 100) return 100;
+    if (stage.probability === 0) return 0;
     // Approximatif basé sur la position
     const idx = stages.indexOf(stage);
     return Math.min(10 + (idx * 20), 90);
@@ -81,7 +83,7 @@ export function PipelinePage() {
     const targetStage = stages.find(s => s.id === newStageId);
     
     // Si on drop sur "lost" (stage de perte) → ouvrir modal raison
-    if (targetStage?.is_loss_stage) {
+    if (targetStage?.probability === 0) {
       setLostModal({ leadId, show: true });
       // Ne pas mettre à jour le state tout de suite
       return;
@@ -94,7 +96,7 @@ export function PipelinePage() {
 
   const confirmLost = async () => {
     if (!lostModal.leadId) return;
-    const lossStage = stages.find(s => s.is_loss_stage);
+    const lossStage = stages.find(s => s.probability === 0);
     if (!lossStage) return; // Fallback
 
     setLeads(prev => prev.map(l => l.id === lostModal.leadId ? { ...l, stage_id: lossStage.id } : l));
@@ -118,7 +120,7 @@ export function PipelinePage() {
   
   const dormantCount = leads.filter(l => {
     const stage = stages.find(st => st.id === (l.stage_id || stages[0]?.id));
-    return getDaysInStage(l) > 7 && !stage?.is_win_stage && !stage?.is_loss_stage;
+    return getDaysInStage(l) > 7 && stage?.probability !== 100 && stage?.probability !== 0;
   }).length;
 
   const removeFilter = (f: string) => setActiveFilters(prev => prev.filter(x => x !== f));
@@ -285,7 +287,7 @@ export function PipelinePage() {
                   )}
                   {colLeads.map(lead => {
                     const days = getDaysInStage(lead);
-                    const isDormant = days > 7 && !stage.is_win_stage && !stage.is_loss_stage;
+                    const isDormant = days > 7 && stage.probability !== 100 && stage.probability !== 0;
                     return (
                       <div key={lead.id} draggable
                         onDragStart={e => handleDragStart(e, lead.id)}
@@ -311,7 +313,7 @@ export function PipelinePage() {
 
                         {/* Row 2 : Type + Value */}
                         <div className="flex items-center justify-between mb-2">
-                          <Badge color={lead.type === 'buy' ? 'var(--brand-primary)' : 'var(--accent-orange)'}>{TYPE_LABELS[lead.type]}</Badge>
+                          <Badge color={lead.type === 'inbound' ? 'var(--brand-primary)' : 'var(--warning)'}>{TYPE_LABELS[lead.type]}</Badge>
                           {lead.deal_value > 0 && (
                             <span className="text-[11px] font-bold text-[var(--brand-primary)]">{lead.deal_value.toLocaleString('fr-CA')} $</span>
                           )}
@@ -373,7 +375,7 @@ export function PipelinePage() {
                       <td className="px-4 py-3">
                         {stage && <Badge color={stage.color}>{stage.name}</Badge>}
                       </td>
-                      <td className="px-4 py-3"><Badge color={lead.type === 'buy' ? 'var(--brand-primary)' : 'var(--accent-orange)'}>{TYPE_LABELS[lead.type]}</Badge></td>
+                      <td className="px-4 py-3"><Badge color={lead.type === 'inbound' ? 'var(--brand-primary)' : 'var(--warning)'}>{lead.type === 'inbound' ? 'Entrant' : 'Client'}</Badge></td>
                       <td className="px-4 py-3 text-right text-xs font-semibold text-[var(--brand-primary)]">{lead.deal_value > 0 ? `${lead.deal_value.toLocaleString('fr-CA')} $` : '—'}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5">
@@ -396,40 +398,7 @@ export function PipelinePage() {
         </Card>
       ) : (
         /* ── Vue Forecast ── */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {stages.filter(s => !s.is_loss_stage).map(stage => {
-            const colLeads = getColumnLeads(stage.id);
-            const colValue = colLeads.reduce((s, l) => s + (l.deal_value || 0), 0);
-            const prob = getStageProbability(stage);
-            const weighted = colValue * (prob / 100);
-            return (
-              <Card key={stage.id} className="p-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: stage.color }} />
-                  <h3 className="text-sm font-bold text-[var(--text-primary)] truncate">{stage.name}</h3>
-                  <span className="ml-auto text-xs text-[var(--text-muted)]">{prob}%</span>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-[var(--text-muted)]">Opportunités</span>
-                    <span className="font-semibold">{colLeads.length}</span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-[var(--text-muted)]">Valeur brute</span>
-                    <span className="font-semibold">{colValue.toLocaleString('fr-CA')} $</span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-[var(--text-muted)]">Prévision pondérée</span>
-                    <span className="font-bold text-[var(--success)]">{weighted.toLocaleString('fr-CA')} $</span>
-                  </div>
-                </div>
-                <div className="h-2 mt-3 rounded-full bg-[var(--bg-muted)] overflow-hidden">
-                  <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.min((colValue / (totalValue || 1)) * 100, 100)}%`, background: stage.color }} />
-                </div>
-              </Card>
-            );
-          })}
-        </div>
+        <ForecastView pipelineId={activePipelineId!} />
       )}
 
       {/* ── Modal Lost Reason ── */}

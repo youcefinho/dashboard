@@ -40,8 +40,8 @@ CREATE TABLE IF NOT EXISTS leads (
   email TEXT NOT NULL,
   phone TEXT DEFAULT '',
   message TEXT DEFAULT '',
-  type TEXT CHECK (type IN ('buy', 'sell')) DEFAULT 'buy',
-  status TEXT CHECK (status IN ('new', 'contacted', 'meeting', 'signed', 'closed', 'lost')) DEFAULT 'new',
+  type TEXT CHECK (type IN ('inbound', 'qualified', 'customer')) DEFAULT 'inbound',
+  status TEXT CHECK (status IN ('new', 'contacted', 'qualified', 'won', 'closed', 'lost')) DEFAULT 'new',
   budget TEXT DEFAULT '',
   timeline TEXT DEFAULT '',
   address TEXT DEFAULT '',
@@ -60,6 +60,9 @@ CREATE TABLE IF NOT EXISTS leads (
   country TEXT DEFAULT 'CA',
   timezone TEXT DEFAULT 'America/Toronto',
   deleted_at TEXT,
+  pipeline_id TEXT REFERENCES pipelines(id),
+  stage_id TEXT REFERENCES pipeline_stages(id),
+  lost_reason_id TEXT REFERENCES lost_reasons(id),
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now'))
 );
@@ -240,7 +243,37 @@ CREATE TABLE IF NOT EXISTS device_tokens (
   id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
   user_id TEXT NOT NULL REFERENCES users(id),
   token TEXT NOT NULL UNIQUE,
-  platform TEXT CHECK (platform IN ('ios', 'android', 'web')) DEFAULT 'web',
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+-- P3.11 Multi-Pipelines & Custom Stages (Phase B)
+CREATE TABLE IF NOT EXISTS pipelines (
+  id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  client_id TEXT NOT NULL REFERENCES clients(id),
+  name TEXT NOT NULL,
+  is_default INTEGER DEFAULT 0,
+  color TEXT DEFAULT '#0891b2',
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS pipeline_stages (
+  id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  pipeline_id TEXT NOT NULL REFERENCES pipelines(id),
+  name TEXT NOT NULL,
+  sort_order INTEGER DEFAULT 0,
+  probability INTEGER DEFAULT 0,
+  color TEXT DEFAULT '#9ca3af',
+  wip_limit INTEGER DEFAULT 0,
+  sla_days INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS lost_reasons (
+  id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  client_id TEXT NOT NULL REFERENCES clients(id),
+  label TEXT NOT NULL,
+  sort_order INTEGER DEFAULT 0,
   created_at TEXT DEFAULT (datetime('now'))
 );
 

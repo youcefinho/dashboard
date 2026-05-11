@@ -195,16 +195,16 @@ function computeScore(lead: Record<string, unknown>, formula: ScoreFormula): num
 
       // Type de lead
       case 'type_buy':
-        met = lead.type === 'buy';
+        met = lead.type === 'inbound';
         break;
       case 'type_sell':
-        met = lead.type === 'sell';
+        met = lead.type === 'customer';
         break;
 
       // Tags spéciaux
       case 'tag_chaud':
         // On vérifierait les tags du lead (simplifié ici)
-        met = lead.status === 'meeting' || lead.status === 'signed';
+        met = lead.status === 'qualified' || lead.status === 'won';
         break;
 
       // Source
@@ -228,7 +228,7 @@ function computeScore(lead: Record<string, unknown>, formula: ScoreFormula): num
 
       // RDV
       case 'meeting_booked':
-        met = lead.status === 'meeting' || lead.status === 'signed';
+        met = lead.status === 'qualified' || lead.status === 'won';
         break;
 
       // Réactivité
@@ -258,14 +258,14 @@ export async function seedDefaultScoreProfiles(env: Env): Promise<void> {
       is_default: 1,
     },
     {
-      name: 'Score acheteur',
-      description: 'Score spécifique pour les acheteurs potentiels',
+      name: 'Score prospect',
+      description: 'Score spécifique pour les leads entrants',
       formula: { weights: { type_buy: 30, has_budget: 25, response_time_24h: 20, meeting_booked: 25 } },
       is_default: 0,
     },
     {
-      name: 'Score vendeur',
-      description: 'Score spécifique pour les vendeurs',
+      name: 'Score client',
+      description: 'Score spécifique pour les clients',
       formula: { weights: { type_sell: 30, has_property_address: 25, has_property_value: 25, engagement_7d: 20 } },
       is_default: 0,
     },

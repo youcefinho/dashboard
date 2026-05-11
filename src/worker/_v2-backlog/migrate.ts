@@ -338,7 +338,7 @@ async function migrateContacts(
             `INSERT OR IGNORE INTO leads
              (id, client_id, name, email, phone, source, type, status, dnd, dnd_settings,
               date_of_birth, country, timezone, external_id, migrated_from, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, 'buy', 'new', ?, ?, ?, ?, ?, ?, 'ghl', ?)`
+             VALUES (?, ?, ?, ?, ?, ?, 'inbound', 'new', ?, ?, ?, ?, ?, ?, 'ghl', ?)`
           ).bind(
             leadId, clientId, sanitizeInput(name, 200), email, phone,
             sanitizeInput(contact.source || 'ghl_import', 100),

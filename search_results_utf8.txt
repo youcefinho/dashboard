@@ -1,0 +1,143 @@
+﻿
+src\components\layout\Sidebar.tsx:174:                <p className="text-[10px] text-[var(--text-inverse-mut)] 
+truncate">{isAdmin ? 'Administrateur' : 'Courtier'}</p>
+src\components\CommandPalette.tsx:54:      { id: 'nav-clients', icon: '👥', label: 'Clients', description: 'Gestion 
+des courtiers', action: () => go('/clients'), category: 'Navigation' },
+src\lib\api.ts:1035:  action: 'email_followup' | 'centris_description' | 'social_post' | 'objection_handler' | 
+'sms_followup';
+src\lib\types.ts:458:  buy: 'Acheteur',
+src\lib\types.ts:459:  sell: 'Vendeur',
+src\pages\settings\ComplianceSettings.tsx:16:  const [amfCert, setAmfCert] = useState('');
+src\pages\settings\ComplianceSettings.tsx:17:  const [amfRequired, setAmfRequired] = useState(false);
+src\pages\settings\ComplianceSettings.tsx:29:  const handleSaveAmf = async () => {
+src\pages\settings\ComplianceSettings.tsx:66:          Gérez vos listes de désabonnement (CASL) et vos mentions 
+légales (AMF).
+src\pages\settings\ComplianceSettings.tsx:72:          <Shield size={16} /> Mentions AMF
+src\pages\settings\ComplianceSettings.tsx:78:              id="amf-req"
+src\pages\settings\ComplianceSettings.tsx:79:              checked={amfRequired} 
+src\pages\settings\ComplianceSettings.tsx:80:              onChange={(e: any) => setAmfRequired(e.target.checked)} 
+src\pages\settings\ComplianceSettings.tsx:83:            <label htmlFor="amf-req" className="text-sm">Activer le 
+disclaimer AMF automatique dans les emails</label>
+src\pages\settings\ComplianceSettings.tsx:85:          {amfRequired && (
+src\pages\settings\ComplianceSettings.tsx:87:              label="Numéro de certificat AMF" 
+src\pages\settings\ComplianceSettings.tsx:88:              value={amfCert} 
+src\pages\settings\ComplianceSettings.tsx:89:              onChange={(e: any) => setAmfCert(e.target.value)} 
+src\pages\settings\ComplianceSettings.tsx:93:          <Button onClick={handleSaveAmf} disabled={amfRequired && 
+!amfCert}>Sauvegarder</Button>
+src\pages\ClientLeads.tsx:81:            <option value="buy">Acheteur</option>
+src\pages\ClientLeads.tsx:82:            <option value="sell">Vendeur</option>
+src\pages\Clients.tsx:1:// ── Page Clients — Liste des courtiers ──────────────────────
+src\pages\Clients.tsx:76:          <p className="text-[10px] text-[var(--text-muted)] uppercase 
+tracking-wider">Courtiers</p>
+src\pages\Clients.tsx:97:          placeholder="Rechercher un courtier..."
+src\pages\Clients.tsx:102:            {filteredClients.length} courtier{filteredClients.length > 1 ? 's' : ''}
+src\pages\Clients.tsx:117:          description={searchQuery ? `Aucun courtier ne correspond à « ${searchQuery} »` : 
+'Ajoutez votre premier courtier pour commencer.'}
+src\pages\Clients.tsx:236:        <Input label="Nom du courtier" id="client-name" value={name} onChange={e => 
+setName(e.target.value)} placeholder="Mathis Guimont" required />
+src\pages\Clients.tsx:237:        <Input label="Email" id="client-email" type="email" value={email} onChange={e => 
+setEmail(e.target.value)} placeholder="courtier@email.com" required />
+src\pages\Clients.tsx:243:        <Input label="URL du site" id="client-site" value={siteUrl} onChange={e => 
+setSiteUrl(e.target.value)} placeholder="https://mathis-guimont.com" />
+src\pages\Documents.tsx:131:                placeholder="Ex: Mandat de courtage acheteur - Jean Dupont" 
+src\pages\DocumentTemplates.tsx:82:                placeholder="Ex: Mandat de courtage acheteur" 
+src\pages\Integrations.tsx:48:    id: 'centris', name: 'Centris.ca', icon: '🏠', category: 'data',
+src\pages\Integrations.tsx:49:    description: 'Importez les fiches propriétés depuis Centris pour enrichir vos leads 
+acheteurs.',
+src\pages\Integrations.tsx:52:      { key: 'broker_id', label: 'Numéro de courtier', placeholder: 'RE/MAX 123456' },
+src\pages\Integrations.tsx:187:X-Client-Id: <id_courtier>`}</pre>
+src\pages\Reports.tsx:97:    { id: 'performance', label: 'Courtiers', icon: Trophy },
+src\pages\Reports.tsx:181:                <Pie data={[{ name: 'Acheteurs', value: typeCounts.buy }, { name: 
+'Vendeurs', value: typeCounts.sell }]}
+src\pages\Reports.tsx:307:      {/* ── Performance par courtier ────────────── */}
+src\pages\Reports.tsx:311:            <h3 className="text-sm font-semibold mb-4">🏆 Performance par courtier</h3>
+src\pages\Reports.tsx:332:                    <th className="text-left py-2 text-xs 
+text-[var(--text-muted)]">Courtier</th>
+src\pages\Reports.tsx:394:              <p className="text-xs text-[var(--text-muted)]">Courtiers actifs</p>
+src\pages\Reports.tsx:400:              <p className="text-xs text-[var(--text-muted)]">Leads / courtier</p>
+src\pages\Settings.tsx:130:                    <Badge color={isAdmin ? 'var(--brand-primary)' : 
+'var(--info)'}>{isAdmin ? 'Administrateur' : 'Courtier'}</Badge>
+src\pages\Templates.tsx:269:              Sujet <span className="text-[var(--text-muted)]">(variables : {`{{nom}}, 
+{{courtier}}`})</span>
+src\pages\Templates.tsx:332:                <span className="font-medium">courtier@intralys.com</span>
+src\worker\mocks\mock-anthropic.ts:33:      body: `Bonjour {{nom}},\n\nMerci d'avoir manifesté votre intérêt pour nos 
+services immobiliers.\n\nJ'aimerais vous proposer une rencontre stratégique gratuite de 30 minutes pour discuter de 
+votre projet. C'est sans engagement et confidentiel.\n\nQuand seriez-vous disponible cette semaine ?\n\nAu 
+plaisir,\nVotre courtier`,
+src\worker\mocks\mock-anthropic.ts:54:  // Détection description Centris
+src\worker\mocks\mock-anthropic.ts:55:  if (lower.includes('centris') || lower.includes('description')) {
+src\worker\mocks\mock-anthropic.ts:66:      post: '🏠 Nouvelle inscription ! Magnifique propriété à Gatineau — 4 
+chambres, terrain boisé, vue sur la rivière. Prix demandé : 485 000 $. Contactez-moi pour une visite privée ! 📞 
+#immobilier #gatineau #courtier',
+src\worker\mocks\mock-anthropic.ts:68:      hashtags: ['immobilier', 'gatineau', 'courtier', 'maisonsàvendre']
+src\worker\mocks\mock-gbp.ts:21:        comment: 'Service exceptionnel ! Mathis nous a guidés tout au long du 
+processus d\'achat. Très professionnel et à l\'écoute.',
+src\worker\mocks\mock-gbp.ts:45:        comment: 'Troisième transaction avec Mathis. Toujours aussi fiable et 
+efficace. Je recommande à 100% !',
+src\worker\__tests__\ai.test.ts:8:      'Tu es un expert en qualification de leads immobiliers QC. Score 0-100.',
+src\worker\__tests__\ai.test.ts:64:  it('retourne une description Centris', () => {
+src\worker\__tests__\ai.test.ts:65:    const result = mockClaude('', 'centris description');
+src\worker\__tests__\compliance.test.ts:1:// ── Tests compliance.ts — tokens, footers, AMF ──
+src\worker\__tests__\compliance.test.ts:7:  generateAmfDisclaimer,
+src\worker\__tests__\compliance.test.ts:42:    const email = 'jean-françois.dubé@courtier-qc.ca';
+src\worker\__tests__\compliance.test.ts:67:describe('generateAmfDisclaimer', () => {
+src\worker\__tests__\compliance.test.ts:69:    const disclaimer = generateAmfDisclaimer('AMF-12345');
+src\worker\__tests__\compliance.test.ts:70:    expect(disclaimer).toContain('AMF-12345');
+src\worker\__tests__\compliance.test.ts:73:  it('contient la mention AMF', () => {
+src\worker\__tests__\compliance.test.ts:74:    const disclaimer = generateAmfDisclaimer('CERT-999');
+src\worker\__tests__\compliance.test.ts:79:    const disclaimer = generateAmfDisclaimer('CERT-001');
+src\worker\__tests__\compliance.test.ts:84:    const disclaimer = 
+generateAmfDisclaimer('<script>alert("xss")</script>');
+src\worker\__tests__\helpers.test.ts:25:    expect(sanitizeHtml('Bonjour Mathis')).toBe('Bonjour Mathis');
+src\worker\ai.ts:43:  const systemPrompt = "Tu es un expert en qualification de leads immobiliers au Québec. Ton 
+objectif est d'analyser le profil d'un lead (budget, source, message, historique) et d'assigner un score de 
+qualification entre 0 et 100. Réponds UNIQUEMENT avec un nombre entier. Ne justifie pas.";
+src\worker\ai.ts:61:    action: 'email_followup' | 'centris_description' | 'social_post' | 'objection_handler' | 
+'reply_message';
+src\worker\ai.ts:68:  let systemPrompt = `Tu es un assistant IA pour un courtier immobilier au Québec. Ton ton doit 
+être: ${brandVoice}. `;
+src\worker\ai.ts:74:    case 'centris_description':
+src\worker\ai.ts:75:      systemPrompt += "Génère une description de propriété attrayante pour Centris basée sur les 
+caractéristiques fournies. Mets en valeur les points forts et utilise un vocabulaire immobilier vendeur.";
+src\worker\ai.ts:78:      systemPrompt += "Génère un post pour les réseaux sociaux (Facebook/Instagram) basé sur le 
+contexte. Inclus des hashtags pertinents (#immobilierQC, etc.) et un call-to-action.";
+src\worker\ai.ts:100:  const systemPrompt = "Tu es un expert en automatisation marketing immobilier. L'utilisateur va 
+décrire un besoin en langage naturel. Tu dois générer un tableau JSON représentant les étapes d'un workflow Intralys 
+CRM. Chaque objet doit avoir: id, type ('trigger', 'delay', 'email', 'sms', 'task', 'condition'), et config (un objet 
+avec les détails). Exemple de config pour delay: { duration: 48, unit: 'hours' }. Réponds UNIQUEMENT avec le JSON 
+valide, sans markdown autour.";
+src\worker\broadcast.ts:109:  const { generateUnsubscribeToken, generateCaslFooter, generateAmfDisclaimer, 
+isUnsubscribed } = await import('./compliance');
+src\worker\broadcast.ts:151:          let amfFooter = '';
+src\worker\broadcast.ts:153:            const client = await env.DB.prepare('SELECT amf_certificate, 
+amf_disclaimer_required FROM clients WHERE id = ?').bind(clientId).first() as { amf_certificate?: string; 
+amf_disclaimer_required?: number } | null;
+src\worker\broadcast.ts:154:            if (client?.amf_disclaimer_required && client.amf_certificate) amfFooter = 
+generateAmfDisclaimer(client.amf_certificate);
+src\worker\broadcast.ts:160:            html: personalizedHtml + amfFooter + caslFooter,
+src\worker\compliance.ts:1:// ── Module Compliance (CASL + Loi 25 + AMF) — Intralys CRM ─
+src\worker\compliance.ts:37:export function generateAmfDisclaimer(certificate: string): string {
+src\worker\compliance.ts:40:      <p style="margin:0;">Inscrit à l'Autorité des marchés financiers (AMF) — Certificat 
+n° ${sanitizeHtml(certificate)}</p>
+src\worker\documents.ts:245:      amf_certificate: client.amf_certificate as string || '',
+src\worker\messages.ts:6:import { isUnsubscribed, generateCaslFooter, generateAmfDisclaimer, generateUnsubscribeToken 
+} from './compliance';
+src\worker\messages.ts:68:  // Récupérer les options du client pour l'AMF
+src\worker\messages.ts:69:  const clientData = await env.DB.prepare('SELECT amf_certificate, amf_disclaimer_required 
+FROM clients WHERE id = ?').bind(lead.client_id).first() as { amf_certificate?: string; amf_disclaimer_required?: 
+number } | null;
+src\worker\messages.ts:78:    if (clientData?.amf_disclaimer_required && clientData?.amf_certificate) {
+src\worker\messages.ts:79:      finalMessageBody += generateAmfDisclaimer(clientData.amf_certificate);
+src\worker\messages.ts:92:        to: [lead.email as string], subject: subject || 'Message de votre courtier', html: 
+finalMessageBody,
+src\worker\messages.ts:102:          subject: subject || 'Message de votre courtier',
+src\worker\messages.ts:175:  // Si courtier, filtrer par client_id
+src\worker\reviews.ts:232:        system: `Tu es l'assistant d'un courtier immobilier québécois. Rédige une réponse 
+courte, professionnelle et chaleureuse à un avis Google. Tutoie le client. Reste bref (3-4 phrases max). Ton québécois 
+naturel.`,
+src\worker\scoring.ts:261:      name: 'Score acheteur',
+src\worker\scoring.ts:262:      description: 'Score spécifique pour les acheteurs potentiels',
+src\worker\scoring.ts:267:      name: 'Score vendeur',
+src\worker\scoring.ts:268:      description: 'Score spécifique pour les vendeurs',
+
+

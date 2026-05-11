@@ -89,7 +89,7 @@ export async function handleSendMessage(
     if (env.USE_MOCKS === 'true') {
       const { mockSendEmail } = await import('./mocks/mock-resend');
       const mockResult = await mockSendEmail(env, leadId, lead.client_id as string, {
-        to: [lead.email as string], subject: subject || 'Message de votre courtier', html: finalMessageBody,
+        to: [lead.email as string], subject: subject || 'Nouveau message', html: finalMessageBody,
       });
       externalId = mockResult.data.id;
       status = 'mock-sent';
@@ -99,7 +99,7 @@ export async function handleSendMessage(
         const emailResult = await resend.emails.send({
           from: 'Intralys CRM <noreply@intralys.com>',
           to: [lead.email as string],
-          subject: subject || 'Message de votre courtier',
+          subject: subject || 'Nouveau message',
           html: finalMessageBody,
         });
         if (emailResult.data) {
@@ -172,7 +172,7 @@ export async function handleGetInboxMessages(
                WHERE 1=1`;
   const params: (string | number)[] = [];
 
-  // Si courtier, filtrer par client_id
+  // Si compte standard, filtrer par client_id
   if (auth.role !== 'admin') {
     const user = await env.DB.prepare('SELECT client_id FROM users WHERE id = ?').bind(auth.userId).first() as Record<string, unknown> | null;
     if (user?.client_id) {

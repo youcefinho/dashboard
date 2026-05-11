@@ -50,7 +50,7 @@ export async function handlePublicCreateBooking(request: Request, env: Env): Pro
   const leadId = crypto.randomUUID();
   await env.DB.prepare(
     `INSERT OR IGNORE INTO leads (id, client_id, name, email, phone, source, status, pipeline_id, stage_id)
-     VALUES (?, ?, ?, ?, ?, 'booking', 'meeting', 'pipeline-default', 'stage-meeting')`
+     VALUES (?, ?, ?, ?, ?, 'booking', 'qualified', 'pipeline-default', 'stage-qualified')`
   ).bind(leadId, page.client_id as string, sanitizeInput(body.guest_name, 100),
     sanitizeInput(body.guest_email, 200).toLowerCase(), sanitizeInput(body.guest_phone || '', 30)).run();
 

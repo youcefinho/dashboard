@@ -56,7 +56,7 @@ export async function handleVoiceRecording(request: Request, env: Env): Promise<
       leadId = crypto.randomUUID();
       await env.DB.prepare(
         `INSERT INTO leads (id, client_id, name, email, phone, source, type, status)
-         VALUES (?, ?, ?, ?, ?, 'voice', 'buy', 'new')`
+         VALUES (?, ?, ?, ?, ?, 'voice', 'inbound', 'new')`
       ).bind(leadId, client.id, 'Appelant Inconnu', '', from).run();
     }
 

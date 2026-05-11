@@ -266,7 +266,7 @@ export function TemplatesPage() {
 
           <div>
             <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
-              Sujet <span className="text-[var(--text-muted)]">(variables : {`{{nom}}, {{courtier}}`})</span>
+              Sujet <span className="text-[var(--text-muted)]">(variables : {`{{nom}}, {{user_name}}`})</span>
             </label>
             <Input value={formSubject} onChange={(e) => setFormSubject(e.target.value)} placeholder="Merci {{nom}} !" />
           </div>
@@ -329,7 +329,7 @@ export function TemplatesPage() {
             <div className="bg-[var(--bg-subtle)] rounded-[var(--radius-md)] p-3 space-y-1.5">
               <div className="flex items-center gap-2 text-xs">
                 <span className="text-[var(--text-muted)] w-8">De :</span>
-                <span className="font-medium">courtier@intralys.com</span>
+                <span className="font-medium">contact@intralys.com</span>
               </div>
               <div className="flex items-center gap-2 text-xs">
                 <span className="text-[var(--text-muted)] w-8">À :</span>

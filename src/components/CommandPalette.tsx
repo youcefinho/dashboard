@@ -51,7 +51,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
     const pages: CommandItem[] = [
       { id: 'nav-dashboard', icon: '📊', label: 'Dashboard', description: 'Vue globale', action: () => go('/dashboard'), category: 'Navigation' },
       { id: 'nav-leads', icon: '📋', label: 'Leads', description: 'Liste des leads', action: () => go('/leads'), category: 'Navigation' },
-      { id: 'nav-clients', icon: '👥', label: 'Clients', description: 'Gestion des courtiers', action: () => go('/clients'), category: 'Navigation' },
+      { id: 'nav-clients', icon: '👥', label: 'Clients', description: 'Gestion des sous-comptes', action: () => go('/clients'), category: 'Navigation' },
       { id: 'nav-pipeline', icon: '🔀', label: 'Pipeline', description: 'Vue Kanban', action: () => go('/pipeline'), category: 'Navigation' },
       { id: 'nav-inbox', icon: '💬', label: 'Conversations', description: 'Inbox email/SMS', action: () => go('/inbox'), category: 'Navigation' },
       { id: 'nav-templates', icon: '📝', label: 'Templates', description: 'Modèles d\'email', action: () => go('/templates'), category: 'Navigation' },
@@ -65,7 +65,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
 
     const leadItems: CommandItem[] = leads.map(l => ({
       id: `lead-${l.id}`,
-      icon: l.type === 'buy' ? '🏠' : '💰',
+      icon: l.type === 'inbound' ? '🏠' : '💰',
       label: l.name,
       description: `${l.client_name || l.client_id} · ${l.email}`,
       action: () => go(`/leads/${l.id}`),

@@ -13,7 +13,7 @@ export async function handleDashboardStats(env: Env, auth: { role: string }): Pr
   const newLeads7d = (newResult.results?.[0] as { count: number } | undefined)?.count || 0;
   const pendingResult = await env.DB.prepare("SELECT COUNT(*) as count FROM leads WHERE status IN ('new', 'contacted')").all();
   const pendingLeads = (pendingResult.results?.[0] as { count: number } | undefined)?.count || 0;
-  const signedResult = await env.DB.prepare("SELECT COUNT(*) as count FROM leads WHERE status = 'signed'").all();
+  const signedResult = await env.DB.prepare("SELECT COUNT(*) as count FROM leads WHERE status = 'won'").all();
   const signedLeads = (signedResult.results?.[0] as { count: number } | undefined)?.count || 0;
   const conversionRate = totalLeads > 0 ? Math.round((signedLeads / totalLeads) * 100) : 0;
   const byClientResult = await env.DB.prepare(`SELECT c.name as client_name, COUNT(l.id) as count FROM clients c LEFT JOIN leads l ON c.id = l.client_id WHERE c.is_active = 1 GROUP BY c.id ORDER BY count DESC`).all();
@@ -149,7 +149,7 @@ export async function handleCsvImport(request: Request, env: Env, auth: { userId
       const type = sanitizeInput(record[mapping.type || 'type'] || '', 10);
       const source = sanitizeInput(record[mapping.source || 'source'] || 'csv_import', 50);
       const message = sanitizeInput(record[mapping.message || 'message'] || '', 2000);
-      await env.DB.prepare(`INSERT INTO leads (id, client_id, name, email, phone, type, source, message, status, pipeline_id, stage_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'new', 'pipeline-default', 'stage-new')`).bind(id, body.client_id, name, email, phone, ['buy', 'sell'].includes(type) ? type : 'buy', source, message).run();
+      await env.DB.prepare(`INSERT INTO leads (id, client_id, name, email, phone, type, source, message, status, pipeline_id, stage_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'new', 'pipeline-default', 'stage-new')`).bind(id, body.client_id, name, email, phone, ['inbound', 'customer'].includes(type) ? type : 'inbound', source, message).run();
       results.imported++;
     } catch (err) { results.errors.push({ line: i + 1, error: String(err) }); }
   }

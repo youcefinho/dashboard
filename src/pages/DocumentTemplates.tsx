@@ -79,7 +79,7 @@ export function DocumentTemplatesPage() {
             <div>
               <label className="block text-sm font-medium mb-1">Nom du modèle</label>
               <Input 
-                placeholder="Ex: Mandat de courtage acheteur" 
+                placeholder="Ex: Contrat de prestation de services" 
                 value={newTitle} 
                 onChange={e => setNewTitle(e.target.value)} 
               />

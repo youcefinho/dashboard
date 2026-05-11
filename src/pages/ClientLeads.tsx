@@ -78,8 +78,8 @@ export function ClientLeadsPage() {
             className="px-3 py-2.5 text-sm bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none"
           >
             <option value="">Tous les types</option>
-            <option value="buy">Acheteur</option>
-            <option value="sell">Vendeur</option>
+            <option value="inbound">Entrant</option>
+            <option value="customer">Client</option>
           </select>
         </div>
       </Card>
@@ -118,7 +118,7 @@ export function ClientLeadsPage() {
                       {lead.phone && <p className="text-xs text-[var(--text-muted)]">{lead.phone}</p>}
                     </td>
                     <td className="px-4 py-3">
-                      <Badge color={lead.type === 'buy' ? 'var(--brand-primary)' : 'var(--warning)'}>
+                      <Badge color={lead.type === 'inbound' ? 'var(--brand-primary)' : 'var(--warning)'}>
                         {TYPE_LABELS[lead.type]}
                       </Badge>
                     </td>

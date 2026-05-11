@@ -39,27 +39,27 @@ export function ReportsPage() {
   const sourceCounts: Record<string, number> = {};
   leads.forEach(l => { sourceCounts[l.source || 'direct'] = (sourceCounts[l.source || 'direct'] || 0) + 1; });
 
-  const typeCounts = { buy: 0, sell: 0 };
-  leads.forEach(l => { if (l.type === 'buy') typeCounts.buy++; if (l.type === 'sell') typeCounts.sell++; });
+  const typeCounts = { inbound: 0, customer: 0 };
+  leads.forEach(l => { if (l.type === 'inbound') typeCounts.inbound++; if (l.type === 'customer') typeCounts.customer++; });
 
-  const clientCounts: Record<string, { total: number; signed: number; name: string; value: number }> = {};
+  const clientCounts: Record<string, { total: number; won: number; name: string; value: number }> = {};
   leads.forEach(l => {
     if (!clientCounts[l.client_id]) {
       const client = clients.find(c => c.id === l.client_id);
-      clientCounts[l.client_id] = { total: 0, signed: 0, name: client?.name || l.client_id, value: 0 };
+      clientCounts[l.client_id] = { total: 0, won: 0, name: client?.name || l.client_id, value: 0 };
     }
     const e = clientCounts[l.client_id];
-    if (e) { e.total++; if (l.status === 'signed') e.signed++; e.value += l.deal_value || 0; }
+    if (e) { e.total++; if (l.status === 'won') e.won++; e.value += l.deal_value || 0; }
   });
 
-  const funnelStages = ['new', 'contacted', 'meeting', 'signed'];
+  const funnelStages = ['new', 'contacted', 'qualified', 'won'];
   const funnelData = funnelStages.map(s => ({
     name: STATUS_LABELS[s as keyof typeof STATUS_LABELS] || s,
     count: statusCounts[s] || 0,
     fill: STATUS_COLORS[s as keyof typeof STATUS_COLORS] || '#888',
   }));
 
-  const conversionRate = totalLeads > 0 ? Math.round(((statusCounts['signed'] || 0) / totalLeads) * 100) : 0;
+  const conversionRate = totalLeads > 0 ? Math.round(((statusCounts['won'] || 0) / totalLeads) * 100) : 0;
   const thisMonth = new Date().toISOString().slice(0, 7);
   const leadsThisMonth = leads.filter(l => l.created_at.slice(0, 7) === thisMonth).length;
   const totalPipelineValue = leads.reduce((s, l) => s + (l.deal_value || 0), 0);
@@ -72,7 +72,7 @@ export function ReportsPage() {
   const SOURCE_PIE_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
   // Tendances — leads par semaine
-  const trendData: { week: string; leads: number; signed: number }[] = [];
+  const trendData: { week: string; leads: number; won: number }[] = [];
   const periodDays = period === '30d' ? 30 : period === '90d' ? 90 : 365;
   const now = Date.now();
   for (let i = periodDays; i >= 0; i -= 7) {
@@ -86,7 +86,7 @@ export function ReportsPage() {
     trendData.push({
       week: weekLabel,
       leads: weekLeads.length,
-      signed: weekLeads.filter(l => l.status === 'signed').length,
+      won: weekLeads.filter(l => l.status === 'won').length,
     });
   }
 
@@ -94,7 +94,7 @@ export function ReportsPage() {
     { id: 'funnel', label: 'Funnel', icon: BarChart3 },
     { id: 'sources', label: 'Sources', icon: Target },
     { id: 'attribution', label: 'Attribution', icon: DollarSign },
-    { id: 'performance', label: 'Courtiers', icon: Trophy },
+    { id: 'performance', label: 'Sous-comptes', icon: Trophy },
     { id: 'trends', label: 'Tendances', icon: TrendingUp },
   ];
 
@@ -178,7 +178,7 @@ export function ReportsPage() {
             <h3 className="text-sm font-semibold mb-4">📋 Répartition par type</h3>
             <ResponsiveContainer width="100%" height={250}>
               <PieChart>
-                <Pie data={[{ name: 'Acheteurs', value: typeCounts.buy }, { name: 'Vendeurs', value: typeCounts.sell }]}
+                <Pie data={[{ name: 'Entrants', value: typeCounts.inbound }, { name: 'Clients', value: typeCounts.customer }]}
                   cx="50%" cy="50%" innerRadius={60} outerRadius={90} dataKey="value" label={({ name, percent }: { name?: string; percent?: number }) => `${name ?? ''} ${((percent ?? 0) * 100).toFixed(0)}%`}>
                   <Cell fill="var(--brand-primary)" />
                   <Cell fill="var(--warning)" />
@@ -287,7 +287,7 @@ export function ReportsPage() {
                 <div className="flex items-center justify-between p-2.5 bg-[var(--bg-subtle)] rounded-[var(--radius-sm)] border-l-2 border-[#1877f2]">
                   <div>
                     <p className="text-xs font-semibold text-[#1877f2]">Facebook CAPI</p>
-                    <p className="text-[10px] text-[var(--text-muted)]">Event: Lead (Signé)</p>
+                    <p className="text-[10px] text-[var(--text-muted)]">Event: Lead (Gagné)</p>
                   </div>
                   <span className="text-[10px] text-[var(--success)] font-medium bg-[var(--success)]/10 px-2 py-0.5 rounded">Success 200 OK</span>
                 </div>
@@ -304,18 +304,18 @@ export function ReportsPage() {
         </div>
       )}
 
-      {/* ── Performance par courtier ────────────── */}
+      {/* ── Performance par sous-compte ────────────── */}
       {activeTab === 'performance' && (
         <div className="space-y-4">
           <Card className="p-5">
-            <h3 className="text-sm font-semibold mb-4">🏆 Performance par courtier</h3>
+            <h3 className="text-sm font-semibold mb-4">🏆 Performance par sous-compte</h3>
             <ResponsiveContainer width="100%" height={Math.max(200, Object.keys(clientCounts).length * 60)}>
               <BarChart data={Object.values(clientCounts).sort((a, b) => b.total - a.total)} layout="vertical" margin={{ left: 30 }}>
                 <XAxis type="number" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
                 <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} width={120} />
                 <Tooltip contentStyle={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 8, fontSize: 12 }} />
                 <Bar dataKey="total" name="Total leads" fill="var(--brand-primary)" radius={[0, 4, 4, 0]} />
-                <Bar dataKey="signed" name="Signés" fill="var(--success)" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="won" name="Gagnés" fill="var(--success)" radius={[0, 4, 4, 0]} />
                 <Legend />
               </BarChart>
             </ResponsiveContainer>
@@ -329,9 +329,9 @@ export function ReportsPage() {
                 <thead>
                   <tr className="border-b border-[var(--border-subtle)]">
                     <th className="text-left py-2 text-xs text-[var(--text-muted)]">#</th>
-                    <th className="text-left py-2 text-xs text-[var(--text-muted)]">Courtier</th>
+                    <th className="text-left py-2 text-xs text-[var(--text-muted)]">Sous-compte</th>
                     <th className="text-right py-2 text-xs text-[var(--text-muted)]">Leads</th>
-                    <th className="text-right py-2 text-xs text-[var(--text-muted)]">Signés</th>
+                    <th className="text-right py-2 text-xs text-[var(--text-muted)]">Gagnés</th>
                     <th className="text-right py-2 text-xs text-[var(--text-muted)]">Conv.</th>
                     <th className="text-right py-2 text-xs text-[var(--text-muted)]">Pipeline</th>
                   </tr>
@@ -340,13 +340,13 @@ export function ReportsPage() {
                   {Object.entries(clientCounts)
                     .sort(([, a], [, b]) => b.total - a.total)
                     .map(([, data], i) => {
-                      const conv = data.total > 0 ? Math.round((data.signed / data.total) * 100) : 0;
+                      const conv = data.total > 0 ? Math.round((data.won / data.total) * 100) : 0;
                       return (
                         <tr key={i} className="border-b border-[var(--border-subtle)] hover:bg-[var(--bg-subtle)]">
                           <td className="py-2 text-xs">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}</td>
                           <td className="py-2 font-medium">{data.name}</td>
                           <td className="py-2 text-right">{data.total}</td>
-                          <td className="py-2 text-right text-[var(--success)]">{data.signed}</td>
+                          <td className="py-2 text-right text-[var(--success)]">{data.won}</td>
                           <td className="py-2 text-right">
                             <Badge color={conv > 20 ? 'var(--success)' : 'var(--warning)'}>{conv}%</Badge>
                           </td>
@@ -382,7 +382,7 @@ export function ReportsPage() {
                 <YAxis tick={{ fontSize: 10, fill: 'var(--text-muted)' }} width={30} allowDecimals={false} />
                 <Tooltip contentStyle={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 8, fontSize: 12 }} />
                 <Area type="monotone" dataKey="leads" name="Leads" stroke="var(--brand-primary)" fill="url(#gradient-trend)" strokeWidth={2} />
-                <Area type="monotone" dataKey="signed" name="Signés" stroke="var(--success)" fill="url(#gradient-signed)" strokeWidth={2} />
+                <Area type="monotone" dataKey="won" name="Gagnés" stroke="var(--success)" fill="url(#gradient-signed)" strokeWidth={2} />
                 <Legend />
               </AreaChart>
             </ResponsiveContainer>
@@ -391,13 +391,13 @@ export function ReportsPage() {
           <div className="grid grid-cols-3 gap-3">
             <Card className="p-4 text-center">
               <p className="text-xl font-bold text-[var(--brand-primary)]">{clients.length}</p>
-              <p className="text-xs text-[var(--text-muted)]">Courtiers actifs</p>
+              <p className="text-xs text-[var(--text-muted)]">Comptes actifs</p>
             </Card>
             <Card className="p-4 text-center">
               <p className="text-xl font-bold text-[var(--success)]">
                 {totalLeads > 0 ? Math.round(totalLeads / Math.max(clients.length, 1)) : 0}
               </p>
-              <p className="text-xs text-[var(--text-muted)]">Leads / courtier</p>
+              <p className="text-xs text-[var(--text-muted)]">Leads / compte</p>
             </Card>
             <Card className="p-4 text-center">
               <p className="text-xl font-bold text-[var(--info)]">{Object.values(sourceCounts).length}</p>

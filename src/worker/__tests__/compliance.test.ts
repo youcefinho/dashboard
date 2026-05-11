@@ -72,7 +72,7 @@ describe('generateAmfDisclaimer', () => {
 
   it('contient la mention AMF', () => {
     const disclaimer = generateAmfDisclaimer('CERT-999');
-    expect(disclaimer).toContain('Autorité des marchés financiers');
+    expect(disclaimer).toContain('Mentions légales');
   });
 
   it('contient le disclaimer rendements', () => {

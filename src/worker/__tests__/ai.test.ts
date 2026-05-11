@@ -61,8 +61,8 @@ describe('mockClaude', () => {
     expect(parsed.technique).toBeTruthy();
   });
 
-  it('retourne une description Centris', () => {
-    const result = mockClaude('', 'centris description');
+  it('retourne une proposition commerciale', () => {
+    const result = mockClaude('', 'proposition commerciale');
     const parsed = JSON.parse(result);
     expect(parsed.title).toBeTruthy();
     expect(parsed.description).toBeTruthy();

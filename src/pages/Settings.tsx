@@ -55,7 +55,7 @@ export function SettingsPage() {
       const res = await fetch('/api/webhook/lead', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-Webhook-Secret': 'dev-webhook-secret-123', 'X-Client-Id': 'gatineau' },
-        body: JSON.stringify({ name: 'Test Lead', email: `test-${Date.now()}@intralys.com`, phone: '819-555-0000', message: 'Lead de test', type: 'buy' }),
+        body: JSON.stringify({ name: 'Test Lead', email: `test-${Date.now()}@intralys.com`, phone: '819-555-0000', message: 'Lead de test', type: 'inbound' }),
       });
       setTestStatus(res.ok ? 'success' : 'error');
     } catch { setTestStatus('error'); }
@@ -127,7 +127,7 @@ export function SettingsPage() {
                   <div>
                     <h3 className="text-base font-semibold">{profileName}</h3>
                     <p className="text-sm text-[var(--text-muted)]">{profileEmail || '—'}</p>
-                    <Badge color={isAdmin ? 'var(--brand-primary)' : 'var(--info)'}>{isAdmin ? 'Administrateur' : 'Courtier'}</Badge>
+                    <Badge color={isAdmin ? 'var(--brand-primary)' : 'var(--info)'}>{isAdmin ? 'Administrateur' : 'Utilisateur'}</Badge>
                   </div>
                   {saveMsg && <span className="ml-auto text-sm text-[var(--success)]">{saveMsg}</span>}
                 </div>
@@ -297,7 +297,7 @@ export function SettingsPage() {
   "email": "email@example.com",
   "phone": "819-555-0000",
   "message": "Message optionnel",
-  "type": "buy"
+  "type": "inbound"
 }`}</pre>
                 </div>
                 <div className="flex items-center gap-3 pt-2 border-t border-[var(--border-subtle)]">

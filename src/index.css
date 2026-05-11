@@ -62,8 +62,8 @@
   /* ── Pipeline stages ───────────────────────────────────── */
   --stage-new:       var(--brand-primary);
   --stage-contacted: var(--info);
-  --stage-meeting:   var(--warning);
-  --stage-signed:    var(--success);
+  --stage-qualified: var(--warning);
+  --stage-won:       var(--success);
   --stage-closed:    var(--text-muted);
   --stage-lost:      var(--danger);
 

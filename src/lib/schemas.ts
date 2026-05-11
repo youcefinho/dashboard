@@ -40,7 +40,7 @@ export const webhookLeadSchema = z.object({
   email: z.email().max(200),
   phone: z.string().max(30).optional(),
   message: z.string().max(2000).optional(),
-  type: z.enum(['buy', 'sell', 'invest', 'newsletter']).optional(),
+  type: z.enum(['inbound', 'customer']).optional(),
   external_id: z.string().max(200).optional(),
   budget: z.string().max(50).optional(),
   timeline: z.string().max(50).optional(),

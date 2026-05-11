@@ -434,7 +434,7 @@ async function executeStep(env: Env, step: Record<string, unknown>, lead: Record
       return 'main';
 
     case 'change_status':
-      if (config.status && ['new', 'contacted', 'meeting', 'signed', 'closed', 'lost'].includes(config.status as string)) {
+      if (config.status && ['new', 'contacted', 'qualified', 'won', 'closed', 'lost'].includes(config.status as string)) {
         await env.DB.prepare("UPDATE leads SET status = ?, updated_at = datetime('now') WHERE id = ?")
           .bind(config.status as string, lead.id as string).run();
         await env.DB.prepare(
@@ -467,6 +467,28 @@ async function executeStep(env: Env, step: Record<string, unknown>, lead: Record
         });
       } catch (err) {
         console.warn('Webhook step failed', err);
+      }
+      return 'main';
+    }
+
+    case 'update_pipeline': {
+      const pipelineId = String(config.pipeline_id || '');
+      if (pipelineId) {
+        await env.DB.prepare('UPDATE leads SET pipeline_id = ?, updated_at = datetime("now") WHERE id = ?').bind(pipelineId, lead.id as string).run();
+        await env.DB.prepare(
+          "INSERT INTO activity_log (lead_id, client_id, action, details) VALUES (?, ?, 'status_change', ?)"
+        ).bind(lead.id as string, lead.client_id as string, JSON.stringify({ to_pipeline: pipelineId, by: 'workflow' })).run();
+      }
+      return 'main';
+    }
+
+    case 'update_stage': {
+      const stageId = String(config.stage_id || '');
+      if (stageId) {
+        await env.DB.prepare('UPDATE leads SET stage_id = ?, updated_at = datetime("now") WHERE id = ?').bind(stageId, lead.id as string).run();
+        await env.DB.prepare(
+          "INSERT INTO activity_log (lead_id, client_id, action, details) VALUES (?, ?, 'status_change', ?)"
+        ).bind(lead.id as string, lead.client_id as string, JSON.stringify({ to_stage: stageId, by: 'workflow' })).run();
       }
       return 'main';
     }

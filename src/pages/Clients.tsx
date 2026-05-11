@@ -1,4 +1,4 @@
-// ── Page Clients — Liste des courtiers ──────────────────────
+// ── Page Clients — Liste des sous-comptes ──────────────────────
 
 import { useState, useEffect, type FormEvent } from 'react';
 import { useNavigate } from '@tanstack/react-router';
@@ -13,12 +13,7 @@ interface ClientWithCounts extends Client {
   new_lead_count: number;
 }
 
-interface ClientMetrics {
-  signed: number;
-  total: number;
-  pipelineValue: number;
-  convRate: number;
-}
+interface ClientMetrics { won: number; total: number; pipelineValue: number; convRate: number };
 
 export function ClientsPage() {
   const [clients, setClients] = useState<ClientWithCounts[]>([]);
@@ -38,14 +33,14 @@ export function ClientsPage() {
     if (leadsRes.data) {
       const metrics: Record<string, ClientMetrics> = {};
       leadsRes.data.forEach((l: Lead) => {
-        if (!metrics[l.client_id]) metrics[l.client_id] = { signed: 0, total: 0, pipelineValue: 0, convRate: 0 };
+        if (!metrics[l.client_id]) metrics[l.client_id] = { won: 0, total: 0, pipelineValue: 0, convRate: 0 };
         const m = metrics[l.client_id]!;
         m.total++;
-        if (l.status === 'signed') m.signed++;
+        if (l.status === 'won') m.won++;
         m.pipelineValue += l.deal_value || 0;
       });
       Object.values(metrics).forEach(m => {
-        m.convRate = m.total > 0 ? Math.round((m.signed / m.total) * 100) : 0;
+        m.convRate = m.total > 0 ? Math.round((m.won / m.total) * 100) : 0;
       });
       setClientMetrics(metrics);
     }
@@ -63,9 +58,9 @@ export function ClientsPage() {
 
   // KPIs globaux
   const totalLeads = Object.values(clientMetrics).reduce((s, m) => s + m.total, 0);
-  const totalSigned = Object.values(clientMetrics).reduce((s, m) => s + m.signed, 0);
+  const totalWon = Object.values(clientMetrics).reduce((s, m) => s + m.won, 0);
   const totalPipeline = Object.values(clientMetrics).reduce((s, m) => s + m.pipelineValue, 0);
-  const avgConv = totalLeads > 0 ? Math.round((totalSigned / totalLeads) * 100) : 0;
+
 
   return (
     <AppLayout title="Clients">
@@ -73,15 +68,15 @@ export function ClientsPage() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
         <Card className="p-3 text-center">
           <p className="text-2xl font-bold text-[var(--brand-primary)]">{clients.length}</p>
-          <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider">Courtiers</p>
+          <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider">Sous-comptes</p>
         </Card>
         <Card className="p-3 text-center">
           <p className="text-2xl font-bold text-[var(--info)]">{totalLeads}</p>
           <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider">Leads total</p>
         </Card>
         <Card className="p-3 text-center">
-          <p className="text-2xl font-bold text-[var(--success)]">{avgConv}%</p>
-          <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider">Conversion moy.</p>
+          <p className="text-2xl font-bold text-[var(--success)]">{totalWon}</p>
+          <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider">Gagnés</p>
         </Card>
         <Card className="p-3 text-center">
           <p className="text-2xl font-bold text-[var(--warning)]">{totalPipeline.toLocaleString('fr-CA')} $</p>
@@ -94,12 +89,12 @@ export function ClientsPage() {
         <Input
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
-          placeholder="Rechercher un courtier..."
+          placeholder="Rechercher un compte..."
           className="max-w-xs"
         />
         <div className="flex items-center gap-2">
           <p className="text-xs text-[var(--text-muted)] hidden sm:block">
-            {filteredClients.length} courtier{filteredClients.length > 1 ? 's' : ''}
+            {filteredClients.length} compte{filteredClients.length > 1 ? 's' : ''}
           </p>
           <Button onClick={() => setShowModal(true)}>+ Nouveau client</Button>
         </div>
@@ -114,7 +109,7 @@ export function ClientsPage() {
       ) : filteredClients.length === 0 ? (
         <EmptyState
           title={searchQuery ? 'Aucun résultat' : 'Aucun client'}
-          description={searchQuery ? `Aucun courtier ne correspond à « ${searchQuery} »` : 'Ajoutez votre premier courtier pour commencer.'}
+          description={searchQuery ? `Aucun compte ne correspond à « ${searchQuery} »` : 'Ajoutez votre premier compte pour commencer.'}
           action={!searchQuery ? <Button onClick={() => setShowModal(true)}>Ajouter un client</Button> : undefined}
         />
       ) : (
@@ -233,14 +228,12 @@ function AddClientModal({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Ajouter un client">
       <form onSubmit={handleSubmit} className="space-y-3">
-        <Input label="Nom du courtier" id="client-name" value={name} onChange={e => setName(e.target.value)} placeholder="Mathis Guimont" required />
-        <Input label="Email" id="client-email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="courtier@email.com" required />
-        <div className="grid grid-cols-2 gap-3">
-          <Input label="Téléphone" id="client-phone" value={phone} onChange={e => setPhone(e.target.value)} placeholder="819-555-0123" />
-          <Input label="Ville" id="client-city" value={city} onChange={e => setCity(e.target.value)} placeholder="Gatineau" />
-        </div>
-        <Input label="Bannière" id="client-banner" value={banner} onChange={e => setBanner(e.target.value)} placeholder="Royal LePage" />
-        <Input label="URL du site" id="client-site" value={siteUrl} onChange={e => setSiteUrl(e.target.value)} placeholder="https://mathis-guimont.com" />
+        <Input label="Nom de l'entreprise / client" id="client-name" value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Lumière Nettoyage Pro" required />
+        <Input label="Email" id="client-email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="contact@entreprise.com" required />
+        <Input label="Téléphone" id="client-phone" value={phone} onChange={e => setPhone(e.target.value)} placeholder="514-555-1234" />
+        <Input label="Ville" id="client-city" value={city} onChange={e => setCity(e.target.value)} placeholder="Montréal" />
+        <Input label="Bannière / Industrie" id="client-banner" value={banner} onChange={e => setBanner(e.target.value)} placeholder="Ex: Nettoyage" />
+        <Input label="URL du site" id="client-site" value={siteUrl} onChange={e => setSiteUrl(e.target.value)} placeholder="https://lumiere-nettoyage.com" />
 
         {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
 

@@ -45,11 +45,11 @@ const INTEGRATIONS: IntegrationConfig[] = [
     ],
   },
   {
-    id: 'centris', name: 'Centris.ca', icon: '🏠', category: 'data',
-    description: 'Importez les fiches propriétés depuis Centris pour enrichir vos leads acheteurs.',
+    id: 'apollo', name: 'Apollo.io', icon: '📊', category: 'data',
+    description: 'Enrichissez automatiquement vos leads B2B avec des données d\'entreprise.',
     status: 'inactive',
     fields: [
-      { key: 'broker_id', label: 'Numéro de courtier', placeholder: 'RE/MAX 123456' },
+      { key: 'api_key', label: 'Clé API Apollo', placeholder: 'ap_...', type: 'password' },
     ],
   },
   {
@@ -184,7 +184,7 @@ export function IntegrationsPage() {
               <p className="text-[10px] font-semibold text-[var(--text-secondary)] mb-1">Headers</p>
               <pre className="p-2 bg-[var(--bg-subtle)] rounded text-[10px] font-mono text-[var(--text-secondary)]">{`Content-Type: application/json
 X-Webhook-Secret: <votre_secret>
-X-Client-Id: <id_courtier>`}</pre>
+X-Client-Id: <id_sous_compte>`}</pre>
             </div>
             <div>
               <p className="text-[10px] font-semibold text-[var(--text-secondary)] mb-1">Body JSON</p>
@@ -192,7 +192,7 @@ X-Client-Id: <id_courtier>`}</pre>
   "name": "Prénom Nom",
   "email": "lead@ex.com",
   "phone": "+1 819 555-1234",
-  "type": "buy",
+  "type": "inbound",
   "source": "facebook"
 }`}</pre>
             </div>

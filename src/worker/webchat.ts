@@ -254,7 +254,7 @@ export async function handleWebchatPrechat(
     leadId = crypto.randomUUID();
     await env.DB.prepare(
       `INSERT INTO leads (id, client_id, name, email, source, type, status)
-       VALUES (?, ?, ?, ?, 'webchat', 'buy', 'new')`
+       VALUES (?, ?, ?, ?, 'webchat', 'inbound', 'new')`
     ).bind(leadId, body.client_id || '', sanitizeInput(body.name, 200), body.email.toLowerCase()).run();
   }
 

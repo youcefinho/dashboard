@@ -23,12 +23,19 @@ import { handleGetTemplates, handleCreateTemplate, handleUpdateTemplate, handleD
 import {
   handleGetPipelines, handleCreatePipeline, handleUpdatePipeline, handleDeletePipeline,
   handleGetPipelineStages, handleCreatePipelineStage, handleUpdatePipelineStage, handleDeletePipelineStage,
+  handleReorderPipelineStages, handleGetLostReasons, handleCreateLostReason, handleGetPipelineForecast
 } from './worker/pipelines';
 import {
   handleGetWorkflows, handleGetWorkflowDetail, handleCreateWorkflow,
   handleUpdateWorkflow, handleDeleteWorkflow, handleToggleWorkflow,
-  handleEnrollLead, autoEnroll, processWorkflowQueue,
+  handleGetPipelineStageWorkflows, handleGetWorkflowEnrollments, handleCancelEnrollment,
 } from './worker/workflows';
+import { handleAiChat, handleGetAiConversations, handleGetAiConversation } from './worker/ai';
+import {
+  handleGetCustomFields, handleCreateCustomField, handleUpdateCustomField, handleDeleteCustomField,
+  handleGetLeadCustomFields, handleSetLeadCustomFields,
+  handleGetSmartLists, handleCreateSmartList, handleDeleteSmartList, handleExecuteSmartList
+} from './worker/custom-fields';
 import { handleGetAppointments, handleCreateAppointment, handleUpdateAppointment, handleDeleteAppointment } from './worker/appointments';
 import { handleGetTasks, handleCreateTask, handlePatchTask, handleDeleteTask } from './worker/tasks';
 import { handleGetNotifications, handleReadNotification, handleReadAllNotifications } from './worker/notifications';
@@ -47,6 +54,9 @@ import {
 } from './worker/custom-fields';
 import { handleGetSubAccounts, handleCreateSubAccount, handleUpdateSubAccount, handleCreateSnapshot, handleApplySnapshot, handleGetWhitelabel, handleUpdateWhitelabel, handleWidgetScript } from './worker/sub-accounts';
 // gcal.ts et gbp.ts déplacés en _v2-backlog/ (Sprint Consolidation)
+import {
+  handleGetReports, handleGetDashboardStats, handleGetCampaignStats, handleGetForecast
+} from './worker/reports';
 import { handleEmailBroadcast, handleGetBroadcasts, handleGetBroadcastDetail } from './worker/broadcast';
 import { handleDashboardStats, handleTotpSetup, handleTotpVerify, handleTotpDisable, handleSendSmsRoute, handleCsvImport, handleExportCsv as handleExportCsvDash } from './worker/dashboard';
 import { handleWebhookLead } from './worker/leads';
@@ -304,12 +314,18 @@ async function routeProtected(
   const pipeMatch = path.match(/^\/api\/pipelines\/([^/]+)$/);
   if (pipeMatch && method === 'PATCH') return handleUpdatePipeline(request, env, auth, pipeMatch[1]!);
   if (pipeMatch && method === 'DELETE') return handleDeletePipeline(env, auth, pipeMatch[1]!);
+  const pipeForecastMatch = path.match(/^\/api\/pipelines\/([^/]+)\/forecast$/);
+  if (pipeForecastMatch && method === 'GET') return handleGetPipelineForecast(env, auth, pipeForecastMatch[1]!, url);
   const stagesMatch = path.match(/^\/api\/pipelines\/([^/]+)\/stages$/);
   if (stagesMatch && method === 'GET') return handleGetPipelineStages(env, auth, stagesMatch[1]!);
   if (stagesMatch && method === 'POST') return handleCreatePipelineStage(request, env, auth, stagesMatch[1]!);
   const stageMatch = path.match(/^\/api\/pipelines\/([^/]+)\/stages\/([^/]+)$/);
   if (stageMatch && method === 'PATCH') return handleUpdatePipelineStage(request, env, auth, stageMatch[1]!, stageMatch[2]!);
   if (stageMatch && method === 'DELETE') return handleDeletePipelineStage(env, auth, stageMatch[1]!, stageMatch[2]!);
+  if (stagesMatch && path.endsWith('/reorder') && method === 'POST') return handleReorderPipelineStages(request, env, auth, stagesMatch[1]!);
+
+  if (path === '/api/lost-reasons' && method === 'GET') return handleGetLostReasons(env, auth);
+  if (path === '/api/lost-reasons' && method === 'POST') return handleCreateLostReason(request, env, auth);
 
   // SMS
   if (path === '/api/sms/send' && method === 'POST') return handleSendSmsRoute(request, env, auth);
@@ -350,6 +366,25 @@ async function routeProtected(
 
   // AI
   if (path === '/api/ai/chat' && method === 'POST') return handleAiChat(request, env, auth);
+
+  // Custom Fields
+  if (path === '/api/custom-fields' && method === 'GET') return handleGetCustomFields(env, auth, url);
+  if (path === '/api/custom-fields' && method === 'POST') return handleCreateCustomField(request, env, auth);
+  const cfMatch = path.match(/^\/api\/custom-fields\/([^/]+)$/);
+  if (cfMatch && method === 'PATCH') return handleUpdateCustomField(request, env, auth, cfMatch[1]!);
+  if (cfMatch && method === 'DELETE') return handleDeleteCustomField(env, auth, cfMatch[1]!);
+
+  const leadCfMatch = path.match(/^\/api\/leads\/([^/]+)\/custom-fields$/);
+  if (leadCfMatch && method === 'GET') return handleGetLeadCustomFields(env, auth, leadCfMatch[1]!);
+  if (leadCfMatch && method === 'POST') return handleSetLeadCustomFields(request, env, auth, leadCfMatch[1]!);
+
+  // Smart Lists
+  if (path === '/api/smart-lists' && method === 'GET') return handleGetSmartLists(env, auth);
+  if (path === '/api/smart-lists' && method === 'POST') return handleCreateSmartList(request, env, auth);
+  const slMatch = path.match(/^\/api\/smart-lists\/([^/]+)$/);
+  if (slMatch && method === 'DELETE') return handleDeleteSmartList(env, auth, slMatch[1]!);
+  const slExecMatch = path.match(/^\/api\/smart-lists\/([^/]+)\/execute$/);
+  if (slExecMatch && method === 'GET') return handleExecuteSmartList(env, auth, slExecMatch[1]!, url);
   if (path === '/api/ai/conversations' && method === 'GET') return handleGetAiConversations(env, auth, url);
   const aiConvMatch = path.match(/^\/api\/ai\/conversations\/([^/]+)$/);
   if (aiConvMatch && method === 'GET') return handleGetAiConversation(env, auth, aiConvMatch[1]!);
@@ -424,7 +459,11 @@ async function routeProtected(
     return await handleMetaOauthCallback(request, env, auth);
   }
 
-  // Reviews & Reputation (P4.6)
+  // Reviews & Reports
+  if (path === '/api/reports' && method === 'GET') return handleGetReports(env, auth);
+  if (path === '/api/reports/dashboard' && method === 'GET') return handleGetDashboardStats(env, auth);
+  if (path === '/api/reports/campaigns' && method === 'GET') return handleGetCampaignStats(env, auth);
+  if (path === '/api/reports/forecast' && method === 'GET') return handleGetForecast(env, auth);
   if (path === '/api/reviews' && method === 'GET') return handleGetReviews(env, auth, url);
   if (path === '/api/reviews/stats' && method === 'GET') return handleGetReviewStats(env, auth, url);
   if (path === '/api/reviews/requests' && method === 'GET') return handleGetReviewRequests(env, auth, url);

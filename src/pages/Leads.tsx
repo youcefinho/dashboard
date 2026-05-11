@@ -7,7 +7,7 @@ import { Card, Button, Badge, Skeleton, EmptyState, Modal } from '@/components/u
 import { Avatar } from '@/components/ui/Avatar';
 import { Input } from '@/components/ui/Input';
 import { getLeads, getClients, updateLead, exportLeadsCsv } from '@/lib/api';
-import { STATUS_LABELS, STATUS_COLORS, TYPE_LABELS, SOURCE_LABELS, LEAD_STATUSES, type Lead, type LeadStatus, type Client, type SmartList } from '@/lib/types';
+import { STATUS_LABELS, STATUS_COLORS, SOURCE_LABELS, LEAD_STATUSES, type Lead, type LeadStatus, type Client, type SmartList } from '@/lib/types';
 import { Search, X, Download, Save, LayoutGrid, LayoutList, MoreHorizontal, ArrowUpDown, ChevronUp, ChevronDown, StickyNote, Users, UserPlus, Zap } from 'lucide-react';
 
 export function LeadsPage() {
@@ -69,11 +69,11 @@ export function LeadsPage() {
   const saveSmartList = () => {
     const name = prompt('Nom de la liste intelligente :');
     if (!name) return;
-    const newList: SmartList = { id: `sl-${Date.now()}`, name, filters: { status: statusFilter || undefined, source: sourceFilter || undefined, client_id: clientFilter || undefined, search: search || undefined }, count: leads.length, created_at: new Date().toISOString() };
+    const newList: SmartList = { id: `sl-${Date.now()}`, user_id: 'local', client_id: 'local', name, filters: { status: statusFilter || undefined, source: sourceFilter || undefined, client_id: clientFilter || undefined, search: search || undefined }, count: leads.length, created_at: new Date().toISOString() };
     const updated = [...smartLists, newList]; setSmartLists(updated);
     localStorage.setItem('intralys_smart_lists', JSON.stringify(updated));
   };
-  const loadSmartList = (sl: SmartList) => { setStatusFilter(sl.filters.status || ''); setSourceFilter(sl.filters.source || ''); setClientFilter(sl.filters.client_id || ''); setSearch(sl.filters.search || ''); };
+  const loadSmartList = (sl: SmartList) => { setStatusFilter((sl.filters.status as string) || ''); setSourceFilter((sl.filters.source as string) || ''); setClientFilter((sl.filters.client_id as string) || ''); setSearch((sl.filters.search as string) || ''); };
   const deleteSmartList = (id: string) => { const updated = smartLists.filter(s => s.id !== id); setSmartLists(updated); localStorage.setItem('intralys_smart_lists', JSON.stringify(updated)); };
 
   const getClientName = (lead: Lead) => lead.client_name || clients.find(c => c.id === lead.client_id)?.name || lead.client_id;
@@ -102,7 +102,7 @@ export function LeadsPage() {
 
   const hasFilters = !!(search || statusFilter || sourceFilter || clientFilter);
   const newCount = leads.filter(l => l.status === 'new').length;
-  const signedCount = leads.filter(l => l.status === 'signed').length;
+  const wonCount = leads.filter(l => l.status === 'won').length;
 
   return (
     <AppLayout title="Leads">
@@ -118,7 +118,7 @@ export function LeadsPage() {
         </div>
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-xs font-medium text-[var(--text-secondary)]">
           <Zap size={14} className="text-[var(--success)]" />
-          {signedCount} signés
+          {wonCount} gagnés
         </div>
 
         <div className="flex items-center gap-1 ml-auto">
@@ -207,7 +207,7 @@ export function LeadsPage() {
                       <p className="text-[10px] text-[var(--text-muted)]">{getClientName(lead)}</p>
                     </div>
                   </div>
-                  <Badge color={lead.type === 'buy' ? 'var(--brand-primary)' : 'var(--accent-orange)'}>{TYPE_LABELS[lead.type]}</Badge>
+                  <Badge color={lead.type === 'inbound' ? 'var(--brand-primary)' : 'var(--warning)'}>{lead.type === 'inbound' ? 'Entrant' : 'Client'}</Badge>
                 </div>
                 <div className="flex items-center gap-2 mb-2">
                   <Badge color={STATUS_COLORS[lead.status]}>{STATUS_LABELS[lead.status]}</Badge>
@@ -296,7 +296,7 @@ export function LeadsPage() {
                         {lead.phone && <p className="text-[11px] text-[var(--text-muted)]">{lead.phone}</p>}
                       </td>
                       <td className="px-4 py-3">
-                        <Badge color={lead.type === 'buy' ? 'var(--brand-primary)' : 'var(--accent-orange)'}>{TYPE_LABELS[lead.type]}</Badge>
+                        <Badge color={lead.type === 'inbound' ? 'var(--brand-primary)' : 'var(--warning)'}>{lead.type === 'inbound' ? 'Entrant' : 'Client'}</Badge>
                       </td>
                       <td className="px-4 py-3">
                         <select value={lead.status} onChange={(e) => void handleStatusChange(lead.id, e.target.value as LeadStatus)}
@@ -335,7 +335,7 @@ export function LeadsPage() {
             <div className="grid grid-cols-2 gap-2 text-sm">
               <div><span className="text-[var(--text-muted)]">Email : </span><span className="text-[var(--text-primary)]">{selectedLead.email}</span></div>
               <div><span className="text-[var(--text-muted)]">Téléphone : </span><span className="text-[var(--text-primary)]">{selectedLead.phone || '—'}</span></div>
-              <div><span className="text-[var(--text-muted)]">Type : </span><Badge color={selectedLead.type === 'buy' ? 'var(--brand-primary)' : 'var(--accent-orange)'}>{TYPE_LABELS[selectedLead.type]}</Badge></div>
+              <div><span className="text-[var(--text-muted)]">Type : </span><Badge color={selectedLead.type === 'inbound' ? 'var(--brand-primary)' : 'var(--warning)'}>{selectedLead.type === 'inbound' ? 'Entrant' : 'Client'}</Badge></div>
               <div><span className="text-[var(--text-muted)]">Statut : </span><Badge color={STATUS_COLORS[selectedLead.status]}>{STATUS_LABELS[selectedLead.status]}</Badge></div>
             </div>
             {selectedLead.message && (
