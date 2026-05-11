@@ -85,15 +85,23 @@ export async function handleSendMessage(
     status = 'delivered';
   }
 
+  // Trouver ou créer la conversation
+  const convId = await findOrCreateConversation(env, leadId, lead.client_id as string, channel);
+
   // Enregistrer le message en DB
   await env.DB.prepare(
-    `INSERT INTO messages (id, lead_id, client_id, direction, channel, subject, body, status, sent_by, external_id)
-     VALUES (?, ?, ?, 'outbound', ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO messages (id, lead_id, client_id, conversation_id, direction, channel, subject, body, status, sent_by, external_id)
+     VALUES (?, ?, ?, ?, 'outbound', ?, ?, ?, ?, ?, ?)`
   ).bind(
-    messageId, leadId, lead.client_id as string,
+    messageId, leadId, lead.client_id as string, convId,
     channel, subject, messageBody, status,
     auth.userId, externalId
   ).run();
+
+  // Mettre à jour la conversation
+  await env.DB.prepare(
+    `UPDATE conversations SET last_message_at = datetime('now'), last_message_preview = ?, updated_at = datetime('now') WHERE id = ?`
+  ).bind(messageBody.substring(0, 120), convId).run();
 
   // Log d'activité
   const actionType = channel === 'email' ? 'email_sent' : channel === 'sms' ? 'sms_sent' : 'note_added';
