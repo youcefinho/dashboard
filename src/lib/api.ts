@@ -1446,3 +1446,93 @@ export async function updateClientBusinessConfig(clientId: string, config: {
     body: JSON.stringify(config),
   });
 }
+
+// ── Sprint 7 : Email Builder ────────────────────────────────
+
+export async function saveTemplateBlocks(
+  templateId: string,
+  blocks: unknown[],
+  preheader?: string
+): Promise<ApiResponse<{ success: boolean; html_length: number }>> {
+  return apiFetch<{ success: boolean; html_length: number }>(`/templates/${templateId}/blocks`, {
+    method: 'PUT',
+    body: JSON.stringify({ blocks, preheader }),
+  });
+}
+
+export async function sendTestEmail(
+  templateId: string,
+  toEmail: string
+): Promise<ApiResponse<{ success: boolean; mock?: boolean; message?: string }>> {
+  return apiFetch<{ success: boolean; mock?: boolean; message?: string }>('/templates/send-test', {
+    method: 'POST',
+    body: JSON.stringify({ template_id: templateId, to_email: toEmail }),
+  });
+}
+
+export async function duplicateTemplate(
+  templateId: string
+): Promise<ApiResponse<{ id: string; parent_id: string }>> {
+  return apiFetch<{ id: string; parent_id: string }>(`/templates/${templateId}/duplicate`, {
+    method: 'POST',
+  });
+}
+
+export async function getTemplateFolders(): Promise<ApiResponse<Array<{ id: string; name: string; sort_order: number }>>> {
+  return apiFetch<Array<{ id: string; name: string; sort_order: number }>>('/templates/folders');
+}
+
+export async function createTemplateFolder(name: string): Promise<ApiResponse<{ id: string }>> {
+  return apiFetch<{ id: string }>('/templates/folders', {
+    method: 'POST',
+    body: JSON.stringify({ name }),
+  });
+}
+
+// ── Sprint 7 : Forms Builder ────────────────────────────────
+
+export async function getForm(formId: string): Promise<ApiResponse<Record<string, unknown>>> {
+  return apiFetch<Record<string, unknown>>(`/forms/${formId}`);
+}
+
+export async function getFormStats(formId: string): Promise<ApiResponse<{
+  total_views: number; total_submissions: number; conversion_rate: string;
+  views_by_day: Array<{ day: string; count: number }>;
+}>> {
+  return apiFetch(`/forms/${formId}/stats`);
+}
+
+// ── Sprint 7 : Trigger Links ────────────────────────────────
+
+export async function getTriggerLinks(): Promise<ApiResponse<Array<{
+  id: string; name: string; target_url: string; click_count: number; total_clicks: number; created_at: string;
+}>>> {
+  return apiFetch('/trigger-links');
+}
+
+export async function createTriggerLink(data: {
+  name: string; target_url: string; tag_to_apply?: string; client_id?: string;
+}): Promise<ApiResponse<{ id: string }>> {
+  return apiFetch<{ id: string }>('/trigger-links', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteTriggerLink(linkId: string): Promise<ApiResponse<{ success: boolean }>> {
+  return apiFetch<{ success: boolean }>(`/trigger-links/${linkId}`, {
+    method: 'DELETE',
+  });
+}
+
+// ── Sprint 7 : AI Workflow Assistant enrichi ─────────────────
+
+export async function aiSuggestWorkflowEnriched(prompt: string, clientId?: string): Promise<ApiResponse<{
+  name: string; description: string; trigger_type: string;
+  steps: Array<{ id: string; type: string; config: Record<string, unknown> }>;
+}>> {
+  return apiFetch('/ai/suggest-workflow', {
+    method: 'POST',
+    body: JSON.stringify({ prompt, client_id: clientId }),
+  });
+}

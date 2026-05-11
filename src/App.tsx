@@ -31,6 +31,9 @@ const InvoicesPage = lazy(() => import('@/pages/Invoices').then(m => ({ default:
 const AgenciesPage = lazy(() => import('@/pages/Agencies').then(m => ({ default: m.AgenciesPage })));
 const TrashPage = lazy(() => import('@/pages/Trash').then(m => ({ default: m.TrashPage })));
 const VisitModePage = lazy(() => import('@/pages/VisitMode').then(m => ({ default: m.VisitModePage })));
+const EmailBuilderPage = lazy(() => import('@/pages/EmailBuilder').then(m => ({ default: m.EmailBuilderPage })));
+const FormBuilderPage = lazy(() => import('@/pages/FormBuilder').then(m => ({ default: m.FormBuilderPage })));
+const TriggerLinksPage = lazy(() => import('@/pages/TriggerLinks').then(m => ({ default: m.TriggerLinksPage })));
 
 // ── Spinner de chargement ──────────────────────────────────
 
@@ -238,6 +241,24 @@ const visitModeRoute = createRoute({
   ),
 });
 
+const emailBuilderRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/templates/builder/$templateId',
+  component: () => (<LazyGuard><EmailBuilderPage /></LazyGuard>),
+});
+
+const formBuilderRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/forms/builder/$formId',
+  component: () => (<LazyGuard><FormBuilderPage /></LazyGuard>),
+});
+
+const triggerLinksRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/trigger-links',
+  component: () => (<LazyGuard><TriggerLinksPage /></LazyGuard>),
+});
+
 // ── Router ──────────────────────────────────────────────────
 
 const routeTree = rootRoute.addChildren([
@@ -268,6 +289,9 @@ const routeTree = rootRoute.addChildren([
   agenciesRoute,
   trashRoute,
   visitModeRoute,
+  emailBuilderRoute,
+  formBuilderRoute,
+  triggerLinksRoute,
 ]);
 
 const router = createRouter({ routeTree });
