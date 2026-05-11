@@ -9,9 +9,11 @@
     "db:setup": "wrangler d1 execute intralys-crm --local --file=schema.sql && wrangler d1 execute intralys-crm --local --file=seed.sql && wrangler d1 execute intralys-crm --local --file=migration-phase1.sql && wrangler d1 execute intralys-crm --local --file=migration-phase2.sql && wrangler d1 execute intralys-crm --local --file=migration-phase3.sql && wrangler d1 execute intralys-crm --local --file=migration-phase4.sql && wrangler d1 execute intralys-crm --local --file=migration-phase5.sql && wrangler d1 execute intralys-crm --local --file=migration-phase6.sql && wrangler d1 execute intralys-crm --local --file=migration-phase7.sql && wrangler d1 execute intralys-crm --local --file=migration-phase8.sql && wrangler d1 execute intralys-crm --local --file=migration-phase9.sql && wrangler d1 execute intralys-crm --local --file=migration-phase10.sql && wrangler d1 execute intralys-crm --local --file=migration-phase11.sql && wrangler d1 execute intralys-crm --local --file=migration-phase12.sql && wrangler d1 execute intralys-crm --local --file=migration-phase13.sql && wrangler d1 execute intralys-crm --local --file=migration-sprint2-phase0.sql && wrangler d1 execute intralys-crm --local --file=migration-sprint2-phase1.sql && wrangler d1 execute intralys-crm --local --file=migration-sprint3.sql",
     "db:init": "wrangler d1 execute intralys-crm --local --file=schema.sql && wrangler d1 execute intralys-crm --local --file=seed.sql",
     "build": "tsc && vite build",
+    "test": "vitest run",
     "preview": "vite preview"
   },
   "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.16.3",
     "@cloudflare/workers-types": "^4.20260426.1",
     "@tailwindcss/vite": "^4.2.4",
     "@types/react": "^19.2.14",
@@ -20,6 +22,7 @@
     "tailwindcss": "^4.2.4",
     "typescript": "~6.0.2",
     "vite": "^8.0.10",
+    "vitest": "^4.1.5",
     "wrangler": "^4.86.0"
   },
   "dependencies": {
