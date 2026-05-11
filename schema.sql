@@ -461,3 +461,6 @@ CREATE INDEX IF NOT EXISTS idx_snippets_shortcut ON snippets(shortcut);
 
 -- 2. Enrichir les Templates pour supporter les SMS
 ALTER TABLE email_templates ADD COLUMN channel TEXT DEFAULT 'email';
+
+-- P3.12 Proprietes Centris (Sprint 9)
+CREATE TABLE IF NOT EXISTS properties (id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))), client_id TEXT NOT NULL REFERENCES clients(id), mls_number TEXT DEFAULT '', title TEXT NOT NULL, description TEXT DEFAULT '', price REAL DEFAULT 0, address TEXT DEFAULT '', city TEXT DEFAULT '', property_type TEXT DEFAULT 'Maison', status TEXT CHECK (status IN ('active', 'sold', 'expired', 'rented')) DEFAULT 'active', bedrooms INTEGER DEFAULT 0, bathrooms INTEGER DEFAULT 0, area_sqft INTEGER DEFAULT 0, year_built INTEGER DEFAULT 0, image_url TEXT DEFAULT '', features_json TEXT DEFAULT '[]', sync_source TEXT DEFAULT 'manual', synced_at TEXT, created_at TEXT DEFAULT (datetime('now')), updated_at TEXT DEFAULT (datetime('now')));
