@@ -113,7 +113,7 @@ export async function handleMetaWebhook(request: Request, env: Env): Promise<Res
                 await mockMetaWebhookInbound(env, conn.client_id, 'facebook', senderPsid, messageText);
               } else {
                 // Logique réelle : récupérer nom du profil public puis INSERT message
-                console.log('Real Meta Inbound', messageText);
+                // Meta inbound message reçu
               }
             }
           }
