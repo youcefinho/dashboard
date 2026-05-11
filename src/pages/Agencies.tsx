@@ -4,7 +4,7 @@ import { useState, useEffect, type FormEvent } from 'react';
 import { useAuth } from '@/lib/auth';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, Button, Modal, Input, EmptyState, Skeleton } from '@/components/ui';
-import { apiFetch } from '@/lib/api';
+import { getAgencies as fetchAgenciesApi, createAgency } from '@/lib/api';
 
 interface Agency {
   id: string;
@@ -25,8 +25,8 @@ export function AgenciesPage() {
 
   const fetchAgencies = async () => {
     try {
-      const res = await apiFetch<Agency[]>('/agencies');
-      if (res.data) setAgencies(res.data);
+      const res = await fetchAgenciesApi();
+      if (res.data) setAgencies(res.data as unknown as Agency[]);
     } catch (err) {
       console.error(err);
     } finally {
@@ -42,10 +42,7 @@ export function AgenciesPage() {
     e.preventDefault();
     if (!name) return;
     try {
-      const res = await apiFetch('/agencies', {
-        method: 'POST',
-        body: JSON.stringify({ name, custom_domain: customDomain })
-      });
+      const res = await createAgency({ name, custom_domain: customDomain || undefined });
       if (!res.error) {
         setShowAdd(false);
         setName('');

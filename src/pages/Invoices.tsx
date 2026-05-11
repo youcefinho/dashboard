@@ -17,7 +17,7 @@ interface Invoice {
   created_at: string;
 }
 
-import { apiFetch } from '@/lib/api';
+import { getInvoices as fetchInvoicesApi, createInvoice, updateInvoiceStatus } from '@/lib/api';
 
 export function InvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -30,8 +30,8 @@ export function InvoicesPage() {
 
   const fetchInvoices = async () => {
     try {
-      const res = await apiFetch<Invoice[]>('/invoices');
-      if (res.data) setInvoices(res.data);
+      const res = await fetchInvoicesApi();
+      if (res.data) setInvoices(res.data as unknown as Invoice[]);
     } catch (err) {
       console.error(err);
     } finally {
@@ -46,13 +46,10 @@ export function InvoicesPage() {
   const handleCreate = async () => {
     if (!amount || isNaN(Number(amount))) return;
     try {
-      const res = await apiFetch('/invoices', {
-        method: 'POST',
-        body: JSON.stringify({
-          amount: Number(amount),
-          description,
-          client_id: 'default_client_for_demo' // Mock, backend uses auth.clientId
-        })
+      const res = await createInvoice({
+        amount: Number(amount),
+        description,
+        client_id: 'default_client_for_demo'
       });
       if (!res.error) {
         setShowAdd(false);
@@ -67,10 +64,7 @@ export function InvoicesPage() {
 
   const updateStatus = async (id: string, status: string) => {
     try {
-      await apiFetch(`/invoices/${id}/status`, {
-        method: 'PATCH',
-        body: JSON.stringify({ status })
-      });
+      await updateInvoiceStatus(id, status);
       void fetchInvoices();
     } catch (err) {
       console.error(err);

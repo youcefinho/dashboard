@@ -1114,3 +1114,55 @@ export async function createDocument(data: { template_id?: string; lead_id: stri
 export async function sendDocument(id: string): Promise<ApiResponse<{ success: boolean; sign_url: string }>> {
   return apiFetch<{ success: boolean; sign_url: string }>(`/documents/${id}/send`, { method: 'POST' });
 }
+
+// ── Invoices (P3.8) ─────────────────────────────────────────
+
+export async function getInvoices(): Promise<ApiResponse<Array<Record<string, unknown>>>> {
+  return apiFetch<Array<Record<string, unknown>>>('/invoices');
+}
+
+export async function createInvoice(data: { amount: number; description?: string; lead_id?: string; client_id?: string }): Promise<ApiResponse<{ id: string; payment_url: string }>> {
+  return apiFetch<{ id: string; payment_url: string }>('/invoices', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function updateInvoiceStatus(id: string, status: string): Promise<ApiResponse<{ success: boolean }>> {
+  return apiFetch<{ success: boolean }>(`/invoices/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) });
+}
+
+// ── Agencies (P3.9) ─────────────────────────────────────────
+
+export async function getAgencies(): Promise<ApiResponse<Array<Record<string, unknown>>>> {
+  return apiFetch<Array<Record<string, unknown>>>('/agencies');
+}
+
+export async function createAgency(data: { name: string; custom_domain?: string }): Promise<ApiResponse<{ id: string }>> {
+  return apiFetch<{ id: string }>('/agencies', { method: 'POST', body: JSON.stringify(data) });
+}
+
+// ── Trash / Soft Delete (P3.10) ─────────────────────────────
+
+export async function softDeleteLead(leadId: string): Promise<ApiResponse<{ success: boolean }>> {
+  return apiFetch<{ success: boolean }>(`/leads/${leadId}/trash`, { method: 'POST' });
+}
+
+export async function restoreLead(leadId: string): Promise<ApiResponse<{ success: boolean }>> {
+  return apiFetch<{ success: boolean }>(`/leads/${leadId}/restore`, { method: 'POST' });
+}
+
+export async function getTrash(): Promise<ApiResponse<Array<Record<string, unknown>>>> {
+  return apiFetch<Array<Record<string, unknown>>>('/trash');
+}
+
+export async function emptyTrash(): Promise<ApiResponse<{ success: boolean }>> {
+  return apiFetch<{ success: boolean }>('/trash/empty', { method: 'POST' });
+}
+
+// ── Device Tokens (P3.10) ───────────────────────────────────
+
+export async function registerDevice(token: string, platform?: string): Promise<ApiResponse<{ id: string }>> {
+  return apiFetch<{ id: string }>('/devices', { method: 'POST', body: JSON.stringify({ token, platform }) });
+}
+
+export async function unregisterDevice(token: string): Promise<ApiResponse<{ success: boolean }>> {
+  return apiFetch<{ success: boolean }>('/devices', { method: 'DELETE', body: JSON.stringify({ token }) });
+}

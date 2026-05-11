@@ -171,6 +171,10 @@ export default {
     ctx.waitUntil(processWorkflowQueue(env));
     // Seed des profils de scoring par défaut (idempotent)
     ctx.waitUntil(seedDefaultScoreProfiles(env));
+    // Nettoyage automatique de la corbeille (leads supprimés > 30 jours)
+    ctx.waitUntil(
+      env.DB.prepare("DELETE FROM leads WHERE deleted_at IS NOT NULL AND deleted_at < datetime('now', '-30 days')").run()
+    );
   },
 
   async queue(batch: MessageBatch<any>, env: Env): Promise<void> {
