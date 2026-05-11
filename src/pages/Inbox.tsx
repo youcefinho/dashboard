@@ -6,8 +6,8 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { Badge } from '@/components/ui';
 import { Avatar } from '@/components/ui/Avatar';
 
-import { getConversations, getConversation, sendConversationMessage, updateConversation } from '@/lib/api';
-import type { Conversation, Message, ConversationStatus, MessageChannel } from '@/lib/types';
+import { getConversations, getConversation, sendConversationMessage, updateConversation, getSnippets, getTemplates, markConversationRead } from '@/lib/api';
+import type { Conversation, Message, ConversationStatus, MessageChannel, Snippet, EmailTemplate } from '@/lib/types';
 import { CHANNEL_LABELS, CONVERSATION_STATUS_LABELS, CONVERSATION_STATUS_COLORS } from '@/lib/types';
 import { MessageSquare, CheckCircle2, Pause, Star, StarOff, PanelRightClose, PanelRightOpen, Inbox } from 'lucide-react';
 
@@ -15,6 +15,7 @@ import { ConversationsList } from '@/components/Inbox/ConversationsList';
 import { MessageThread } from '@/components/Inbox/MessageThread';
 import { MessageComposer } from '@/components/Inbox/MessageComposer';
 import { InboxPanel } from '@/components/Inbox/InboxPanel';
+import { NewConversationPane } from '@/components/Inbox/NewConversationPane';
 import { useConversationWs } from '@/hooks/useConversationWs';
 
 export function InboxPage() {
@@ -26,9 +27,12 @@ export function InboxPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedConvId, setSelectedConvId] = useState<string | null>(null);
   const [activeConv, setActiveConv] = useState<(Conversation & { messages: Message[] }) | null>(null);
+  const [isComposingNew, setIsComposingNew] = useState(false);
   const [showRightPanel, setShowRightPanel] = useState(true);
   const [composerText, setComposerText] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [snippets, setSnippets] = useState<Snippet[]>([]);
+  const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // WebSocket pour Webchat
@@ -62,14 +66,28 @@ export function InboxPage() {
     setIsLoading(false);
   }, [channelFilter, statusFilter, searchQuery, selectedConvId]);
 
-  useEffect(() => { void loadConversations(); }, [loadConversations]);
+  useEffect(() => { 
+    void loadConversations(); 
+    void (async () => {
+      const snip = await getSnippets();
+      if (snip.data) setSnippets(snip.data);
+      const temp = await getTemplates();
+      if (temp.data) setTemplates(temp.data);
+    })();
+  }, [loadConversations]);
 
   // Charger le détail
   useEffect(() => {
     if (!selectedConvId) { setActiveConv(null); return; }
     void (async () => {
       const res = await getConversation(selectedConvId);
-      if (res.data) setActiveConv(res.data);
+      if (res.data) {
+        setActiveConv(res.data);
+        if (res.data.unread_count && res.data.unread_count > 0) {
+          await markConversationRead(selectedConvId);
+          setConversations(prev => prev.map(c => c.id === selectedConvId ? { ...c, unread_count: 0 } : c));
+        }
+      }
     })();
   }, [selectedConvId]);
 
@@ -139,12 +157,25 @@ export function InboxPage() {
           setChannelFilter={setChannelFilter}
           statusCounts={statusCounts}
           selectedConvId={selectedConvId}
-          setSelectedConvId={setSelectedConvId}
+          setSelectedConvId={(id) => { setSelectedConvId(id); setIsComposingNew(false); }}
           toggleStar={toggleStar}
+          onNew={() => { setSelectedConvId(null); setIsComposingNew(true); }}
         />
 
         {/* ══ PANNEAU CENTRAL — Fil de messages ════════════ */}
-        <div className="flex-1 flex flex-col min-w-0 bg-[var(--bg-canvas)]">
+        {isComposingNew ? (
+          <NewConversationPane 
+            snippets={snippets} 
+            templates={templates}
+            onCancel={() => { setIsComposingNew(false); if (conversations[0]) setSelectedConvId(conversations[0].id); }}
+            onSent={(id) => { 
+              setIsComposingNew(false); 
+              setSelectedConvId(id); 
+              void loadConversations(); 
+            }}
+          />
+        ) : (
+          <div className="flex-1 flex flex-col min-w-0 bg-[var(--bg-canvas)]">
           {!activeConv ? (
             <div className="flex-1 flex items-center justify-center text-[var(--text-muted)]">
               <div className="text-center">
@@ -206,13 +237,17 @@ export function InboxPage() {
                 handleSend={handleSend} 
                 isSending={isSending} 
                 channel={activeConv.channel as MessageChannel} 
+                snippets={snippets}
+                templates={templates}
+                leadId={activeConv.lead_id}
               />
             </>
           )}
         </div>
-
+        )}
+        
         {/* ══ PANNEAU DROIT — Info lead (collapsible) ══════ */}
-        {showRightPanel && activeConv && (
+        {showRightPanel && activeConv && !isComposingNew && (
           <InboxPanel activeConv={activeConv} changeStatus={changeStatus} />
         )}
       </div>

@@ -227,19 +227,38 @@ export interface EmailTemplate {
   body_text: string;
   variables: string;       // JSON array
   category: TemplateCategory;
+  channel: MessageChannel; // email, sms
   is_active: number;
   created_at: string;
   updated_at: string;
 }
 
+export interface Snippet {
+  id: string;
+  client_id: string | null;
+  user_id: string;
+  name: string;
+  shortcut: string;
+  body: string;
+  created_at: string;
+}
+
 // ── Phase 3 : Automations & Workflows ──────────────────────
 
-export const TRIGGER_TYPES = ['lead_created', 'status_changed', 'pipeline_stage_changed', 'tag_added', 'form_submitted', 'score_threshold', 'lead_score_changed', 'deal_won', 'task_overdue'] as const;
+export const TRIGGER_TYPES = [
+  'lead_created', 'status_changed', 'pipeline_stage_changed', 'tag_added', 'form_submitted', 
+  'score_threshold', 'lead_score_changed', 'deal_won', 'task_overdue',
+  'email_opened', 'link_clicked', 'appointment_booked', 'appointment_cancelled', 'appointment_no_show',
+  'opportunity_status_changed', 'note_added', 'task_completed', 'inactivity_threshold', 'birthday_today', 'manual'
+] as const;
 export type TriggerType = typeof TRIGGER_TYPES[number];
 
 export const STEP_TYPES = [
   'send_email', 'send_internal_email', 'send_sms', 'wait', 'condition', 'add_tag', 'remove_tag', 
-  'change_status', 'assign', 'notify', 'webhook', 'update_pipeline', 'update_stage'
+  'change_status', 'assign', 'notify', 'webhook', 'update_pipeline', 'update_stage',
+  'create_task', 'create_appointment', 'create_opportunity', 'update_opportunity',
+  'update_custom_field', 'trigger_another_workflow', 'end_other_workflow', 'ai_action',
+  'math_operation', 'goal_reached', 'add_to_smart_list'
 ] as const;
 export type StepType = typeof STEP_TYPES[number];
 
@@ -313,8 +332,40 @@ export interface Task {
   lead_name?: string;
   client_id: string | null;
   assigned_to: string;
+  recurring_rule: string | null;
+  parent_task_id: string | null;
+  reminder_minutes_before: number | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface Subtask {
+  id: string;
+  task_id: string;
+  title: string;
+  is_done: number;
+  sort_order: number;
+  created_at: string;
+}
+
+export interface TaskComment {
+  id: string;
+  task_id: string;
+  user_id: string;
+  body: string;
+  created_at: string;
+}
+
+export interface TaskTemplate {
+  id: string;
+  client_id: string | null;
+  user_id: string | null;
+  name: string;
+  description: string;
+  default_priority: TaskPriority;
+  default_due_offset_days: number;
+  subtasks_json: string;
+  created_at: string;
 }
 
 // ── Phase 7 : Champs personnalisés ─────────────────────────
@@ -374,6 +425,14 @@ export interface Appointment {
   status: AppointmentStatus;
   calendly_event_id: string | null;
   notes: string;
+  calendar_id: string | null;
+  assignee_user_id: string | null;
+  attendees_json: string;
+  conference_link: string | null;
+  recurring_rule: string | null;
+  reminder_minutes: number;
+  buffer_before_min: number;
+  buffer_after_min: number;
   created_at: string;
   updated_at: string;
   // Jointures optionnelles
@@ -599,6 +658,17 @@ export const TRIGGER_LABELS: Record<TriggerType, string> = {
   lead_score_changed: 'Score modifié',
   deal_won: 'Gagné (Deal won)',
   task_overdue: 'Tâche en retard',
+  email_opened: 'Email ouvert',
+  link_clicked: 'Lien cliqué',
+  appointment_booked: 'RDV réservé',
+  appointment_cancelled: 'RDV annulé',
+  appointment_no_show: 'RDV absent',
+  opportunity_status_changed: 'Opportunité modifiée',
+  note_added: 'Note ajoutée',
+  task_completed: 'Tâche complétée',
+  inactivity_threshold: 'Inactivité (Seuil)',
+  birthday_today: 'Anniversaire',
+  manual: 'Manuel',
 };
 
 export const TRIGGER_ICONS: Record<TriggerType, string> = {
@@ -611,6 +681,17 @@ export const TRIGGER_ICONS: Record<TriggerType, string> = {
   lead_score_changed: '📈',
   deal_won: '🎉',
   task_overdue: '⏰',
+  email_opened: '👁️',
+  link_clicked: '🖱️',
+  appointment_booked: '📅',
+  appointment_cancelled: '❌',
+  appointment_no_show: '👻',
+  opportunity_status_changed: '💰',
+  note_added: '📝',
+  task_completed: '✅',
+  inactivity_threshold: '😴',
+  birthday_today: '🎂',
+  manual: '⚡',
 };
 
 export const STEP_TYPE_LABELS: Record<StepType, string> = {
@@ -627,6 +708,17 @@ export const STEP_TYPE_LABELS: Record<StepType, string> = {
   webhook: 'Webhook',
   update_pipeline: 'Changer Pipeline',
   update_stage: 'Changer Étape',
+  create_task: 'Créer tâche',
+  create_appointment: 'Créer RDV',
+  create_opportunity: 'Créer Opportunité',
+  update_opportunity: 'Mettre à jour Opportunité',
+  update_custom_field: 'Mettre à jour Champ Personnalisé',
+  trigger_another_workflow: 'Déclencher autre workflow',
+  end_other_workflow: 'Arrêter autre workflow',
+  ai_action: 'Action IA',
+  math_operation: 'Opération Math',
+  goal_reached: 'Atteindre Objectif',
+  add_to_smart_list: 'Ajouter Smart List',
 };
 
 export const STEP_TYPE_ICONS: Record<StepType, string> = {
@@ -643,6 +735,17 @@ export const STEP_TYPE_ICONS: Record<StepType, string> = {
   webhook: '🌐',
   update_pipeline: '🔀',
   update_stage: '⏭️',
+  create_task: '📝',
+  create_appointment: '📅',
+  create_opportunity: '💰',
+  update_opportunity: '📈',
+  update_custom_field: '✏️',
+  trigger_another_workflow: '➡️',
+  end_other_workflow: '⏹️',
+  ai_action: '🤖',
+  math_operation: '➕',
+  goal_reached: '🎯',
+  add_to_smart_list: '📋',
 };
 
 export const ENROLLMENT_STATUS_LABELS: Record<EnrollmentStatus, string> = {

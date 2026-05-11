@@ -1,6 +1,6 @@
 // ── Client API — Helpers pour appeler le worker ─────────────
 
-import type { ApiResponse, Client, Lead, LeadDetail, DashboardStats, ActivityLogEntry, Message, EmailTemplate, Workflow, WorkflowStep, WorkflowEnrollment, Appointment, Task, LeadNote, LeadScore, CustomFieldValue, Conversation, ConversationStatus, Pipeline, PipelineStage, CustomFieldDef, SmartList } from './types';
+import type { ApiResponse, Client, Lead, LeadDetail, DashboardStats, ActivityLogEntry, Message, EmailTemplate, Workflow, WorkflowStep, WorkflowEnrollment, Appointment, Task, Subtask, TaskComment, TaskTemplate, LeadNote, LeadScore, CustomFieldValue, Conversation, ConversationStatus, Pipeline, PipelineStage, CustomFieldDef, SmartList, Snippet } from './types';
 
 const API_BASE = '/api';
 
@@ -403,6 +403,14 @@ export async function updateConversation(
   });
 }
 
+export async function markConversationRead(
+  id: string
+): Promise<ApiResponse<{ success: boolean }>> {
+  return apiFetch<{ success: boolean }>(`/conversations/${id}/mark-read`, {
+    method: 'POST',
+  });
+}
+
 // ── Phase 2 : Templates d'emails ───────────────────────────
 
 export async function getTemplates(category?: string): Promise<ApiResponse<EmailTemplate[]>> {
@@ -437,6 +445,49 @@ export async function deleteTemplate(
   templateId: string
 ): Promise<ApiResponse<{ success: boolean }>> {
   return apiFetch<{ success: boolean }>(`/templates/${templateId}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function interpolateTemplate(
+  text: string,
+  leadId: string
+): Promise<ApiResponse<{ text: string }>> {
+  return apiFetch<{ text: string }>('/templates/interpolate', {
+    method: 'POST',
+    body: JSON.stringify({ text, lead_id: leadId }),
+  });
+}
+
+// ── Snippets ────────────────────────────────────────────────
+
+export async function getSnippets(): Promise<ApiResponse<Snippet[]>> {
+  return apiFetch<Snippet[]>('/snippets');
+}
+
+export async function createSnippet(
+  snippet: Partial<Snippet>
+): Promise<ApiResponse<{ id: string }>> {
+  return apiFetch<{ id: string }>('/snippets', {
+    method: 'POST',
+    body: JSON.stringify(snippet),
+  });
+}
+
+export async function updateSnippet(
+  snippetId: string,
+  updates: Partial<Snippet>
+): Promise<ApiResponse<{ success: boolean }>> {
+  return apiFetch<{ success: boolean }>(`/snippets/${snippetId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(updates),
+  });
+}
+
+export async function deleteSnippet(
+  snippetId: string
+): Promise<ApiResponse<{ success: boolean }>> {
+  return apiFetch<{ success: boolean }>(`/snippets/${snippetId}`, {
     method: 'DELETE',
   });
 }
@@ -538,6 +589,66 @@ export async function deleteAppointment(
   });
 }
 
+export async function rescheduleAppointment(
+  id: string, start_time: string, end_time: string
+): Promise<ApiResponse<{ success: boolean }>> {
+  return apiFetch<{ success: boolean }>(`/appointments/${id}/reschedule`, {
+    method: 'PATCH',
+    body: JSON.stringify({ start_time, end_time }),
+  });
+}
+
+export async function sendAppointmentReminderNow(
+  id: string
+): Promise<ApiResponse<{ success: boolean }>> {
+  return apiFetch<{ success: boolean }>(`/appointments/${id}/send-reminder-now`, {
+    method: 'POST',
+  });
+}
+
+// ── Calendars & Availability ──────────────────────────────
+
+export interface Calendar {
+  id: string;
+  user_id: string;
+  name: string;
+  color: string;
+  is_default: number;
+  is_visible: number;
+}
+
+export async function getCalendars(): Promise<ApiResponse<Calendar[]>> {
+  return apiFetch<Calendar[]>('/calendars');
+}
+
+export async function createCalendar(params: Partial<Calendar>): Promise<ApiResponse<{ id: string }>> {
+  return apiFetch<{ id: string }>('/calendars', { method: 'POST', body: JSON.stringify(params) });
+}
+
+export async function updateCalendar(id: string, params: Partial<Calendar>): Promise<ApiResponse<{ success: boolean }>> {
+  return apiFetch<{ success: boolean }>(`/calendars/${id}`, { method: 'PATCH', body: JSON.stringify(params) });
+}
+
+export async function deleteCalendar(id: string): Promise<ApiResponse<{ success: boolean }>> {
+  return apiFetch<{ success: boolean }>(`/calendars/${id}`, { method: 'DELETE' });
+}
+
+export interface AvailabilityRule {
+  id: string;
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
+  is_active: number;
+}
+
+export async function getAvailabilityRules(): Promise<ApiResponse<AvailabilityRule[]>> {
+  return apiFetch<AvailabilityRule[]>('/availability-rules');
+}
+
+export async function getAvailability(userId: string, date: string): Promise<ApiResponse<{ slots: string[] }>> {
+  return apiFetch<{ slots: string[] }>(`/availability?user_id=${userId}&date=${date}`);
+}
+
 // ── Phase 7 : Tâches ────────────────────────────────────────
 
 export async function getTasks(params?: {
@@ -578,6 +689,44 @@ export async function deleteTask(
   return apiFetch<{ success: boolean }>(`/tasks/${id}`, {
     method: 'DELETE',
   });
+}
+
+// ── Subtasks, Comments & Templates (Phase 25) ─────────────────
+
+export async function getSubtasks(taskId: string): Promise<ApiResponse<Subtask[]>> {
+  return apiFetch<Subtask[]>(`/tasks/${taskId}/subtasks`);
+}
+
+export async function createSubtask(taskId: string, title: string): Promise<ApiResponse<{ id: string }>> {
+  return apiFetch<{ id: string }>(`/tasks/${taskId}/subtasks`, { method: 'POST', body: JSON.stringify({ title }) });
+}
+
+export async function updateSubtask(subtaskId: string, is_done: boolean): Promise<ApiResponse<{ success: boolean }>> {
+  return apiFetch<{ success: boolean }>(`/subtasks/${subtaskId}`, { method: 'PATCH', body: JSON.stringify({ is_done }) });
+}
+
+export async function deleteSubtask(subtaskId: string): Promise<ApiResponse<{ success: boolean }>> {
+  return apiFetch<{ success: boolean }>(`/subtasks/${subtaskId}`, { method: 'DELETE' });
+}
+
+export async function getTaskComments(taskId: string): Promise<ApiResponse<TaskComment[]>> {
+  return apiFetch<TaskComment[]>(`/tasks/${taskId}/comments`);
+}
+
+export async function createTaskComment(taskId: string, body: string): Promise<ApiResponse<{ id: string }>> {
+  return apiFetch<{ id: string }>(`/tasks/${taskId}/comments`, { method: 'POST', body: JSON.stringify({ body }) });
+}
+
+export async function deleteTaskComment(commentId: string): Promise<ApiResponse<{ success: boolean }>> {
+  return apiFetch<{ success: boolean }>(`/task-comments/${commentId}`, { method: 'DELETE' });
+}
+
+export async function getTaskTemplates(): Promise<ApiResponse<TaskTemplate[]>> {
+  return apiFetch<TaskTemplate[]>('/task-templates');
+}
+
+export async function applyTaskTemplate(templateId: string, leadId?: string): Promise<ApiResponse<{ id: string }>> {
+  return apiFetch<{ id: string }>('/task-templates/apply', { method: 'POST', body: JSON.stringify({ template_id: templateId, lead_id: leadId }) });
 }
 
 // ── Notifications ───────────────────────────────────────────

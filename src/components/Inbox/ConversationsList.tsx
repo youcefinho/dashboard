@@ -24,12 +24,13 @@ interface Props {
   selectedConvId: string | null;
   setSelectedConvId: (id: string) => void;
   toggleStar: (conv: Conversation, e: React.MouseEvent) => void;
+  onNew?: () => void;
 }
 
 export function ConversationsList({
   conversations, isLoading, searchQuery, setSearchQuery,
   statusFilter, setStatusFilter, channelFilter, setChannelFilter,
-  statusCounts, selectedConvId, setSelectedConvId, toggleStar
+  statusCounts, selectedConvId, setSelectedConvId, toggleStar, onNew
 }: Props) {
 
   const timeAgo = (d: string) => {
@@ -47,7 +48,13 @@ export function ConversationsList({
   return (
     <div className="w-80 shrink-0 border-r border-[var(--border-subtle)] flex flex-col bg-[var(--bg-canvas)]">
       {/* Header + search */}
-      <div className="p-3 border-b border-[var(--border-subtle)]">
+      <div className="p-3 border-b border-[var(--border-subtle)] space-y-2">
+        <div className="flex items-center justify-between mb-1">
+          <h2 className="text-sm font-semibold">Boîte de réception</h2>
+          <button onClick={onNew} className="p-1.5 rounded-lg bg-[var(--brand-tint)] text-[var(--brand-primary)] hover:bg-[var(--brand-primary)] hover:text-white transition-colors cursor-pointer" title="Nouvelle conversation">
+            <Mail size={14} />
+          </button>
+        </div>
         <div className="relative">
           <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
           <input

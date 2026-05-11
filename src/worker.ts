@@ -29,8 +29,9 @@ import {
   handleGetWorkflows, handleGetWorkflowDetail, handleCreateWorkflow,
   handleUpdateWorkflow, handleDeleteWorkflow, handleToggleWorkflow,
   handleGetPipelineStageWorkflows, handleGetWorkflowEnrollments, handleCancelEnrollment,
+  autoEnroll
 } from './worker/workflows';
-import { handleAiChat, handleGetAiConversations, handleGetAiConversation } from './worker/ai';
+
 import {
   handleGetCustomFields, handleCreateCustomField, handleUpdateCustomField, handleDeleteCustomField,
   handleGetLeadCustomFields, handleSetLeadCustomFields,
@@ -45,7 +46,7 @@ import {
   handleGetBookings, handlePublicBookingPage, handlePublicCreateBooking,
 } from './worker/bookings';
 import { handleGetForms, handleCreateForm, handleUpdateForm, handleDeleteForm, handleGetFormSubmissions, handlePublicFormGet, handlePublicFormSubmit } from './worker/forms';
-import { handleAiChat, handleGetAiConversations, handleGetAiConversation, handleAiScore, handleAiGenerate, handleAiSuggestWorkflow } from './worker/ai';
+import { handleAiGenerate, handleAiSuggestWorkflow } from './worker/ai';
 import { handlePublicUnsubscribe, handleGetUnsubscribes, handleLogConsent, handleGetConsent, handleForgetLead, handleExportPii } from './worker/compliance';
 import {
   handleGetCustomFields, handleCreateCustomField, handleUpdateCustomField, handleDeleteCustomField,
@@ -54,9 +55,7 @@ import {
 } from './worker/custom-fields';
 import { handleGetSubAccounts, handleCreateSubAccount, handleUpdateSubAccount, handleCreateSnapshot, handleApplySnapshot, handleGetWhitelabel, handleUpdateWhitelabel, handleWidgetScript } from './worker/sub-accounts';
 // gcal.ts et gbp.ts déplacés en _v2-backlog/ (Sprint Consolidation)
-import {
-  handleGetReports, handleGetDashboardStats, handleGetCampaignStats, handleGetForecast
-} from './worker/reports';
+
 import { handleEmailBroadcast, handleGetBroadcasts, handleGetBroadcastDetail } from './worker/broadcast';
 import { handleDashboardStats, handleTotpSetup, handleTotpVerify, handleTotpDisable, handleSendSmsRoute, handleCsvImport, handleExportCsv as handleExportCsvDash } from './worker/dashboard';
 import { handleWebhookLead } from './worker/leads';
@@ -161,6 +160,13 @@ export default {
       if (path === '/api/webchat/widget.js') {
         const { handleWebchatWidget } = await import('./worker/webchat');
         return handleWebchatWidget(env, url);
+      }
+      
+      // iCal feed
+      const icalMatch = path.match(/^\/ical\/([^/]+)\.ics$/);
+      if (icalMatch && method === 'GET') {
+        const { handleGetICalFeed } = await import('./worker/calendar');
+        return await handleGetICalFeed(env, icalMatch[1]!);
       }
     } catch (err) {
       console.error('Erreur route publique:', err);
@@ -279,13 +285,25 @@ async function routeProtected(
   if (convMatch && method === 'PATCH') return handleUpdateConversation(request, env, auth, convMatch[1]!);
   const convMsgMatch = path.match(/^\/api\/conversations\/([^/]+)\/messages$/);
   if (convMsgMatch && method === 'POST') return handleSendConversationMessage(request, env, auth, convMsgMatch[1]!);
+  const markReadMatch = path.match(/^\/api\/conversations\/([^/]+)\/mark-read$/);
+  if (markReadMatch && method === 'POST') {
+    await env.DB.prepare('UPDATE conversations SET unread_count = 0, updated_at = datetime(\'now\') WHERE id = ?').bind(markReadMatch[1]!).run();
+    return new Response(JSON.stringify({ data: { success: true } }), { headers: { 'Content-Type': 'application/json' } });
+  }
 
-  // Templates
+  // Templates & Snippets
   if (path === '/api/templates' && method === 'GET') return handleGetTemplates(env, auth, url);
   if (path === '/api/templates' && method === 'POST') return handleCreateTemplate(request, env, auth);
+  if (path === '/api/templates/interpolate' && method === 'POST') { const { handleInterpolateTemplate } = await import('./worker/templates'); return await handleInterpolateTemplate(request, env, auth); }
   const tplMatch = path.match(/^\/api\/templates\/([^/]+)$/);
   if (tplMatch && method === 'PATCH') return handleUpdateTemplate(request, env, auth, tplMatch[1]!);
   if (tplMatch && method === 'DELETE') return handleDeleteTemplate(env, auth, tplMatch[1]!);
+
+  if (path === '/api/snippets' && method === 'GET') { const { handleGetSnippets } = await import('./worker/snippets'); return await handleGetSnippets(env, auth); }
+  if (path === '/api/snippets' && method === 'POST') { const { handleCreateSnippet } = await import('./worker/snippets'); return await handleCreateSnippet(request, env, auth); }
+  const snippetMatch = path.match(/^\/api\/snippets\/([^/]+)$/);
+  if (snippetMatch && method === 'PATCH') { const { handleUpdateSnippet } = await import('./worker/snippets'); return await handleUpdateSnippet(request, env, auth, snippetMatch[1]!); }
+  if (snippetMatch && method === 'DELETE') { const { handleDeleteSnippet } = await import('./worker/snippets'); return await handleDeleteSnippet(env, auth, snippetMatch[1]!); }
 
   // Workflows
   if (path === '/api/workflows' && method === 'GET') return handleGetWorkflows(env, auth);
@@ -305,6 +323,35 @@ async function routeProtected(
   const apptMatch = path.match(/^\/api\/appointments\/([^/]+)$/);
   if (apptMatch && method === 'PATCH') return handleUpdateAppointment(request, env, auth, apptMatch[1]!);
   if (apptMatch && method === 'DELETE') return handleDeleteAppointment(env, auth, apptMatch[1]!);
+  const apptRescheduleMatch = path.match(/^\/api\/appointments\/([^/]+)\/reschedule$/);
+  if (apptRescheduleMatch && method === 'PATCH') {
+    const { handleRescheduleAppointment } = await import('./worker/appointments');
+    return await handleRescheduleAppointment(request, env, auth, apptRescheduleMatch[1]!);
+  }
+  const apptReminderMatch = path.match(/^\/api\/appointments\/([^/]+)\/send-reminder-now$/);
+  if (apptReminderMatch && method === 'POST') {
+    const { handleSendReminderNow } = await import('./worker/appointments');
+    return await handleSendReminderNow(env, auth, apptReminderMatch[1]!);
+  }
+
+  // Calendar Engine (Phase 24)
+  if (path === '/api/calendars' && method === 'GET') { const { handleGetCalendars } = await import('./worker/calendar'); return await handleGetCalendars(env, auth); }
+  if (path === '/api/calendars' && method === 'POST') { const { handleCreateCalendar } = await import('./worker/calendar'); return await handleCreateCalendar(request, env, auth); }
+  const calMatch = path.match(/^\/api\/calendars\/([^/]+)$/);
+  if (calMatch && method === 'PATCH') { const { handleUpdateCalendar } = await import('./worker/calendar'); return await handleUpdateCalendar(request, env, auth, calMatch[1]!); }
+  if (calMatch && method === 'DELETE') { const { handleDeleteCalendar } = await import('./worker/calendar'); return await handleDeleteCalendar(env, auth, calMatch[1]!); }
+
+  if (path === '/api/availability-rules' && method === 'GET') { const { handleGetAvailabilityRules } = await import('./worker/calendar'); return await handleGetAvailabilityRules(env, auth); }
+  if (path === '/api/availability-rules' && method === 'POST') { const { handleCreateAvailabilityRule } = await import('./worker/calendar'); return await handleCreateAvailabilityRule(request, env, auth); }
+  const ruleMatch = path.match(/^\/api\/availability-rules\/([^/]+)$/);
+  if (ruleMatch && method === 'DELETE') { const { handleDeleteAvailabilityRule } = await import('./worker/calendar'); return await handleDeleteAvailabilityRule(env, auth, ruleMatch[1]!); }
+
+  if (path === '/api/date-overrides' && method === 'GET') { const { handleGetDateOverrides } = await import('./worker/calendar'); return await handleGetDateOverrides(env, auth); }
+  if (path === '/api/date-overrides' && method === 'POST') { const { handleCreateDateOverride } = await import('./worker/calendar'); return await handleCreateDateOverride(request, env, auth); }
+  const overrideMatch = path.match(/^\/api\/date-overrides\/([^/]+)$/);
+  if (overrideMatch && method === 'DELETE') { const { handleDeleteDateOverride } = await import('./worker/calendar'); return await handleDeleteDateOverride(env, auth, overrideMatch[1]!); }
+
+  if (path === '/api/availability' && method === 'GET') { const { handleGetAvailability } = await import('./worker/calendar'); return await handleGetAvailability(env, url); }
 
   // Tasks
   if (path === '/api/tasks' && method === 'GET') return handleGetTasks(env, auth, url);
@@ -312,6 +359,25 @@ async function routeProtected(
   const taskMatch = path.match(/^\/api\/tasks\/([^/]+)$/);
   if (taskMatch && method === 'PATCH') return handlePatchTask(request, env, auth, taskMatch[1]!);
   if (taskMatch && method === 'DELETE') return handleDeleteTask(env, auth, taskMatch[1]!);
+
+  const subtasksMatch = path.match(/^\/api\/tasks\/([^/]+)\/subtasks$/);
+  if (subtasksMatch && method === 'GET') { const { handleGetSubtasks } = await import('./worker/tasks'); return await handleGetSubtasks(env, subtasksMatch[1]!); }
+  if (subtasksMatch && method === 'POST') { const { handleCreateSubtask } = await import('./worker/tasks'); return await handleCreateSubtask(request, env, subtasksMatch[1]!); }
+  const subtaskMatch = path.match(/^\/api\/subtasks\/([^/]+)$/);
+  if (subtaskMatch && method === 'PATCH') { const { handleUpdateSubtask } = await import('./worker/tasks'); return await handleUpdateSubtask(request, env, subtaskMatch[1]!); }
+  if (subtaskMatch && method === 'DELETE') { const { handleDeleteSubtask } = await import('./worker/tasks'); return await handleDeleteSubtask(env, subtaskMatch[1]!); }
+
+  const taskCommentsMatch = path.match(/^\/api\/tasks\/([^/]+)\/comments$/);
+  if (taskCommentsMatch && method === 'GET') { const { handleGetTaskComments } = await import('./worker/tasks'); return await handleGetTaskComments(env, taskCommentsMatch[1]!); }
+  if (taskCommentsMatch && method === 'POST') { const { handleCreateTaskComment } = await import('./worker/tasks'); return await handleCreateTaskComment(request, env, auth, taskCommentsMatch[1]!); }
+  const taskCommentMatch = path.match(/^\/api\/task-comments\/([^/]+)$/);
+  if (taskCommentMatch && method === 'DELETE') { const { handleDeleteTaskComment } = await import('./worker/tasks'); return await handleDeleteTaskComment(env, auth, taskCommentMatch[1]!); }
+
+  if (path === '/api/task-templates' && method === 'GET') { const { handleGetTaskTemplates } = await import('./worker/tasks'); return await handleGetTaskTemplates(env, auth); }
+  if (path === '/api/task-templates' && method === 'POST') { const { handleCreateTaskTemplate } = await import('./worker/tasks'); return await handleCreateTaskTemplate(request, env, auth); }
+  const taskTemplateMatch = path.match(/^\/api\/task-templates\/([^/]+)$/);
+  if (taskTemplateMatch && method === 'DELETE') { const { handleDeleteTaskTemplate } = await import('./worker/tasks'); return await handleDeleteTaskTemplate(env, auth, taskTemplateMatch[1]!); }
+  if (path === '/api/task-templates/apply' && method === 'POST') { const { handleApplyTaskTemplate } = await import('./worker/tasks'); return await handleApplyTaskTemplate(request, env, auth); }
 
   // Notifications
   if (path === '/api/notifications' && method === 'GET') return handleGetNotifications(env, auth, url);
@@ -375,8 +441,6 @@ async function routeProtected(
   const submissionsMatch = path.match(/^\/api\/forms\/([^/]+)\/submissions$/);
   if (submissionsMatch && method === 'GET') return handleGetFormSubmissions(env, auth, submissionsMatch[1]!, url);
 
-  // AI
-  if (path === '/api/ai/chat' && method === 'POST') return handleAiChat(request, env, auth);
 
   // Custom Fields
   if (path === '/api/custom-fields' && method === 'GET') return handleGetCustomFields(env, auth, url);
@@ -396,11 +460,7 @@ async function routeProtected(
   if (slMatch && method === 'DELETE') return handleDeleteSmartList(env, auth, slMatch[1]!);
   const slExecMatch = path.match(/^\/api\/smart-lists\/([^/]+)\/execute$/);
   if (slExecMatch && method === 'GET') return handleExecuteSmartList(env, auth, slExecMatch[1]!, url);
-  if (path === '/api/ai/conversations' && method === 'GET') return handleGetAiConversations(env, auth, url);
-  const aiConvMatch = path.match(/^\/api\/ai\/conversations\/([^/]+)$/);
-  if (aiConvMatch && method === 'GET') return handleGetAiConversation(env, auth, aiConvMatch[1]!);
-  const aiScoreMatch = path.match(/^\/api\/ai\/score\/([^/]+)$/);
-  if (aiScoreMatch && method === 'POST') return handleAiScore(env, auth, aiScoreMatch[1]!);
+
   if (path === '/api/ai/generate' && method === 'POST') return handleAiGenerate(request, env, auth);
   if (path === '/api/ai/suggest-workflow' && method === 'POST') return handleAiSuggestWorkflow(request, env, auth);
 
@@ -470,11 +530,7 @@ async function routeProtected(
     return await handleMetaOauthCallback(request, env, auth);
   }
 
-  // Reviews & Reports
-  if (path === '/api/reports' && method === 'GET') return handleGetReports(env, auth);
-  if (path === '/api/reports/dashboard' && method === 'GET') return handleGetDashboardStats(env, auth);
-  if (path === '/api/reports/campaigns' && method === 'GET') return handleGetCampaignStats(env, auth);
-  if (path === '/api/reports/forecast' && method === 'GET') return handleGetForecast(env, auth);
+  // Reviews
   if (path === '/api/reviews' && method === 'GET') return handleGetReviews(env, auth, url);
   if (path === '/api/reviews/stats' && method === 'GET') return handleGetReviewStats(env, auth, url);
   if (path === '/api/reviews/requests' && method === 'GET') return handleGetReviewRequests(env, auth, url);
@@ -489,20 +545,6 @@ async function routeProtected(
   if (path === '/api/consent' && method === 'POST') return handleLogConsent(request, env, auth);
   if (path === '/api/consent' && method === 'GET') return handleGetConsent(env, auth, url);
 
-  // Custom Fields
-  if (path === '/api/custom-fields' && method === 'GET') return handleGetCustomFields(env, auth, url);
-  if (path === '/api/custom-fields' && method === 'POST') return handleCreateCustomField(request, env, auth);
-  const cfMatch = path.match(/^\/api\/custom-fields\/([^/]+)$/);
-  if (cfMatch && method === 'PATCH') return handleUpdateCustomField(request, env, auth, cfMatch[1]!);
-  if (cfMatch && method === 'DELETE') return handleDeleteCustomField(env, auth, cfMatch[1]!);
-
-  // Smart Lists
-  if (path === '/api/smart-lists' && method === 'GET') return handleGetSmartLists(env, auth);
-  if (path === '/api/smart-lists' && method === 'POST') return handleCreateSmartList(request, env, auth);
-  const slMatch = path.match(/^\/api\/smart-lists\/([^/]+)$/);
-  if (slMatch && method === 'DELETE') return handleDeleteSmartList(env, auth, slMatch[1]!);
-  const slExecMatch = path.match(/^\/api\/smart-lists\/([^/]+)\/execute$/);
-  if (slExecMatch && method === 'GET') return handleExecuteSmartList(env, auth, slExecMatch[1]!, url);
 
   // Documents + e-sign (P4.3)
   if (path === '/api/files' && method === 'POST') return handleUploadFile(request, env, auth);
@@ -520,9 +562,7 @@ async function routeProtected(
   const docSendMatch = path.match(/^\/api\/documents\/([^/]+)\/send$/);
   if (docSendMatch && method === 'POST') return handleSendDocument(request, env, auth, docSendMatch[1]!);
 
-  // Migration GHL
-  if (path === '/api/migrate/ghl' && method === 'POST') return handleStartMigration(request, env, auth);
-  if (path === '/api/migrate/status' && method === 'GET') return handleGetMigrationStatus(env, auth, url);
+
 
   // Score Profiles (Phase 2.0)
   if (path === '/api/score-profiles' && method === 'GET') return handleGetScoreProfiles(env, auth, url);

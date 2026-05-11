@@ -8,6 +8,7 @@ export async function handleGetTemplates(
   url: URL
 ): Promise<Response> {
   const category = url.searchParams.get('category');
+  const channel = url.searchParams.get('channel');
 
   let query = 'SELECT * FROM email_templates WHERE is_active = 1';
   const params: string[] = [];
@@ -15,6 +16,11 @@ export async function handleGetTemplates(
   if (category) {
     query += ' AND category = ?';
     params.push(category);
+  }
+  
+  if (channel) {
+    query += ' AND channel = ?';
+    params.push(channel);
   }
 
   query += ' ORDER BY created_at DESC';
@@ -39,6 +45,7 @@ export async function handleCreateTemplate(
   const subject = sanitizeInput(body.subject as string, 200);
   const bodyHtml = sanitizeInput(body.body_html as string, 10000);
   const category = sanitizeInput(body.category as string, 20) || 'general';
+  const channel = sanitizeInput(body.channel as string, 20) || 'email';
 
   if (!name || !subject || !bodyHtml) {
     return json({ error: 'Nom, sujet et contenu requis' }, 400);
@@ -47,9 +54,9 @@ export async function handleCreateTemplate(
   const id = crypto.randomUUID();
 
   await env.DB.prepare(
-    `INSERT INTO email_templates (id, name, subject, body_html, category)
-     VALUES (?, ?, ?, ?, ?)`
-  ).bind(id, name, subject, bodyHtml, category).run();
+    `INSERT INTO email_templates (id, name, subject, body_html, category, channel)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  ).bind(id, name, subject, bodyHtml, category, channel).run();
 
   return json({ data: { id } }, 201);
 }
@@ -72,6 +79,7 @@ export async function handleUpdateTemplate(
   if (body.subject) { updates.push('subject = ?'); params.push(sanitizeInput(body.subject as string, 200)); }
   if (body.body_html) { updates.push('body_html = ?'); params.push(sanitizeInput(body.body_html as string, 10000)); }
   if (body.category) { updates.push('category = ?'); params.push(sanitizeInput(body.category as string, 20)); }
+  if (body.channel) { updates.push('channel = ?'); params.push(sanitizeInput(body.channel as string, 20)); }
 
   if (updates.length === 0) {
     return json({ error: 'Aucune modification' }, 400);
@@ -100,3 +108,28 @@ export async function handleDeleteTemplate(
 
   return json({ data: { success: true } });
 }
+
+export async function handleInterpolateTemplate(
+  request: Request,
+  env: Env,
+  _auth: { userId: string; role: string }
+): Promise<Response> {
+  const body = await request.json() as Record<string, unknown>;
+  let text = body.text as string;
+  const leadId = body.lead_id as string;
+
+  if (!text) return json({ data: { text: '' } });
+  if (!leadId) return json({ data: { text } });
+
+  const lead = await env.DB.prepare('SELECT * FROM leads WHERE id = ?').bind(leadId).first() as Record<string, unknown> | null;
+  if (!lead) return json({ data: { text } });
+
+  text = text.replace(/\{\{lead\.name\}\}/g, (lead.name as string) || '');
+  text = text.replace(/\{\{lead\.first_name\}\}/g, (((lead.name as string) || '').split(' ')[0]) || '');
+  text = text.replace(/\{\{lead\.email\}\}/g, (lead.email as string) || '');
+  text = text.replace(/\{\{lead\.phone\}\}/g, (lead.phone as string) || '');
+  text = text.replace(/\{\{lead\.company\}\}/g, (lead.company as string) || '');
+
+  return json({ data: { text } });
+}
+
