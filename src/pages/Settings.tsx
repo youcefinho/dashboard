@@ -1,17 +1,18 @@
 // ── Page Settings — Refonte Sprint Design 2 (D2.7) ──────────
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, Button, Badge } from '@/components/ui';
 import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/lib/auth';
-import { getLeads } from '@/lib/api';
-import { User, Bell, Shield, Palette, Webhook, Keyboard, Settings, Columns } from 'lucide-react';
+import { getLeads, getClients, getPacks, installPack, type IndustryPack } from '@/lib/api';
+import type { Client } from '@/lib/types';
+import { User, Bell, Shield, Palette, Webhook, Keyboard, Settings, Columns, Package, Brain, Download, CheckCircle } from 'lucide-react';
 import { PipelineSettings } from '@/components/settings/PipelineSettings';
 import { ComplianceSettings } from './settings/ComplianceSettings';
 import { CustomFieldsSettings } from './settings/CustomFieldsSettings';
 
-type SettingsTab = 'profil' | 'notifications' | 'securite' | 'apparence' | 'pipelines' | 'custom_fields' | 'conformite' | 'webhook' | 'raccourcis' | 'systeme';
+type SettingsTab = 'profil' | 'notifications' | 'securite' | 'apparence' | 'pipelines' | 'custom_fields' | 'conformite' | 'webhook' | 'raccourcis' | 'systeme' | 'packs' | 'ai_scoring';
 
 const TABS: { id: SettingsTab; icon: typeof User; label: string; group: string; adminOnly?: boolean }[] = [
   { id: 'profil', icon: User, label: 'Mon profil', group: 'COMPTE' },
@@ -20,6 +21,8 @@ const TABS: { id: SettingsTab; icon: typeof User; label: string; group: string; 
   { id: 'apparence', icon: Palette, label: 'Apparence', group: 'CONFIGURATION' },
   { id: 'pipelines', icon: Columns, label: 'Pipelines', group: 'CONFIGURATION', adminOnly: true },
   { id: 'custom_fields', icon: Webhook, label: 'Champs Persos', group: 'CONFIGURATION', adminOnly: true },
+  { id: 'ai_scoring', icon: Brain, label: 'IA & Scoring', group: 'CONFIGURATION', adminOnly: true },
+  { id: 'packs', icon: Package, label: 'Packs Industrie', group: 'CONFIGURATION', adminOnly: true },
   { id: 'conformite', icon: Shield, label: 'Conformité', group: 'CONFIGURATION', adminOnly: true },
   { id: 'webhook', icon: Webhook, label: 'Webhook', group: 'AVANCÉ', adminOnly: true },
   { id: 'raccourcis', icon: Keyboard, label: 'Raccourcis', group: 'AVANCÉ' },
@@ -379,6 +382,12 @@ export function SettingsPage() {
 
           {/* ── CHAMPS PERSOS ── */}
           {activeTab === 'custom_fields' && <CustomFieldsSettings />}
+
+          {/* ── PACKS INDUSTRIE (D7) ── */}
+          {activeTab === 'packs' && isAdmin && <PacksSettings />}
+
+          {/* ── IA & SCORING (D1) ── */}
+          {activeTab === 'ai_scoring' && isAdmin && <AiScoringSettings />}
         </div>
       </div>
     </AppLayout>
@@ -394,5 +403,226 @@ function ToggleSwitch({ defaultChecked = false }: { defaultChecked?: boolean }) 
       className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ${checked ? 'bg-[var(--brand-primary)]' : 'bg-[var(--bg-subtle)]'}`}>
       <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform duration-200 mt-0.5 ${checked ? 'translate-x-4 ml-0.5' : 'translate-x-0.5'}`} />
     </button>
+  );
+}
+
+// ── D7 : Packs Industrie Settings ───────────────────────────
+
+function PacksSettings() {
+  const [packs, setPacks] = useState<IndustryPack[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedClient, setSelectedClient] = useState('');
+  const [installing, setInstalling] = useState<string | null>(null);
+  const [installed, setInstalled] = useState<Set<string>>(new Set());
+  const [installMsg, setInstallMsg] = useState('');
+
+  useEffect(() => {
+    async function load() {
+      setIsLoading(true);
+      const [packsRes, clientsRes] = await Promise.all([getPacks(), getClients()]);
+      if (packsRes.data) setPacks(packsRes.data);
+      if (clientsRes.data) {
+        setClients(clientsRes.data);
+        if (clientsRes.data.length > 0) setSelectedClient(clientsRes.data[0]!.id);
+      }
+      setIsLoading(false);
+    }
+    void load();
+  }, []);
+
+  const handleInstall = async (slug: string) => {
+    if (!selectedClient) return;
+    setInstalling(slug);
+    setInstallMsg('');
+    const res = await installPack(slug, selectedClient);
+    if (res.data) {
+      setInstalled(prev => new Set(prev).add(slug));
+      setInstallMsg(res.data.message);
+    } else {
+      setInstallMsg(`Erreur : ${res.error || 'Échec'}`);
+    }
+    setInstalling(null);
+    setTimeout(() => setInstallMsg(''), 5000);
+  };
+
+  if (isLoading) {
+    return <Card className="p-6 text-center text-[var(--text-muted)]">Chargement des packs...</Card>;
+  }
+
+  return (
+    <>
+      <Card className="p-5">
+        <div className="flex items-center gap-3 mb-4">
+          <Package size={20} className="text-[var(--brand-primary)]" />
+          <div>
+            <h3 className="text-sm font-semibold">Packs Industrie</h3>
+            <p className="text-xs text-[var(--text-muted)]">Installez un pack pré-configuré en 1 clic : champs, templates, workflows et listes intelligentes.</p>
+          </div>
+        </div>
+
+        {clients.length > 0 && (
+          <div className="mb-4">
+            <label className="text-xs font-medium text-[var(--text-muted)] mb-1 block">Installer sur le client :</label>
+            <select value={selectedClient} onChange={e => setSelectedClient(e.target.value)}
+              className="w-full max-w-xs px-3 py-2 text-sm bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-[var(--text-primary)] cursor-pointer">
+              {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+        )}
+
+        {installMsg && (
+          <div className={`mb-4 px-3 py-2 rounded-[var(--radius-md)] text-xs font-medium ${installMsg.startsWith('Erreur') ? 'bg-red-500/10 text-red-400' : 'bg-green-500/10 text-green-400'}`}>
+            {installMsg}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {packs.map(pack => {
+            const isInstalled = installed.has(pack.slug);
+            const industries = pack.industries.split(',').filter(Boolean);
+            return (
+              <div key={pack.id}
+                className={`border rounded-[var(--radius-lg)] p-4 transition-all ${isInstalled ? 'border-green-500/30 bg-green-500/5' : 'border-[var(--border-subtle)] hover:border-[var(--brand-primary)]/50'}`}>
+                <div className="flex items-start gap-3 mb-3">
+                  <span className="text-2xl">{pack.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-sm font-semibold text-[var(--text-primary)]">{pack.name}</h4>
+                    <p className="text-xs text-[var(--text-muted)] line-clamp-2">{pack.description}</p>
+                  </div>
+                  {isInstalled && <CheckCircle size={18} className="text-green-500 shrink-0" />}
+                </div>
+                <div className="flex flex-wrap gap-1 mb-3">
+                  {industries.map(ind => (
+                    <span key={ind} className="px-1.5 py-0.5 text-[10px] bg-[var(--bg-subtle)] text-[var(--text-muted)] rounded-full">{ind.trim()}</span>
+                  ))}
+                </div>
+                <Button
+                  size="sm"
+                  variant={isInstalled ? 'ghost' : 'primary'}
+                  onClick={() => void handleInstall(pack.slug)}
+                  isLoading={installing === pack.slug}
+                  disabled={!selectedClient || isInstalled}
+                >
+                  {isInstalled ? '✓ Installé' : <><Download size={13} /> Installer</>}
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+
+        {packs.length === 0 && (
+          <p className="text-sm text-[var(--text-muted)] text-center py-6">Aucun pack disponible. Exécutez la migration phase27 pour seeder les packs.</p>
+        )}
+      </Card>
+    </>
+  );
+}
+
+// ── D1 : IA & Scoring Settings ──────────────────────────────
+
+function AiScoringSettings() {
+  const [clients, setClients] = useState<Client[]>([]);
+  const [selectedClient, setSelectedClient] = useState('');
+  const [businessType, setBusinessType] = useState('B2B générique');
+  const [brandVoice, setBrandVoice] = useState('Professionnel, rassurant et québécois naturel.');
+  const [scoringExtra, setScoringExtra] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [saveMsg, setSaveMsg] = useState('');
+
+  useEffect(() => {
+    async function load() {
+      const res = await getClients();
+      if (res.data) {
+        setClients(res.data);
+        if (res.data.length > 0) setSelectedClient(res.data[0]!.id);
+      }
+      setIsLoading(false);
+    }
+    void load();
+  }, []);
+
+  const handleSave = async () => {
+    if (!selectedClient) return;
+    const { updateClientBusinessConfig } = await import('@/lib/api');
+    const res = await updateClientBusinessConfig(selectedClient, {
+      business_type: businessType,
+      brand_voice: brandVoice,
+      scoring_prompt_extra: scoringExtra,
+    });
+    setSaveMsg(res.data ? '✓ Configuration IA enregistrée' : `Erreur : ${res.error}`);
+    setTimeout(() => setSaveMsg(''), 3000);
+  };
+
+  if (isLoading) return <Card className="p-6 text-center text-[var(--text-muted)]">Chargement...</Card>;
+
+  const PRESET_TYPES = [
+    { label: '🏢 B2B Générique', value: 'B2B générique' },
+    { label: '🏡 Immobilier QC', value: 'Courtier immobilier résidentiel Québec' },
+    { label: '🦷 Dentisterie', value: 'Cabinet dentaire' },
+    { label: '🔧 Services locaux', value: 'Services résidentiels (nettoyage, plomberie)' },
+    { label: '🎯 Coaching', value: 'Coach / Consultant / Formateur' },
+    { label: '💼 Hypothécaire', value: 'Courtier hypothécaire commercial' },
+  ];
+
+  return (
+    <Card className="p-5">
+      <div className="flex items-center gap-3 mb-4">
+        <Brain size={20} className="text-[var(--brand-primary)]" />
+        <div>
+          <h3 className="text-sm font-semibold">Configuration IA & Scoring</h3>
+          <p className="text-xs text-[var(--text-muted)]">Personnalisez le scoring IA et la voix de marque par client.</p>
+        </div>
+      </div>
+
+      {saveMsg && (
+        <div className={`mb-4 px-3 py-2 rounded-[var(--radius-md)] text-xs font-medium ${saveMsg.startsWith('Erreur') ? 'bg-red-500/10 text-red-400' : 'bg-green-500/10 text-green-400'}`}>
+          {saveMsg}
+        </div>
+      )}
+
+      <div className="space-y-4 max-w-lg">
+        {clients.length > 0 && (
+          <div>
+            <label className="text-xs font-medium text-[var(--text-muted)] mb-1 block">Client</label>
+            <select value={selectedClient} onChange={e => setSelectedClient(e.target.value)}
+              className="w-full px-3 py-2 text-sm bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-[var(--text-primary)] cursor-pointer">
+              {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+        )}
+
+        <div>
+          <label className="text-xs font-medium text-[var(--text-muted)] mb-1 block">Type de business</label>
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {PRESET_TYPES.map(p => (
+              <button key={p.value} onClick={() => setBusinessType(p.value)}
+                className={`px-2.5 py-1 text-xs rounded-full cursor-pointer border transition-all ${businessType === p.value ? 'border-[var(--brand-primary)] bg-[var(--brand-primary)]/10 text-[var(--brand-primary)]' : 'border-[var(--border-subtle)] text-[var(--text-muted)] hover:border-[var(--brand-primary)]'}`}>
+                {p.label}
+              </button>
+            ))}
+          </div>
+          <Input value={businessType} onChange={e => setBusinessType(e.target.value)} placeholder="Ex: Courtier immobilier résidentiel Québec" />
+        </div>
+
+        <div>
+          <label className="text-xs font-medium text-[var(--text-muted)] mb-1 block">Voix de marque (brand voice)</label>
+          <textarea value={brandVoice} onChange={e => setBrandVoice(e.target.value)} rows={3}
+            className="w-full px-3 py-2 text-sm bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-[var(--text-primary)] resize-none focus:outline-none focus:border-[var(--brand-primary)]"
+            placeholder="Professionnel, rassurant et québécois naturel. Tutoiement interdit." />
+          <p className="text-[10px] text-[var(--text-muted)] mt-1">Ce ton sera utilisé pour toute la génération IA : emails, SMS, scoring, posts sociaux.</p>
+        </div>
+
+        <div>
+          <label className="text-xs font-medium text-[var(--text-muted)] mb-1 block">Critères de scoring additionnels</label>
+          <textarea value={scoringExtra} onChange={e => setScoringExtra(e.target.value)} rows={2}
+            className="w-full px-3 py-2 text-sm bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-[var(--text-primary)] resize-none focus:outline-none focus:border-[var(--brand-primary)]"
+            placeholder="Ex: Prioriser les acheteurs pré-approuvés avec budget 400K+. Un lead qui a visité 3+ propriétés = chaud." />
+          <p className="text-[10px] text-[var(--text-muted)] mt-1">Injecté dans le prompt du scoring IA contextuel (profil &quot;Score chaud IA&quot;).</p>
+        </div>
+
+        <Button onClick={() => void handleSave()}>💾 Enregistrer la configuration IA</Button>
+      </div>
+    </Card>
   );
 }

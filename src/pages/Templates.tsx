@@ -275,17 +275,33 @@ export function TemplatesPage() {
             <div className="flex items-center justify-between mb-1">
               <label className="text-xs font-medium text-[var(--text-secondary)]">Contenu</label>
               <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm" onClick={async () => {
-                  setIsGenerating(true);
-                  try {
-                    const res = await fetch('/api/ai/generate', { method: 'POST', body: JSON.stringify({ action: 'email_followup', context: formName || 'Template email' }) });
-                    const data = await res.json() as any;
-                    if (data?.data?.content) setFormBody(data.data.content);
-                  } catch (e) { console.error(e); }
-                  setIsGenerating(false);
-                }} isLoading={isGenerating} leftIcon={<Wand2 size={12} className="text-[#A855F7]" />} className="h-[24px] text-[10px] px-2 py-0 border border-[var(--border-subtle)] bg-white hover:bg-purple-50">
-                  Générer avec IA
-                </Button>
+                <div className="relative group/ai">
+                  <Button variant="ghost" size="sm" onClick={async () => {
+                    setIsGenerating(true);
+                    try {
+                      // Choisir l'action selon la catégorie du template
+                      const actionMap: Record<string, string> = {
+                        welcome: 'email_welcome',
+                        followup: 'email_followup',
+                        reminder: 'meeting_agenda',
+                        notification: 'recap_call',
+                        marketing: 'social_post',
+                        general: 'email_followup',
+                      };
+                      const action = actionMap[formCategory] || 'email_followup';
+                      const res = await fetch('/api/ai/generate', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action, context: formName || formSubject || 'Template email professionnel' }),
+                      });
+                      const data = await res.json() as { data?: { content: string } };
+                      if (data?.data?.content) setFormBody(data.data.content);
+                    } catch { /* silencieux */ }
+                    setIsGenerating(false);
+                  }} isLoading={isGenerating} leftIcon={<Wand2 size={12} className="text-[#A855F7]" />} className="h-[24px] text-[10px] px-2 py-0 border border-[var(--border-subtle)] bg-white hover:bg-purple-50">
+                    ✨ Générer avec IA
+                  </Button>
+                </div>
                 <div className="flex bg-[var(--bg-subtle)] rounded p-0.5">
                   <button onClick={() => setEditorTab('code')} className={`px-2 py-0.5 text-[10px] rounded cursor-pointer ${editorTab === 'code' ? 'bg-[var(--brand-primary)] text-white' : 'text-[var(--text-muted)]'}`}>{'</>'}Code</button>
                   <button onClick={() => setEditorTab('preview')} className={`px-2 py-0.5 text-[10px] rounded cursor-pointer ${editorTab === 'preview' ? 'bg-[var(--brand-primary)] text-white' : 'text-[var(--text-muted)]'}`}>👁️ Aperçu</button>
