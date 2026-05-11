@@ -30,6 +30,7 @@ const ReviewsPage = lazy(() => import('@/pages/Reviews').then(m => ({ default: m
 const InvoicesPage = lazy(() => import('@/pages/Invoices').then(m => ({ default: m.InvoicesPage })));
 const AgenciesPage = lazy(() => import('@/pages/Agencies').then(m => ({ default: m.AgenciesPage })));
 const TrashPage = lazy(() => import('@/pages/Trash').then(m => ({ default: m.TrashPage })));
+const VisitModePage = lazy(() => import('@/pages/VisitMode').then(m => ({ default: m.VisitModePage })));
 
 // ── Spinner de chargement ──────────────────────────────────
 
@@ -227,6 +228,16 @@ const trashRoute = createRoute({
   component: () => (<LazyGuard><TrashPage /></LazyGuard>),
 });
 
+const visitModeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/visit/$leadId',
+  component: () => (
+    <Suspense fallback={<PageLoader />}>
+      <VisitModePage />
+    </Suspense>
+  ),
+});
+
 // ── Router ──────────────────────────────────────────────────
 
 const routeTree = rootRoute.addChildren([
@@ -256,6 +267,7 @@ const routeTree = rootRoute.addChildren([
   invoicesRoute,
   agenciesRoute,
   trashRoute,
+  visitModeRoute,
 ]);
 
 const router = createRouter({ routeTree });
