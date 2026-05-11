@@ -435,3 +435,57 @@ export async function handlePublicSignDocument(
 
   return json({ data: { success: true, signed_at: timestamp, document_hash: docHash } });
 }
+
+// ── D5 : Envoi SMS lien signature 1-clic ────────────────────
+
+export async function handleSendSigningSms(
+  request: Request, env: Env, auth: { userId: string; role: string }, docId: string
+): Promise<Response> {
+  if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
+
+  const doc = await env.DB.prepare('SELECT * FROM documents WHERE id = ?').bind(docId).first() as Record<string, unknown> | null;
+  if (!doc) return json({ error: 'Document introuvable' }, 404);
+  if (doc.status !== 'draft' && doc.status !== 'sent') return json({ error: 'Document déjà signé ou expiré' }, 400);
+
+  const lead = await env.DB.prepare('SELECT name, phone, email FROM leads WHERE id = ?').bind(doc.lead_id as string).first() as { name: string; phone: string; email: string } | null;
+  if (!lead?.phone) return json({ error: 'Lead sans numéro de téléphone' }, 400);
+
+  const origin = new URL(request.url).origin;
+  const signUrl = `${origin}/sign/${doc.token}`;
+
+  // Envoyer SMS via Twilio
+  const smsBody = `Bonjour ${lead.name}, veuillez signer votre document "${doc.title}" ici : ${signUrl} — Lien valide 30 jours.`;
+
+  if (env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN) {
+    try {
+      const twilioAuth = btoa(`${env.TWILIO_ACCOUNT_SID}:${env.TWILIO_AUTH_TOKEN}`);
+      const smsRes = await fetch(
+        `https://api.twilio.com/2010-04-01/Accounts/${env.TWILIO_ACCOUNT_SID}/Messages.json`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Basic ${twilioAuth}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({ To: lead.phone, From: env.TWILIO_PHONE_NUMBER, Body: smsBody }),
+        }
+      );
+      if (!smsRes.ok) {
+        const errText = await smsRes.text();
+        console.error('Twilio error:', errText);
+        return json({ error: 'Échec envoi SMS' }, 500);
+      }
+    } catch (err) {
+      console.error('SMS sending error:', err);
+      // En mode mock, on continue
+    }
+  }
+
+  // Mettre à jour statut document → sent si draft
+  if (doc.status === 'draft') {
+    await env.DB.prepare("UPDATE documents SET status = 'sent', sent_at = datetime('now') WHERE id = ?").bind(docId).run();
+  }
+
+  await audit(env, auth.userId, 'document.sms_sent', 'document', docId, { to: lead.phone, sign_url: signUrl });
+  return json({ data: { success: true, sms_sent_to: lead.phone, sign_url: signUrl } });
+}
