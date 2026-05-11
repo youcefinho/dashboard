@@ -1,6 +1,6 @@
 // ── Module Reports — Intralys CRM ───────────────────────────
 import type { Env } from './types';
-import { json } from './helpers';
+import { json, sanitizeInput } from './helpers';
 
 export async function handleReportsOverview(
   env: Env, auth: { role: string }, url: URL
@@ -154,4 +154,38 @@ export async function handleReportsConversion(
       avg_stage_times: avgTimes || [],
     },
   });
+}
+
+// ── Saved Reports ───────────────────────────────────────────
+
+export async function handleGetSavedReports(env: Env, auth: any): Promise<Response> {
+  const { results } = await env.DB.prepare(
+    'SELECT * FROM saved_reports WHERE user_id = ? ORDER BY created_at DESC'
+  ).bind(auth.id || '1').all();
+  
+  return json({ data: results || [] });
+}
+
+export async function handleCreateSavedReport(request: Request, env: Env, auth: any): Promise<Response> {
+  const body = await request.json() as any;
+  const name = sanitizeInput(body.name);
+  const type = sanitizeInput(body.type);
+  const config = body.config_json ? JSON.stringify(body.config_json) : '{}';
+
+  if (!name || !type) return json({ error: 'Name and type required' }, 400);
+
+  const id = crypto.randomUUID();
+  const userId = auth.id || '1';
+  const clientId = request.headers.get('X-Client-Id') || null;
+
+  await env.DB.prepare(
+    'INSERT INTO saved_reports (id, user_id, client_id, name, type, config_json) VALUES (?, ?, ?, ?, ?, ?)'
+  ).bind(id, userId, clientId, name, type, config).run();
+
+  return json({ data: { id, name, type, config_json: config } }, 201);
+}
+
+export async function handleDeleteSavedReport(env: Env, auth: any, id: string): Promise<Response> {
+  await env.DB.prepare('DELETE FROM saved_reports WHERE id = ? AND user_id = ?').bind(id, auth.id || '1').run();
+  return json({ data: { success: true } });
 }
