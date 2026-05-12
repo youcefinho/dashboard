@@ -6,8 +6,10 @@
 import type { Env } from './worker/types';
 import { setRequestContext, corsHeaders, json, requireAuth } from './worker/helpers';
 
+const START_TIME = Date.now();
+
 // ── Modules métier ──────────────────────────────────────────
-import { handleLogin, handleLogout, handleMe, handleChangePassword } from './worker/auth';
+import { handleLogin, handleLogout, handleMe, handleChangePassword, handleGetSessions, handleDeleteSession, handleDeleteOtherSessions, handleGenerateBackupCodes, handleUpdateProfile, handleNotificationPreferences } from './worker/auth';
 import {
   handleGetClients, handleCreateClient, handleGetClientLeads,
   handleGetLeads, handlePatchLead, handleBulkLeads, handleCreateLead,
@@ -49,11 +51,6 @@ import { handleGetForms, handleGetForm, handleGetFormStats, handleCreateForm, ha
 import { handleGetTriggerLinks, handleCreateTriggerLink, handleDeleteTriggerLink, handleTriggerLinkClick, handleGetTriggerLinkStats } from './worker/trigger-links';
 import { handleAiGenerate, handleAiSuggestWorkflow } from './worker/ai';
 import { handlePublicUnsubscribe, handleGetUnsubscribes, handleLogConsent, handleGetConsent, handleForgetLead, handleExportPii } from './worker/compliance';
-import {
-  handleGetCustomFields, handleCreateCustomField, handleUpdateCustomField, handleDeleteCustomField,
-  handleGetLeadCustomFields, handleSetLeadCustomFields,
-  handleGetSmartLists, handleCreateSmartList, handleDeleteSmartList, handleExecuteSmartList,
-} from './worker/custom-fields';
 import { handleGetSubAccounts, handleCreateSubAccount, handleUpdateSubAccount, handleCreateSnapshot, handleApplySnapshot, handleGetWhitelabel, handleUpdateWhitelabel, handleWidgetScript } from './worker/sub-accounts';
 // gcal.ts et gbp.ts déplacés en _v2-backlog/ (Sprint Consolidation)
 
@@ -119,6 +116,12 @@ export default {
 
     // ── Routes publiques (pas d'auth) ─────────────────────
     try {
+      if (path === '/api/health' && method === 'GET') {
+        let dbOk = 'ok';
+        try { await env.DB.prepare('SELECT 1').run(); } catch { dbOk = 'error'; }
+        return json({ status: dbOk === 'ok' ? 'ok' : 'error', db: dbOk, version: '2.1.0', uptime_s: Math.floor((Date.now() - START_TIME) / 1000) });
+      }
+
       if (path === '/api/webhook/sms' && method === 'POST') return await handleInboundSms(request, env);
       if (path === '/api/webhook/email' && method === 'POST') return await handleInboundEmail(request, env);
       if (path === '/api/webhook/meta' && (method === 'GET' || method === 'POST')) {
@@ -249,6 +252,15 @@ async function routeProtected(
   path: string, method: string,
   auth: { userId: string; role: string }
 ): Promise<Response> {
+
+  // Auth & Sécurité
+  if (path === '/api/auth/me' && method === 'PATCH') return handleUpdateProfile(request, env);
+  if (path === '/api/auth/notifications' && (method === 'GET' || method === 'PATCH')) return handleNotificationPreferences(request, env);
+  if (path === '/api/auth/sessions' && method === 'GET') return handleGetSessions(request, env);
+  if (path === '/api/auth/sessions/others' && method === 'DELETE') return handleDeleteOtherSessions(request, env);
+  const sessionMatch = path.match(/^\/api\/auth\/sessions\/([^/]+)$/);
+  if (sessionMatch && method === 'DELETE') return handleDeleteSession(request, env, sessionMatch[1]!);
+  if (path === '/api/auth/2fa/backup-codes' && method === 'POST') return handleGenerateBackupCodes(request, env);
 
   // Dashboard
   if (path === '/api/dashboard/stats' && method === 'GET') return handleDashboardStats(env, auth);

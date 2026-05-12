@@ -150,6 +150,58 @@ export async function resetPassword(token: string, password: string): Promise<Ap
   });
 }
 
+export async function updateProfile(data: { name?: string; email_signature?: string }): Promise<ApiResponse<{ success: boolean }>> {
+  return apiFetch<{ success: boolean }>('/auth/me', {
+    method: 'PATCH',
+    body: JSON.stringify(data)
+  });
+}
+
+export interface NotificationPreference {
+  channel: 'email' | 'sms' | 'push' | 'in_app';
+  event_type: string;
+  enabled: 0 | 1;
+}
+
+export async function getNotificationPreferences(): Promise<ApiResponse<NotificationPreference[]>> {
+  return apiFetch<NotificationPreference[]>('/auth/notifications');
+}
+
+export async function updateNotificationPreference(channel: string, event_type: string, enabled: boolean): Promise<ApiResponse<{ success: boolean }>> {
+  return apiFetch<{ success: boolean }>('/auth/notifications', {
+    method: 'PATCH',
+    body: JSON.stringify({ channel, event_type, enabled })
+  });
+}
+
+// ── Security & Sessions (Phase D) ───────────────────────────
+
+export interface AdminSession {
+  token: string;
+  ip: string;
+  user_agent: string;
+  created_at: string;
+  last_active_at: string;
+  expires_at: string;
+  is_current: boolean;
+}
+
+export async function getSessions(): Promise<ApiResponse<AdminSession[]>> {
+  return apiFetch<AdminSession[]>('/auth/sessions');
+}
+
+export async function deleteSession(token: string): Promise<ApiResponse<{ success: boolean }>> {
+  return apiFetch<{ success: boolean }>(`/auth/sessions/${token}`, { method: 'DELETE' });
+}
+
+export async function deleteOtherSessions(): Promise<ApiResponse<{ success: boolean }>> {
+  return apiFetch<{ success: boolean }>('/auth/sessions/others', { method: 'DELETE' });
+}
+
+export async function generateBackupCodes(): Promise<ApiResponse<{ codes: string[] }>> {
+  return apiFetch<{ codes: string[] }>('/auth/2fa/backup-codes', { method: 'POST' });
+}
+
 // ── Dashboard ───────────────────────────────────────────────
 
 export async function getDashboardStats(): Promise<ApiResponse<DashboardStats>> {

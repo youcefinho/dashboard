@@ -58,7 +58,8 @@ export async function requireAuth(_request: Request, _env: Env): Promise<{ userI
 // ── Handlers ────────────────────────────────────────────────
 
 export async function handleLogin(request: Request, env: Env): Promise<Response> {
-  const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+  const ip = request.headers.get('CF-Connecting-IP') || '127.0.0.1';
+  const ua = request.headers.get('User-Agent') || 'Unknown Browser';
   const windowStart = new Date(Date.now() - LOGIN_WINDOW_HOURS * 60 * 60 * 1000).toISOString();
   const { results: _attempts } = await env.DB.prepare(
     'SELECT COUNT(*) as count FROM login_attempts WHERE ip = ? AND attempted_at > ?'
@@ -83,7 +84,7 @@ export async function handleLogin(request: Request, env: Env): Promise<Response>
     const userId = crypto.randomUUID();
     const hash = await hashPassword(password);
     await env.DB.prepare("INSERT INTO users (id, email, password_hash, name, role, must_change_password) VALUES (?, ?, ?, 'Rochdi', 'admin', 1)").bind(userId, email, hash).run();
-    return finishLogin(env, userId, 'admin', 'Rochdi', email, true);
+    return finishLogin(env, userId, 'admin', 'Rochdi', email, true, ip, ua);
   }
 
   if (!user.is_active) return json({ error: 'Compte désactivé' }, 401);
@@ -94,19 +95,19 @@ export async function handleLogin(request: Request, env: Env): Promise<Response>
   if (!passwordOk) return json({ error: 'Identifiants incorrects' }, 401);
 
   await env.DB.prepare("UPDATE users SET last_login_at = datetime('now') WHERE id = ?").bind(user.id).run();
-  return finishLogin(env, user.id, user.role, user.name, email, !!user.must_change_password);
+  return finishLogin(env, user.id, user.role, user.name, email, !!user.must_change_password, ip, ua);
 }
 
-async function finishLogin(env: Env, userId: string, role: string, name: string, email: string, mustChangePassword: boolean): Promise<Response> {
+async function finishLogin(env: Env, userId: string, role: string, name: string, email: string, mustChangePassword: boolean, ip: string, ua: string): Promise<Response> {
   const token = crypto.randomUUID();
   const expiresAt = new Date(Date.now() + SESSION_DURATION_HOURS * 3600_000).toISOString();
-  await env.DB.prepare("INSERT INTO admin_sessions (token, user_id, role, created_at, expires_at) VALUES (?, ?, ?, datetime('now'), ?)").bind(token, userId, role, expiresAt).run();
+  await env.DB.prepare("INSERT INTO admin_sessions (token, user_id, role, created_at, expires_at, ip, user_agent, last_active_at) VALUES (?, ?, ?, datetime('now'), ?, ?, ?, datetime('now'))").bind(token, userId, role, expiresAt, ip, ua).run();
   try {
     await env.DB.prepare("DELETE FROM admin_sessions WHERE expires_at < datetime('now')").run();
     const cleanupWindow = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     await env.DB.prepare('DELETE FROM login_attempts WHERE attempted_at < ?').bind(cleanupWindow).run();
   } catch { /* non critique */ }
-  await audit(env, userId, 'auth.login', 'user', userId, { email, role });
+  await audit(env, userId, 'auth.login', 'user', userId, { email, role, ip });
   return json({ success: true, token, must_change_password: mustChangePassword, user: { id: userId, name, role, email } });
 }
 
@@ -138,9 +139,61 @@ export async function handleLogout(request: Request, env: Env): Promise<Response
 export async function handleMe(request: Request, env: Env): Promise<Response> {
   const auth = await requireAuth(request, env);
   if (auth instanceof Response) return auth;
-  const { results } = await env.DB.prepare('SELECT id, email, name, role, client_id FROM users WHERE id = ?').bind(auth.userId).all();
+  const { results } = await env.DB.prepare('SELECT id, email, name, role, client_id, email_signature FROM users WHERE id = ?').bind(auth.userId).all();
   if (!results || results.length === 0) return json({ error: 'Utilisateur non trouvé' }, 404);
   return json({ data: results[0] });
+}
+
+export async function handleUpdateProfile(request: Request, env: Env): Promise<Response> {
+  const auth = await requireAuth(request, env);
+  if (auth instanceof Response) return auth;
+  const body = await request.json() as { name?: string; email_signature?: string };
+  
+  const updates: string[] = [];
+  const params: string[] = [];
+  
+  if (body.name !== undefined) {
+    updates.push('name = ?');
+    params.push(body.name);
+  }
+  if (body.email_signature !== undefined) {
+    updates.push('email_signature = ?');
+    params.push(body.email_signature);
+  }
+  
+  if (updates.length > 0) {
+    params.push(auth.userId);
+    await env.DB.prepare(`UPDATE users SET ${updates.join(', ')}, updated_at = datetime('now') WHERE id = ?`).bind(...params).run();
+    await audit(env, auth.userId, 'user.profile_updated', 'user', auth.userId);
+  }
+  
+  return json({ success: true });
+}
+
+export async function handleNotificationPreferences(request: Request, env: Env): Promise<Response> {
+  const auth = await requireAuth(request, env);
+  if (auth instanceof Response) return auth;
+
+  if (request.method === 'GET') {
+    const { results } = await env.DB.prepare('SELECT channel, event_type, enabled FROM notification_preferences WHERE user_id = ?').bind(auth.userId).all();
+    return json({ data: results || [] });
+  }
+
+  if (request.method === 'PATCH') {
+    const body = await request.json() as { channel: string; event_type: string; enabled: boolean };
+    if (!body.channel || !body.event_type) return json({ error: 'Paramètres manquants' }, 400);
+
+    // Upsert preference
+    await env.DB.prepare(`
+      INSERT INTO notification_preferences (user_id, channel, event_type, enabled)
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT(user_id, channel, event_type) DO UPDATE SET enabled = excluded.enabled
+    `).bind(auth.userId, body.channel, body.event_type, body.enabled ? 1 : 0).run();
+
+    return json({ success: true });
+  }
+
+  return json({ error: 'Méthode non supportée' }, 405);
 }
 
 export async function handleForgotPassword(request: Request, env: Env): Promise<Response> {
@@ -211,4 +264,79 @@ export async function handleResetPassword(request: Request, env: Env): Promise<R
   await audit(env, resetReq.user_id, 'auth.reset_password', 'user', resetReq.user_id);
 
   return json({ success: true });
+}
+
+// ── D.1 Session Management ────────────────────────────────────
+
+export async function handleGetSessions(request: Request, env: Env): Promise<Response> {
+  const auth = await requireAuth(request, env);
+  if (auth instanceof Response) return auth;
+
+  const { results } = await env.DB.prepare(
+    "SELECT token, ip, user_agent, created_at, last_active_at, expires_at FROM admin_sessions WHERE user_id = ? AND expires_at > datetime('now') ORDER BY last_active_at DESC"
+  ).bind(auth.userId).all();
+
+  const currentToken = extractToken(request);
+  const sessions = (results || []).map(r => ({
+    ...r,
+    is_current: r.token === currentToken
+  }));
+
+  return json({ data: sessions });
+}
+
+export async function handleDeleteSession(request: Request, env: Env, tokenToDelete: string): Promise<Response> {
+  const auth = await requireAuth(request, env);
+  if (auth instanceof Response) return auth;
+
+  // Protect against deleting a session that belongs to someone else
+  await env.DB.prepare(
+    "DELETE FROM admin_sessions WHERE token = ? AND user_id = ?"
+  ).bind(tokenToDelete, auth.userId).run();
+
+  return json({ success: true });
+}
+
+export async function handleDeleteOtherSessions(request: Request, env: Env): Promise<Response> {
+  const auth = await requireAuth(request, env);
+  if (auth instanceof Response) return auth;
+
+  const currentToken = extractToken(request);
+  if (!currentToken) return json({ error: 'Token manquant' }, 401);
+
+  await env.DB.prepare(
+    "DELETE FROM admin_sessions WHERE user_id = ? AND token != ?"
+  ).bind(auth.userId, currentToken).run();
+
+  return json({ success: true });
+}
+
+// ── D.2 2FA Backup Codes ──────────────────────────────────────
+
+export async function handleGenerateBackupCodes(request: Request, env: Env): Promise<Response> {
+  const auth = await requireAuth(request, env);
+  if (auth instanceof Response) return auth;
+
+  // Generate 10 codes of 8 hex chars
+  const codes = Array.from({ length: 10 }, () => {
+    const bytes = new Uint8Array(4);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+  });
+
+  // Delete old unused backup codes for this user
+  await env.DB.prepare("DELETE FROM backup_codes WHERE user_id = ? AND used_at IS NULL").bind(auth.userId).run();
+
+  // Insert new codes
+  for (const code of codes) {
+    const hash = await hashPassword(code); // secure hash
+    await env.DB.prepare(
+      "INSERT INTO backup_codes (id, user_id, code_hash) VALUES (?, ?, ?)"
+    ).bind(crypto.randomUUID(), auth.userId, hash).run();
+  }
+
+  await audit(env, auth.userId, 'auth.2fa_backup_codes_generated', 'user', auth.userId);
+
+  // We return the raw codes ONCE. They cannot be retrieved again.
+  return json({ data: { codes } });
 }
