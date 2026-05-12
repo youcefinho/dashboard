@@ -42,13 +42,8 @@ CREATE TABLE IF NOT EXISTS webhook_subscriptions (
   created_at TEXT DEFAULT (datetime('now'))
 );
 
--- 5. 2FA Backup codes
-CREATE TABLE IF NOT EXISTS totp_backup_codes (
-  user_id TEXT NOT NULL,
-  code_hash TEXT NOT NULL,
-  used_at TEXT,
-  PRIMARY KEY (user_id, code_hash)
-);
+-- 5. 2FA Backup codes (supprimé car géré par backup_codes de la phase 28)
+DROP TABLE IF EXISTS totp_backup_codes;
 
 -- 6. Enrichir Sessions (si pas déjà fait)
 -- ALTER TABLE admin_sessions ADD COLUMN device_info TEXT;

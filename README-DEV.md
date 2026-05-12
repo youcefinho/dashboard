@@ -221,6 +221,11 @@ curl http://localhost:8787/api/reports/overview -H "Authorization: Bearer $TOKEN
 curl http://localhost:8787/api/activity -H "Authorization: Bearer $TOKEN"
 ```
 
+### API Publique & Zapier
+L'API Publique Intralys (préfixe `/api/public/v1`) permet l'intégration avec **Zapier** et d'autres systèmes tiers.
+Elle nécessite une authentification par clé API (`ApiKey ILYS_...` ou `Bearer ILYS_...`).
+Voir la [Documentation de l'API Publique](docs/API-PUBLIC.md) et la [Documentation Zapier](docs/ZAPIER-INTEGRATION.md).
+
 ---
 
 ## Migrations SQL
