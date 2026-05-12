@@ -13,6 +13,12 @@ import { OnboardingWizard } from '../onboarding/OnboardingWizard';
 import { FeedbackWidget } from '../feedback/FeedbackWidget';
 import { NpsModal } from '../feedback/NpsModal';
 import { useAuth } from '@/lib/auth';
+import { Capacitor } from '@capacitor/core';
+import { initPushNotifications } from '@/lib/push';
+import { syncAllToCache, isOnline, onConnectivityChange } from '@/lib/offline/sync';
+import { setupAutoReplay } from '@/lib/offline/queue';
+import { getPendingMutationCount } from '@/lib/offline/db';
+import { WifiOff } from 'lucide-react';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -47,6 +53,41 @@ export function AppLayout({ children, title }: AppLayoutProps) {
   const [showOnboarding, setShowOnboarding] = useState(() => {
     return user?.onboarding_step === 0 && !user?.onboarding_skipped;
   });
+  const [offline, setOffline] = useState(!isOnline());
+  const [pendingSync, setPendingSync] = useState(0);
+
+  // Init push + offline sync au boot
+  useEffect(() => {
+    const token = localStorage.getItem('intralys_token');
+    if (!token) return;
+
+    const apiBase = Capacitor.isNativePlatform()
+      ? (import.meta.env.VITE_API_URL || 'https://crm.intralys.com') + '/api'
+      : '/api';
+
+    // Push notifications (natif uniquement)
+    void initPushNotifications(apiBase, token);
+
+    // Sync offline cache
+    void syncAllToCache(apiBase, token);
+
+    // Auto-replay mutations offline au retour online
+    setupAutoReplay(apiBase, () => localStorage.getItem('intralys_token'));
+
+    // Écouter les changements de connectivité
+    const unsub = onConnectivityChange((online) => {
+      setOffline(!online);
+      if (online) {
+        void syncAllToCache(apiBase, token);
+        void getPendingMutationCount().then(setPendingSync);
+      }
+    });
+
+    // Compter les mutations en attente
+    void getPendingMutationCount().then(setPendingSync);
+
+    return unsub;
+  }, []);
 
   const loadNotifications = useCallback(async () => {
     try {
@@ -116,6 +157,16 @@ export function AppLayout({ children, title }: AppLayoutProps) {
               <Menu size={20} />
             </button>
             <h2 className="text-[15px] font-semibold text-[var(--text-primary)] truncate">{title}</h2>
+            {offline && (
+              <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[var(--warning-soft)] text-[var(--warning)] text-[11px] font-medium">
+                <WifiOff size={12} /> Hors ligne
+              </span>
+            )}
+            {!offline && pendingSync > 0 && (
+              <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[var(--info-soft)] text-[var(--info)] text-[11px] font-medium">
+                {pendingSync} en attente
+              </span>
+            )}
           </div>
 
           {/* Centre : search global */}

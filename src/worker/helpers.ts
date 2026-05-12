@@ -167,6 +167,14 @@ export async function createNotification(
       `INSERT INTO notifications (id, user_id, client_id, icon, title, description, link)
        VALUES (?, ?, ?, ?, ?, ?, ?)`
     ).bind(crypto.randomUUID(), userId, clientId, icon, title, description, link).run();
+
+    // Push notification mobile (best-effort, ne bloque jamais)
+    if (userId) {
+      try {
+        const { sendPushToUser } = await import('./push');
+        await sendPushToUser(env, userId, `${icon} ${title}`, description, { url: link });
+      } catch { /* push non critique */ }
+    }
   } catch { /* best-effort */ }
 }
 
