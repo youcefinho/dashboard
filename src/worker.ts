@@ -204,6 +204,22 @@ export default {
           return await handlePatchLead(request, env, { userId: authResult.userId, role: 'user', clientId: authResult.clientId } as any, leadMatch[1]!);
         }
 
+        const tagsMatch = subPath.match(/^\/leads\/([^/]+)\/tags$/);
+        if (tagsMatch && method === 'POST') {
+          const scopeErr = requireScope(authResult, 'write');
+          if (scopeErr) return scopeErr;
+          const { handleAddTag } = await import('./worker/leads');
+          return await handleAddTag(request, env, { userId: authResult.userId, role: 'user', clientId: authResult.clientId } as any, tagsMatch[1]!);
+        }
+
+        const leadMsgMatch = subPath.match(/^\/leads\/([^/]+)\/messages$/);
+        if (leadMsgMatch && method === 'POST') {
+          const scopeErr = requireScope(authResult, 'write');
+          if (scopeErr) return scopeErr;
+          const { handleSendMessage } = await import('./worker/messages');
+          return await handleSendMessage(request, env, { userId: authResult.userId, role: 'user', clientId: authResult.clientId } as any, leadMsgMatch[1]!);
+        }
+
         // --- TASKS ---
         if (subPath === '/tasks' && method === 'GET') {
           const scopeErr = requireScope(authResult, 'read');
