@@ -46,13 +46,14 @@ Voir `README-DEV.md` pour le setup local sans clés externes.
 
 ## Sprint actuel 🔜
 
-Aucun sprint en cours — Sprint 14 (GHL Migration importer) prêt à démarrer.
+| Sprint | Thème | Durée estimée | Statut |
+|---|---|---|---|
+| 14 | GHL Migration importer (CSV + OAuth hybride) | ~15j | 🟡 En cours |
 
 ## Sprints restants
 
 | # | Sprint | Effort | Description |
 |---|---|---|---|
-| 14 | GHL Migration importer | ~15j | Import contacts/conversations/pipelines depuis GHL |
 | 15 | App mobile React Native V2 | ~30j | Si traction confirmée — vraie app native iOS/Android |
 
 ## V2 Backlog (post-traction)
