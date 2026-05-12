@@ -202,7 +202,7 @@ export function VisitModePage() {
         {/* Quick Actions */}
         <div className="px-4 py-4 border-b border-gray-800">
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Actions rapides</p>
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {lead.phone && (
               <a href={`tel:${lead.phone}`}
                 className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-green-500/10 border border-green-500/20 active:scale-95 transition-all">

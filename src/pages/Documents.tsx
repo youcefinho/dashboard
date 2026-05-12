@@ -187,7 +187,7 @@ export function DocumentsPage() {
           <Button onClick={() => setIsCreating(true)}>Envoyer un document</Button>
         </div>
       ) : (
-        <div className="card p-0 overflow-hidden">
+        <div className="card p-0 overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-[var(--border-subtle)] bg-[var(--bg-canvas)] text-[var(--text-muted)]">

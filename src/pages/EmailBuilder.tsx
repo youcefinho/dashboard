@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { DesktopOnlyBanner } from '@/components/DesktopOnlyBanner';
 import { Button, Badge, Input } from '@/components/ui';
 import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
@@ -233,6 +234,8 @@ export function EmailBuilderPage() {
 
   return (
     <AppLayout title="Email Builder">
+      <DesktopOnlyBanner />
+      <div className="hidden lg:block">
       <style>{emailBuilderStyles}</style>
 
       <div className="builder-topbar">
@@ -314,6 +317,7 @@ export function EmailBuilderPage() {
             </div>
           )}
         </div>
+      </div>
       </div>
     </AppLayout>
   );

@@ -263,7 +263,7 @@ export function DashboardPage() {
 
   function DashboardStatsWidgets() {
     return (
-        <div className="grid grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {isLoading ? (
             Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="p-5 rounded-xl" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
@@ -293,7 +293,7 @@ export function DashboardPage() {
   function DashboardClientsWidget() {
     if (isLoading || clients.length === 0) return null;
     return (
-          <div className="grid grid-cols-6 gap-3 mb-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
             {clients.slice(0, 5).map((client, i) => {
               const leadCount = stats?.leads_by_client?.find(c => c.client_name === client.name)?.count ?? 0;
               return (
@@ -324,9 +324,9 @@ export function DashboardPage() {
 
   function DashboardChartWidget() {
     return (
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
           {/* Chart stacked bar */}
-          <div className="col-span-2 p-6 rounded-xl card-lift" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
+          <div className="lg:col-span-2 p-6 rounded-xl card-lift" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
             <div className="flex items-center justify-between mb-5">
               <div>
                 <h3 className="text-base font-semibold">Acquisition de leads</h3>
@@ -401,9 +401,9 @@ export function DashboardPage() {
 
   function DashboardPipelineDonut() {
     return (
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
           {/* Donut pipeline */}
-          <div className="col-span-2 p-6 rounded-xl card-lift" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
+          <div className="lg:col-span-2 p-6 rounded-xl card-lift" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
             <h3 className="text-base font-semibold mb-4">Répartition pipeline</h3>
             {isLoading ? <Skeleton className="h-48 w-full" /> : pipelineData.length > 0 ? (
               <div className="flex items-center gap-8">
@@ -461,7 +461,7 @@ export function DashboardPage() {
 
   function DashboardContactsWidget() {
     return (
-        <div className="rounded-xl overflow-hidden card-lift" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
+        <div className="rounded-xl overflow-x-auto card-lift" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
           <div className="px-6 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
             <div>
               <h3 className="text-base font-semibold">Derniers contacts</h3>

@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { DesktopOnlyBanner } from '@/components/DesktopOnlyBanner';
 import { Card, Button, Input, Modal } from '@/components/ui';
 import { createWorkflow, getPipelines } from '@/lib/api';
 import type { TriggerType, StepType, Pipeline } from '@/lib/types';
@@ -162,6 +163,8 @@ export function WorkflowBuilderPage() {
 
   return (
     <AppLayout title="Nouveau workflow (2D Canvas)">
+      <DesktopOnlyBanner />
+      <div className="hidden lg:block">
       <div className="flex flex-col h-[calc(100vh-100px)]">
         <div className="flex items-center justify-between mb-4">
           <button onClick={() => void navigate({ to: '/workflows' })}
@@ -314,6 +317,7 @@ export function WorkflowBuilderPage() {
           ))}
         </div>
       </Modal>
+      </div>
     </AppLayout>
   );
 }

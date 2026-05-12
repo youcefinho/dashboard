@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { DesktopOnlyBanner } from '@/components/DesktopOnlyBanner';
 import { Card, Button, Badge, Input, Modal } from '@/components/ui';
 import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
@@ -117,6 +118,8 @@ export function FormBuilderPage() {
 
   return (
     <AppLayout title="Form Builder">
+      <DesktopOnlyBanner />
+      <div className="hidden lg:block">
       <style>{formBuilderStyles}</style>
 
       <div className="builder-topbar">
@@ -272,6 +275,7 @@ export function FormBuilderPage() {
           )}
         </div>
       </Modal>
+      </div>
     </AppLayout>
   );
 }

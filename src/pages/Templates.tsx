@@ -203,7 +203,7 @@ export function TemplatesPage() {
         </div>
       ) : (
         /* Vue liste */
-        <Card className="overflow-hidden p-0">
+        <Card className="overflow-x-auto p-0">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]">
