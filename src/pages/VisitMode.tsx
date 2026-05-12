@@ -4,6 +4,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { Phone, MessageSquare, Mail, StickyNote, Camera, ChevronLeft, CheckCircle, Circle, Star, Zap, MapPin, Clock } from 'lucide-react';
+import { takePhoto } from '@/lib/camera';
 
 interface Lead {
   id: string;
@@ -104,12 +105,20 @@ export function VisitModePage() {
     setIsSavingNote(false);
   };
 
-  const handlePhotoCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoCapture = async () => {
+    const photo = await takePhoto();
+    if (photo) {
+      setPhotos(prev => [...prev, photo.dataUrl]);
+      // En production : upload vers R2 via /api/files
+    }
+  };
+
+  // Fallback legacy input file (garder pour compatibilité)
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const url = URL.createObjectURL(file);
     setPhotos(prev => [...prev, url]);
-    // En production : upload vers R2 via /api/files
   };
 
   const updateStatus = async (newStatus: string) => {
@@ -293,7 +302,7 @@ export function VisitModePage() {
         <div className="px-4 py-4 border-b border-gray-800">
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Photos</p>
-            <button onClick={() => fileInputRef.current?.click()}
+            <button onClick={() => void handlePhotoCapture()}
               className="flex items-center gap-1.5 text-xs text-indigo-400 font-medium active:scale-95">
               <Camera size={14} />
               Ajouter
@@ -305,10 +314,10 @@ export function VisitModePage() {
             accept="image/*"
             capture="environment"
             className="hidden"
-            onChange={handlePhotoCapture}
+            onChange={handleFileInput}
           />
           {photos.length === 0 ? (
-            <button onClick={() => fileInputRef.current?.click()}
+            <button onClick={() => void handlePhotoCapture()}
               className="w-full border-2 border-dashed border-gray-700 rounded-xl py-8 flex flex-col items-center gap-2 text-gray-500 active:scale-98">
               <Camera size={28} />
               <span className="text-sm">Prendre ou importer une photo</span>
