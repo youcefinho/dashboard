@@ -92,8 +92,8 @@ export async function handleGetClientLeads(
   return json({ data: results || [] });
 }
 
-export async function handleGetLeads(env: Env, auth: { role: string }, url: URL): Promise<Response> {
-  if (auth.role !== 'admin') {
+export async function handleGetLeads(env: Env, auth: { role: string; clientId?: string }, url: URL): Promise<Response> {
+  if (auth.role !== 'admin' && auth.role !== 'api') {
     return json({ error: 'Accès réservé aux administrateurs' }, 403);
   }
 
@@ -117,9 +117,11 @@ export async function handleGetLeads(env: Env, auth: { role: string }, url: URL)
     query += ' AND l.source = ?';
     params.push(sanitizeInput(source, 50));
   }
-  if (clientId) {
+  // Filtrage par client_id : obligatoire pour les API keys, optionnel pour admin
+  const effectiveClientId = auth.role === 'api' && auth.clientId ? auth.clientId : clientId;
+  if (effectiveClientId) {
     query += ' AND l.client_id = ?';
-    params.push(sanitizeInput(clientId, 100));
+    params.push(sanitizeInput(effectiveClientId, 100));
   }
   if (search) {
     const cleanSearch = sanitizeInput(search, 100);
@@ -162,9 +164,9 @@ export async function handleGetLeads(env: Env, auth: { role: string }, url: URL)
 }
 
 export async function handlePatchLead(
-  request: Request, env: Env, auth: { role: string; userId: string }, leadId: string
+  request: Request, env: Env, auth: { role: string; userId: string; clientId?: string }, leadId: string
 ): Promise<Response> {
-  if (auth.role !== 'admin') {
+  if (auth.role !== 'admin' && auth.role !== 'api') {
     return json({ error: 'Accès réservé aux administrateurs' }, 403);
   }
 

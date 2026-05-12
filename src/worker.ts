@@ -180,13 +180,13 @@ export default {
           const scopeErr = requireScope(authResult, 'read');
           if (scopeErr) return scopeErr;
           const { handleGetLeads } = await import('./worker/leads');
-          return await handleGetLeads(env, { userId: authResult.userId, role: 'user', clientId: authResult.clientId } as any, url);
+          return await handleGetLeads(env, { userId: authResult.userId, role: 'api', clientId: authResult.clientId } as any, url);
         }
         if (subPath === '/leads' && method === 'POST') {
           const scopeErr = requireScope(authResult, 'write');
           if (scopeErr) return scopeErr;
           const { handleCreateLead } = await import('./worker/leads');
-          return await handleCreateLead(request, env, { userId: authResult.userId, role: 'user', clientId: authResult.clientId } as any);
+          return await handleCreateLead(request, env, { userId: authResult.userId, role: 'api', clientId: authResult.clientId } as any);
         }
         
         const leadMatch = subPath.match(/^\/leads\/([^/]+)$/);
@@ -194,13 +194,13 @@ export default {
           const scopeErr = requireScope(authResult, 'read');
           if (scopeErr) return scopeErr;
           const { handleGetLeadDetail } = await import('./worker/leads');
-          return await handleGetLeadDetail(env, { userId: authResult.userId, role: 'user', clientId: authResult.clientId } as any, leadMatch[1]!);
+          return await handleGetLeadDetail(env, { userId: authResult.userId, role: 'api', clientId: authResult.clientId } as any, leadMatch[1]!);
         }
         if (leadMatch && method === 'PATCH') {
           const scopeErr = requireScope(authResult, 'write');
           if (scopeErr) return scopeErr;
           const { handlePatchLead } = await import('./worker/leads');
-          return await handlePatchLead(request, env, { userId: authResult.userId, role: 'user', clientId: authResult.clientId } as any, leadMatch[1]!);
+          return await handlePatchLead(request, env, { userId: authResult.userId, role: 'api', clientId: authResult.clientId } as any, leadMatch[1]!);
         }
 
         const tagsMatch = subPath.match(/^\/leads\/([^/]+)\/tags$/);
@@ -208,7 +208,7 @@ export default {
           const scopeErr = requireScope(authResult, 'write');
           if (scopeErr) return scopeErr;
           const { handleAddTag } = await import('./worker/leads');
-          return await handleAddTag(request, env, { userId: authResult.userId, role: 'user', clientId: authResult.clientId } as any, tagsMatch[1]!);
+          return await handleAddTag(request, env, { userId: authResult.userId, role: 'api', clientId: authResult.clientId } as any, tagsMatch[1]!);
         }
 
         const leadMsgMatch = subPath.match(/^\/leads\/([^/]+)\/messages$/);
@@ -216,7 +216,7 @@ export default {
           const scopeErr = requireScope(authResult, 'write');
           if (scopeErr) return scopeErr;
           const { handleSendMessage } = await import('./worker/messages');
-          return await handleSendMessage(request, env, { userId: authResult.userId, role: 'user', clientId: authResult.clientId } as any, leadMsgMatch[1]!);
+          return await handleSendMessage(request, env, { userId: authResult.userId, role: 'api', clientId: authResult.clientId } as any, leadMsgMatch[1]!);
         }
 
         // --- TASKS ---
@@ -224,13 +224,13 @@ export default {
           const scopeErr = requireScope(authResult, 'read');
           if (scopeErr) return scopeErr;
           const { handleGetTasks } = await import('./worker/tasks');
-          return await handleGetTasks(env, { userId: authResult.userId, role: 'user', clientId: authResult.clientId } as any, url);
+          return await handleGetTasks(env, { userId: authResult.userId, role: 'api', clientId: authResult.clientId } as any, url);
         }
         if (subPath === '/tasks' && method === 'POST') {
           const scopeErr = requireScope(authResult, 'write');
           if (scopeErr) return scopeErr;
           const { handleCreateTask } = await import('./worker/tasks');
-          return await handleCreateTask(request, env, { userId: authResult.userId, role: 'user', clientId: authResult.clientId } as any);
+          return await handleCreateTask(request, env, { userId: authResult.userId, role: 'api', clientId: authResult.clientId } as any);
         }
         
         // --- APPOINTMENTS ---
@@ -238,13 +238,13 @@ export default {
           const scopeErr = requireScope(authResult, 'read');
           if (scopeErr) return scopeErr;
           const { handleGetAppointments } = await import('./worker/appointments');
-          return await handleGetAppointments(env, { userId: authResult.userId, role: 'user', clientId: authResult.clientId } as any, url);
+          return await handleGetAppointments(env, { userId: authResult.userId, role: 'api', clientId: authResult.clientId } as any, url);
         }
         if (subPath === '/appointments' && method === 'POST') {
           const scopeErr = requireScope(authResult, 'write');
           if (scopeErr) return scopeErr;
           const { handleCreateAppointment } = await import('./worker/appointments');
-          return await handleCreateAppointment(request, env, { userId: authResult.userId, role: 'user', clientId: authResult.clientId } as any);
+          return await handleCreateAppointment(request, env, { userId: authResult.userId, role: 'api', clientId: authResult.clientId } as any);
         }
         
         // --- WEBHOOKS (ZAPIER) ---
