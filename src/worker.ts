@@ -104,7 +104,7 @@ setAutoEnroll(autoEnroll);
 // ── Entry Point ─────────────────────────────────────────────
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     setRequestContext(request, env);
     const url = new URL(request.url);
     const path = url.pathname;
@@ -370,7 +370,7 @@ export default {
     if (auth instanceof Response) return auth;
 
     try {
-      return await routeProtected(request, env, url, path, method, auth);
+      return await routeProtected(request, env, ctx, url, path, method, auth);
     } catch (err) {
       console.error('Erreur API:', err);
       return json({ error: 'Erreur serveur interne' }, 500);
@@ -385,6 +385,10 @@ export default {
     // Nettoyage automatique de la corbeille (leads supprimés > 30 jours)
     ctx.waitUntil(
       env.DB.prepare("DELETE FROM leads WHERE deleted_at IS NOT NULL AND deleted_at < datetime('now', '-30 days')").run()
+    );
+    // Nettoyage des sessions de migration inactives > 30min (timeout)
+    ctx.waitUntil(
+      env.DB.prepare("UPDATE migration_sessions SET status = 'failed', error_log_json = '[\"Timeout: Worker killed ou process abandonné\"]' WHERE status = 'running' AND updated_at < datetime('now', '-30 minutes')").run()
     );
   },
 
@@ -404,7 +408,7 @@ export default {
 // ── Routeur protégé ─────────────────────────────────────────
 
 async function routeProtected(
-  request: Request, env: Env, url: URL,
+  request: Request, env: Env, ctx: ExecutionContext, url: URL,
   path: string, method: string,
   auth: { userId: string; role: string }
 ): Promise<Response> {
@@ -662,6 +666,20 @@ async function routeProtected(
   if (path === '/api/migration/ghl/csv/run' && method === 'POST') {
     const { handleGhlCsvRun } = await import('./worker/migration-ghl-csv');
     return handleGhlCsvRun(request, env, auth);
+  }
+  if (path === '/api/migration/ghl/api/run' && method === 'POST') {
+    const { handleGhlApiRun } = await import('./worker/migration-ghl-api');
+    return handleGhlApiRun(request, env, ctx, auth);
+  }
+  const sessionMatch = path.match(/^\/api\/migration\/sessions\/([^/]+)$/);
+  if (sessionMatch && method === 'GET') {
+    const { handleGetMigrationSession } = await import('./worker/migration-ghl-api');
+    return handleGetMigrationSession(env, auth, sessionMatch[1]!);
+  }
+  const sessionErrorsMatch = path.match(/^\/api\/migration\/sessions\/([^/]+)\/errors$/);
+  if (sessionErrorsMatch && method === 'GET') {
+    const { handleGetMigrationErrors } = await import('./worker/migration-ghl-api');
+    return handleGetMigrationErrors(env, auth, sessionErrorsMatch[1]!);
   }
   const submissionsMatch = path.match(/^\/api\/forms\/([^/]+)\/submissions$/);
   if (submissionsMatch && method === 'GET') return handleGetFormSubmissions(env, auth, submissionsMatch[1]!, url);

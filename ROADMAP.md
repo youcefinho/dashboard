@@ -41,14 +41,13 @@ Voir `README-DEV.md` pour le setup local sans clés externes.
 | 12 | Production Hardening & Core UX | ~8j | ✅ Commité |
 | 13 | API publique + Webhooks OUT + Zapier | ~10j | ✅ Commité |
 | 13.5 | Hotfix audit (tsconfig worker.ts + webhooks robustes + role api) | ~2j | ✅ Commité |
+| 14 | GHL Migration importer (CSV + OAuth hybride) | ~15j | ✅ Commité |
 
-**Total livré : ~174 jours de dev.**
+**Total livré : ~189 jours de dev.**
 
 ## Sprint actuel 🔜
 
-| Sprint | Thème | Durée estimée | Statut |
-|---|---|---|---|
-| 14 | GHL Migration importer (CSV + OAuth hybride) | ~15j | 🟡 En cours |
+| 15 | App mobile React Native V2 | ~30j | ⏳ En attente de traction |
 
 ## Sprints restants
 
