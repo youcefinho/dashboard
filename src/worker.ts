@@ -97,6 +97,7 @@ import { handleGetUsers, handleInviteUser, handleUpdateUserRole, handleDeleteUse
 import { handleFeedback, handleNps } from './worker/feedback';
 import { handleDemoReset } from './worker/admin';
 import { handleCompleteOnboarding } from './worker/onboarding';
+import { handleRegisterDevice, handleUnregisterDevice, handleSendPush } from './worker/push';
 
 // Export Durable Object pour Cloudflare
 export { WebchatRoom };
@@ -738,6 +739,15 @@ async function routeProtected(
   if (path === '/api/admin/demo-reset' && method === 'POST') return handleDemoReset(request, env, auth);
   if (path === '/api/feedback' && method === 'POST') return handleFeedback(request, env, auth);
   if (path === '/api/nps' && method === 'POST') return handleNps(request, env, auth);
+
+  // Phase 11 - Push notifications / Device tokens
+  if (path === '/api/devices' && method === 'POST') return handleRegisterDevice(request, env, auth);
+  const deviceTokenMatch = path.match(/^\/api\/devices\/(.+)$/);
+  if (deviceTokenMatch && method === 'DELETE') return handleUnregisterDevice(request, env, auth, decodeURIComponent(deviceTokenMatch[1]!));
+  if (path === '/api/notifications/push' && method === 'POST') {
+    if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
+    return handleSendPush(request, env);
+  }
 
   // Debug (à retirer avant prod)
   if (path === '/api/debug/run-cron' && method === 'GET') {
