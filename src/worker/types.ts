@@ -21,6 +21,9 @@ export interface Env {
   BROADCAST_QUEUE: Queue;
   WEBHOOK_QUEUE?: Queue;
   RATE_LIMITER?: KVNamespace;
+  GHL_CLIENT_ID?: string;
+  GHL_CLIENT_SECRET?: string;
+  GHL_REDIRECT_URI?: string;
   // V2 backlog (désactivés Sprint Consolidation)
   // OPENAI_API_KEY: string;
   // GOOGLE_CLIENT_ID: string;

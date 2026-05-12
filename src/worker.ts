@@ -341,6 +341,12 @@ export default {
       return json({ error: 'Erreur serveur' }, 500);
     }
 
+    // ── Migration GHL Callback ──────────────────────────────────
+    if (path === '/api/migration/ghl/oauth/callback' && method === 'GET') {
+      const { handleGhlOauthCallback } = await import('./worker/migration-ghl-oauth');
+      return handleGhlOauthCallback(request, env, url);
+    }
+
     // ── Auth (login/logout/reset — pas de token requis) ─────────
     if (path === '/api/auth/login' && method === 'POST') return handleLogin(request, env);
     if (path === '/api/auth/logout' && method === 'POST') return handleLogout(request, env);
@@ -643,6 +649,12 @@ async function routeProtected(
   if (formMatch && method === 'DELETE') return handleDeleteForm(env, auth, formMatch[1]!);
   const statsFormMatch = path.match(/^\/api\/forms\/([^/]+)\/stats$/);
   if (statsFormMatch && method === 'GET') return handleGetFormStats(env, auth, statsFormMatch[1]!);
+
+  // Migration GHL
+  if (path === '/api/migration/ghl/oauth/start' && method === 'GET') {
+    const { handleGhlOauthStart } = await import('./worker/migration-ghl-oauth');
+    return handleGhlOauthStart(request, env, auth, url);
+  }
   const submissionsMatch = path.match(/^\/api\/forms\/([^/]+)\/submissions$/);
   if (submissionsMatch && method === 'GET') return handleGetFormSubmissions(env, auth, submissionsMatch[1]!, url);
 
