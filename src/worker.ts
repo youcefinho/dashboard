@@ -655,6 +655,14 @@ async function routeProtected(
     const { handleGhlOauthStart } = await import('./worker/migration-ghl-oauth');
     return handleGhlOauthStart(request, env, auth, url);
   }
+  if (path === '/api/migration/ghl/csv/preview' && method === 'POST') {
+    const { handleGhlCsvPreview } = await import('./worker/migration-ghl-csv');
+    return handleGhlCsvPreview(request, env, auth);
+  }
+  if (path === '/api/migration/ghl/csv/run' && method === 'POST') {
+    const { handleGhlCsvRun } = await import('./worker/migration-ghl-csv');
+    return handleGhlCsvRun(request, env, auth);
+  }
   const submissionsMatch = path.match(/^\/api\/forms\/([^/]+)\/submissions$/);
   if (submissionsMatch && method === 'GET') return handleGetFormSubmissions(env, auth, submissionsMatch[1]!, url);
 
