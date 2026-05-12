@@ -14,7 +14,12 @@
     "db:init": "wrangler d1 execute intralys-crm --local --file=schema.sql && wrangler d1 execute intralys-crm --local --file=seed.sql",
     "build": "tsc && vite build",
     "test": "vitest run",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "cap:sync": "bun run build && bunx cap sync",
+    "cap:android": "bunx cap open android",
+    "cap:ios": "bunx cap open ios",
+    "cap:run:android": "bunx cap run android",
+    "cap:run:ios": "bunx cap run ios"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.16.3",
@@ -30,6 +35,18 @@
     "wrangler": "^4.86.0"
   },
   "dependencies": {
+    "@capacitor/android": "^8.3.3",
+    "@capacitor/app": "^8.1.0",
+    "@capacitor/camera": "^8.2.0",
+    "@capacitor/cli": "^8.3.3",
+    "@capacitor/core": "^8.3.3",
+    "@capacitor/haptics": "^8.0.2",
+    "@capacitor/ios": "^8.3.3",
+    "@capacitor/keyboard": "^8.0.3",
+    "@capacitor/local-notifications": "^8.1.0",
+    "@capacitor/push-notifications": "^8.0.4",
+    "@capacitor/splash-screen": "^8.0.1",
+    "@capacitor/status-bar": "^8.0.2",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
@@ -43,8 +60,10 @@
     "@tanstack/react-router": "^1.168.25",
     "@types/react-signature-canvas": "^1.0.7",
     "@xyflow/react": "^12.10.2",
+    "capacitor-native-biometric": "^4.2.2",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
+    "dexie": "^4.4.2",
     "lucide-react": "^1.14.0",
     "react-markdown": "^10.1.0",
     "react-signature-canvas": "^1.1.0-alpha.2",

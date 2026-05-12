@@ -7,3 +7,5 @@ dist/
 post-deploy.cjs
 .claude/
 .idea/
+ios/
+android/
