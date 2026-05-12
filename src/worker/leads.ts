@@ -437,9 +437,7 @@ export async function handleBulkLeads(
 
     case 'delete': {
       const placeholders = ids.map(() => '?').join(',');
-      await env.DB.prepare(`DELETE FROM leads WHERE id IN (${placeholders})`).bind(...ids).run();
-      await env.DB.prepare(`DELETE FROM lead_tags WHERE lead_id IN (${placeholders})`).bind(...ids).run();
-      await env.DB.prepare(`DELETE FROM activity_log WHERE lead_id IN (${placeholders})`).bind(...ids).run();
+      await env.DB.prepare(`UPDATE leads SET deleted_at = datetime('now') WHERE id IN (${placeholders})`).bind(...ids).run();
       affected = ids.length;
       break;
     }

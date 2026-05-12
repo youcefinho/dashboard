@@ -3,9 +3,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Badge, Skeleton, EmptyState } from '@/components/ui';
+import { Card, Button, Badge, Skeleton, EmptyState, useToast } from '@/components/ui';
 import { Avatar } from '@/components/ui/Avatar';
-import { getLeadDetail, updateLead, addTag, removeTag, getAppointments, getTasks, updateTask, getLeadNotes, createLeadNote, deleteLeadNote, getLeadScores, getLeadCustomFields, softDeleteLead, apiFetch } from '@/lib/api';
+import { getLeadDetail, updateLead, addTag, removeTag, getAppointments, getTasks, updateTask, getLeadNotes, createLeadNote, deleteLeadNote, getLeadScores, getLeadCustomFields, softDeleteLead, restoreLead, apiFetch } from '@/lib/api';
 import { ConversationPanel } from '@/components/conversations/ConversationPanel';
 import {
   STATUS_LABELS, STATUS_COLORS, SOURCE_LABELS,
@@ -22,6 +22,7 @@ import { PhoneLink } from '@/components/ui/PhoneLink';
 export function LeadDetailPage() {
   const { leadId } = useParams({ strict: false }) as { leadId: string };
   const navigate = useNavigate();
+  const { success, error: toastError } = useToast();
   const [lead, setLead] = useState<LeadDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [editNotes, setEditNotes] = useState('');
@@ -201,7 +202,27 @@ export function LeadDetailPage() {
                   onClick={async () => {
                     if (confirm('Déplacer ce lead vers la corbeille ?')) {
                       const res = await softDeleteLead(leadId);
-                      if (!res.error) void navigate({ to: '/leads' });
+                      if (res.error) {
+                        toastError(res.error);
+                      } else {
+                        success('Lead déplacé vers la corbeille', {
+                          duration: 10000,
+                          action: {
+                            label: 'Annuler',
+                            onClick: async () => {
+                              const restoreRes = await restoreLead(leadId);
+                              if (!restoreRes.error) {
+                                success('Lead restauré');
+                                // Force page reload to reflect restored lead
+                                window.location.reload();
+                              } else {
+                                toastError('Erreur lors de la restauration');
+                              }
+                            }
+                          }
+                        });
+                        void navigate({ to: '/leads' });
+                      }
                     }
                   }}
                   className="p-1.5 rounded-md text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-[var(--danger)]/10 cursor-pointer transition-all"

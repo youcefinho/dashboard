@@ -432,10 +432,14 @@ const router = createRouter({ routeTree });
 
 // ── App Root ────────────────────────────────────────────────
 
+import { ToastProvider } from '@/components/ui';
+
 export default function App() {
   return (
-    <AuthProvider>
-      <RouterProvider router={router} />
-    </AuthProvider>
+    <ToastProvider>
+      <AuthProvider>
+        <RouterProvider router={router} />
+      </AuthProvider>
+    </ToastProvider>
   );
 }

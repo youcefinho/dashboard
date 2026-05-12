@@ -32,3 +32,6 @@ export { Tabs, TabsList, TabsTrigger, TabsContent } from './Tabs';
 // ── Nouveaux composants (import direct quand nécessaire) ────
 // import { Modal } from '@/components/ui/Modal'     ← Radix version
 // import { Input } from '@/components/ui/Input'     ← nouvelle version
+
+export { ToastProvider, useToast } from './Toast';
+export * from './DateRangePicker';

@@ -6,11 +6,12 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, Button, Badge, Skeleton, EmptyState, Modal } from '@/components/ui';
 import { Avatar } from '@/components/ui/Avatar';
 import { Input } from '@/components/ui/Input';
-import { getLeads, getClients, updateLead, exportLeadsCsv, createLead } from '@/lib/api';
+import { getLeads, getClients, updateLead, exportLeadsCsv, createLead, softDeleteLead, restoreLead } from '@/lib/api';
 import { STATUS_LABELS, STATUS_COLORS, SOURCE_LABELS, LEAD_STATUSES, type Lead, type LeadStatus, type Client, type SmartList } from '@/lib/types';
-import { Search, X, Download, Save, LayoutGrid, LayoutList, Map, MoreHorizontal, ArrowUpDown, ChevronUp, ChevronDown, StickyNote, Users, UserPlus, Zap, ExternalLink, Check, Plus } from 'lucide-react';
+import { Search, X, Download, Save, LayoutGrid, LayoutList, Map, MoreHorizontal, ArrowUpDown, ChevronUp, ChevronDown, StickyNote, Users, UserPlus, Zap, ExternalLink, Check, Plus, Trash2 } from 'lucide-react';
 import { SwipeAction } from '@/components/ui/SwipeAction';
 import { useLongPress } from '@/hooks/useLongPress';
+import { useToast } from '@/components/ui';
 
 // Fixtures mock pour leads sans coordonnées (mode mock QC)
 const QC_FIXTURES: Array<{ lat: number; lng: number; city: string }> = [
@@ -160,13 +161,20 @@ function LeadsMapView({ leads }: { leads: Lead[] }) {
 }
 
 export function LeadsPage() {
+  const { success, error: toastError } = useToast();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [sourceFilter, setSourceFilter] = useState('');
-  const [clientFilter, setClientFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState(() => localStorage.getItem('intralys_leads_filter_status') || '');
+  const [sourceFilter, setSourceFilter] = useState(() => localStorage.getItem('intralys_leads_filter_source') || '');
+  const [clientFilter, setClientFilter] = useState(() => localStorage.getItem('intralys_leads_filter_client') || '');
+
+  useEffect(() => {
+    localStorage.setItem('intralys_leads_filter_status', statusFilter);
+    localStorage.setItem('intralys_leads_filter_source', sourceFilter);
+    localStorage.setItem('intralys_leads_filter_client', clientFilter);
+  }, [statusFilter, sourceFilter, clientFilter]);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [editNotes, setEditNotes] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -197,13 +205,24 @@ export function LeadsPage() {
 
   const handleStatusChange = async (leadId: string, newStatus: LeadStatus) => {
     const result = await updateLead(leadId, { status: newStatus });
-    if (!result.error) setLeads(prev => prev.map(l => l.id === leadId ? { ...l, status: newStatus } : l));
+    if (!result.error) {
+      setLeads(prev => prev.map(l => l.id === leadId ? { ...l, status: newStatus } : l));
+      success('Statut mis à jour avec succès');
+    } else {
+      toastError(result.error);
+    }
   };
 
   const handleSaveNotes = async () => {
     if (!selectedLead) return;
     const result = await updateLead(selectedLead.id, { notes: editNotes });
-    if (!result.error) { setLeads(prev => prev.map(l => l.id === selectedLead.id ? { ...l, notes: editNotes } : l)); setSelectedLead(null); }
+    if (!result.error) {
+      setLeads(prev => prev.map(l => l.id === selectedLead.id ? { ...l, notes: editNotes } : l));
+      setSelectedLead(null);
+      success('Notes sauvegardées');
+    } else {
+      toastError(result.error);
+    }
   };
 
   const openNotes = (lead: Lead) => { setSelectedLead(lead); setEditNotes(lead.notes || ''); };
@@ -226,6 +245,8 @@ export function LeadsPage() {
     });
     setCreateSubmitting(false);
     if (result.error) { setCreateError(result.error); return; }
+    
+    success('Nouveau lead créé avec succès', { title: 'Action réussie' });
     setCreateOpen(false);
     setCreateForm(emptyCreateForm);
     void loadData();
@@ -242,6 +263,38 @@ export function LeadsPage() {
   const bulkChangeStatus = async (status: LeadStatus) => {
     for (const id of selectedIds) await updateLead(id, { status });
     setSelectedIds(new Set()); void loadData();
+    success(`${selectedIds.size} prospects mis à jour`);
+  };
+
+  const bulkTrash = async () => {
+    if (!confirm(`Déplacer ${selectedIds.size} prospects vers la corbeille ?`)) return;
+    
+    const ids = Array.from(selectedIds);
+    let errorCount = 0;
+    
+    for (const id of ids) {
+      const res = await softDeleteLead(id);
+      if (res.error) errorCount++;
+    }
+    
+    setSelectedIds(new Set());
+    void loadData();
+
+    if (errorCount === 0) {
+      success(`${ids.length} prospects déplacés vers la corbeille`, {
+        duration: 10000,
+        action: {
+          label: 'Annuler',
+          onClick: async () => {
+            for (const id of ids) await restoreLead(id);
+            success('Prospects restaurés');
+            void loadData();
+          }
+        }
+      });
+    } else {
+      toastError(`${errorCount} prospects n'ont pas pu être supprimés`);
+    }
   };
 
   const saveSmartList = () => {
@@ -451,6 +504,9 @@ export function LeadsPage() {
                 <option value="">Changer statut...</option>
                 {LEAD_STATUSES.map(s => (<option key={s} value={s}>{STATUS_LABELS[s]}</option>))}
               </select>
+              <Button variant="ghost" size="sm" onClick={bulkTrash} className="text-[var(--danger)] hover:bg-[var(--danger)]/10 hover:text-[var(--danger)]" leftIcon={<Trash2 size={14} />}>
+                Supprimer
+              </Button>
               <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>Annuler</Button>
             </div>
           )}

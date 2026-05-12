@@ -20,7 +20,7 @@ import { useLongPress } from '@/hooks/useLongPress';
 export function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [templates, setTemplates] = useState<TaskTemplate[]>([]);
-  const [filter, setFilter] = useState<'all' | TaskStatus>('all');
+  const [filter, setFilter] = useState<'all' | TaskStatus>(() => (localStorage.getItem('intralys_tasks_filter') as 'all' | TaskStatus) || 'all');
   
   // Modals
   const [showAddModal, setShowAddModal] = useState(false);
@@ -40,8 +40,12 @@ export function TasksPage() {
   const [newRecurring, setNewRecurring] = useState('none');
   const [newReminder, setNewReminder] = useState(0);
 
-  const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
-  const [sortBy, setSortBy] = useState<'priority' | 'due_date' | 'status'>('due_date');
+  const [viewMode, setViewMode] = useState<'list' | 'kanban'>(() => (localStorage.getItem('intralys_tasks_viewmode') as 'list' | 'kanban') || 'list');
+  const [sortBy, setSortBy] = useState<'priority' | 'due_date' | 'status'>(() => (localStorage.getItem('intralys_tasks_sortby') as 'priority' | 'due_date' | 'status') || 'due_date');
+
+  useEffect(() => { localStorage.setItem('intralys_tasks_filter', filter); }, [filter]);
+  useEffect(() => { localStorage.setItem('intralys_tasks_viewmode', viewMode); }, [viewMode]);
+  useEffect(() => { localStorage.setItem('intralys_tasks_sortby', sortBy); }, [sortBy]);
 
   useEffect(() => { load(); loadTemplates(); }, []);
 

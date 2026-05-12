@@ -22,12 +22,17 @@ export function PipelinePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>('kanban');
+  const [viewMode, setViewMode] = useState<ViewMode>(() => (localStorage.getItem('intralys_pipeline_viewmode') as ViewMode) || 'kanban');
   const [lostModal, setLostModal] = useState<{ leadId: string; show: boolean }>({ leadId: '', show: false });
   const [lostReason, setLostReason] = useState('');
   const [lostDetails, setLostDetails] = useState('');
-  const [activeFilters, setActiveFilters] = useState<string[]>([]);
+  const [activeFilters, setActiveFilters] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem('intralys_pipeline_filters') || '[]'); } catch { return []; }
+  });
   const [showFilters, setShowFilters] = useState(false);
+
+  useEffect(() => { localStorage.setItem('intralys_pipeline_viewmode', viewMode); }, [viewMode]);
+  useEffect(() => { localStorage.setItem('intralys_pipeline_filters', JSON.stringify(activeFilters)); }, [activeFilters]);
 
   const loadData = useCallback(async (forcedPipelineId?: string) => {
     setIsLoading(true);
