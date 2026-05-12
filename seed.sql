@@ -209,3 +209,13 @@ INSERT OR IGNORE INTO lead_tags (lead_id, tag) VALUES
   ('lead-d02', 'urgence'), ('lead-d05', 'vip'),
   ('lead-h01', 'transition'), ('lead-h03', 'leadership'),
   ('lead-h04', 'stress'), ('lead-c08', 'référé');
+
+-- ═══════════════════════════════════════════════════════════
+-- BETA INVITE CODES (5) — Phase 35 launch
+-- ═══════════════════════════════════════════════════════════
+INSERT OR IGNORE INTO beta_invite_codes (code, expires_at, created_at) VALUES
+  ('INTRALYS-BETA-IMMO-2026',    datetime('now', '+90 days'), datetime('now')),
+  ('INTRALYS-BETA-PLOMB-2026',   datetime('now', '+90 days'), datetime('now')),
+  ('INTRALYS-BETA-DENT-2026',    datetime('now', '+90 days'), datetime('now')),
+  ('INTRALYS-BETA-COACH-2026',   datetime('now', '+90 days'), datetime('now')),
+  ('INTRALYS-BETA-CLEAN-2026',   datetime('now', '+90 days'), datetime('now'));
