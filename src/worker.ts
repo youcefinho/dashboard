@@ -117,9 +117,9 @@ export default {
     // ── Routes publiques (pas d'auth) ─────────────────────
     try {
       if (path === '/api/health' && method === 'GET') {
-        let dbOk = 'ok';
-        try { await env.DB.prepare('SELECT 1').run(); } catch { dbOk = 'error'; }
-        return json({ status: dbOk === 'ok' ? 'ok' : 'error', db: dbOk, version: '2.1.0', uptime_s: Math.floor((Date.now() - START_TIME) / 1000) });
+        const uptime = Math.floor((Date.now() - START_TIME) / 1000);
+        const { handleHealth } = await import('./worker/health');
+        return await handleHealth(env, uptime);
       }
 
       if (path === '/api/webhook/sms' && method === 'POST') return await handleInboundSms(request, env);

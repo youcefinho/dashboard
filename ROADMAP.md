@@ -38,14 +38,15 @@ Voir `README-DEV.md` pour le setup local sans clés externes.
 | 9 | Mobile responsive + PWA | ~6j | ✅ Commité |
 | 10 | Polish + Beta privée + Launch | ~10j | ✅ Commité |
 | 11 | Capacitor V1 — App native iOS/Android | ~15j | ✅ Commité |
+| 12 | Production Hardening & Core UX | ~8j | ✅ Commité |
 
-**Total livré : ~154 jours de dev.**
+**Total livré : ~162 jours de dev.**
 
 ## Sprint actuel 🔜
 
 | Sprint | Thème | Durée estimée | Statut |
 |---|---|---|---|
-| 12 | Production Hardening & Core UX | ~8j | 🟡 En cours |
+| Aucun | Pause | - | 🟡 En attente |
 
 ## Sprints restants
 
