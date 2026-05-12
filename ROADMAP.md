@@ -46,13 +46,12 @@ Voir `README-DEV.md` pour le setup local sans clés externes.
 
 | Sprint | Thème | Durée estimée | Statut |
 |---|---|---|---|
-| Aucun | Pause | - | 🟡 En attente |
+| 13 | API publique + Zapier + Webhooks OUT | ~10j | 🟡 En cours |
 
 ## Sprints restants
 
 | # | Sprint | Effort | Description |
 |---|---|---|---|
-| 13 | API publique + Zapier + Webhooks OUT | ~10j | OpenAPI docs, Zapier app, webhooks registry |
 | 14 | GHL Migration importer | ~15j | Import contacts/conversations/pipelines depuis GHL |
 | 15 | App mobile React Native V2 | ~30j | Si traction confirmée — vraie app native iOS/Android |
 
