@@ -671,10 +671,10 @@ async function routeProtected(
     const { handleGhlApiRun } = await import('./worker/migration-ghl-api');
     return handleGhlApiRun(request, env, ctx, auth);
   }
-  const sessionMatch = path.match(/^\/api\/migration\/sessions\/([^/]+)$/);
-  if (sessionMatch && method === 'GET') {
+  const migrationSessionMatch = path.match(/^\/api\/migration\/sessions\/([^/]+)$/);
+  if (migrationSessionMatch && method === 'GET') {
     const { handleGetMigrationSession } = await import('./worker/migration-ghl-api');
-    return handleGetMigrationSession(env, auth, sessionMatch[1]!);
+    return handleGetMigrationSession(env, auth, migrationSessionMatch[1]!);
   }
   const sessionErrorsMatch = path.match(/^\/api\/migration\/sessions\/([^/]+)\/errors$/);
   if (sessionErrorsMatch && method === 'GET') {
