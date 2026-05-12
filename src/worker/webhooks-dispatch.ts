@@ -62,26 +62,39 @@ export async function publishEvent(env: Env, clientId: string, eventType: string
   }
 }
 
+export async function generateWebhookSignature(payload: any, secret: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  
+  const payloadStr = typeof payload === 'string' ? payload : JSON.stringify(payload);
+  const signatureBuffer = await crypto.subtle.sign('HMAC', key, encoder.encode(payloadStr));
+  const signatureHex = Array.from(new Uint8Array(signatureBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+  
+  return `sha256=${signatureHex}`;
+}
+
+export async function verifyWebhookSignature(payload: any, secret: string, signature: string): Promise<boolean> {
+  const generated = await generateWebhookSignature(payload, secret);
+  return generated === signature;
+}
+
 export async function sendWebhookDirectly(env: Env, msg: any) {
   try {
     // HMAC signature
-    const encoder = new TextEncoder();
-    const key = await crypto.subtle.importKey(
-      'raw',
-      encoder.encode(msg.secret),
-      { name: 'HMAC', hash: 'SHA-256' },
-      false,
-      ['sign']
-    );
-    const signatureBuffer = await crypto.subtle.sign('HMAC', key, encoder.encode(msg.payload));
-    const signatureHex = Array.from(new Uint8Array(signatureBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+    const signatureHeader = await generateWebhookSignature(msg.payload, msg.secret);
 
     // Update status to 'retrying' equivalent since it's the first attempt
     const res = await fetch(msg.url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Intralys-Signature': `sha256=${signatureHex}`
+        'X-Intralys-Signature': signatureHeader
       },
       body: msg.payload
     });
