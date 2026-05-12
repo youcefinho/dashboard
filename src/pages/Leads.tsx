@@ -6,9 +6,9 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, Button, Badge, Skeleton, EmptyState, Modal } from '@/components/ui';
 import { Avatar } from '@/components/ui/Avatar';
 import { Input } from '@/components/ui/Input';
-import { getLeads, getClients, updateLead, exportLeadsCsv } from '@/lib/api';
+import { getLeads, getClients, updateLead, exportLeadsCsv, createLead } from '@/lib/api';
 import { STATUS_LABELS, STATUS_COLORS, SOURCE_LABELS, LEAD_STATUSES, type Lead, type LeadStatus, type Client, type SmartList } from '@/lib/types';
-import { Search, X, Download, Save, LayoutGrid, LayoutList, Map, MoreHorizontal, ArrowUpDown, ChevronUp, ChevronDown, StickyNote, Users, UserPlus, Zap, ExternalLink, Check } from 'lucide-react';
+import { Search, X, Download, Save, LayoutGrid, LayoutList, Map, MoreHorizontal, ArrowUpDown, ChevronUp, ChevronDown, StickyNote, Users, UserPlus, Zap, ExternalLink, Check, Plus } from 'lucide-react';
 import { SwipeAction } from '@/components/ui/SwipeAction';
 import { useLongPress } from '@/hooks/useLongPress';
 
@@ -176,6 +176,11 @@ export function LeadsPage() {
   const [viewMode, setViewMode] = useState<'table' | 'cards' | 'map'>('table');
   const [sortBy, setSortBy] = useState<'name' | 'score' | 'created_at' | 'deal_value'>('created_at');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createSubmitting, setCreateSubmitting] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const emptyCreateForm = { client_id: '', name: '', email: '', phone: '', source: 'manual', message: '', type: 'inbound' as 'inbound' | 'customer' };
+  const [createForm, setCreateForm] = useState(emptyCreateForm);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -202,6 +207,30 @@ export function LeadsPage() {
   };
 
   const openNotes = (lead: Lead) => { setSelectedLead(lead); setEditNotes(lead.notes || ''); };
+
+  const handleCreateLead = async () => {
+    setCreateError(null);
+    if (!createForm.client_id || !createForm.name.trim() || !createForm.email.trim()) {
+      setCreateError('Client, nom et email sont requis.');
+      return;
+    }
+    setCreateSubmitting(true);
+    const result = await createLead({
+      client_id: createForm.client_id,
+      name: createForm.name.trim(),
+      email: createForm.email.trim(),
+      phone: createForm.phone.trim() || undefined,
+      type: createForm.type,
+      source: createForm.source || undefined,
+      message: createForm.message.trim() || undefined,
+    });
+    setCreateSubmitting(false);
+    if (result.error) { setCreateError(result.error); return; }
+    setCreateOpen(false);
+    setCreateForm(emptyCreateForm);
+    void loadData();
+  };
+  const closeCreate = () => { if (!createSubmitting) { setCreateOpen(false); setCreateError(null); } };
 
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
@@ -270,7 +299,11 @@ export function LeadsPage() {
           {wonCount} gagnés
         </div>
 
-        <div className="flex items-center gap-1 ml-auto">
+        <Button variant="primary" size="sm" leftIcon={<Plus size={14} />} onClick={() => setCreateOpen(true)} className="ml-auto">
+          Nouveau lead
+        </Button>
+
+        <div className="flex items-center gap-1">
           <button onClick={() => setViewMode('table')}
             className={`p-1.5 rounded-[var(--radius-xs)] cursor-pointer transition-all ${viewMode === 'table' ? 'bg-[var(--brand-primary)] text-white' : 'text-[var(--text-muted)] hover:bg-[var(--bg-subtle)]'}`}>
             <LayoutList size={16} />
@@ -502,6 +535,85 @@ export function LeadsPage() {
           </div>
         </Card>
       )}
+
+      {/* Modal — Nouveau lead */}
+      <Modal isOpen={createOpen} onClose={closeCreate} title="Nouveau lead">
+        <div className="space-y-3">
+          {createError && (
+            <div className="text-xs text-[var(--danger)] px-3 py-2 rounded-[var(--radius-sm)] bg-[var(--danger)]/10 border border-[var(--danger)]/20">
+              {createError}
+            </div>
+          )}
+          <div>
+            <label htmlFor="new-lead-client" className="text-sm font-medium text-[var(--text-secondary)] block mb-1.5">
+              Client <span className="text-[var(--danger)]">*</span>
+            </label>
+            <select id="new-lead-client" value={createForm.client_id}
+              onChange={(e) => setCreateForm(f => ({ ...f, client_id: e.target.value }))}
+              className="w-full h-[38px] px-3 text-sm bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-sm)] text-[var(--text-primary)] hover:border-[var(--border-strong)] focus:border-[var(--brand-primary)] focus:ring-[3px] focus:ring-[var(--ring)] focus:outline-none">
+              <option value="">Sélectionner un client...</option>
+              {clients.map(c => (<option key={c.id} value={c.id}>{c.name}</option>))}
+            </select>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="new-lead-name" className="text-sm font-medium text-[var(--text-secondary)] block mb-1.5">
+                Nom <span className="text-[var(--danger)]">*</span>
+              </label>
+              <Input id="new-lead-name" value={createForm.name}
+                onChange={(e) => setCreateForm(f => ({ ...f, name: e.target.value }))}
+                placeholder="Jean Tremblay" />
+            </div>
+            <div>
+              <label htmlFor="new-lead-email" className="text-sm font-medium text-[var(--text-secondary)] block mb-1.5">
+                Email <span className="text-[var(--danger)]">*</span>
+              </label>
+              <Input id="new-lead-email" type="email" value={createForm.email}
+                onChange={(e) => setCreateForm(f => ({ ...f, email: e.target.value }))}
+                placeholder="jean@exemple.com" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="new-lead-phone" className="text-sm font-medium text-[var(--text-secondary)] block mb-1.5">Téléphone</label>
+              <Input id="new-lead-phone" value={createForm.phone}
+                onChange={(e) => setCreateForm(f => ({ ...f, phone: e.target.value }))}
+                placeholder="514-555-1234" />
+            </div>
+            <div>
+              <label htmlFor="new-lead-source" className="text-sm font-medium text-[var(--text-secondary)] block mb-1.5">Source</label>
+              <select id="new-lead-source" value={createForm.source}
+                onChange={(e) => setCreateForm(f => ({ ...f, source: e.target.value }))}
+                className="w-full h-[38px] px-3 text-sm bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-sm)] text-[var(--text-primary)] hover:border-[var(--border-strong)] focus:border-[var(--brand-primary)] focus:ring-[3px] focus:ring-[var(--ring)] focus:outline-none">
+                <option value="manual">Manuel</option>
+                {Object.entries(SOURCE_LABELS).map(([k, v]) => (<option key={k} value={k}>{v}</option>))}
+              </select>
+            </div>
+          </div>
+          <div>
+            <label htmlFor="new-lead-type" className="text-sm font-medium text-[var(--text-secondary)] block mb-1.5">Type</label>
+            <select id="new-lead-type" value={createForm.type}
+              onChange={(e) => setCreateForm(f => ({ ...f, type: e.target.value as 'inbound' | 'customer' }))}
+              className="w-full h-[38px] px-3 text-sm bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-sm)] text-[var(--text-primary)] hover:border-[var(--border-strong)] focus:border-[var(--brand-primary)] focus:ring-[3px] focus:ring-[var(--ring)] focus:outline-none">
+              <option value="inbound">Entrant (prospect)</option>
+              <option value="customer">Client existant</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="new-lead-message" className="text-sm font-medium text-[var(--text-secondary)] block mb-1.5">Note initiale</label>
+            <textarea id="new-lead-message" value={createForm.message}
+              onChange={(e) => setCreateForm(f => ({ ...f, message: e.target.value }))}
+              rows={3} placeholder="Contexte du lead, source détaillée, prochaines étapes..."
+              className="w-full px-3 py-2.5 text-sm bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-default)] rounded-[var(--radius-sm)] placeholder:text-[var(--text-muted)] focus:border-[var(--brand-primary)] focus:ring-[3px] focus:ring-[var(--ring)] focus:outline-none resize-none" />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="ghost" onClick={closeCreate} disabled={createSubmitting}>Annuler</Button>
+            <Button onClick={() => void handleCreateLead()} disabled={createSubmitting}>
+              {createSubmitting ? 'Création...' : 'Créer le lead'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Modal Notes */}
       <Modal isOpen={!!selectedLead} onClose={() => setSelectedLead(null)} title={`Notes — ${selectedLead?.name || ''}`}>

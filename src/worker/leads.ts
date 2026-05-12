@@ -449,6 +449,45 @@ export async function handleBulkLeads(
   return json({ data: { success: true, affected } });
 }
 
+export async function handleCreateLead(
+  request: Request, env: Env, auth: { role: string; userId: string }
+): Promise<Response> {
+  if (auth.role !== 'admin') {
+    return json({ error: 'Accès réservé aux administrateurs' }, 403);
+  }
+
+  const body = await request.json() as Record<string, unknown>;
+  const clientId = sanitizeInput(body.client_id as string, 100);
+  const name = sanitizeInput(body.name as string, 100);
+  const email = sanitizeInput((body.email as string) || '', 200).toLowerCase();
+  const phone = sanitizeInput((body.phone as string) || '', 30);
+  const rawType = sanitizeInput((body.type as string) || '', 20);
+  const type = ['inbound', 'customer'].includes(rawType) ? rawType : 'inbound';
+  const source = sanitizeInput((body.source as string) || 'manual', 50);
+  const message = sanitizeInput((body.message as string) || '', 2000);
+
+  if (!clientId) return json({ error: 'client_id requis' }, 400);
+  if (!name) return json({ error: 'Nom requis' }, 400);
+  if (!email) return json({ error: 'Email requis' }, 400);
+
+  const client = await env.DB.prepare('SELECT id FROM clients WHERE id = ? AND is_active = 1').bind(clientId).first();
+  if (!client) return json({ error: 'Client introuvable' }, 404);
+
+  const existing = await env.DB.prepare(
+    'SELECT id FROM leads WHERE LOWER(email) = ? AND client_id = ?'
+  ).bind(email, clientId).first();
+  if (existing) return json({ error: `Un lead avec l'email "${email}" existe déjà pour ce client` }, 409);
+
+  const id = crypto.randomUUID();
+  await env.DB.prepare(
+    `INSERT INTO leads (id, client_id, name, email, phone, type, source, message, status, pipeline_id, stage_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'new', 'pipeline-default', 'stage-new')`
+  ).bind(id, clientId, name, email, phone, type, source, message).run();
+
+  await audit(env, auth.userId, 'lead.create', 'lead', id, { client_id: clientId, name, email, source });
+  return json({ data: { id } }, 201);
+}
+
 export async function handleGetPipeline(env: Env, auth: { role: string }, url: URL): Promise<Response> {
   if (auth.role !== 'admin') {
     return json({ error: 'Accès réservé aux administrateurs' }, 403);

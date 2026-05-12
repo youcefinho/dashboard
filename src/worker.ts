@@ -10,7 +10,7 @@ import { setRequestContext, corsHeaders, json, requireAuth } from './worker/help
 import { handleLogin, handleLogout, handleMe, handleChangePassword } from './worker/auth';
 import {
   handleGetClients, handleCreateClient, handleGetClientLeads,
-  handleGetLeads, handlePatchLead, handleBulkLeads,
+  handleGetLeads, handlePatchLead, handleBulkLeads, handleCreateLead,
   handleGetPipeline, handleGetLeadDetail,
   handleAddTag, handleRemoveTag, handleGetAllTags,
   handleGetActivity, handleExportCsv, setAutoEnroll,
@@ -251,6 +251,7 @@ async function routeProtected(
 
   // Leads
   if (path === '/api/leads' && method === 'GET') return handleGetLeads(env, auth, url);
+  if (path === '/api/leads' && method === 'POST') return handleCreateLead(request, env, auth);
   if (path === '/api/leads/bulk' && method === 'POST') return handleBulkLeads(request, env, auth);
   if (path === '/api/leads/export' && method === 'GET') return handleExportCsv(env, auth, url);
   if (path === '/api/leads/import' && method === 'POST') return handleCsvImport(request, env, auth);

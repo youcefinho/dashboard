@@ -316,7 +316,7 @@ export async function createLead(lead: {
   client_id: string; name: string; email: string; phone?: string;
   type?: string; source?: string; message?: string;
 }): Promise<ApiResponse<{ id: string }>> {
-  return apiFetch<{ id: string }>('/leads/bulk', { method: 'POST', body: JSON.stringify({ action: 'create', leads: [lead] }) });
+  return apiFetch<{ id: string }>('/leads', { method: 'POST', body: JSON.stringify(lead) });
 }
 
 // ── Phase 2 : Messages & Conversations ─────────────────────
