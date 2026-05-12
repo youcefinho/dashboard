@@ -7,13 +7,43 @@ import remarkGfm from 'remark-gfm';
 const categories = [
   { id: 'getting-started', name: 'Premiers pas', icon: <Book size={20} /> },
   { id: 'leads', name: 'Gestion des Leads', icon: <FileText size={20} /> },
-  { id: 'automation', name: 'Automatisations', icon: <Video size={20} /> },
+  { id: 'workflows', name: 'Automatisations', icon: <Video size={20} /> },
+  { id: 'integrations', name: 'Intégrations', icon: <ChevronRight size={20} /> },
+  { id: 'billing', name: 'Facturation', icon: <FileText size={20} /> },
 ];
 
 const articles: Record<string, { title: string, category: string, file: string }> = {
+  // Getting started (5)
   'intro': { title: 'Qu\'est-ce qu\'Intralys ?', category: 'getting-started', file: 'intro.md' },
-  'import-leads': { title: 'Comment importer vos leads (CSV)', category: 'leads', file: 'import-leads.md' },
-  'create-workflow': { title: 'Créer votre premier workflow', category: 'automation', file: 'create-workflow.md' },
+  'quickstart': { title: 'Démarrage rapide en 5 minutes', category: 'getting-started', file: 'quickstart.md' },
+  'first-lead': { title: 'Créer votre premier lead', category: 'getting-started', file: 'first-lead.md' },
+  'invite-team': { title: 'Inviter votre équipe', category: 'getting-started', file: 'invite-team.md' },
+  'mobile-app': { title: 'Utiliser Intralys sur mobile', category: 'getting-started', file: 'mobile-app.md' },
+  // Leads (8)
+  'import-leads': { title: 'Importer des leads (CSV)', category: 'leads', file: 'import-leads.md' },
+  'create-lead': { title: 'Créer un lead manuellement', category: 'leads', file: 'create-lead.md' },
+  'lead-statuses': { title: 'Statuts et étapes du pipeline', category: 'leads', file: 'lead-statuses.md' },
+  'lead-tags': { title: 'Organiser avec les tags', category: 'leads', file: 'lead-tags.md' },
+  'lead-notes': { title: 'Notes et activités sur un lead', category: 'leads', file: 'lead-notes.md' },
+  'lead-pipeline': { title: 'Gérer le pipeline Kanban', category: 'leads', file: 'lead-pipeline.md' },
+  'export-leads': { title: 'Exporter vos leads', category: 'leads', file: 'export-leads.md' },
+  'lead-scoring': { title: 'Scoring et priorité des leads', category: 'leads', file: 'lead-scoring.md' },
+  // Workflows (6)
+  'create-workflow': { title: 'Créer votre premier workflow', category: 'workflows', file: 'create-workflow.md' },
+  'workflow-triggers': { title: 'Déclencheurs disponibles', category: 'workflows', file: 'workflow-triggers.md' },
+  'workflow-conditions': { title: 'Ajouter des conditions', category: 'workflows', file: 'workflow-conditions.md' },
+  'workflow-email': { title: 'Envoyer des emails automatiques', category: 'workflows', file: 'workflow-email.md' },
+  'workflow-notifications': { title: 'Notifications et alertes', category: 'workflows', file: 'workflow-notifications.md' },
+  'workflow-templates': { title: 'Bibliothèque de templates', category: 'workflows', file: 'workflow-templates.md' },
+  // Integrations (4)
+  'integration-google': { title: 'Connecter Google Calendar', category: 'integrations', file: 'integration-google.md' },
+  'integration-gmail': { title: 'Synchroniser Gmail', category: 'integrations', file: 'integration-gmail.md' },
+  'integration-stripe': { title: 'Paiements avec Stripe', category: 'integrations', file: 'integration-stripe.md' },
+  'integration-zapier': { title: 'Automatiser avec Zapier', category: 'integrations', file: 'integration-zapier.md' },
+  // Billing (3)
+  'billing-plans': { title: 'Plans et tarification', category: 'billing', file: 'billing-plans.md' },
+  'billing-payment': { title: 'Méthodes de paiement', category: 'billing', file: 'billing-payment.md' },
+  'billing-invoices': { title: 'Consulter vos factures', category: 'billing', file: 'billing-invoices.md' },
 };
 
 export function HelpCenterPage() {
