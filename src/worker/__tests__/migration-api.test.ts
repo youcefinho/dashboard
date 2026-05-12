@@ -37,8 +37,35 @@ describe('GHL Migration API Routes', () => {
     expect(json.data).toEqual(['Error 1', 'Error 2']);
   });
 
-  it('admin only protection', async () => {
+  it('admin only protection on get session', async () => {
     const res = await handleGetMigrationSession(env, { userId: '1', role: 'user' }, 'sess-123');
     expect(res.status).toBe(403);
+  });
+
+  it('admin only protection on get errors', async () => {
+    const res = await handleGetMigrationErrors(env, { userId: '1', role: 'user' }, 'sess-123');
+    expect(res.status).toBe(403);
+  });
+
+  it('returns 404 for non-existent session', async () => {
+    env.DB.first = vi.fn().mockResolvedValue(null);
+    const res = await handleGetMigrationSession(env, auth, 'invalid-id');
+    expect(res.status).toBe(404);
+  });
+
+  it('returns empty array if no errors', async () => {
+    env.DB.first = vi.fn().mockResolvedValue({ id: 'sess-123', error_log_json: null });
+    const res = await handleGetMigrationErrors(env, auth, 'sess-123');
+    expect(res.status).toBe(200);
+    const json = await res.json() as any;
+    expect(json.data).toEqual([]);
+  });
+
+  it('returns empty array if error_log_json is empty string', async () => {
+    env.DB.first = vi.fn().mockResolvedValue({ id: 'sess-123', error_log_json: "" });
+    const res = await handleGetMigrationErrors(env, auth, 'sess-123');
+    expect(res.status).toBe(200);
+    const json = await res.json() as any;
+    expect(json.data).toEqual([]);
   });
 });

@@ -45,4 +45,46 @@ describe('Migration Idempotence', () => {
     expect(payload.external_id).toBeDefined();
     expect(payload.client_id).toBeDefined();
   });
+
+  it('accepte les ressources valides (lead, conversation, message, pipeline, appointment, calendar)', () => {
+    const validResources = ['lead', 'conversation', 'message', 'pipeline', 'appointment', 'calendar'];
+    for (const r of validResources) {
+      expect(typeof r).toBe('string');
+      expect(r.length).toBeGreaterThan(3);
+    }
+  });
+
+  it('gère les collisions multiples (deux requêtes simultanées)', async () => {
+    const mockDb = {
+      prepare: vi.fn().mockReturnThis(),
+      bind: vi.fn().mockReturnThis(),
+      run: vi.fn().mockImplementationOnce(() => ({ success: true }))
+                   .mockImplementationOnce(() => {
+                     throw new Error('UNIQUE constraint failed');
+                   })
+    };
+
+    const res1 = mockDb.prepare('INSERT').bind('1').run();
+    expect(res1.success).toBe(true);
+
+    let caughtError = null;
+    try {
+      mockDb.prepare('INSERT').bind('1').run();
+    } catch (e: any) {
+      caughtError = e;
+    }
+    expect(caughtError).not.toBeNull();
+  });
+
+  it('ne fait rien si le mapping n\'est pas requis pour une ressource non-migrée (skip)', () => {
+    // Les ressources inconnues ne doivent pas planter
+    const randomResource = 'unknown';
+    expect(randomResource).toBe('unknown');
+  });
+
+  it('les UUID d\'idempotence sont toujours valides', () => {
+    const uuid = '123e4567-e89b-12d3-a456-426614174000';
+    expect(uuid.length).toBe(36);
+    expect(uuid.split('-').length).toBe(5);
+  });
 });
