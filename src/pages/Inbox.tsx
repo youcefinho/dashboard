@@ -9,7 +9,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { getConversations, getConversation, sendConversationMessage, updateConversation, getSnippets, getTemplates, markConversationRead } from '@/lib/api';
 import type { Conversation, Message, ConversationStatus, MessageChannel, Snippet, EmailTemplate } from '@/lib/types';
 import { CHANNEL_LABELS, CONVERSATION_STATUS_LABELS, CONVERSATION_STATUS_COLORS } from '@/lib/types';
-import { MessageSquare, CheckCircle2, Pause, Star, StarOff, PanelRightClose, PanelRightOpen, Inbox } from 'lucide-react';
+import { MessageSquare, CheckCircle2, Pause, Star, StarOff, PanelRightClose, PanelRightOpen, Inbox, ArrowLeft } from 'lucide-react';
 
 import { ConversationsList } from '@/components/Inbox/ConversationsList';
 import { MessageThread } from '@/components/Inbox/MessageThread';
@@ -147,6 +147,7 @@ export function InboxPage() {
     <AppLayout title="Conversations">
       <div className="flex h-[calc(100vh-64px)] -m-6 overflow-hidden">
         <ConversationsList 
+          className={selectedConvId || isComposingNew ? 'hidden md:flex' : 'flex-1 md:w-80 md:flex-none'}
           conversations={conversations}
           isLoading={isLoading}
           searchQuery={searchQuery}
@@ -165,6 +166,7 @@ export function InboxPage() {
         {/* ══ PANNEAU CENTRAL — Fil de messages ════════════ */}
         {isComposingNew ? (
           <NewConversationPane 
+            className={selectedConvId || isComposingNew ? 'flex' : 'hidden md:flex'}
             snippets={snippets} 
             templates={templates}
             onCancel={() => { setIsComposingNew(false); if (conversations[0]) setSelectedConvId(conversations[0].id); }}
@@ -175,7 +177,7 @@ export function InboxPage() {
             }}
           />
         ) : (
-          <div className="flex-1 flex flex-col min-w-0 bg-[var(--bg-canvas)]">
+          <div className={`flex-1 flex-col min-w-0 bg-[var(--bg-canvas)] ${selectedConvId ? 'flex' : 'hidden md:flex'}`}>
           {!activeConv ? (
             <div className="flex-1 flex items-center justify-center text-[var(--text-muted)]">
               <div className="text-center">
@@ -187,12 +189,15 @@ export function InboxPage() {
             <>
               {/* Header conversation */}
               <div className="flex items-center justify-between px-4 py-2.5 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]">
-                <div className="flex items-center gap-2.5">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <button className="md:hidden p-1.5 -ml-2 text-[var(--text-muted)] hover:bg-[var(--bg-subtle)] rounded-lg transition-colors cursor-pointer shrink-0" onClick={() => setSelectedConvId(null)}>
+                    <ArrowLeft size={18} />
+                  </button>
                   <Avatar name={activeConv.lead_name || '?'} size="sm" />
-                  <div>
+                  <div className="min-w-0">
                     <div className="flex items-center gap-1.5">
-                      <h3 className="text-sm font-semibold">{activeConv.lead_name || 'Inconnu'}</h3>
-                      <Badge color={CONVERSATION_STATUS_COLORS[activeConv.status as ConversationStatus] || 'var(--text-muted)'} className="text-[9px]">
+                      <h3 className="text-sm font-semibold truncate max-w-[120px] sm:max-w-xs">{activeConv.lead_name || 'Inconnu'}</h3>
+                      <Badge color={CONVERSATION_STATUS_COLORS[activeConv.status as ConversationStatus] || 'var(--text-muted)'} className="text-[9px] shrink-0">
                         {CONVERSATION_STATUS_LABELS[activeConv.status as ConversationStatus] || activeConv.status}
                       </Badge>
                       <span className="text-[9px] text-[var(--text-muted)]">via {CHANNEL_LABELS[activeConv.channel as MessageChannel] || activeConv.channel}</span>
@@ -248,7 +253,9 @@ export function InboxPage() {
         
         {/* ══ PANNEAU DROIT — Info lead (collapsible) ══════ */}
         {showRightPanel && activeConv && !isComposingNew && (
-          <InboxPanel activeConv={activeConv} changeStatus={changeStatus} />
+          <div className="hidden lg:flex">
+            <InboxPanel activeConv={activeConv} changeStatus={changeStatus} />
+          </div>
         )}
       </div>
     </AppLayout>

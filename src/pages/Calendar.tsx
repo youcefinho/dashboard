@@ -43,7 +43,7 @@ export function CalendarPage() {
   const [calendars, setCalendars] = useState<CalType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  const [viewMode, setViewMode] = useState<ViewMode>('month');
+  const [viewMode, setViewMode] = useState<ViewMode>(() => typeof window !== 'undefined' && window.innerWidth < 768 ? 'day' : 'month');
   const [currentDate, setCurrentDate] = useState(new Date());
   
   // Sidebar Filters
@@ -308,7 +308,8 @@ export function CalendarPage() {
               </Card>
             ) : viewMode === 'week' ? (
               /* ── Vue Semaine ── */
-              <Card className="p-0 flex-1 flex flex-col overflow-auto min-h-[600px]">
+              <Card className="p-0 flex-1 flex flex-col overflow-x-auto min-h-[600px]">
+                <div className="min-w-[700px] flex flex-col flex-1">
                 <div className="flex border-b border-[var(--border-subtle)]">
                   <div className="w-16 flex-shrink-0" />
                   <div className="flex-1 grid grid-cols-7">
@@ -355,6 +356,7 @@ export function CalendarPage() {
                       );
                     })}
                   </div>
+                </div>
                 </div>
               </Card>
             ) : viewMode === 'day' ? (

@@ -426,7 +426,17 @@ export function ReportsPage() {
         </div>
       </div>
 
-      <div className="flex gap-6 max-w-6xl">
+      <div className="flex flex-col md:flex-row gap-6 max-w-6xl">
+        {/* Mobile tabs */}
+        <div className="md:hidden w-full flex gap-1.5 overflow-x-auto pb-3 mb-2 -mx-1 px-1 no-scrollbar">
+          {TABS.map(tab => (
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer border whitespace-nowrap shrink-0 transition-all ${activeTab === tab.id ? 'bg-[var(--brand-primary)] text-white border-[var(--brand-primary)]' : 'border-[var(--border-subtle)] text-[var(--text-muted)] bg-[var(--bg-surface)]'}`}>
+              <tab.icon size={13} /> {tab.label}
+            </button>
+          ))}
+        </div>
+
         {/* Sidebar Navigation */}
         <nav className="hidden md:block w-56 shrink-0 h-[calc(100vh-160px)] overflow-y-auto pr-2">
           {(() => {

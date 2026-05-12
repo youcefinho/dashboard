@@ -240,7 +240,7 @@ export function PipelinePage() {
           ))}
         </div>
       ) : viewMode === 'kanban' ? (
-        <div className="flex gap-3 overflow-x-auto pb-4 min-h-[calc(100vh-14rem)] snap-x">
+        <div className="flex gap-3 overflow-x-auto pb-4 min-h-[calc(100vh-14rem)] snap-x snap-mandatory custom-scrollbar pr-4">
           {stages.map(stage => {
             const colLeads = getColumnLeads(stage.id);
             const isOver = dropTarget === stage.id;
@@ -249,7 +249,7 @@ export function PipelinePage() {
 
             return (
               <div key={stage.id}
-                className={`flex flex-col rounded-xl transition-all duration-200 shrink-0 w-72 snap-start ${isOver ? 'ring-2 shadow-lg' : ''}`}
+                className={`flex flex-col rounded-xl transition-all duration-200 shrink-0 w-[85vw] sm:w-72 snap-center sm:snap-start ${isOver ? 'ring-2 shadow-lg' : ''}`}
                 style={{ 
                   background: isOver ? hexToRgba(stage.color, 0.08) : hexToRgba(stage.color, 0.03),
                   borderColor: isOver ? stage.color : 'transparent' 

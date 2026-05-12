@@ -25,12 +25,13 @@ interface Props {
   setSelectedConvId: (id: string) => void;
   toggleStar: (conv: Conversation, e: React.MouseEvent) => void;
   onNew?: () => void;
+  className?: string;
 }
 
 export function ConversationsList({
   conversations, isLoading, searchQuery, setSearchQuery,
   statusFilter, setStatusFilter, channelFilter, setChannelFilter,
-  statusCounts, selectedConvId, setSelectedConvId, toggleStar, onNew
+  statusCounts, selectedConvId, setSelectedConvId, toggleStar, onNew, className = ''
 }: Props) {
 
   const timeAgo = (d: string) => {
@@ -46,7 +47,7 @@ export function ConversationsList({
   };
 
   return (
-    <div className="w-80 shrink-0 border-r border-[var(--border-subtle)] flex flex-col bg-[var(--bg-canvas)]">
+    <div className={`w-80 shrink-0 border-r border-[var(--border-subtle)] flex flex-col bg-[var(--bg-canvas)] ${className}`}>
       {/* Header + search */}
       <div className="p-3 border-b border-[var(--border-subtle)] space-y-2">
         <div className="flex items-center justify-between mb-1">

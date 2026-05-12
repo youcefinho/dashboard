@@ -79,7 +79,7 @@ export function SettingsPage() {
   return (
     <AppLayout title="Paramètres">
       {/* Mobile tabs */}
-      <div className="md:hidden flex gap-1.5 overflow-x-auto pb-3 mb-4 -mx-1 px-1">
+      <div className="md:hidden flex gap-1.5 overflow-x-auto pb-3 mb-4 -mx-1 px-1 no-scrollbar">
         {visibleTabs.map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)}
             className={`px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer border whitespace-nowrap shrink-0 transition-all ${activeTab === tab.id ? 'bg-[var(--brand-primary)] text-white border-[var(--brand-primary)]' : 'border-[var(--border-subtle)] text-[var(--text-muted)]'}`}>

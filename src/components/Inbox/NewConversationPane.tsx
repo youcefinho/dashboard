@@ -10,9 +10,10 @@ interface Props {
   onSent: (convId: string) => void;
   snippets?: any[];
   templates?: any[];
+  className?: string;
 }
 
-export function NewConversationPane({ onCancel, onSent, snippets = [], templates = [] }: Props) {
+export function NewConversationPane({ onCancel, onSent, snippets = [], templates = [], className = '' }: Props) {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [search, setSearch] = useState('');
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
@@ -74,7 +75,7 @@ export function NewConversationPane({ onCancel, onSent, snippets = [], templates
   };
 
   return (
-    <div className="flex-1 flex flex-col min-w-0 bg-[var(--bg-canvas)] relative">
+    <div className={`flex-1 flex flex-col min-w-0 bg-[var(--bg-canvas)] relative ${className}`}>
       <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]">
         <h3 className="text-sm font-semibold">Nouvelle Conversation</h3>
         <button onClick={onCancel} className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer">
