@@ -8,6 +8,7 @@ import { useTheme } from '@/lib/useTheme';
 import { getNotifications, markNotificationRead, markAllNotificationsRead, type NotificationItem } from '@/lib/api';
 import { Search, Bell, Moon, Sun, Menu, Plus } from 'lucide-react';
 import { MobileBottomNav } from './MobileBottomNav';
+import { InstallPrompt } from '../InstallPrompt';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -229,6 +230,7 @@ export function AppLayout({ children, title }: AppLayoutProps) {
 
       <CommandPalette isOpen={cmdOpen} onClose={() => setCmdOpen(false)} />
       <MobileBottomNav />
+      <InstallPrompt />
     </div>
   );
 }
