@@ -37,8 +37,8 @@ export function corsHeaders(): Record<string, string> {
   if (_currentRequest && _currentEnv) {
     const origin = _currentRequest.headers.get('Origin') || '';
     const allowed = (_currentEnv.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
-    // Dev local : si ALLOWED_ORIGINS vide ou contient localhost, on autorise localhost
-    if (allowed.length === 0) allowed.push('http://localhost:5176', 'http://localhost:5173');
+    // Dev local + Capacitor natif : origines par défaut
+    if (allowed.length === 0) allowed.push('http://localhost:5176', 'http://localhost:5173', 'capacitor://localhost', 'http://localhost');
     const allowOrigin = allowed.includes(origin) ? origin : '';
     return {
       'Access-Control-Allow-Origin': allowOrigin,

@@ -17,6 +17,7 @@ import {
   type LeadNote, type LeadScore, type CustomFieldValue, type LifecycleStage,
 } from '@/lib/types';
 import { ArrowLeft, Star, Phone, Mail, CalendarPlus, CheckSquare, Trash2, Compass } from 'lucide-react';
+import { PhoneLink } from '@/components/ui/PhoneLink';
 
 export function LeadDetailPage() {
   const { leadId } = useParams({ strict: false }) as { leadId: string };
@@ -214,9 +215,9 @@ export function LeadDetailPage() {
             {/* Actions rapides */}
             <div className="flex flex-wrap gap-2 mb-4 pb-4 border-b border-[var(--border-subtle)]">
               {lead.phone && (
-                <a href={`tel:${lead.phone}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-[var(--radius-sm)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] hover:bg-[var(--brand-primary)] hover:text-white transition-colors cursor-pointer">
+                <PhoneLink phone={lead.phone} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-[var(--radius-sm)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] hover:bg-[var(--brand-primary)] hover:text-white transition-colors cursor-pointer">
                   <Phone size={13} /> Appeler
-                </a>
+                </PhoneLink>
               )}
               <a href={`mailto:${lead.email}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-[var(--radius-sm)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] hover:bg-[var(--brand-primary)] hover:text-white transition-colors cursor-pointer">
                 <Mail size={13} /> Email
@@ -235,7 +236,7 @@ export function LeadDetailPage() {
             {/* Champs avec édition inline */}
             <div className="grid grid-cols-2 gap-3 text-sm">
               {[{ key: 'email', label: 'Email', val: lead.email, link: `mailto:${lead.email}` },
-                { key: 'phone', label: 'Téléphone', val: lead.phone || '—', link: lead.phone ? `tel:${lead.phone}` : undefined },
+                { key: 'phone', label: 'Téléphone', val: lead.phone || '—', isPhone: true },
                 { key: 'address', label: 'Adresse', val: lead.address || '—' },
                 { key: 'budget', label: 'Budget', val: lead.budget || '—' },
                 { key: 'property_type', label: 'Type propriété', val: lead.property_type || '—' },
@@ -249,7 +250,7 @@ export function LeadDetailPage() {
                       className="w-full px-1.5 py-0.5 text-sm bg-[var(--bg-surface)] border border-[var(--brand-primary)] rounded-[var(--radius-sm)] focus:outline-none" />
                   ) : (
                     <button onClick={() => startEdit(f.key, f.val === '—' ? '' : f.val)} className="text-left cursor-pointer hover:text-[var(--brand-primary)] transition-colors w-full group">
-                      {f.link && f.val !== '—' ? <a href={f.link} className="text-[var(--brand-primary)] hover:underline" onClick={e => e.stopPropagation()}>{f.val}</a> : <span>{f.val}</span>}
+                      {'isPhone' in f && f.isPhone && f.val !== '—' ? <PhoneLink phone={f.val} showIcon={false}>{f.val}</PhoneLink> : f.link && f.val !== '—' ? <a href={f.link} className="text-[var(--brand-primary)] hover:underline" onClick={e => e.stopPropagation()}>{f.val}</a> : <span>{f.val}</span>}
                       <span className="text-[10px] text-[var(--text-muted)] opacity-0 group-hover:opacity-100 ml-1">✏️</span>
                     </button>
                   )}
