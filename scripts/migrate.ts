@@ -57,8 +57,8 @@ async function migrate() {
   
   // Sort naturally
   allFiles.sort((a, b) => {
-    const numA = parseInt(a.replace(/\\D/g, ''), 10) || 0;
-    const numB = parseInt(b.replace(/\\D/g, ''), 10) || 0;
+    const numA = parseInt(a.replace(/\D/g, ''), 10) || 0;
+    const numB = parseInt(b.replace(/\D/g, ''), 10) || 0;
     return numA - numB;
   });
 

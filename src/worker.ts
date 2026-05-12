@@ -83,7 +83,7 @@ import {
 } from './worker/conversations';
 
 import {
-  handleGetPreferences, handleUpdatePreferences, handleGetSessions, handleRevokeSession,
+  handleGetPreferences, handleUpdatePreferences,
   handleGetApiKeys, handleCreateApiKey, handleRevokeApiKey,
   handleGetWebhooks, handleCreateWebhook, handleDeleteWebhook,
   handleGetClientCompliance, handleUpdateClientCompliance
@@ -295,11 +295,11 @@ export default {
       if (path === '/api/voice/twiml' && method === 'POST') return await handleVoiceTwiml(request, env);
       if (path === '/api/voice/webhook/record' && method === 'POST') return await handleVoiceRecording(request, env);
 
-      // Meta (Facebook / Instagram)
-      const { handleMetaOauthStart, handleMetaOauthCallback, handleMetaWebhook } = await import('./worker/meta');
-      if (path === '/api/meta/oauth/start' && method === 'GET') return await handleMetaOauthStart(env, auth, url);
-      if (path === '/api/meta/oauth/callback' && method === 'GET') return await handleMetaOauthCallback(request, env, auth);
-      if (path === '/api/meta/webhook') return await handleMetaWebhook(request, env);
+      // Meta webhook public (oauth start/callback sont dans routeProtected lignes ~728)
+      if (path === '/api/meta/webhook') {
+        const { handleMetaWebhook } = await import('./worker/meta');
+        return await handleMetaWebhook(request, env);
+      }
       
       // Tracking (P3.5 & Sprint 4)
       if (path === '/api/track/conversion' && method === 'POST') {
@@ -725,16 +725,6 @@ async function routeProtected(
         return await handleCreateAgency(request, env, auth);
       }
 
-      // AI Features (P3.6)
-      if (path === '/api/ai/generate' && method === 'POST') {
-        const { handleAiGenerate } = await import('./worker/ai');
-        return await handleAiGenerate(request, env);
-      }
-      if (path === '/api/ai/suggest-workflow' && method === 'POST') {
-        const { handleAiSuggestWorkflow } = await import('./worker/ai');
-        return await handleAiSuggestWorkflow(request, env);
-      }
-
   if (path === '/api/meta/oauth/start' && method === 'GET') {
     const { handleMetaOauthStart } = await import('./worker/meta');
     return await handleMetaOauthStart(env, auth, url);
@@ -805,9 +795,10 @@ async function routeProtected(
     return await handleDeleteProperty(env, auth, propMatch[1]!);
   }
 
+  // /api/settings/sessions/* — alias legacy vers les handlers auth.ts (cf. Sprint 12 D.1)
   if (path === '/api/settings/sessions' && method === 'GET') return handleGetSessions(request, env);
-  const sessionMatch = path.match(/^\/api\/settings\/sessions\/([^/]+)$/);
-  if (sessionMatch && method === 'DELETE') return handleRevokeSession(request, env);
+  const settingsSessionMatch = path.match(/^\/api\/settings\/sessions\/([^/]+)$/);
+  if (settingsSessionMatch && method === 'DELETE') return handleDeleteSession(request, env, settingsSessionMatch[1]!);
   
   if (path === '/api/settings/api-keys' && method === 'GET') return handleGetApiKeys(request, env);
   if (path === '/api/settings/api-keys' && method === 'POST') return handleCreateApiKey(request, env);

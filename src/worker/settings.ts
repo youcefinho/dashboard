@@ -98,20 +98,13 @@ export async function handleGetClientCompliance(request: Request, env: Env, auth
 }
 
 
-export async function handleGetSessions(_request: Request, env: Env): Promise<Response> {
-  // const user_id = request.headers.get('X-User-Id') || '1';
-  // Mock fallback si user_id != admin_id de table sessions
-  const { results } = await env.DB.prepare('SELECT id, created_at, expires_at FROM admin_sessions LIMIT 5').all();
-  return json({ data: results || [] });
-}
-
-export async function handleRevokeSession(request: Request, env: Env): Promise<Response> {
-  const url = new URL(request.url);
-  const sessionId = url.pathname.split('/').pop() || '';
-  
-  await env.DB.prepare('DELETE FROM admin_sessions WHERE id = ?').bind(sessionId).run();
-  return json({ data: { success: true } });
-}
+// ── Sessions ──────────────────────────────────────────────
+// Note : handleGetSessions + handleDeleteSession sont définis dans worker/auth.ts
+// (Sprint 12 D.1 — filtrage user_id, flag is_current, vraie clé token).
+// Les anciennes versions ici étaient des stubs Sprint 8 cassés (LIMIT 5 sans filtre,
+// DELETE WHERE id = ? sur une colonne inexistante). Supprimés pour éviter la collision
+// d'imports dans worker.ts. Les routes /api/settings/sessions/* sont reroutées sur
+// les handlers auth.ts.
 
 // ── API Keys ───────────────────────────────────────────────
 
