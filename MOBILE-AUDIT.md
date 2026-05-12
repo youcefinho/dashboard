@@ -141,13 +141,13 @@
 - [x] VisitMode grid fix ✅
 
 ### P1 — Refactoring mobile (2-3j)
-- [ ] Pipeline kanban → swiper
-- [ ] Inbox 1-panneau mobile
-- [ ] Calendar Day default mobile
+- [x] Pipeline kanban → swiper ✅
+- [x] Inbox 1-panneau mobile ✅
+- [x] Calendar Day default mobile ✅
 
 ### P2 — Polish (1j)
 - [x] Install prompt PWA ✅
-- [ ] Tab bars scrollables (Reports, Settings)
+- [x] Tab bars scrollables (Reports, Settings) ✅
 - [ ] Swipe actions sur cards (Leads, Tasks)
 - [ ] Long-press menu contextuel
 
