@@ -39,14 +39,14 @@ Voir `README-DEV.md` pour le setup local sans clés externes.
 | 10 | Polish + Beta privée + Launch | ~10j | ✅ Commité |
 | 11 | Capacitor V1 — App native iOS/Android | ~15j | ✅ Commité |
 | 12 | Production Hardening & Core UX | ~8j | ✅ Commité |
+| 13 | API publique + Webhooks OUT + Zapier | ~10j | ✅ Commité |
+| 13.5 | Hotfix audit (tsconfig worker.ts + webhooks robustes + role api) | ~2j | ✅ Commité |
 
-**Total livré : ~162 jours de dev.**
+**Total livré : ~174 jours de dev.**
 
 ## Sprint actuel 🔜
 
-| Sprint | Thème | Durée estimée | Statut |
-|---|---|---|---|
-| 13 | API publique + Zapier + Webhooks OUT | ~10j | 🟡 En cours |
+Aucun sprint en cours — Sprint 14 (GHL Migration importer) prêt à démarrer.
 
 ## Sprints restants
 
