@@ -3,13 +3,7 @@ import { json } from './helpers';
 
 export async function handleCompleteOnboarding(request: Request, env: Env, auth: { userId: string }): Promise<Response> {
   try {
-    const body = await request.json() as { 
-      businessName?: string;
-      businessType?: string;
-      teamSize?: string;
-      primaryColor?: string;
-      packSlug?: string;
-    };
+    await request.json(); // Consume request body to prevent warnings
     
     // Update users table
     await env.DB.prepare(

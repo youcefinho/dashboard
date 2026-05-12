@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/lib/auth';
-import { Check, ChevronRight, Upload, Building, Palette, Settings, UserPlus, HelpCircle, X } from 'lucide-react';
+import { Check, ChevronRight, Upload, Building, Palette, Settings, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface OnboardingWizardProps {
@@ -16,16 +16,14 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Business info state
-  const [businessName, setBusinessName] = useState('');
-  const [businessType, setBusinessType] = useState('');
+  // Form state
+  const [businessName, setBusinessName] = useState(user?.name ? `${user.name} Inc.` : '');
+  const [businessType, setBusinessType] = useState('real_estate');
   const [teamSize, setTeamSize] = useState('1');
-
-  // Branding state
   const [primaryColor, setPrimaryColor] = useState('#009DDB');
   
   // Pack state
-  const [selectedPack, setSelectedPack] = useState('pack-generic-b2b');
+  const [selectedPack] = useState('pack-generic-b2b');
 
   const handleNext = () => {
     if (step < TOTAL_STEPS) {
@@ -63,7 +61,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
   };
 
   return (
-    <Modal isOpen={true} onClose={() => {}} title="" hideCloseButton={true}>
+    <Modal open={true} onOpenChange={() => {}} title="Bienvenue sur Intralys">
       <div className="w-[600px] max-w-full">
         {/* Progress Bar */}
         <div className="mb-8">

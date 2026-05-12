@@ -1,7 +1,7 @@
 import { PublicLayout } from './PublicLayout';
 import { Link } from '@tanstack/react-router';
 import { Button } from '@/components/ui/Button';
-import { Check, Zap, Shield, Users, MessageSquare, TrendingUp, Sparkles, Globe } from 'lucide-react';
+import { Shield, Sparkles, Zap, MessageSquare, TrendingUp, Globe } from 'lucide-react';
 
 export function HomePage() {
   return (
