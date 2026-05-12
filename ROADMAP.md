@@ -35,14 +35,16 @@ Voir `README-DEV.md` pour le setup local sans clés externes.
 | 6 | Différenciateurs Intralys (D1-D7) | ~12j | ✅ Commité |
 | 7 | Templates + Forms + AI killer | ~12j | ✅ Commité |
 | 8 | Settings + Reports + Agency admin | ~17j | ✅ Commité |
+| 9 | Mobile responsive + PWA | ~6j | ✅ Commité |
 
-**Total livré : ~123 jours de dev.**
+**Total livré : ~129 jours de dev.**
 
 ## Sprint actuel 🔜
 
 | # | Sprint | Effort | Status |
 |---|---|---|---|
-| 9 | Mobile responsive + PWA | ~6j | 🟡 En cours |
+| 10 | Polish + Beta privée + Launch | ~10j | 🟡 En cours |
+
 
 ## Sprints restants
 
