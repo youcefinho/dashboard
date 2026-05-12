@@ -135,10 +135,10 @@
 ## Plan d'exécution par priorité
 
 ### P0 — Fix immédiats (< 1h)
-- [ ] Grilles Dashboard responsive
-- [ ] Tables wrapper `table-responsive` sur 10 pages
-- [ ] Banner "desktop only" sur 3 builders
-- [ ] VisitMode grid fix
+- [x] Grilles Dashboard responsive ✅
+- [x] Tables wrapper `table-responsive` sur 10 pages ✅ (la plupart avaient déjà `overflow-x-auto`)
+- [x] Banner "desktop only" sur 3 builders ✅
+- [x] VisitMode grid fix ✅
 
 ### P1 — Refactoring mobile (2-3j)
 - [ ] Pipeline kanban → swiper
@@ -146,7 +146,8 @@
 - [ ] Calendar Day default mobile
 
 ### P2 — Polish (1j)
-- [ ] Install prompt PWA
+- [x] Install prompt PWA ✅
 - [ ] Tab bars scrollables (Reports, Settings)
 - [ ] Swipe actions sur cards (Leads, Tasks)
 - [ ] Long-press menu contextuel
+
