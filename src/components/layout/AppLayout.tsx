@@ -9,6 +9,10 @@ import { getNotifications, markNotificationRead, markAllNotificationsRead, type 
 import { Search, Bell, Moon, Sun, Menu, Plus } from 'lucide-react';
 import { MobileBottomNav } from './MobileBottomNav';
 import { InstallPrompt } from '../InstallPrompt';
+import { OnboardingWizard } from '../onboarding/OnboardingWizard';
+import { FeedbackWidget } from '../feedback/FeedbackWidget';
+import { NpsModal } from '../feedback/NpsModal';
+import { useAuth } from '@/lib/auth';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -38,6 +42,11 @@ export function AppLayout({ children, title }: AppLayoutProps) {
   const notifRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
+  const { user } = useAuth();
+  
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    return user?.onboarding_step === 0 && !user?.onboarding_skipped;
+  });
 
   const loadNotifications = useCallback(async () => {
     try {
@@ -231,6 +240,9 @@ export function AppLayout({ children, title }: AppLayoutProps) {
       <CommandPalette isOpen={cmdOpen} onClose={() => setCmdOpen(false)} />
       <MobileBottomNav />
       <InstallPrompt />
+      {showOnboarding && <OnboardingWizard onComplete={() => setShowOnboarding(false)} />}
+      <FeedbackWidget />
+      <NpsModal />
     </div>
   );
 }

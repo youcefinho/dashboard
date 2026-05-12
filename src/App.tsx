@@ -37,6 +37,15 @@ const TriggerLinksPage = lazy(() => import('@/pages/TriggerLinks').then(m => ({ 
 const PublicFormPage = lazy(() => import('@/pages/PublicForm').then(m => ({ default: m.PublicFormPage })));
 const PropertiesPage = lazy(() => import('@/pages/Properties').then(m => ({ default: m.PropertiesPage })));
 
+// ── Pages Publiques ─────────────────────────────────────────
+const HomePage = lazy(() => import('@/pages/landing/Home').then(m => ({ default: m.HomePage })));
+const PricingPage = lazy(() => import('@/pages/landing/Pricing').then(m => ({ default: m.PricingPage })));
+const DemoPage = lazy(() => import('@/pages/landing/Demo').then(m => ({ default: m.DemoPage })));
+const AboutPage = lazy(() => import('@/pages/landing/About').then(m => ({ default: m.AboutPage })));
+const LegalPage = lazy(() => import('@/pages/landing/Legal').then(m => ({ default: m.LegalPage })));
+const HelpCenterPage = lazy(() => import('@/pages/help/HelpCenter').then(m => ({ default: m.HelpCenterPage })));
+const ChangelogPage = lazy(() => import('@/pages/landing/Changelog').then(m => ({ default: m.ChangelogPage })));
+
 // ── Spinner de chargement ──────────────────────────────────
 
 function PageLoader() {
@@ -124,7 +133,81 @@ const settingsRoute = createRoute({
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
-  component: () => <Navigate to="/dashboard" />,
+  component: () => (
+    <Suspense fallback={<PageLoader />}>
+      <HomePage />
+    </Suspense>
+  ),
+});
+
+const pricingRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/pricing',
+  component: () => (
+    <Suspense fallback={<PageLoader />}>
+      <PricingPage />
+    </Suspense>
+  ),
+});
+
+const demoRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/demo',
+  component: () => (
+    <Suspense fallback={<PageLoader />}>
+      <DemoPage />
+    </Suspense>
+  ),
+});
+
+const aboutRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/about',
+  component: () => (
+    <Suspense fallback={<PageLoader />}>
+      <AboutPage />
+    </Suspense>
+  ),
+});
+
+const helpRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/help',
+  component: () => (
+    <Suspense fallback={<PageLoader />}>
+      <HelpCenterPage />
+    </Suspense>
+  ),
+});
+
+const changelogRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/changelog',
+  component: () => (
+    <Suspense fallback={<PageLoader />}>
+      <ChangelogPage />
+    </Suspense>
+  ),
+});
+
+const legalPrivacyRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/legal/privacy',
+  component: () => (
+    <Suspense fallback={<PageLoader />}>
+      <LegalPage type="privacy" />
+    </Suspense>
+  ),
+});
+
+const legalTermsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/legal/terms',
+  component: () => (
+    <Suspense fallback={<PageLoader />}>
+      <LegalPage type="terms" />
+    </Suspense>
+  ),
 });
 
 const inboxRoute = createRoute({
@@ -312,6 +395,13 @@ const routeTree = rootRoute.addChildren([
   triggerLinksRoute,
   publicFormRoute,
   propertiesRoute,
+  pricingRoute,
+  demoRoute,
+  aboutRoute,
+  helpRoute,
+  changelogRoute,
+  legalPrivacyRoute,
+  legalTermsRoute,
 ]);
 
 const router = createRouter({ routeTree });

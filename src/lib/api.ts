@@ -66,7 +66,7 @@ export async function apiFetch<T>(
 export interface LoginResponse {
   token: string;
   must_change_password?: boolean;
-  user: { id: string; name: string; role: string; email: string };
+  user: { id: string; name: string; role: string; email: string; onboarding_step?: number; onboarding_skipped?: boolean };
 }
 
 export async function login(_email: string, _password: string): Promise<ApiResponse<LoginResponse>> {
@@ -74,7 +74,7 @@ export async function login(_email: string, _password: string): Promise<ApiRespo
   const fakeData: LoginResponse = {
     token: 'fake-bypass-token-123456',
     must_change_password: false,
-    user: { id: 'admin', name: 'Rochdi (Bypass)', role: 'admin', email: 'rochdi@intralys.com' }
+    user: { id: 'admin', name: 'Rochdi (Bypass)', role: 'admin', email: 'rochdi@intralys.com', onboarding_step: 0, onboarding_skipped: false }
   };
   setToken(fakeData.token);
   localStorage.setItem('intralys_user', JSON.stringify(fakeData.user));

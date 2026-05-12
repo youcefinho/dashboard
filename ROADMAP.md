@@ -36,14 +36,15 @@ Voir `README-DEV.md` pour le setup local sans clés externes.
 | 7 | Templates + Forms + AI killer | ~12j | ✅ Commité |
 | 8 | Settings + Reports + Agency admin | ~17j | ✅ Commité |
 | 9 | Mobile responsive + PWA | ~6j | ✅ Commité |
+| 10 | Polish + Beta privée + Launch | ~10j | ✅ Commité |
 
-**Total livré : ~129 jours de dev.**
+**Total livré : ~139 jours de dev.**
 
 ## Sprint actuel 🔜
 
-| # | Sprint | Effort | Status |
+| Sprint | Thème | Durée estimée | Statut |
 |---|---|---|---|
-| 10 | Polish + Beta privée + Launch | ~10j | 🟡 En cours |
+| 11 | Capacitor V1 | ~?j | 🔴 Non commencé |
 
 
 ## Sprints restants

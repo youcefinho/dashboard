@@ -94,6 +94,10 @@ import {
 
 import { handleGetUsers, handleInviteUser, handleUpdateUserRole, handleDeleteUser, handleGetRoles } from './worker/team';
 
+import { handleFeedback, handleNps } from './worker/feedback';
+import { handleDemoReset } from './worker/admin';
+import { handleCompleteOnboarding } from './worker/onboarding';
+
 // Export Durable Object pour Cloudflare
 export { WebchatRoom };
 
@@ -728,6 +732,12 @@ async function routeProtected(
     await env.DB.prepare('DELETE FROM dashboard_layouts WHERE id = ? AND user_id = ?').bind(dashLayoutMatch[1]!, auth.userId).run();
     return json({ data: { success: true } });
   }
+
+  // Phase 10 - Onboarding, Admin Reset, Feedback, NPS
+  if (path === '/api/auth/onboarding' && method === 'POST') return handleCompleteOnboarding(request, env, auth);
+  if (path === '/api/admin/demo-reset' && method === 'POST') return handleDemoReset(request, env, auth);
+  if (path === '/api/feedback' && method === 'POST') return handleFeedback(request, env, auth);
+  if (path === '/api/nps' && method === 'POST') return handleNps(request, env, auth);
 
   // Debug (à retirer avant prod)
   if (path === '/api/debug/run-cron' && method === 'GET') {
