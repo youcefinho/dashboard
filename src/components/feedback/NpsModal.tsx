@@ -52,7 +52,7 @@ export function NpsModal() {
   if (!isOpen) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={() => setIsOpen(false)} title="Votre avis compte">
+    <Modal open={isOpen} onOpenChange={setIsOpen} title="Votre avis compte">
       <div className="w-[500px] max-w-full">
         {step === 1 ? (
           <div className="text-center animate-fade-in">
