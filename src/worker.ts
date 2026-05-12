@@ -193,9 +193,19 @@ export default {
       return json({ error: 'Erreur serveur' }, 500);
     }
 
-    // ── Auth (login/logout — pas de token requis) ─────────
+    // ── Auth (login/logout/reset — pas de token requis) ─────────
     if (path === '/api/auth/login' && method === 'POST') return handleLogin(request, env);
     if (path === '/api/auth/logout' && method === 'POST') return handleLogout(request, env);
+    if (path === '/api/auth/forgot-password' && method === 'POST') {
+      const { handleForgotPassword } = await import('./worker/auth');
+      return handleForgotPassword(request, env);
+    }
+    if (path === '/api/auth/reset-password' && method === 'POST') {
+      const { handleResetPassword } = await import('./worker/auth');
+      return handleResetPassword(request, env);
+    }
+    
+    // Auth routes nécessitant le token 
     if (path === '/api/auth/me' && method === 'GET') return handleMe(request, env);
     if (path === '/api/auth/change-password' && method === 'POST') return handleChangePassword(request, env);
 

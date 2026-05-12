@@ -36,6 +36,8 @@ const FormBuilderPage = lazy(() => import('@/pages/FormBuilder').then(m => ({ de
 const TriggerLinksPage = lazy(() => import('@/pages/TriggerLinks').then(m => ({ default: m.TriggerLinksPage })));
 const PublicFormPage = lazy(() => import('@/pages/PublicForm').then(m => ({ default: m.PublicFormPage })));
 const PropertiesPage = lazy(() => import('@/pages/Properties').then(m => ({ default: m.PropertiesPage })));
+const ForgotPasswordPage = lazy(() => import('@/pages/ForgotPassword').then(m => ({ default: m.ForgotPasswordPage })));
+const ResetPasswordPage = lazy(() => import('@/pages/ResetPassword').then(m => ({ default: m.ResetPasswordPage })));
 
 // ── Pages Publiques ─────────────────────────────────────────
 const HomePage = lazy(() => import('@/pages/landing/Home').then(m => ({ default: m.HomePage })));
@@ -84,6 +86,26 @@ const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/login',
   component: LoginPage,
+});
+
+const forgotPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/forgot-password',
+  component: () => (
+    <Suspense fallback={<PageLoader />}>
+      <ForgotPasswordPage />
+    </Suspense>
+  ),
+});
+
+const resetPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/reset-password/$token',
+  component: () => (
+    <Suspense fallback={<PageLoader />}>
+      <ResetPasswordPage />
+    </Suspense>
+  ),
 });
 
 const dashboardRoute = createRoute({
@@ -365,6 +387,8 @@ const propertiesRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
+  forgotPasswordRoute,
+  resetPasswordRoute,
   dashboardRoute,
   leadsRoute,
   leadDetailRoute,

@@ -142,3 +142,73 @@ export async function handleMe(request: Request, env: Env): Promise<Response> {
   if (!results || results.length === 0) return json({ error: 'Utilisateur non trouvé' }, 404);
   return json({ data: results[0] });
 }
+
+export async function handleForgotPassword(request: Request, env: Env): Promise<Response> {
+  const body = await request.json() as { email?: string };
+  if (!body.email) return json({ error: 'Email requis' }, 400);
+
+  const email = body.email.toLowerCase().trim();
+  const user = await env.DB.prepare('SELECT id, name FROM users WHERE email = ? AND is_active = 1').bind(email).first() as { id: string; name: string } | null;
+
+  if (user) {
+    const token = crypto.randomUUID();
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1h
+
+    await env.DB.prepare(
+      "INSERT INTO password_reset_tokens (id, user_id, token, expires_at) VALUES (?, ?, ?, ?)"
+    ).bind(crypto.randomUUID(), user.id, token, expiresAt).run();
+
+    try {
+      const resetUrl = `${new URL(request.url).origin}/reset-password/${token}`;
+      const resendRes = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${env.RESEND_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          from: 'Intralys <noreply@intralys.com>',
+          to: email,
+          subject: 'Réinitialisation de votre mot de passe',
+          html: `<p>Bonjour ${user.name},</p><p>Cliquez sur ce lien pour réinitialiser votre mot de passe :</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>Ce lien expire dans 1 heure.</p>`
+        })
+      });
+      if (!resendRes.ok) {
+        console.error('Erreur envoi email reset', await resendRes.text());
+      }
+    } catch (e) {
+      console.error('Erreur fetch Resend:', e);
+    }
+  }
+
+  // On renvoie un succès même si l'email n'existe pas (anti-enumeration)
+  return json({ success: true, message: 'Si l\'email existe, un lien vous a été envoyé.' });
+}
+
+export async function handleResetPassword(request: Request, env: Env): Promise<Response> {
+  const body = await request.json() as { token?: string; password?: string };
+  if (!body.token || !body.password) return json({ error: 'Token et mot de passe requis' }, 400);
+  if (body.password.length < 8) return json({ error: 'Mot de passe trop court (min 8)' }, 400);
+
+  const resetReq = await env.DB.prepare(
+    "SELECT id, user_id, used, expires_at FROM password_reset_tokens WHERE token = ?"
+  ).bind(body.token).first() as { id: string; user_id: string; used: number; expires_at: string } | null;
+
+  if (!resetReq) return json({ error: 'Lien invalide' }, 400);
+  if (resetReq.used === 1) return json({ error: 'Lien déjà utilisé' }, 400);
+  if (new Date(resetReq.expires_at) < new Date()) return json({ error: 'Lien expiré' }, 400);
+
+  const hash = await hashPassword(body.password);
+  
+  await env.DB.prepare(
+    "UPDATE users SET password_hash = ?, must_change_password = 0, updated_at = datetime('now') WHERE id = ?"
+  ).bind(hash, resetReq.user_id).run();
+
+  await env.DB.prepare(
+    "UPDATE password_reset_tokens SET used = 1 WHERE id = ?"
+  ).bind(resetReq.id).run();
+
+  await audit(env, resetReq.user_id, 'auth.reset_password', 'user', resetReq.user_id);
+
+  return json({ success: true });
+}
