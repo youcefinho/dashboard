@@ -1,16 +1,55 @@
 // ── Page Login — Connexion ──────────────────────────────────
 
-import { useState, type FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useAuth } from '@/lib/auth';
 import { Button, Input } from '@/components/ui';
+import { isBiometricAvailable, getBiometricCredentials, saveBiometricCredentials } from '@/lib/biometric';
+import { Capacitor } from '@capacitor/core';
+import { Fingerprint } from 'lucide-react';
 
 export function LoginPage() {
   const [email, setEmail] = useState('rochdi@intralys.com');
   const [password, setPassword] = useState('bypass');
   const [error, setError] = useState('');
+  const [biometricReady, setBiometricReady] = useState(false);
   const { login, isLoading } = useAuth();
   const navigate = useNavigate();
+
+  // Vérifier si la biométrie est disponible au montage
+  useEffect(() => {
+    async function checkBiometric() {
+      if (!Capacitor.isNativePlatform()) return;
+      const available = await isBiometricAvailable();
+      setBiometricReady(available);
+
+      // Tenter le login biométrique automatiquement
+      if (available) {
+        const creds = await getBiometricCredentials('crm.intralys.com');
+        if (creds) {
+          const result = await login(creds.username, creds.password);
+          if (result.success) {
+            void navigate({ to: '/dashboard' });
+          }
+        }
+      }
+    }
+    void checkBiometric();
+  }, [login, navigate]);
+
+  const handleBiometricLogin = async () => {
+    const creds = await getBiometricCredentials('crm.intralys.com');
+    if (!creds) {
+      setError('Aucune empreinte enregistrée. Connectez-vous avec vos identifiants.');
+      return;
+    }
+    const result = await login(creds.username, creds.password);
+    if (result.success) {
+      void navigate({ to: '/dashboard' });
+    } else {
+      setError(result.error || 'Erreur biométrique');
+    }
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -24,6 +63,10 @@ export function LoginPage() {
     const result = await login(email, password);
 
     if (result.success) {
+      // Sauvegarder les credentials pour biométrie future
+      if (Capacitor.isNativePlatform()) {
+        void saveBiometricCredentials('crm.intralys.com', email, password);
+      }
       void navigate({ to: '/dashboard' });
     } else {
       setError(result.error || 'Erreur de connexion');
@@ -82,6 +125,17 @@ export function LoginPage() {
           <Button type="submit" className="w-full" size="lg" isLoading={isLoading}>
             Se connecter
           </Button>
+
+          {biometricReady && (
+            <button
+              type="button"
+              onClick={() => void handleBiometricLogin()}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-[var(--radius-md)] border border-[var(--border-default)] text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] transition-colors text-sm font-medium cursor-pointer"
+            >
+              <Fingerprint size={18} />
+              Connexion biométrique
+            </button>
+          )}
         </form>
 
         {/* Badges statut */}
