@@ -116,6 +116,114 @@ export default {
 
     // ── Routes publiques (pas d'auth) ─────────────────────
     try {
+      // OpenAPI & Swagger UI
+      if (path === '/api/openapi.json' && method === 'GET') {
+        const { generateOpenApiSpec } = await import('./worker/openapi-spec');
+        const baseUrl = new URL(request.url).origin;
+        return json(generateOpenApiSpec(baseUrl));
+      }
+      if (path === '/docs/api' && method === 'GET') {
+        const html = `
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Intralys CRM - API Docs</title>
+  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui.css" />
+  <style>
+    body { margin: 0; background: #fafafa; }
+    .swagger-ui .topbar { background-color: #164e63; } /* Intralys cyan-900 */
+    .swagger-ui .info .title { color: #0891b2; }
+  </style>
+</head>
+<body>
+  <div id="swagger-ui"></div>
+  <script src="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui-bundle.js" crossorigin></script>
+  <script>
+    window.onload = () => {
+      window.ui = SwaggerUIBundle({
+        url: '/api/openapi.json',
+        dom_id: '#swagger-ui',
+        deepLinking: true,
+        presets: [SwaggerUIBundle.presets.apis, SwaggerUIBundle.SwaggerUIStandalonePreset],
+        layout: "BaseLayout",
+      });
+    };
+  </script>
+</body>
+</html>`;
+        return new Response(html, { headers: { 'Content-Type': 'text/html' } });
+      }
+
+      // Public API endpoints (requires ApiKey)
+      if (path.startsWith('/api/public/v1/')) {
+        const { requireApiKey, requireScope } = await import('./worker/api-public-auth');
+        const authResult = await requireApiKey(request, env);
+        if (authResult instanceof Response) return authResult;
+
+        // On délègue aux handlers existants après vérification du scope
+        const subPath = path.replace('/api/public/v1', '');
+        
+        // --- LEADS ---
+        if (subPath === '/leads' && method === 'GET') {
+          const scopeErr = requireScope(authResult, 'read');
+          if (scopeErr) return scopeErr;
+          const { handleGetLeads } = await import('./worker/leads');
+          return await handleGetLeads(env, { userId: authResult.userId, role: 'user', clientId: authResult.clientId } as any, url);
+        }
+        if (subPath === '/leads' && method === 'POST') {
+          const scopeErr = requireScope(authResult, 'write');
+          if (scopeErr) return scopeErr;
+          const { handleCreateLead } = await import('./worker/leads');
+          return await handleCreateLead(request, env, { userId: authResult.userId, role: 'user', clientId: authResult.clientId } as any);
+        }
+        
+        const leadMatch = subPath.match(/^\/leads\/([^/]+)$/);
+        if (leadMatch && method === 'GET') {
+          const scopeErr = requireScope(authResult, 'read');
+          if (scopeErr) return scopeErr;
+          const { handleGetLeadDetail } = await import('./worker/leads');
+          return await handleGetLeadDetail(env, { userId: authResult.userId, role: 'user', clientId: authResult.clientId } as any, leadMatch[1]!);
+        }
+        if (leadMatch && method === 'PATCH') {
+          const scopeErr = requireScope(authResult, 'write');
+          if (scopeErr) return scopeErr;
+          const { handlePatchLead } = await import('./worker/leads');
+          return await handlePatchLead(request, env, { userId: authResult.userId, role: 'user', clientId: authResult.clientId } as any, leadMatch[1]!);
+        }
+
+        // --- TASKS ---
+        if (subPath === '/tasks' && method === 'GET') {
+          const scopeErr = requireScope(authResult, 'read');
+          if (scopeErr) return scopeErr;
+          const { handleGetTasks } = await import('./worker/tasks');
+          return await handleGetTasks(env, { userId: authResult.userId, role: 'user', clientId: authResult.clientId } as any, url);
+        }
+        if (subPath === '/tasks' && method === 'POST') {
+          const scopeErr = requireScope(authResult, 'write');
+          if (scopeErr) return scopeErr;
+          const { handleCreateTask } = await import('./worker/tasks');
+          return await handleCreateTask(request, env, { userId: authResult.userId, role: 'user', clientId: authResult.clientId } as any);
+        }
+        
+        // --- APPOINTMENTS ---
+        if (subPath === '/appointments' && method === 'GET') {
+          const scopeErr = requireScope(authResult, 'read');
+          if (scopeErr) return scopeErr;
+          const { handleGetAppointments } = await import('./worker/calendar');
+          return await handleGetAppointments(env, { userId: authResult.userId, role: 'user', clientId: authResult.clientId } as any, url);
+        }
+        if (subPath === '/appointments' && method === 'POST') {
+          const scopeErr = requireScope(authResult, 'write');
+          if (scopeErr) return scopeErr;
+          const { handleCreateAppointment } = await import('./worker/calendar');
+          return await handleCreateAppointment(request, env, { userId: authResult.userId, role: 'user', clientId: authResult.clientId } as any);
+        }
+        
+        return new Response('Not Found in Public API', { status: 404 });
+      }
+
       if (path === '/api/health' && method === 'GET') {
         const uptime = Math.floor((Date.now() - START_TIME) / 1000);
         const { handleHealth } = await import('./worker/health');
