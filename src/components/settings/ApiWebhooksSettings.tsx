@@ -53,6 +53,28 @@ export function ApiWebhooksSettings() {
     setWebhooks(webhooks.filter(w => w.id !== id));
   };
 
+  const [deliveries, setDeliveries] = useState<any[]>([]);
+  const [showLogsModal, setShowLogsModal] = useState(false);
+
+  const fetchDeliveries = async (webhookId: string) => {
+    // On suppose qu'il y a un endpoint pour ça: GET /api/settings/webhooks/:id/deliveries
+    const res = await fetch(`/api/settings/webhooks/${webhookId}/deliveries`);
+    if (res.ok) {
+      const data = await res.json() as any;
+      setDeliveries(data.data || []);
+      setShowLogsModal(true);
+    }
+  };
+
+  const testWebhook = async (webhookId: string) => {
+    const res = await fetch(`/api/settings/webhooks/${webhookId}/test`, { method: 'POST' });
+    if (res.ok) {
+      alert("Test envoyé avec succès !");
+    } else {
+      alert("Échec du test.");
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Card className="p-5">
@@ -82,14 +104,18 @@ export function ApiWebhooksSettings() {
         <div className="space-y-3">
           {webhooks.map(w => (
             <div key={w.id} className="flex justify-between items-center p-3 border border-[var(--border-subtle)] rounded-lg">
-              <div>
+              <div className="flex-1">
                 <p className="text-sm font-medium">{w.url}</p>
                 <div className="flex gap-2 mt-1">
                   <Badge>{w.events}</Badge>
                   {w.fail_count > 0 && <Badge color="var(--danger)">{w.fail_count} échecs</Badge>}
                 </div>
               </div>
-              <Button variant="ghost" className="text-[var(--danger)]" onClick={() => deleteWebhook(w.id)}>Supprimer</Button>
+              <div className="flex gap-2">
+                <Button variant="ghost" className="text-xs" onClick={() => testWebhook(w.id)}>Tester</Button>
+                <Button variant="ghost" className="text-xs" onClick={() => fetchDeliveries(w.id)}>Logs</Button>
+                <Button variant="ghost" className="text-[var(--danger)] text-xs" onClick={() => deleteWebhook(w.id)}>Supprimer</Button>
+              </div>
             </div>
           ))}
           {webhooks.length === 0 && <p className="text-sm text-[var(--text-muted)]">Aucun webhook configuré.</p>}
@@ -115,11 +141,41 @@ export function ApiWebhooksSettings() {
         <div className="space-y-3">
           <Input placeholder="https://votre-serveur.com/webhook" value={newWhUrl} onChange={e => setNewWhUrl(e.target.value)} />
           <select className="w-full px-3 py-2 text-sm border border-[var(--border-subtle)] rounded bg-[var(--bg-surface)]" value={newWhEvents} onChange={e => setNewWhEvents(e.target.value)}>
+            <option value="*">Tout (*) - Recommandé</option>
             <option value="lead.created">Lead Créé</option>
-            <option value="lead.updated">Lead Mis à jour</option>
-            <option value="deal.won">Deal Gagné</option>
+            <option value="lead.status_changed">Statut Lead Modifié</option>
+            <option value="task.created">Tâche Créée</option>
+            <option value="task.completed">Tâche Terminée</option>
+            <option value="appointment.created">RDV Créé</option>
+            <option value="appointment.cancelled">RDV Annulé</option>
+            <option value="message.received">Message Reçu (SMS/Email)</option>
           </select>
           <Button className="w-full" onClick={createWebhook} disabled={!newWhUrl}>Créer Webhook</Button>
+        </div>
+      </Modal>
+
+      <Modal isOpen={showLogsModal} onClose={() => setShowLogsModal(false)} title="Logs de livraison Webhook">
+        <div className="max-h-[60vh] overflow-y-auto space-y-3">
+          {deliveries.length === 0 ? (
+            <p className="text-sm text-[var(--text-muted)] text-center py-4">Aucune livraison enregistrée.</p>
+          ) : (
+            deliveries.map(d => (
+              <div key={d.id} className="p-3 border border-[var(--border-subtle)] rounded text-xs space-y-1">
+                <div className="flex justify-between font-medium">
+                  <span>{d.event_type}</span>
+                  <span className={d.status === 'delivered' ? 'text-green-600' : 'text-red-600'}>
+                    {d.status} ({d.response_code || '---'})
+                  </span>
+                </div>
+                <p className="text-[var(--text-muted)]">{new Date(d.created_at).toLocaleString()}</p>
+                {d.response_body && (
+                  <pre className="bg-[var(--bg-subtle)] p-2 mt-2 rounded overflow-x-auto max-w-full text-[10px]">
+                    {d.response_body}
+                  </pre>
+                )}
+              </div>
+            ))
+          )}
         </div>
       </Modal>
     </div>

@@ -780,6 +780,16 @@ async function routeProtected(
   if (path === '/api/settings/webhooks' && method === 'POST') return handleCreateWebhook(request, env);
   const webhookMatch = path.match(/^\/api\/settings\/webhooks\/([^/]+)$/);
   if (webhookMatch && method === 'DELETE') return handleDeleteWebhook(request, env);
+  const whDeliveriesMatch = path.match(/^\/api\/settings\/webhooks\/([^/]+)\/deliveries$/);
+  if (whDeliveriesMatch && method === 'GET') {
+    const { handleGetWebhookDeliveries } = await import('./worker/settings');
+    return handleGetWebhookDeliveries(request, env);
+  }
+  const whTestMatch = path.match(/^\/api\/settings\/webhooks\/([^/]+)\/test$/);
+  if (whTestMatch && method === 'POST') {
+    const { handleTestWebhook } = await import('./worker/settings');
+    return handleTestWebhook(request, env);
+  }
 
   if (path === '/api/team/users' && method === 'GET') return handleGetUsers(request, env);
   if (path === '/api/team/invites' && method === 'POST') return handleInviteUser(request, env);

@@ -191,3 +191,29 @@ export async function handleDeleteWebhook(request: Request, env: Env): Promise<R
   await env.DB.prepare('DELETE FROM webhook_subscriptions WHERE id = ?').bind(webhookId).run();
   return json({ data: { success: true } });
 }
+
+export async function handleGetWebhookDeliveries(request: Request, env: Env): Promise<Response> {
+  const url = new URL(request.url);
+  const webhookId = url.pathname.split('/')[4]; // /api/settings/webhooks/:id/deliveries
+  
+  const { results } = await env.DB.prepare(
+    'SELECT * FROM webhook_deliveries WHERE subscription_id = ? ORDER BY created_at DESC LIMIT 50'
+  ).bind(webhookId).all();
+  
+  return json({ data: results || [] });
+}
+
+export async function handleTestWebhook(request: Request, env: Env): Promise<Response> {
+  // webhookId is in url.pathname.split('/')[4] if needed, but we just trigger an event for the client.
+  
+  const client_id = request.headers.get('X-Client-Id');
+  if (!client_id) return json({ error: 'Missing Client ID' }, 400);
+
+  try {
+    const { publishEvent } = await import('./webhooks-dispatch');
+    await publishEvent(env, client_id, 'test.event', { message: 'This is a test event from Intralys CRM' });
+    return json({ data: { success: true } });
+  } catch (err: any) {
+    return json({ error: err.message }, 500);
+  }
+}
