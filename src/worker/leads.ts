@@ -366,7 +366,7 @@ export async function handlePatchLead(
       const { publishEvent } = await import('./webhooks-dispatch');
       const lead = await env.DB.prepare('SELECT * FROM leads WHERE id = ?').bind(leadId).first();
       if (lead) {
-        publishEvent(env, lead.client_id as string, 'lead.status_changed', lead).catch(e => console.error(e));
+        publishEvent(env, lead.client_id as string, 'lead.status_changed', lead);
       }
     } catch (e) {
       console.error('Webhook error:', e);
@@ -503,7 +503,7 @@ export async function handleCreateLead(
     const { publishEvent } = await import('./webhooks-dispatch');
     const lead = await env.DB.prepare('SELECT * FROM leads WHERE id = ?').bind(id).first();
     if (lead) {
-      publishEvent(env, clientId, 'lead.created', lead).catch(e => console.error(e));
+      publishEvent(env, clientId, 'lead.created', lead);
     }
   } catch (e) {
     console.error('Webhook error:', e);

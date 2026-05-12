@@ -204,7 +204,7 @@ export async function handleTestWebhook(request: Request, env: Env): Promise<Res
 
   try {
     const { publishEvent } = await import('./webhooks-dispatch');
-    await publishEvent(env, client_id, 'test.event', { message: 'This is a test event from Intralys CRM' });
+    publishEvent(env, client_id, 'test.event', { message: 'This is a test event from Intralys CRM' });
     return json({ data: { success: true } });
   } catch (err: any) {
     return json({ error: err.message }, 500);

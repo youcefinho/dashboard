@@ -286,7 +286,7 @@ export async function handleInboundSms(request: Request, env: Env): Promise<Resp
     // Webhook event
     try {
       const { publishEvent } = await import('./webhooks-dispatch');
-      publishEvent(env, lead.client_id, 'message.received', { lead_id: lead.id, channel: 'sms', body: sanitizedBody }).catch(e => console.error(e));
+      publishEvent(env, lead.client_id, 'message.received', { lead_id: lead.id, channel: 'sms', body: sanitizedBody });
     } catch (e) {
       console.error('Webhook error:', e);
     }
@@ -367,7 +367,7 @@ export async function handleInboundEmail(request: Request, env: Env): Promise<Re
     // Webhook event
     try {
       const { publishEvent } = await import('./webhooks-dispatch');
-      publishEvent(env, lead.client_id, 'message.received', { lead_id: lead.id, channel: 'email', subject, body: bodyText }).catch(e => console.error(e));
+      publishEvent(env, lead.client_id, 'message.received', { lead_id: lead.id, channel: 'email', subject, body: bodyText });
     } catch (e) {
       console.error('Webhook error:', e);
     }

@@ -7,7 +7,26 @@ export interface WebhookPayload {
   data: any;
 }
 
-export async function publishEvent(env: Env, clientId: string, eventType: string, resourceData: any): Promise<void> {
+/**
+ * Publie un événement vers tous les webhooks abonnés.
+ * Si ctx est fourni, utilise ctx.waitUntil() pour ne pas bloquer la réponse HTTP.
+ */
+export function publishEvent(
+  env: Env, clientId: string, eventType: string, resourceData: any,
+  ctx?: ExecutionContext
+): void {
+  const work = _publishEventAsync(env, clientId, eventType, resourceData);
+  if (ctx) {
+    ctx.waitUntil(work);
+  } else {
+    // Fallback dev : on lance sans attendre (fire-and-forget)
+    work.catch(err => console.error('Erreur publishEvent (no ctx):', err));
+  }
+}
+
+async function _publishEventAsync(
+  env: Env, clientId: string, eventType: string, resourceData: any
+): Promise<void> {
   try {
     // 1. Trouver les abonnements actifs pour ce client
     const { results } = await env.DB.prepare(
@@ -16,11 +35,12 @@ export async function publishEvent(env: Env, clientId: string, eventType: string
 
     if (!results || results.length === 0) return;
 
-    // 2. Préparer le payload
+    // 2. Préparer le payload avec timestamp anti-replay
+    const now = new Date().toISOString();
     const payload: WebhookPayload = {
       event: eventType,
       client_id: clientId,
-      timestamp: new Date().toISOString(),
+      timestamp: now,
       data: resourceData
     };
 
@@ -29,7 +49,7 @@ export async function publishEvent(env: Env, clientId: string, eventType: string
     // 3. Filtrer et déclencher
     for (const sub of results) {
       const eventsStr = sub.events as string;
-      // On vérifie si l'abonnement écoute cet événement (ex: "lead.created,task.created" ou "*")
+      // Vérifier si l'abonnement écoute cet événement ("lead.created,task.created" ou "*")
       if (eventsStr === '*' || eventsStr.includes(eventType)) {
         
         // Log dans webhook_deliveries
@@ -43,11 +63,12 @@ export async function publishEvent(env: Env, clientId: string, eventType: string
           subscriptionId: sub.id as string,
           url: sub.url as string,
           secret: sub.secret as string,
-          payload: payloadJson
+          payload: payloadJson,
+          timestamp: now,
         };
 
         // 4. Enqueue pour traitement asynchrone (si WEBHOOK_QUEUE existe, sinon HTTP direct en fallback)
-        // @ts-ignore
+        // @ts-ignore – WEBHOOK_QUEUE n'est pas toujours déclaré dans Env
         if (env.WEBHOOK_QUEUE) {
           // @ts-ignore
           await env.WEBHOOK_QUEUE.send(message);
@@ -61,6 +82,8 @@ export async function publishEvent(env: Env, clientId: string, eventType: string
     console.error('Erreur publishEvent:', err);
   }
 }
+
+// ── HMAC Signature ──────────────────────────────────────────
 
 export async function generateWebhookSignature(payload: any, secret: string): Promise<string> {
   const encoder = new TextEncoder();
@@ -84,32 +107,51 @@ export async function verifyWebhookSignature(payload: any, secret: string, signa
   return generated === signature;
 }
 
-export async function sendWebhookDirectly(env: Env, msg: any) {
+// ── Envoi direct (fallback dev ou queue consumer) ───────────
+
+const WEBHOOK_FETCH_TIMEOUT_MS = 10_000; // 10s
+
+export async function sendWebhookDirectly(env: Env, msg: any): Promise<void> {
   try {
     // HMAC signature
     const signatureHeader = await generateWebhookSignature(msg.payload, msg.secret);
 
-    // Update status to 'retrying' equivalent since it's the first attempt
-    const res = await fetch(msg.url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Intralys-Signature': signatureHeader
-      },
-      body: msg.payload
-    });
+    // AbortController pour timeout 10s (évite qu'un receiver lent bloque la queue)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), WEBHOOK_FETCH_TIMEOUT_MS);
 
-    const responseBody = await res.text();
-    const status = res.ok ? 'delivered' : 'failed';
+    try {
+      const res = await fetch(msg.url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Intralys-Signature': signatureHeader,
+          'X-Intralys-Timestamp': msg.timestamp || new Date().toISOString(),
+        },
+        body: msg.payload,
+        signal: controller.signal,
+      });
 
-    await env.DB.prepare(
-      "UPDATE webhook_deliveries SET status = ?, response_code = ?, response_body = ?, attempt = attempt + 1, delivered_at = datetime('now') WHERE id = ?"
-    ).bind(status, res.status, responseBody.substring(0, 500), msg.deliveryId).run();
+      clearTimeout(timeoutId);
 
-    if (!res.ok) {
+      const responseBody = await res.text();
+      const status = res.ok ? 'delivered' : 'failed';
+
       await env.DB.prepare(
-        "UPDATE webhook_subscriptions SET fail_count = fail_count + 1 WHERE id = ?"
-      ).bind(msg.subscriptionId).run();
+        "UPDATE webhook_deliveries SET status = ?, response_code = ?, response_body = ?, attempt = attempt + 1, delivered_at = datetime('now') WHERE id = ?"
+      ).bind(status, res.status, responseBody.substring(0, 500), msg.deliveryId).run();
+
+      if (!res.ok) {
+        await env.DB.prepare(
+          "UPDATE webhook_subscriptions SET fail_count = fail_count + 1 WHERE id = ?"
+        ).bind(msg.subscriptionId).run();
+      }
+    } catch (fetchErr: any) {
+      clearTimeout(timeoutId);
+      const errMsg = fetchErr.name === 'AbortError'
+        ? `Timeout après ${WEBHOOK_FETCH_TIMEOUT_MS}ms`
+        : fetchErr.message || 'Erreur réseau';
+      throw new Error(errMsg);
     }
 
   } catch (err: any) {

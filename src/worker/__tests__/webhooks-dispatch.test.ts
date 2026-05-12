@@ -22,7 +22,11 @@ describe('Webhooks Dispatcher', () => {
   it('ne devrait rien faire si aucun webhook configuré', async () => {
     mockEnv.DB.all.mockResolvedValue({ results: [] });
     
-    await publishEvent(mockEnv as unknown as Env, 'client_1', 'lead.created', { id: '1' });
+    // publishEvent est synchrone mais déclenche une Promise interne
+    publishEvent(mockEnv as unknown as Env, 'client_1', 'lead.created', { id: '1' });
+    
+    // Attendre que le micro-task queue se vide
+    await new Promise(r => setTimeout(r, 50));
     
     expect(mockEnv.DB.prepare).toHaveBeenCalledWith('SELECT id, url, events, secret FROM webhook_subscriptions WHERE client_id = ? AND is_active = 1');
     expect(mockEnv.WEBHOOK_QUEUE.send).not.toHaveBeenCalled();
@@ -37,7 +41,9 @@ describe('Webhooks Dispatcher', () => {
       ]
     });
 
-    await publishEvent(mockEnv as unknown as Env, 'client_1', 'lead.created', { id: 'lead_1' });
+    publishEvent(mockEnv as unknown as Env, 'client_1', 'lead.created', { id: 'lead_1' });
+
+    await new Promise(r => setTimeout(r, 100));
 
     // sub_1 (task.created) devrait être ignoré
     // sub_2 (*) devrait recevoir
@@ -61,11 +67,34 @@ describe('Webhooks Dispatcher', () => {
     // On mock global fetch
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('ok', { status: 200 }));
 
-    await publishEvent(mockEnv as unknown as Env, 'client_1', 'test.event', { foo: 'bar' });
+    publishEvent(mockEnv as unknown as Env, 'client_1', 'test.event', { foo: 'bar' });
+
+    await new Promise(r => setTimeout(r, 200));
 
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     expect(fetchSpy.mock.calls[0][0]).toBe('https://test.com/hook');
     
+    fetchSpy.mockRestore();
+  });
+
+  it('devrait inclure le header X-Intralys-Timestamp', async () => {
+    mockEnv.WEBHOOK_QUEUE = undefined;
+    mockEnv.DB.all.mockResolvedValue({
+      results: [
+        { id: 'sub_1', events: '*', url: 'https://test.com/hook', secret: 'sec1' }
+      ]
+    });
+
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('ok', { status: 200 }));
+
+    publishEvent(mockEnv as unknown as Env, 'client_1', 'test.event', { foo: 'bar' });
+
+    await new Promise(r => setTimeout(r, 200));
+
+    const fetchCall = fetchSpy.mock.calls[0];
+    const headers = (fetchCall[1] as any).headers;
+    expect(headers['X-Intralys-Timestamp']).toBeDefined();
+
     fetchSpy.mockRestore();
   });
 });

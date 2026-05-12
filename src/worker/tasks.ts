@@ -59,7 +59,7 @@ export async function handleCreateTask(request: Request, env: Env, auth: { userI
       const { publishEvent } = await import('./webhooks-dispatch');
       const task = await env.DB.prepare('SELECT * FROM tasks WHERE id = ?').bind(id).first();
       if (task) {
-        publishEvent(env, body.client_id as string, 'task.created', task).catch(e => console.error(e));
+        publishEvent(env, body.client_id as string, 'task.created', task);
       }
     } catch (e) {
       console.error('Webhook error:', e);
@@ -96,7 +96,7 @@ export async function handlePatchTask(request: Request, env: Env, _auth: { userI
        const task = await env.DB.prepare('SELECT * FROM tasks WHERE id = ?').bind(taskId).first();
        if (task && task.client_id) {
          const { publishEvent } = await import('./webhooks-dispatch');
-         publishEvent(env, task.client_id as string, 'task.completed', task).catch(e => console.error(e));
+         publishEvent(env, task.client_id as string, 'task.completed', task);
        }
      } catch (e) {
        console.error('Webhook error:', e);

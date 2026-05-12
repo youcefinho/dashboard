@@ -90,7 +90,7 @@ export async function handleCreateAppointment(
       const { publishEvent } = await import('./webhooks-dispatch');
       const appt = await env.DB.prepare('SELECT * FROM appointments WHERE id = ?').bind(id).first();
       if (appt) {
-        publishEvent(env, clientId, 'appointment.created', appt).catch(e => console.error(e));
+        publishEvent(env, clientId, 'appointment.created', appt);
       }
     } catch (e) {
       console.error('Webhook error:', e);
@@ -157,7 +157,7 @@ export async function handleUpdateAppointment(
           const { publishEvent } = await import('./webhooks-dispatch');
           const fullAppt = await env.DB.prepare('SELECT * FROM appointments WHERE id = ?').bind(appointmentId).first();
           if (fullAppt) {
-            publishEvent(env, appt.client_id, 'appointment.cancelled', fullAppt).catch(e => console.error(e));
+            publishEvent(env, appt.client_id, 'appointment.cancelled', fullAppt);
           }
         } catch (e) {
           console.error('Webhook error:', e);
