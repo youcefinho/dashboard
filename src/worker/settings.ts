@@ -217,3 +217,26 @@ export async function handleTestWebhook(request: Request, env: Env): Promise<Res
     return json({ error: err.message }, 500);
   }
 }
+
+// ── Zapier App Webhooks (Public API) ────────────────────────
+export async function handlePublicCreateWebhook(request: Request, env: Env, clientId: string): Promise<Response> {
+  const body = await request.json() as any;
+  const url = sanitizeInput(body.url);
+  const events = sanitizeInput(body.events) || '*';
+  
+  if (!url || !url.startsWith('https://')) return json({ error: 'Invalid HTTPS URL' }, 400);
+
+  const id = crypto.randomUUID();
+  const secret = `whsec_${crypto.randomUUID().replace(/-/g, '')}`;
+
+  await env.DB.prepare(
+    'INSERT INTO webhook_subscriptions (id, client_id, url, events, secret) VALUES (?, ?, ?, ?, ?)'
+  ).bind(id, clientId, url, events, secret).run();
+
+  return json({ data: { id, url, events, secret } }, 201);
+}
+
+export async function handlePublicDeleteWebhook(env: Env, clientId: string, webhookId: string): Promise<Response> {
+  await env.DB.prepare('DELETE FROM webhook_subscriptions WHERE id = ? AND client_id = ?').bind(webhookId, clientId).run();
+  return json({ data: { success: true } });
+}

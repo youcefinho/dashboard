@@ -165,6 +165,17 @@ export default {
         // On délègue aux handlers existants après vérification du scope
         const subPath = path.replace('/api/public/v1', '');
         
+        // --- AUTH & ZAPIER ---
+        if (subPath === '/me' && method === 'GET') {
+          return json({
+            data: {
+              client_id: authResult.clientId,
+              user_id: authResult.userId,
+              scopes: authResult.scopes
+            }
+          });
+        }
+        
         // --- LEADS ---
         if (subPath === '/leads' && method === 'GET') {
           const scopeErr = requireScope(authResult, 'read');
@@ -219,6 +230,17 @@ export default {
           if (scopeErr) return scopeErr;
           const { handleCreateAppointment } = await import('./worker/calendar');
           return await handleCreateAppointment(request, env, { userId: authResult.userId, role: 'user', clientId: authResult.clientId } as any);
+        }
+        
+        // --- WEBHOOKS (ZAPIER) ---
+        if (subPath === '/webhooks' && method === 'POST') {
+          const { handlePublicCreateWebhook } = await import('./worker/settings');
+          return await handlePublicCreateWebhook(request, env, authResult.clientId);
+        }
+        const pubWhMatch = subPath.match(/^\/webhooks\/([^/]+)$/);
+        if (pubWhMatch && method === 'DELETE') {
+          const { handlePublicDeleteWebhook } = await import('./worker/settings');
+          return await handlePublicDeleteWebhook(env, authResult.clientId, pubWhMatch[1]!);
         }
         
         return new Response('Not Found in Public API', { status: 404 });
