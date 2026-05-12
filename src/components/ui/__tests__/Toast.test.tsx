@@ -1,9 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, act, cleanup } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { ToastProvider, useToast } from '../Toast';
-import { useEffect } from 'react';
 
 // Composant de test pour consommer le contexte
 function TestComponent() {
