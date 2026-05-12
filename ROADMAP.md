@@ -44,7 +44,7 @@ Voir `README-DEV.md` pour le setup local sans clés externes.
 
 | Sprint | Thème | Durée estimée | Statut |
 |---|---|---|---|
-| 11 | Capacitor V1 | ~?j | 🔴 Non commencé |
+| 11 | Capacitor V1 | ~15j | 🟡 En cours |
 
 
 ## Sprints restants
