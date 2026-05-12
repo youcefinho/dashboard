@@ -1,0 +1,26 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /leads
+Disallow: /clients
+Disallow: /pipeline
+Disallow: /conversations
+Disallow: /calendar
+Disallow: /tasks
+Disallow: /workflows
+Disallow: /templates
+Disallow: /reports
+Disallow: /settings
+Disallow: /integrations
+Disallow: /documents
+Disallow: /invoices
+Disallow: /properties
+Disallow: /reviews
+Disallow: /trash
+Disallow: /trigger-links
+Disallow: /agencies
+Disallow: /change-password
+Disallow: /sign/
+Disallow: /f/
+
+Sitemap: https://crm.intralys.com/sitemap.xml
