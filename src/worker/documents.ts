@@ -175,6 +175,18 @@ export async function handleDeleteDocumentTemplate(
 
 // ── Documents (envoyés pour signature) ──────────────────────
 
+export async function handleDeleteDocument(
+  env: Env, auth: { userId: string; role: string }, docId: string
+): Promise<Response> {
+  if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
+  const doc = await env.DB.prepare('SELECT id, status FROM documents WHERE id = ?').bind(docId).first() as { id: string; status: string } | null;
+  if (!doc) return json({ error: 'Document introuvable' }, 404);
+  if (doc.status === 'won') return json({ error: 'Impossible de supprimer un document signé' }, 400);
+  await env.DB.prepare('DELETE FROM documents WHERE id = ?').bind(docId).run();
+  await audit(env, auth.userId, 'document.delete', 'document', docId, {});
+  return json({ data: { success: true } });
+}
+
 export async function handleGetDocuments(
   env: Env, _auth: { userId: string; role: string }, url: URL
 ): Promise<Response> {

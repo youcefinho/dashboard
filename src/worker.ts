@@ -30,7 +30,7 @@ import {
 import {
   handleGetWorkflows, handleGetWorkflowDetail, handleCreateWorkflow,
   handleUpdateWorkflow, handleDeleteWorkflow, handleToggleWorkflow,
-  handleGetPipelineStageWorkflows, handleGetWorkflowEnrollments, handleCancelEnrollment,
+  handleEnrollLead, processWorkflowQueue,
   autoEnroll
 } from './worker/workflows';
 
@@ -55,7 +55,7 @@ import { handleGetSubAccounts, handleCreateSubAccount, handleUpdateSubAccount, h
 // gcal.ts et gbp.ts déplacés en _v2-backlog/ (Sprint Consolidation)
 
 import { handleEmailBroadcast, handleGetBroadcasts, handleGetBroadcastDetail } from './worker/broadcast';
-import { handleDashboardStats, handleTotpSetup, handleTotpVerify, handleTotpDisable, handleSendSmsRoute, handleCsvImport, handleExportCsv as handleExportCsvDash } from './worker/dashboard';
+import { handleDashboardStats, handleTotpSetup, handleTotpVerify, handleTotpDisable, handleSendSmsRoute, handleCsvImport } from './worker/dashboard';
 import { handleWebhookLead } from './worker/leads';
 import {
   handleUploadFile, handleGetFile, handleGetFiles, handleDeleteFile,
@@ -68,8 +68,7 @@ import {
   handleGetReviewRequests, handleCreateReviewRequest, handleBulkReviewRequest,
   handleGetReviews, handleGetReviewStats, handleSuggestReviewReply, handleReplyToReview,
 } from './worker/reviews';
-import { WebchatRoom, handleWebchatConnect, handleWebchatPrechat, handleWebchatWidget } from './worker/webchat';
-import { handleStartMigration, handleGetMigrationStatus } from './worker/migrate';
+import { WebchatRoom, handleWebchatConnect, handleWebchatPrechat } from './worker/webchat';
 import {
   handleGetScoreProfiles, handleCreateScoreProfile, handleUpdateScoreProfile,
   handleGetLeadScores, handleRecomputeLeadScore, seedDefaultScoreProfiles,
@@ -238,13 +237,13 @@ export default {
         if (subPath === '/appointments' && method === 'GET') {
           const scopeErr = requireScope(authResult, 'read');
           if (scopeErr) return scopeErr;
-          const { handleGetAppointments } = await import('./worker/calendar');
+          const { handleGetAppointments } = await import('./worker/appointments');
           return await handleGetAppointments(env, { userId: authResult.userId, role: 'user', clientId: authResult.clientId } as any, url);
         }
         if (subPath === '/appointments' && method === 'POST') {
           const scopeErr = requireScope(authResult, 'write');
           if (scopeErr) return scopeErr;
-          const { handleCreateAppointment } = await import('./worker/calendar');
+          const { handleCreateAppointment } = await import('./worker/appointments');
           return await handleCreateAppointment(request, env, { userId: authResult.userId, role: 'user', clientId: authResult.clientId } as any);
         }
         
@@ -372,7 +371,7 @@ export default {
     }
   },
 
-  async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
+  async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
     ctx.waitUntil(processWorkflowQueue(env));
     ctx.waitUntil(processOverdueTasks(env));
     // Seed des profils de scoring par défaut (idempotent)
@@ -493,9 +492,9 @@ async function routeProtected(
   if (tplMatch && method === 'PATCH') return handleUpdateTemplate(request, env, auth, tplMatch[1]!);
   if (tplMatch && method === 'DELETE') return handleDeleteTemplate(env, auth, tplMatch[1]!);
   const dupMatch = path.match(/^\/api\/templates\/([^/]+)\/duplicate$/);
-  if (dupMatch && method === 'POST') return handleDuplicateTemplate(request, env, auth, dupMatch[1]!);
+  if (dupMatch && method === 'POST') return handleDuplicateTemplate(env, auth, dupMatch[1]!);
   const testEmailMatch = path.match(/^\/api\/templates\/([^/]+)\/test$/);
-  if (testEmailMatch && method === 'POST') return handleSendTestEmail(request, env, auth, testEmailMatch[1]!);
+  if (testEmailMatch && method === 'POST') return handleSendTestEmail(request, env, auth);
 
   if (path === '/api/snippets' && method === 'GET') { const { handleGetSnippets } = await import('./worker/snippets'); return await handleGetSnippets(env, auth); }
   if (path === '/api/snippets' && method === 'POST') { const { handleCreateSnippet } = await import('./worker/snippets'); return await handleCreateSnippet(request, env, auth); }
@@ -504,7 +503,7 @@ async function routeProtected(
   if (snippetMatch && method === 'DELETE') { const { handleDeleteSnippet } = await import('./worker/snippets'); return await handleDeleteSnippet(env, auth, snippetMatch[1]!); }
 
   // Workflows
-  if (path === '/api/workflows' && method === 'GET') return handleGetWorkflows(env, auth);
+  if (path === '/api/workflows' && method === 'GET') return handleGetWorkflows(env, auth, url);
   if (path === '/api/workflows' && method === 'POST') return handleCreateWorkflow(request, env, auth);
   const wfMatch = path.match(/^\/api\/workflows\/([^/]+)$/);
   if (wfMatch && method === 'GET') return handleGetWorkflowDetail(env, auth, wfMatch[1]!);
@@ -675,8 +674,8 @@ async function routeProtected(
   const slExecMatch = path.match(/^\/api\/smart-lists\/([^/]+)\/execute$/);
   if (slExecMatch && method === 'GET') return handleExecuteSmartList(env, auth, slExecMatch[1]!, url);
 
-  if (path === '/api/ai/generate' && method === 'POST') return handleAiGenerate(request, env, auth);
-  if (path === '/api/ai/suggest-workflow' && method === 'POST') return handleAiSuggestWorkflow(request, env, auth);
+  if (path === '/api/ai/generate' && method === 'POST') return handleAiGenerate(request, env);
+  if (path === '/api/ai/suggest-workflow' && method === 'POST') return handleAiSuggestWorkflow(request, env);
 
   // Sub-accounts
   if (path === '/api/sub-accounts' && method === 'GET') return handleGetSubAccounts(env, auth);
@@ -712,7 +711,7 @@ async function routeProtected(
       if (path.match(/^\/api\/invoices\/[a-zA-Z0-9_-]+\/status$/) && method === 'PATCH') {
         const invoiceId = path.split('/')[3];
         const { handleUpdateInvoiceStatus } = await import('./worker/billing');
-        return await handleUpdateInvoiceStatus(request, env, auth, invoiceId);
+        return await handleUpdateInvoiceStatus(request, env, auth, invoiceId!);
       }
 
       // SaaS Configurator (P3.9)
@@ -765,6 +764,7 @@ async function routeProtected(
   if (path === '/api/documents' && method === 'POST') return handleCreateDocument(request, env, auth);
   const docsMatch = path.match(/^\/api\/documents\/([^/]+)$/);
   if (docsMatch && method === 'DELETE') { const { handleDeleteDocument } = await import('./worker/documents'); return await handleDeleteDocument(env, auth, docsMatch[1]!); }
+
   if (path === '/api/documents/generate-oaciq' && method === 'POST') { const { handleGenerateOaciq } = await import('./worker/documents'); return await handleGenerateOaciq(request, env, auth); }
   const docSendMatch = path.match(/^\/api\/documents\/([^/]+)\/send$/);
   if (docSendMatch && method === 'POST') return handleSendDocument(request, env, auth, docSendMatch[1]!);
