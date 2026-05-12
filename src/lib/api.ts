@@ -1,8 +1,13 @@
 // ── Client API — Helpers pour appeler le worker ─────────────
 
 import type { ApiResponse, Client, Lead, LeadDetail, DashboardStats, ActivityLogEntry, Message, EmailTemplate, Workflow, WorkflowStep, WorkflowEnrollment, Appointment, Task, Subtask, TaskComment, TaskTemplate, LeadNote, LeadScore, CustomFieldValue, Conversation, ConversationStatus, Pipeline, PipelineStage, CustomFieldDef, SmartList, Snippet } from './types';
+import { Capacitor } from '@capacitor/core';
 
-const API_BASE = '/api';
+// En natif (iOS/Android), les requêtes partent de capacitor://localhost
+// donc on doit utiliser une URL absolue vers le backend Cloudflare
+const API_BASE = Capacitor.isNativePlatform()
+  ? (import.meta.env.VITE_API_URL || 'https://crm.intralys.com') + '/api'
+  : '/api';
 
 // ── Gestion du token ────────────────────────────────────────
 
