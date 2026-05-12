@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'bun:test';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { handleGetPreferences, handleUpdatePreferences, handleGetApiKeys, handleCreateApiKey, handleGetWebhooks, handleCreateWebhook } from '../settings';
 import { handleGetUsers, handleInviteUser, handleUpdateUserRole } from '../team';
 
@@ -39,7 +39,7 @@ describe('Sprint 8 - Settings', () => {
     const res = await handleCreateApiKey(req, mockEnv);
     expect(res.status).toBe(201);
     const body = await res.json() as any;
-    expect(body.data.key).toStartWith('ILYS_');
+    expect(body.data.key).toMatch(/^ILYS_/);
   });
 
   it('doit créer un webhook', async () => {
@@ -51,7 +51,7 @@ describe('Sprint 8 - Settings', () => {
     const res = await handleCreateWebhook(req, mockEnv);
     expect(res.status).toBe(201);
     const body = await res.json() as any;
-    expect(body.data.secret).toStartWith('whsec_');
+    expect(body.data.secret).toMatch(/^whsec_/);
   });
 });
 
