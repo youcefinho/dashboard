@@ -8,7 +8,9 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Input } from '@/components/ui/Input';
 import { getLeads, getClients, updateLead, exportLeadsCsv } from '@/lib/api';
 import { STATUS_LABELS, STATUS_COLORS, SOURCE_LABELS, LEAD_STATUSES, type Lead, type LeadStatus, type Client, type SmartList } from '@/lib/types';
-import { Search, X, Download, Save, LayoutGrid, LayoutList, Map, MoreHorizontal, ArrowUpDown, ChevronUp, ChevronDown, StickyNote, Users, UserPlus, Zap, ExternalLink } from 'lucide-react';
+import { Search, X, Download, Save, LayoutGrid, LayoutList, Map, MoreHorizontal, ArrowUpDown, ChevronUp, ChevronDown, StickyNote, Users, UserPlus, Zap, ExternalLink, Check } from 'lucide-react';
+import { SwipeAction } from '@/components/ui/SwipeAction';
+import { useLongPress } from '@/hooks/useLongPress';
 
 // Fixtures mock pour leads sans coordonnées (mode mock QC)
 const QC_FIXTURES: Array<{ lat: number; lng: number; city: string }> = [
@@ -351,9 +353,25 @@ export function LeadsPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
           {sortedLeads.map(lead => {
             const scoreColor = lead.score >= 70 ? 'var(--success)' : lead.score >= 40 ? 'var(--warning)' : 'var(--danger)';
+            const longPressProps = useLongPress(() => openNotes(lead), undefined, { delay: 600 });
             return (
-              <Link key={lead.id} to={`/leads/${lead.id}`}
-                className="block bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-lg)] p-4 hover:border-[var(--brand-primary)] transition-all hover:shadow-[var(--shadow-md)] card-lift">
+              <SwipeAction 
+                key={lead.id}
+                rightActions={
+                  <div className="flex gap-2 justify-end w-full pr-2">
+                    <button className="w-12 h-12 bg-[var(--danger)] text-white rounded-[var(--radius-lg)] flex items-center justify-center shadow-sm" onClick={(e) => { e.preventDefault(); e.stopPropagation(); void handleStatusChange(lead.id, 'lost'); }}>
+                      <X size={20} />
+                    </button>
+                    <button className="w-12 h-12 bg-[var(--success)] text-white rounded-[var(--radius-lg)] flex items-center justify-center shadow-sm" onClick={(e) => { e.preventDefault(); e.stopPropagation(); void handleStatusChange(lead.id, 'won'); }}>
+                      <Check size={20} />
+                    </button>
+                  </div>
+                }
+                rightThreshold={110}
+              >
+                <div {...longPressProps}>
+                  <Link to={`/leads/${lead.id}`}
+                    className="block bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-lg)] p-4 hover:border-[var(--brand-primary)] transition-all hover:shadow-[var(--shadow-md)] card-lift relative z-10">
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <Avatar name={lead.name} size="sm" />
@@ -384,6 +402,8 @@ export function LeadsPage() {
                   </div>
                 )}
               </Link>
+                </div>
+              </SwipeAction>
             );
           })}
         </div>

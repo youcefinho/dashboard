@@ -14,6 +14,8 @@ import {
   TASK_STATUS_LABELS, TASK_STATUS_ICONS,
 } from '@/lib/types';
 import { ListTodo, AlertTriangle, CalendarDays, CheckCircle2, Plus, Trash2, LayoutList, Kanban, MessageSquare, Repeat, Copy, X } from 'lucide-react';
+import { SwipeAction } from '@/components/ui/SwipeAction';
+import { useLongPress } from '@/hooks/useLongPress';
 
 export function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -196,21 +198,38 @@ export function TasksPage() {
                 <span className="text-[10px] text-[var(--text-muted)] bg-[var(--bg-subtle)] px-1.5 py-0.5 rounded-full ml-auto">{tasks.filter(t => t.status === status).length}</span>
               </div>
               <div className="space-y-2">
-                {tasks.filter(t => t.status === status).map(task => (
-                  <Card key={task.id} className={`p-3 cursor-pointer hover:border-[var(--brand-primary)] transition-colors ${task.status === 'done' ? 'opacity-50' : ''}`} onClick={() => openDetail(task)}>
-                    <div className="flex items-start gap-2 mb-1">
-                      <button onClick={(e) => { e.stopPropagation(); toggleStatus(task); }} className="mt-0.5 text-sm shrink-0">{TASK_STATUS_ICONS[task.status]}</button>
-                      <p className={`text-xs font-medium ${task.status === 'done' ? 'line-through text-[var(--text-muted)]' : ''}`}>{task.title}</p>
+                {tasks.filter(t => t.status === status).map(task => {
+                  const longPressProps = useLongPress(() => openDetail(task), undefined, { delay: 600 });
+                  return (
+                  <SwipeAction 
+                    key={task.id}
+                    rightActions={
+                      <div className="flex gap-2 justify-end w-full pr-2">
+                        <button className="w-10 h-10 bg-[var(--danger)] text-white rounded-[var(--radius-lg)] flex items-center justify-center shadow-sm" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(task.id); }}>
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    }
+                    rightThreshold={60}
+                  >
+                    <div {...longPressProps}>
+                      <Card className={`p-3 cursor-pointer hover:border-[var(--brand-primary)] transition-colors ${task.status === 'done' ? 'opacity-50' : ''} relative z-10`} onClick={() => openDetail(task)}>
+                        <div className="flex items-start gap-2 mb-1">
+                          <button onClick={(e) => { e.stopPropagation(); toggleStatus(task); }} className="mt-0.5 text-sm shrink-0">{TASK_STATUS_ICONS[task.status]}</button>
+                          <p className={`text-xs font-medium ${task.status === 'done' ? 'line-through text-[var(--text-muted)]' : ''}`}>{task.title}</p>
+                        </div>
+                        <div className="flex items-center justify-between text-[10px] text-[var(--text-muted)] pl-6">
+                          <span className={isOverdue(task) ? 'text-[var(--danger)] font-semibold' : ''}>{formatDueDate(task.due_date)} {isOverdue(task) && '⚠️'}</span>
+                        </div>
+                        <div className="pl-6 pt-1 flex gap-1">
+                          <Badge color={TASK_PRIORITY_COLORS[task.priority]} className="text-[9px]">{TASK_PRIORITY_ICONS[task.priority]} {TASK_PRIORITY_LABELS[task.priority]}</Badge>
+                          {task.recurring_rule && <Badge color="var(--info)" className="text-[9px]"><Repeat size={10} className="mr-0.5"/> Réc.</Badge>}
+                        </div>
+                      </Card>
                     </div>
-                    <div className="flex items-center justify-between text-[10px] text-[var(--text-muted)] pl-6">
-                      <span className={isOverdue(task) ? 'text-[var(--danger)] font-semibold' : ''}>{formatDueDate(task.due_date)} {isOverdue(task) && '⚠️'}</span>
-                    </div>
-                    <div className="pl-6 pt-1 flex gap-1">
-                      <Badge color={TASK_PRIORITY_COLORS[task.priority]} className="text-[9px]">{TASK_PRIORITY_ICONS[task.priority]} {TASK_PRIORITY_LABELS[task.priority]}</Badge>
-                      {task.recurring_rule && <Badge color="var(--info)" className="text-[9px]"><Repeat size={10} className="mr-0.5"/> Réc.</Badge>}
-                    </div>
-                  </Card>
-                ))}
+                  </SwipeAction>
+                  );
+                })}
               </div>
             </div>
           ))}
@@ -220,24 +239,44 @@ export function TasksPage() {
           {filteredTasks.length === 0 ? (
             <EmptyState icon={<ListTodo size={40}/>} title="Aucune tâche" description="Vous n'avez aucune tâche en cours." />
           ) : (
-            filteredTasks.map(task => (
-              <Card key={task.id} className={`p-4 flex items-start gap-3 cursor-pointer hover:border-[var(--brand-primary)] transition-all ${task.status === 'done' ? 'opacity-50' : ''}`} onClick={() => openDetail(task)}>
-                <button onClick={(e) => { e.stopPropagation(); toggleStatus(task); }} className="mt-0.5 text-lg shrink-0" title={TASK_STATUS_LABELS[task.status]}>{TASK_STATUS_ICONS[task.status]}</button>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <p className={`text-sm font-medium ${task.status === 'done' ? 'line-through text-[var(--text-muted)]' : ''}`}>{task.title}</p>
-                    <Badge color={TASK_PRIORITY_COLORS[task.priority]} className="text-[10px]">{TASK_PRIORITY_ICONS[task.priority]} {TASK_PRIORITY_LABELS[task.priority]}</Badge>
-                    {task.recurring_rule && <Badge color="var(--info)" className="text-[10px]"><Repeat size={10} className="mr-1"/> Récurrent</Badge>}
+            filteredTasks.map(task => {
+              const longPressProps = useLongPress(() => openDetail(task), undefined, { delay: 600 });
+              return (
+              <SwipeAction 
+                key={task.id}
+                rightActions={
+                  <div className="flex gap-2 justify-end w-full pr-2">
+                    <button className="w-12 h-12 bg-[var(--success)] text-white rounded-[var(--radius-lg)] flex items-center justify-center shadow-sm" onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleStatus(task); }}>
+                      <CheckCircle2 size={20} />
+                    </button>
+                    <button className="w-12 h-12 bg-[var(--danger)] text-white rounded-[var(--radius-lg)] flex items-center justify-center shadow-sm" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(task.id); }}>
+                      <Trash2 size={20} />
+                    </button>
                   </div>
-                  {task.description && <p className="text-xs text-[var(--text-muted)] mb-1 truncate">{task.description}</p>}
-                  <div className="flex items-center gap-3 text-[10px] text-[var(--text-muted)]">
-                    {task.lead_name && <span className="flex items-center gap-1">👤 {task.lead_name}</span>}
-                    <span className={`flex items-center gap-1 ${isOverdue(task) ? 'text-[var(--danger)] font-semibold' : ''}`}>📅 {formatDueDate(task.due_date)} {isOverdue(task) && '⚠️'}</span>
-                  </div>
+                }
+                rightThreshold={110}
+              >
+                <div {...longPressProps}>
+                  <Card className={`p-4 flex items-start gap-3 cursor-pointer hover:border-[var(--brand-primary)] transition-all ${task.status === 'done' ? 'opacity-50' : ''} relative z-10`} onClick={() => openDetail(task)}>
+                    <button onClick={(e) => { e.stopPropagation(); toggleStatus(task); }} className="mt-0.5 text-lg shrink-0" title={TASK_STATUS_LABELS[task.status]}>{TASK_STATUS_ICONS[task.status]}</button>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <p className={`text-sm font-medium ${task.status === 'done' ? 'line-through text-[var(--text-muted)]' : ''}`}>{task.title}</p>
+                        <Badge color={TASK_PRIORITY_COLORS[task.priority]} className="text-[10px]">{TASK_PRIORITY_ICONS[task.priority]} {TASK_PRIORITY_LABELS[task.priority]}</Badge>
+                        {task.recurring_rule && <Badge color="var(--info)" className="text-[10px]"><Repeat size={10} className="mr-1"/> Récurrent</Badge>}
+                      </div>
+                      {task.description && <p className="text-xs text-[var(--text-muted)] mb-1 truncate">{task.description}</p>}
+                      <div className="flex items-center gap-3 text-[10px] text-[var(--text-muted)]">
+                        {task.lead_name && <span className="flex items-center gap-1">👤 {task.lead_name}</span>}
+                        <span className={`flex items-center gap-1 ${isOverdue(task) ? 'text-[var(--danger)] font-semibold' : ''}`}>📅 {formatDueDate(task.due_date)} {isOverdue(task) && '⚠️'}</span>
+                      </div>
+                    </div>
+                    <button onClick={(e) => { e.stopPropagation(); handleDelete(task.id); }} className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-[var(--danger-soft)] transition-all shrink-0"><Trash2 size={14} /></button>
+                  </Card>
                 </div>
-                <button onClick={(e) => { e.stopPropagation(); handleDelete(task.id); }} className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-[var(--danger-soft)] transition-all shrink-0"><Trash2 size={14} /></button>
-              </Card>
-            ))
+              </SwipeAction>
+              );
+            })
           )}
         </div>
       )}

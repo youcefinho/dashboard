@@ -148,6 +148,6 @@
 ### P2 — Polish (1j)
 - [x] Install prompt PWA ✅
 - [x] Tab bars scrollables (Reports, Settings) ✅
-- [ ] Swipe actions sur cards (Leads, Tasks)
-- [ ] Long-press menu contextuel
+- [x] Swipe actions sur cards (Leads, Tasks) ✅
+- [x] Long-press menu contextuel ✅
 
