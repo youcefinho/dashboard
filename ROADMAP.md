@@ -1,7 +1,7 @@
 # ROADMAP.md — Intralys CRM
 
 > Source de vérité unique pour le statut + prochaines étapes.
-> Dernière mise à jour : 2026-05-10.
+> Dernière mise à jour : 2026-05-12.
 
 ## Vision
 
@@ -37,23 +37,23 @@ Voir `README-DEV.md` pour le setup local sans clés externes.
 | 8 | Settings + Reports + Agency admin | ~17j | ✅ Commité |
 | 9 | Mobile responsive + PWA | ~6j | ✅ Commité |
 | 10 | Polish + Beta privée + Launch | ~10j | ✅ Commité |
+| 11 | Capacitor V1 — App native iOS/Android | ~15j | ✅ Commité |
 
-**Total livré : ~139 jours de dev.**
+**Total livré : ~154 jours de dev.**
 
 ## Sprint actuel 🔜
 
 | Sprint | Thème | Durée estimée | Statut |
 |---|---|---|---|
-| 11 | Capacitor V1 — App native iOS/Android | ~15j | ✅ Commité |
-
+| 12 | Production Hardening & Core UX | ~8j | 🟡 En cours |
 
 ## Sprints restants
 
 | # | Sprint | Effort | Description |
 |---|---|---|---|
-| 10 | Polish + Beta privée + Launch | ~10j | 5 beta clients gratuits, landing intralys.com, onboarding |
-| 11 | App mobile Capacitor V1 | ~15j | Wrap du frontend Vite, push notifs Firebase, click-to-call |
-| 12 | App mobile React Native V2 | ~30j | Si traction confirmée — vraie app native iOS/Android |
+| 13 | API publique + Zapier + Webhooks OUT | ~10j | OpenAPI docs, Zapier app, webhooks registry |
+| 14 | GHL Migration importer | ~15j | Import contacts/conversations/pipelines depuis GHL |
+| 15 | App mobile React Native V2 | ~30j | Si traction confirmée — vraie app native iOS/Android |
 
 ## V2 Backlog (post-traction)
 
