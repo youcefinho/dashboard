@@ -350,6 +350,11 @@ export default {
     if (batch.queue === 'intralys-broadcast') {
       await processBroadcastQueueJob(batch, env);
     }
+    
+    if (batch.queue === 'intralys-webhooks') {
+      const { processWebhookDelivery } = await import('./worker/webhooks-queue');
+      await processWebhookDelivery(batch, env);
+    }
   }
 } satisfies ExportedHandler<Env>;
 

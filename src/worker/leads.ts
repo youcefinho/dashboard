@@ -359,6 +359,20 @@ export async function handlePatchLead(
   }
 
   await audit(env, auth.userId, 'lead.update', 'lead', leadId, body as Record<string, unknown>);
+
+  // Webhook event
+  if (body.status !== undefined) {
+    try {
+      const { publishEvent } = await import('./webhooks-dispatch');
+      const lead = await env.DB.prepare('SELECT * FROM leads WHERE id = ?').bind(leadId).first();
+      if (lead) {
+        publishEvent(env, lead.client_id as string, 'lead.status_changed', lead).catch(e => console.error(e));
+      }
+    } catch (e) {
+      console.error('Webhook error:', e);
+    }
+  }
+
   return json({ success: true });
 }
 
@@ -483,6 +497,18 @@ export async function handleCreateLead(
   ).bind(id, clientId, name, email, phone, type, source, message).run();
 
   await audit(env, auth.userId, 'lead.create', 'lead', id, { client_id: clientId, name, email, source });
+
+  // Webhook event
+  try {
+    const { publishEvent } = await import('./webhooks-dispatch');
+    const lead = await env.DB.prepare('SELECT * FROM leads WHERE id = ?').bind(id).first();
+    if (lead) {
+      publishEvent(env, clientId, 'lead.created', lead).catch(e => console.error(e));
+    }
+  } catch (e) {
+    console.error('Webhook error:', e);
+  }
+
   return json({ data: { id } }, 201);
 }
 

@@ -84,6 +84,19 @@ export async function handleCreateAppointment(
     await autoEnrollForTrigger(env, 'appointment_booked', body.lead_id as string);
   }
 
+  // Webhook event
+  if (clientId) {
+    try {
+      const { publishEvent } = await import('./webhooks-dispatch');
+      const appt = await env.DB.prepare('SELECT * FROM appointments WHERE id = ?').bind(id).first();
+      if (appt) {
+        publishEvent(env, clientId, 'appointment.created', appt).catch(e => console.error(e));
+      }
+    } catch (e) {
+      console.error('Webhook error:', e);
+    }
+  }
+
   return json({ data: { id } }, 201);
 }
 
@@ -137,7 +150,19 @@ export async function handleUpdateAppointment(
          VALUES (?, ?, ?, 'appointment_updated', ?)`
       ).bind(appt.lead_id, appt.client_id, auth.userId, JSON.stringify({ appointment_id: appointmentId, status: body.status, title: appt.title })).run();
       
-      if (body.status === 'cancelled') await autoEnrollForTrigger(env, 'appointment_cancelled', appt.lead_id);
+      if (body.status === 'cancelled') {
+        await autoEnrollForTrigger(env, 'appointment_cancelled', appt.lead_id);
+        // Webhook event
+        try {
+          const { publishEvent } = await import('./webhooks-dispatch');
+          const fullAppt = await env.DB.prepare('SELECT * FROM appointments WHERE id = ?').bind(appointmentId).first();
+          if (fullAppt) {
+            publishEvent(env, appt.client_id, 'appointment.cancelled', fullAppt).catch(e => console.error(e));
+          }
+        } catch (e) {
+          console.error('Webhook error:', e);
+        }
+      }
       if (body.status === 'no_show') await autoEnrollForTrigger(env, 'appointment_no_show', appt.lead_id);
     }
   }

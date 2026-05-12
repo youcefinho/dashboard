@@ -53,6 +53,19 @@ export async function handleCreateTask(request: Request, env: Env, auth: { userI
     body.reminder_minutes_before ? Number(body.reminder_minutes_before) : null
   ).run();
 
+  // Webhook event
+  if (body.client_id) {
+    try {
+      const { publishEvent } = await import('./webhooks-dispatch');
+      const task = await env.DB.prepare('SELECT * FROM tasks WHERE id = ?').bind(id).first();
+      if (task) {
+        publishEvent(env, body.client_id as string, 'task.created', task).catch(e => console.error(e));
+      }
+    } catch (e) {
+      console.error('Webhook error:', e);
+    }
+  }
+
   return json({ data: { id } }, 201);
 }
 
@@ -77,6 +90,17 @@ export async function handlePatchTask(request: Request, env: Env, _auth: { userI
 
   if (oldTask && oldTask.status !== 'done' && body.status === 'done' && oldTask.lead_id) {
      await autoEnrollForTrigger(env, 'task_completed', oldTask.lead_id);
+     
+     // Webhook event
+     try {
+       const task = await env.DB.prepare('SELECT * FROM tasks WHERE id = ?').bind(taskId).first();
+       if (task && task.client_id) {
+         const { publishEvent } = await import('./webhooks-dispatch');
+         publishEvent(env, task.client_id as string, 'task.completed', task).catch(e => console.error(e));
+       }
+     } catch (e) {
+       console.error('Webhook error:', e);
+     }
   }
 
   return json({ data: { success: true } });

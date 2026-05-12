@@ -283,6 +283,14 @@ export async function handleInboundSms(request: Request, env: Env): Promise<Resp
       `UPDATE conversations SET last_message_at = datetime('now'), last_message_preview = ?, unread_count = unread_count + 1, updated_at = datetime('now') WHERE id = ?`
     ).bind(sanitizedBody.substring(0, 120), convId).run();
 
+    // Webhook event
+    try {
+      const { publishEvent } = await import('./webhooks-dispatch');
+      publishEvent(env, lead.client_id, 'message.received', { lead_id: lead.id, channel: 'sms', body: sanitizedBody }).catch(e => console.error(e));
+    } catch (e) {
+      console.error('Webhook error:', e);
+    }
+
     // Stop on reply (Workflows)
     const activeEnrollments = await env.DB.prepare(
       `SELECT we.id, w.trigger_config FROM workflow_enrollments we
@@ -355,6 +363,14 @@ export async function handleInboundEmail(request: Request, env: Env): Promise<Re
     await env.DB.prepare(
       `UPDATE conversations SET last_message_at = datetime('now'), last_message_preview = ?, unread_count = unread_count + 1, updated_at = datetime('now') WHERE id = ?`
     ).bind(bodyText.substring(0, 120), convId).run();
+
+    // Webhook event
+    try {
+      const { publishEvent } = await import('./webhooks-dispatch');
+      publishEvent(env, lead.client_id, 'message.received', { lead_id: lead.id, channel: 'email', subject, body: bodyText }).catch(e => console.error(e));
+    } catch (e) {
+      console.error('Webhook error:', e);
+    }
 
     // Stop on reply (Workflows)
     const activeEnrollments = await env.DB.prepare(

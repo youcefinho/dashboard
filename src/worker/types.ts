@@ -19,6 +19,7 @@ export interface Env {
   FILES: R2Bucket;
   WEBCHAT_ROOMS: DurableObjectNamespace;
   BROADCAST_QUEUE: Queue;
+  WEBHOOK_QUEUE?: Queue;
   RATE_LIMITER?: KVNamespace;
   // V2 backlog (désactivés Sprint Consolidation)
   // OPENAI_API_KEY: string;
