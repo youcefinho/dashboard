@@ -1,5 +1,6 @@
 import type { Env } from './types';
 import { json, sanitizeInput } from './helpers';
+import { decryptToken } from './migration-ghl-oauth';
 import { GhlClient } from './migration-ghl-client';
 import { 
   mapGhlContact, mapGhlConversation, mapGhlMessage, 
@@ -54,8 +55,11 @@ export async function handleGhlApiRun(
 
   const locationId = body.location_id || tokenRecord.location_id;
 
+  // Déchiffrer le token avant usage
+  const accessToken = await decryptToken(tokenRecord.access_token, env);
+
   // Lancer le background job
-  ctx.waitUntil(runMigrationLoop(env, sessionId, body.client_id, locationId, tokenRecord.access_token, scopes, startPhase, startCursor));
+  ctx.waitUntil(runMigrationLoop(env, sessionId, body.client_id, locationId, accessToken, scopes, startPhase, startCursor));
 
   return json({ data: { session_id: sessionId, status: 'running', message: 'Migration démarrée en arrière-plan' } });
 }

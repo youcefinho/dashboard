@@ -24,6 +24,8 @@ export interface Env {
   GHL_CLIENT_ID?: string;
   GHL_CLIENT_SECRET?: string;
   GHL_REDIRECT_URI?: string;
+  TOKEN_KEY?: string; // 32-char string pour AES-GCM chiffrement tokens OAuth
+  STATE_STORE?: KVNamespace; // KV namespace pour nonces CSRF OAuth (TTL 10min)
   // V2 backlog (désactivés Sprint Consolidation)
   // OPENAI_API_KEY: string;
   // GOOGLE_CLIENT_ID: string;

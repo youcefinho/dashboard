@@ -390,6 +390,13 @@ export default {
     ctx.waitUntil(
       env.DB.prepare("UPDATE migration_sessions SET status = 'failed', error_log_json = '[\"Timeout: Worker killed ou process abandonné\"]' WHERE status = 'running' AND updated_at < datetime('now', '-30 minutes')").run()
     );
+    // Refresh automatique des tokens GHL expirants (< 1h)
+    ctx.waitUntil(
+      (async () => {
+        const { refreshExpiringGhlTokens } = await import('./worker/migration-ghl-oauth');
+        await refreshExpiringGhlTokens(env);
+      })()
+    );
   },
 
   async queue(batch: MessageBatch<any>, env: Env): Promise<void> {
