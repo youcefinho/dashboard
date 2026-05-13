@@ -1,7 +1,7 @@
 # ROADMAP.md — Intralys CRM
 
 > Source de vérité unique pour le statut + prochaines étapes.
-> Dernière mise à jour : 2026-05-12.
+> Dernière mise à jour : 2026-05-13.
 
 ## Vision
 
@@ -44,14 +44,15 @@ Voir `README-DEV.md` pour le setup local sans clés externes.
 | 14 | GHL Migration importer (CSV + OAuth hybride) | ~15j | ✅ Commité |
 | 14.5 | Hotfix audit GHL Migration (OAuth CSRF/AES, tags/CF, idempotence réelle) | ~1j | ✅ Commité |
 | 16 | Design System Migration — Legacy Modal/Input éliminés | ~1j | ✅ Commité |
+| 16.5 | Polish visuel + tokens CSS dans toutes les pages | ~0.5j | ✅ Commité |
 
-**Total livré : ~191 jours de dev.**
+**Total livré : ~192 jours de dev.**
 
 ## Sprint actuel 🔜
 
 | Sprint | Thème | Durée estimée | Statut |
 |---|---|---|---|
-| 16.5 | Polish visuel + snapshots Playwright | ~3j | 🟡 En cours |
+| 17 | (non défini) | - | 🟡 À planifier |
 
 ## Sprints restants
 
