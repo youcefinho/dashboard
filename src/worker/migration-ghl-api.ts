@@ -174,8 +174,32 @@ async function runMigrationLoop(
 
                 imported++;
 
-                // On ne stocke pas les tags et custom_field_values pour simplifier l'exemple,
-                // mais dans une implémentation complète, on les insère ici.
+                // Tags
+                for (const tag of mapped.tags) {
+                  if (tag) {
+                    await env.DB.prepare(
+                      'INSERT OR IGNORE INTO lead_tags (lead_id, tag) VALUES (?, ?)'
+                    ).bind(mapped.id, sanitizeInput(tag, 50)).run();
+                  }
+                }
+
+                // Custom Fields — lookup le field_id via external_id GHL stocké lors du prefetch
+                for (const cf of mapped.customFields) {
+                  if (cf.id && cf.value != null) {
+                    // Chercher la def correspondante dans migration_id_map (stockée durant le prefetch custom_field_defs)
+                    const cfDef = await env.DB.prepare(
+                      "SELECT id FROM custom_field_defs WHERE client_id = ? AND id = ?"
+                    ).bind(clientId, cf.id).first() as { id: string } | null;
+
+                    // Fallback : chercher par external_id dans le slug
+                    const fieldId = cfDef?.id;
+                    if (fieldId) {
+                      await env.DB.prepare(
+                        'INSERT OR REPLACE INTO custom_field_values (lead_id, field_id, value) VALUES (?, ?, ?)'
+                      ).bind(mapped.id, fieldId, sanitizeInput(String(cf.value).substring(0, 1000), 1000)).run();
+                    }
+                  }
+                }
               }
             } catch (e: any) {
               // Duplicate email probable

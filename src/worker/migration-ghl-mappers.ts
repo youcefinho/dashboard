@@ -42,7 +42,10 @@ export function mapGhlContact(ghl: GhlContact, clientId: string) {
     timezone: ghl.timezone || 'America/Toronto',
     external_id: ghl.id,
     migrated_from: 'ghl',
-    created_at: ghl.dateAdded || new Date().toISOString()
+    created_at: ghl.dateAdded || new Date().toISOString(),
+    // Tags et custom fields pour insertion dans live API
+    tags: (ghl.tags || []).map(t => t.trim().toLowerCase()).filter(Boolean),
+    customFields: ghl.customFields || [],
   };
 }
 

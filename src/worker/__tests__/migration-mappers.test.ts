@@ -95,4 +95,41 @@ describe('GHL Migration Mappers', () => {
     const mapped = mapGhlAppointment(appt, 'client_1');
     expect(mapped.status).toBe('confirmed');
   });
+
+  it('mapGhlContact - retourne tags si présents', () => {
+    const contact: GhlContact = {
+      id: '456',
+      email: 'tagged@test.com',
+      tags: ['VIP', 'Acheteur', '  Lead Chaud  ']
+    };
+    const mapped = mapGhlContact(contact, 'client_1');
+    expect(mapped).not.toBeNull();
+    expect(mapped?.tags).toEqual(['vip', 'acheteur', 'lead chaud']);
+  });
+
+  it('mapGhlContact - retourne customFields si présents', () => {
+    const contact: GhlContact = {
+      id: '789',
+      phone: '+15551112222',
+      customFields: [
+        { id: 'cf_1', value: 'Custom Value' },
+        { id: 'cf_2', value: 42 }
+      ]
+    };
+    const mapped = mapGhlContact(contact, 'client_1');
+    expect(mapped).not.toBeNull();
+    expect(mapped?.customFields).toHaveLength(2);
+    expect(mapped?.customFields[0]?.id).toBe('cf_1');
+    expect(mapped?.customFields[0]?.value).toBe('Custom Value');
+  });
+
+  it('mapGhlContact - tags vide par défaut', () => {
+    const contact: GhlContact = {
+      id: '999',
+      email: 'notags@test.com'
+    };
+    const mapped = mapGhlContact(contact, 'client_1');
+    expect(mapped?.tags).toEqual([]);
+    expect(mapped?.customFields).toEqual([]);
+  });
 });
