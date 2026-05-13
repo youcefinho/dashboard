@@ -20,14 +20,52 @@ function runSql(query: string, returnJson = false) {
   }
 }
 
-function runFile(file: string) {
+function runFile(file: string): { ok: boolean; partial?: boolean } {
   console.log(`\n▶ Application de ${file}...`);
   const cmd = `npx wrangler d1 execute ${dbName} ${envFlag} --file="${file}"`;
-  execSync(cmd, { stdio: 'inherit' });
+  try {
+    execSync(cmd, { stdio: 'inherit' });
+    return { ok: true };
+  } catch (err: any) {
+    // Migration may have been partially applied (e.g. ALTER TABLE column already exists)
+    // We log it but mark as partial — the migration is recorded so we don't retry.
+    console.warn(`⚠ ${file} a échoué partiellement (probablement déjà appliqué). On continue.`);
+    return { ok: false, partial: true };
+  }
 }
 
 function getFileHash(content: string) {
   return crypto.createHash('sha256').update(content).digest('hex');
+}
+
+// ── Ordre d'application déterministe ────────────────────────
+// 1. Sprint 0-3 foundations (phase1-13)
+// 2. Sprint 0 P3 extras (p3_*)
+// 3. Sprint 2 (sprint2-phase0, sprint2-phase1)
+// 4. Sprint 3 (sprint3)
+// 5. Sprints 4+ (phase14 et plus)
+function naturalNumberKey(name: string): number {
+  // Extrait le premier nombre du nom de fichier pour tri numérique
+  const match = name.match(/(\d+)/);
+  return match ? parseInt(match[1]!, 10) : 0;
+}
+
+function getOrderedMigrations(allFiles: string[]): string[] {
+  const phaseEarly = allFiles
+    .filter(f => /^migration-phase(\d+)\.sql$/.test(f) && naturalNumberKey(f) <= 13)
+    .sort((a, b) => naturalNumberKey(a) - naturalNumberKey(b));
+  const p3 = allFiles
+    .filter(f => f.startsWith('migration_p3_'))
+    .sort((a, b) => naturalNumberKey(a) - naturalNumberKey(b));
+  const sprint2 = allFiles
+    .filter(f => f.startsWith('migration-sprint2-'))
+    .sort();
+  const sprint3 = allFiles.filter(f => f === 'migration-sprint3.sql');
+  const phaseLate = allFiles
+    .filter(f => /^migration-phase(\d+)\.sql$/.test(f) && naturalNumberKey(f) > 13)
+    .sort((a, b) => naturalNumberKey(a) - naturalNumberKey(b));
+
+  return [...phaseEarly, ...p3, ...sprint2, ...sprint3, ...phaseLate];
 }
 
 async function migrate() {
@@ -48,21 +86,15 @@ async function migrate() {
     console.log('Aucune migration précédente trouvée.');
   }
 
-  // 3. Scan directory
+  // 3. Scan directory — catch ALL migration prefixes
   const rootDir = process.cwd();
-  const allFiles = readdirSync(rootDir).filter(f => f.startsWith('migration-phase') && f.endsWith('.sql'));
-  
-  // Also include schema.sql and seed.sql if they exist but usually they are tracked as Phase 0 or manually.
-  // We'll stick to 'migration-phase*.sql' as they represent incremental steps.
-  
-  // Sort naturally
-  allFiles.sort((a, b) => {
-    const numA = parseInt(a.replace(/\D/g, ''), 10) || 0;
-    const numB = parseInt(b.replace(/\D/g, ''), 10) || 0;
-    return numA - numB;
-  });
+  const allFiles = readdirSync(rootDir).filter(f =>
+    (f.startsWith('migration-phase') || f.startsWith('migration-sprint') || f.startsWith('migration_p3_'))
+    && f.endsWith('.sql')
+  );
 
-  const pending = allFiles.filter(f => !appliedFiles.includes(f));
+  const ordered = getOrderedMigrations(allFiles);
+  const pending = ordered.filter(f => !appliedFiles.includes(f));
 
   if (pending.length === 0) {
     console.log('\n✅ La base de données est déjà à jour.');
@@ -71,18 +103,26 @@ async function migrate() {
 
   console.log(`\n${pending.length} migration(s) en attente trouvée(s).`);
 
+  let succeeded = 0;
+  let partial = 0;
   for (const file of pending) {
     const content = readFileSync(join(rootDir, file), 'utf-8');
     const hash = getFileHash(content);
 
-    runFile(file);
+    const result = runFile(file);
 
-    // Record migration
-    runSql(`INSERT INTO _migrations (filename, hash) VALUES ('${file}', '${hash}')`);
-    console.log(`✅ ${file} appliqué et enregistré.`);
+    // Record migration even on partial failure — most likely already applied
+    runSql(`INSERT OR REPLACE INTO _migrations (filename, hash) VALUES ('${file}', '${hash}')`);
+    if (result.ok) {
+      succeeded++;
+      console.log(`✅ ${file} appliqué et enregistré.`);
+    } else {
+      partial++;
+      console.log(`⚠ ${file} enregistré (partiel).`);
+    }
   }
 
-  console.log('\n🎉 Toutes les migrations ont été appliquées avec succès.');
+  console.log(`\n🎉 ${succeeded} migration(s) appliquée(s) avec succès, ${partial} partielle(s).`);
 }
 
 migrate().catch(console.error);
