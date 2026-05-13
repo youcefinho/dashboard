@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Badge, Skeleton, Button, useToast } from '@/components/ui';
+import { Card, Badge, Skeleton, Button, useToast, PageHero } from '@/components/ui';
 import { getLeads, getClients } from '@/lib/api';
 import type { Lead, Client } from '@/lib/types';
 import { STATUS_LABELS, STATUS_COLORS, SOURCE_LABELS } from '@/lib/types';
@@ -187,7 +187,17 @@ export function ReportsPage() {
                   <BarChart data={revenueData} layout="vertical" margin={{ left: 20 }}>
                     <XAxis type="number" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} tickFormatter={(val) => `${val/1000}k $`} />
                     <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} width={80} />
-                    <Tooltip contentStyle={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 8, fontSize: 12 }} formatter={(val) => `${val} $`} />
+                    <Tooltip contentStyle={{
+                      background: 'linear-gradient(135deg, rgba(255,255,255,0.97) 0%, rgba(240,250,254,0.97) 100%)',
+                      backdropFilter: 'blur(8px)',
+                      border: '1px solid rgba(0,157,219,0.25)',
+                      borderRadius: 12,
+                      fontSize: 12,
+                      fontWeight: 500,
+                      boxShadow: '0 8px 32px -8px rgba(0,157,219,0.25), 0 0 0 1px rgba(0,157,219,0.08)',
+                    }}
+                    cursor={{ fill: 'rgba(0,157,219,0.08)' }}
+                    formatter={(val) => `${val} $`} />
                     <Bar dataKey="revenue" fill="var(--success)" radius={[0, 6, 6, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -232,7 +242,16 @@ export function ReportsPage() {
                 <BarChart data={funnelData} layout="vertical" margin={{ left: 20 }}>
                   <XAxis type="number" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
                   <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} width={80} />
-                  <Tooltip contentStyle={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 8, fontSize: 12 }} />
+                  <Tooltip contentStyle={{
+                    background: 'linear-gradient(135deg, rgba(255,255,255,0.97) 0%, rgba(240,250,254,0.97) 100%)',
+                    backdropFilter: 'blur(8px)',
+                    border: '1px solid rgba(0,157,219,0.25)',
+                    borderRadius: 12,
+                    fontSize: 12,
+                    fontWeight: 500,
+                    boxShadow: '0 8px 32px -8px rgba(0,157,219,0.25), 0 0 0 1px rgba(0,157,219,0.08)',
+                  }}
+                  cursor={{ fill: 'rgba(0,157,219,0.08)' }} />
                   <Bar dataKey="count" radius={[0, 6, 6, 0]}>
                     {funnelData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
                   </Bar>
@@ -304,7 +323,16 @@ export function ReportsPage() {
                 <BarChart data={Object.values(clientCounts).sort((a, b) => b.total - a.total)} layout="vertical" margin={{ left: 30 }}>
                   <XAxis type="number" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
                   <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} width={120} />
-                  <Tooltip contentStyle={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 8, fontSize: 12 }} />
+                  <Tooltip contentStyle={{
+                    background: 'linear-gradient(135deg, rgba(255,255,255,0.97) 0%, rgba(240,250,254,0.97) 100%)',
+                    backdropFilter: 'blur(8px)',
+                    border: '1px solid rgba(0,157,219,0.25)',
+                    borderRadius: 12,
+                    fontSize: 12,
+                    fontWeight: 500,
+                    boxShadow: '0 8px 32px -8px rgba(0,157,219,0.25), 0 0 0 1px rgba(0,157,219,0.08)',
+                  }}
+                  cursor={{ fill: 'rgba(0,157,219,0.08)' }} />
                   <Bar dataKey="total" name="Total leads" fill="var(--brand-primary)" radius={[0, 4, 4, 0]} />
                   <Bar dataKey="won" name="Gagnés" fill="var(--success)" radius={[0, 4, 4, 0]} />
                   <Legend />
@@ -362,7 +390,16 @@ export function ReportsPage() {
                   </defs>
                   <XAxis dataKey="week" tick={{ fontSize: 10, fill: 'var(--text-muted)' }} />
                   <YAxis tick={{ fontSize: 10, fill: 'var(--text-muted)' }} width={30} allowDecimals={false} />
-                  <Tooltip contentStyle={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 8, fontSize: 12 }} />
+                  <Tooltip contentStyle={{
+                    background: 'linear-gradient(135deg, rgba(255,255,255,0.97) 0%, rgba(240,250,254,0.97) 100%)',
+                    backdropFilter: 'blur(8px)',
+                    border: '1px solid rgba(0,157,219,0.25)',
+                    borderRadius: 12,
+                    fontSize: 12,
+                    fontWeight: 500,
+                    boxShadow: '0 8px 32px -8px rgba(0,157,219,0.25), 0 0 0 1px rgba(0,157,219,0.08)',
+                  }}
+                  cursor={{ fill: 'rgba(0,157,219,0.08)' }} />
                   <Area type="monotone" dataKey="leads" name="Leads" stroke="var(--brand-primary)" fill="url(#gradient-trend)" strokeWidth={2} />
                   <Area type="monotone" dataKey="won" name="Gagnés" stroke="var(--success)" fill="url(#gradient-signed)" strokeWidth={2} />
                   <Legend />
@@ -385,22 +422,34 @@ export function ReportsPage() {
 
   return (
     <AppLayout title="Rapports d'Analyse">
-      {/* Metrics Overview */}
+      <PageHero
+        meta="Insights"
+        title="Rapports"
+        highlight="Rapports"
+        description="Analyse de vos performances : leads, conversion, valeur pipeline, sources."
+      />
+      {/* Metrics Overview Sprint 23 — mini hero cards color-coded */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-stretch gap-2">
           {[
-            { icon: Users, v: totalLeads, l: 'Total leads', c: 'var(--brand-primary)', bg: 'var(--brand-tint)' },
-            { icon: Activity, v: leadsThisMonth, l: 'Ce mois', c: 'var(--success)', bg: 'var(--success-soft)' },
-            { icon: Percent, v: `${conversionRate}%`, l: 'Conversion', c: 'var(--info)', bg: 'var(--info-soft)' },
-            { icon: DollarSign, v: `${totalPipelineValue.toLocaleString('fr-CA')} $`, l: 'Pipeline', c: 'var(--warning)', bg: 'var(--warning-soft)' },
+            { icon: Users, v: totalLeads, l: 'Total leads', accent: '#009DDB', dark: '#0086C0', to: '#F0FAFE' },
+            { icon: Activity, v: leadsThisMonth, l: 'Ce mois', accent: '#37CA37', dark: '#2ba62b', to: '#F5FBF5' },
+            { icon: Percent, v: `${conversionRate}%`, l: 'Conversion', accent: '#188BF6', dark: '#0F6FD8', to: '#F0F5FE' },
+            { icon: DollarSign, v: `${totalPipelineValue.toLocaleString('fr-CA')} $`, l: 'Pipeline', accent: '#FF9A00', dark: '#D96E27', to: '#FFFBF5' },
           ].map(s => (
-            <div key={s.l} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-xs font-medium">
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: s.bg }}>
-                <s.icon size={14} style={{ color: s.c }} />
+            <div key={s.l} className="relative overflow-hidden flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl transition-all hover:scale-[1.02] cursor-default"
+              style={{
+                background: `linear-gradient(135deg, #FFFFFF 0%, ${s.to} 100%)`,
+                border: `1px solid ${s.accent}40`,
+                boxShadow: `0 1px 2px ${s.accent}10, 0 6px 16px -8px ${s.accent}40`,
+              }}>
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                style={{ background: `linear-gradient(135deg, ${s.accent} 0%, ${s.dark} 100%)`, boxShadow: `0 2px 8px ${s.accent}60` }}>
+                <s.icon size={15} className="text-white" />
               </div>
               <div>
-                <p className="font-bold text-[var(--text-primary)]">{s.v}</p>
-                <p className="text-[9px] text-[var(--text-muted)] uppercase tracking-wider">{s.l}</p>
+                <p className="text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">{s.l}</p>
+                <p className="text-lg font-bold tabular-nums leading-tight" style={{ color: s.accent }}>{s.v}</p>
               </div>
             </div>
           ))}

@@ -5,7 +5,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { getDashboardStats, getLeads, getClients, exportLeadsCsv } from '@/lib/api';
-import { usePanelStack } from '@/components/ui';
+import { usePanelStack, AnimatedNumber } from '@/components/ui';
 import {
   STATUS_LABELS, STATUS_COLORS, ACTIVITY_LABELS,
   type DashboardStats, type Lead, type Client,
@@ -176,17 +176,24 @@ export function DashboardPage() {
     <AppLayout title="Dashboard">
       <>
 
-        {/* ═══ Hero greeting avec shimmer (maquette) ═══ */}
-        <div className="relative mb-6 p-6 rounded-2xl overflow-hidden shimmer-bg"
-          style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
-          {/* Blobs décoratifs */}
-          <div className="absolute rounded-full pointer-events-none" style={{ background: 'var(--brand-primary)', width: 200, height: 200, top: -80, right: -50, opacity: 0.12, filter: 'blur(40px)' }} />
-          <div className="absolute rounded-full pointer-events-none" style={{ background: 'var(--accent-orange)', width: 140, height: 140, bottom: -60, left: '30%', opacity: 0.08, filter: 'blur(40px)' }} />
+        {/* ═══ Hero greeting Sprint 23 — orbs dramatiques + gradient title ═══ */}
+        <div className="relative mb-6 p-8 rounded-2xl overflow-hidden"
+          style={{
+            background: 'linear-gradient(135deg, #FFFFFF 0%, #FAFBFC 40%, #F0FAFE 100%)',
+            border: '1px solid var(--border-subtle)',
+            boxShadow: '0 1px 2px rgba(15,23,42,0.04), 0 12px 40px -12px rgba(0,157,219,0.15)',
+          }}>
+          {/* Orbs décoratifs animés DRAMATIQUES (Sprint 23 — opacités fortes) */}
+          <div className="hero-stat-orb absolute rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(0,157,219,0.35) 0%, rgba(0,157,219,0.10) 50%, transparent 80%)', width: 320, height: 320, top: -120, right: -80, filter: 'blur(48px)' }} />
+          <div className="hero-stat-orb absolute rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(217,110,39,0.28) 0%, rgba(217,110,39,0.08) 50%, transparent 80%)', width: 220, height: 220, bottom: -80, left: '25%', filter: 'blur(48px)', animationDelay: '4s' }} />
           <div className="relative z-10 flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold tracking-tight">{greeting} {user?.name || 'Rochdi'} 👋</h2>
-              <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-                Voici la vue d'ensemble — {periodDays} derniers jours.
+              <p className="heading-premium mb-1.5">{periodDays} derniers jours</p>
+              <h2 className="text-3xl font-bold tracking-tight leading-tight">
+                {greeting} <span className="text-gradient-brand">{user?.name || 'Rochdi'}</span> 👋
+              </h2>
+              <p className="text-sm mt-2" style={{ color: 'var(--text-secondary)' }}>
+                Voici la vue d'ensemble de votre activité.
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -327,8 +334,15 @@ export function DashboardPage() {
   function DashboardChartWidget() {
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-          {/* Chart stacked bar */}
-          <div className="lg:col-span-2 p-6 rounded-xl card-lift" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
+          {/* Chart stacked bar — Sprint 23 premium framing */}
+          <div className="lg:col-span-2 relative overflow-hidden p-6 rounded-2xl transition-all hover:shadow-[0_24px_48px_-12px_rgba(0,157,219,0.18)]"
+            style={{
+              background: 'linear-gradient(135deg, #FFFFFF 0%, #FAFBFC 50%, #F5FBFE 100%)',
+              border: '1px solid var(--border-subtle)',
+              boxShadow: '0 1px 2px rgba(15,23,42,0.04), 0 8px 24px -8px rgba(15,23,42,0.06)',
+            }}>
+            <div aria-hidden className="absolute -top-12 -right-12 w-44 h-44 rounded-full pointer-events-none opacity-50"
+              style={{ background: 'radial-gradient(circle, rgba(0,157,219,0.18) 0%, transparent 70%)', filter: 'blur(40px)' }} />
             <div className="flex items-center justify-between mb-5">
               <div>
                 <h3 className="text-base font-semibold">Acquisition de leads</h3>
@@ -345,17 +359,33 @@ export function DashboardPage() {
                 <BarChart data={stats?.leads_by_day || []}>
                   <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'var(--text-muted)' }} tickFormatter={(v: string) => v.slice(5)} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 11, fill: 'var(--text-muted)' }} width={25} allowDecimals={false} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: '8px', fontSize: '12px' }} />
+                  <Tooltip contentStyle={{
+                    background: 'linear-gradient(135deg, rgba(255,255,255,0.97) 0%, rgba(240,250,254,0.97) 100%)',
+                    backdropFilter: 'blur(8px)',
+                    border: '1px solid rgba(0,157,219,0.25)',
+                    borderRadius: '12px',
+                    fontSize: '12px',
+                    fontWeight: 500,
+                    boxShadow: '0 8px 32px -8px rgba(0,157,219,0.25), 0 0 0 1px rgba(0,157,219,0.08)',
+                  }}
+                  cursor={{ fill: 'rgba(0,157,219,0.08)' }} />
                   <Bar dataKey="count" radius={[4, 4, 0, 0]} fill="#009DDB" />
                 </BarChart>
               </ResponsiveContainer>
             )}
           </div>
 
-          {/* Activité récente */}
-          <div className="p-6 rounded-xl card-lift" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="text-base font-semibold">Activité récente</h3>
+          {/* Activité récente — Sprint 23 premium framing */}
+          <div className="relative overflow-hidden p-6 rounded-2xl transition-all hover:shadow-[0_24px_48px_-12px_rgba(217,110,39,0.18)]"
+            style={{
+              background: 'linear-gradient(135deg, #FFFFFF 0%, #FAFBFC 50%, #FFFAF5 100%)',
+              border: '1px solid var(--border-subtle)',
+              boxShadow: '0 1px 2px rgba(15,23,42,0.04), 0 8px 24px -8px rgba(15,23,42,0.06)',
+            }}>
+            <div aria-hidden className="absolute -bottom-12 -right-12 w-40 h-40 rounded-full pointer-events-none opacity-50"
+              style={{ background: 'radial-gradient(circle, rgba(217,110,39,0.16) 0%, transparent 70%)', filter: 'blur(40px)' }} />
+            <div className="relative flex items-center justify-between mb-5">
+              <h3 className="text-base font-semibold tracking-tight">Activité récente</h3>
             </div>
             <div className="space-y-4">
               {isLoading ? (
@@ -400,9 +430,16 @@ export function DashboardPage() {
   function DashboardPipelineDonut() {
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-          {/* Donut pipeline */}
-          <div className="lg:col-span-2 p-6 rounded-xl card-lift" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
-            <h3 className="text-base font-semibold mb-4">Répartition pipeline</h3>
+          {/* Donut pipeline — Sprint 23 premium framing */}
+          <div className="lg:col-span-2 relative overflow-hidden p-6 rounded-2xl transition-all hover:shadow-[0_24px_48px_-12px_rgba(55,202,55,0.18)]"
+            style={{
+              background: 'linear-gradient(135deg, #FFFFFF 0%, #FAFBFC 50%, #F5FBF5 100%)',
+              border: '1px solid var(--border-subtle)',
+              boxShadow: '0 1px 2px rgba(15,23,42,0.04), 0 8px 24px -8px rgba(15,23,42,0.06)',
+            }}>
+            <div aria-hidden className="absolute -top-12 -left-12 w-40 h-40 rounded-full pointer-events-none opacity-50"
+              style={{ background: 'radial-gradient(circle, rgba(55,202,55,0.15) 0%, transparent 70%)', filter: 'blur(40px)' }} />
+            <h3 className="relative text-base font-semibold mb-4 tracking-tight">Répartition pipeline</h3>
             {isLoading ? <Skeleton className="h-48 w-full" /> : pipelineData.length > 0 ? (
               <div className="flex items-center gap-8">
                 <ResponsiveContainer width={180} height={180}>
@@ -410,7 +447,16 @@ export function DashboardPage() {
                     <Pie data={pipelineData} cx="50%" cy="50%" innerRadius={55} outerRadius={80} dataKey="value" paddingAngle={3} strokeWidth={0}>
                       {pipelineData.map((entry, idx) => <Cell key={idx} fill={entry.color} />)}
                     </Pie>
-                    <Tooltip contentStyle={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: '8px', fontSize: '12px' }} />
+                    <Tooltip contentStyle={{
+                    background: 'linear-gradient(135deg, rgba(255,255,255,0.97) 0%, rgba(240,250,254,0.97) 100%)',
+                    backdropFilter: 'blur(8px)',
+                    border: '1px solid rgba(0,157,219,0.25)',
+                    borderRadius: '12px',
+                    fontSize: '12px',
+                    fontWeight: 500,
+                    boxShadow: '0 8px 32px -8px rgba(0,157,219,0.25), 0 0 0 1px rgba(0,157,219,0.08)',
+                  }}
+                  cursor={{ fill: 'rgba(0,157,219,0.08)' }} />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="space-y-2">
@@ -428,8 +474,15 @@ export function DashboardPage() {
 
           {/* Top sources */}
           {isVisible('top_sources') && (
-          <div className="p-6 rounded-xl card-lift" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
-            <h3 className="text-base font-semibold mb-4">🔗 Top sources</h3>
+          <div className="relative overflow-hidden p-6 rounded-2xl transition-all hover:shadow-[0_24px_48px_-12px_rgba(0,157,219,0.18)]"
+            style={{
+              background: 'linear-gradient(135deg, #FFFFFF 0%, #FAFBFC 50%, #F0FAFE 100%)',
+              border: '1px solid var(--border-subtle)',
+              boxShadow: '0 1px 2px rgba(15,23,42,0.04), 0 8px 24px -8px rgba(15,23,42,0.06)',
+            }}>
+            <div aria-hidden className="absolute -bottom-10 -right-10 w-36 h-36 rounded-full pointer-events-none opacity-50"
+              style={{ background: 'radial-gradient(circle, rgba(0,157,219,0.16) 0%, transparent 70%)', filter: 'blur(40px)' }} />
+            <h3 className="relative text-base font-semibold mb-4 tracking-tight">🔗 Top sources</h3>
             <div className="space-y-3">
               {sourceData.map(({ source, count, value }) => {
                 const pct = sourceTotal > 0 ? Math.round((count / sourceTotal) * 100) : 0;
@@ -607,37 +660,72 @@ function StatCardMockup({ label, value, icon, iconBg, iconColor, delta, deltaUp,
   const areaPath = sparkPath ? `${sparkPath} L100,30 L0,30 Z` : null;
 
   return (
-    <div className="p-5 rounded-xl card-lift" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
-      <div className="flex items-start justify-between mb-3">
-        <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: iconBg }}>
+    <div className="group relative overflow-hidden rounded-2xl p-6 cursor-pointer transition-all duration-300 hover:scale-[1.02]"
+      style={{
+        // Sprint 23 — Pattern 3 dramatique : gradient diagonal + orb décoratif
+        background: 'linear-gradient(135deg, #FFFFFF 0%, #FAFBFC 50%, #F0FAFE 100%)',
+        border: '1px solid var(--border-subtle)',
+        boxShadow: '0 1px 2px rgba(15,23,42,0.04), 0 8px 24px -8px rgba(15,23,42,0.08)',
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.boxShadow = `0 4px 8px ${iconColor === 'var(--brand-primary)' ? 'rgba(0,157,219,0.10)' : 'rgba(217,110,39,0.10)'}, 0 24px 48px -12px ${iconColor === 'var(--brand-primary)' ? 'rgba(0,157,219,0.25)' : 'rgba(217,110,39,0.25)'}`; }}
+      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 1px 2px rgba(15,23,42,0.04), 0 8px 24px -8px rgba(15,23,42,0.08)'; }}>
+
+      {/* Orb décoratif animé en top-right */}
+      <div
+        aria-hidden
+        className="hero-stat-orb absolute -top-16 -right-16 w-48 h-48 rounded-full pointer-events-none transition-opacity duration-500 opacity-60 group-hover:opacity-90"
+        style={{
+          background: 'radial-gradient(circle, rgba(217,110,39,0.32) 0%, rgba(0,157,219,0.18) 50%, transparent 75%)',
+          filter: 'blur(40px)',
+        }}
+      />
+
+      <div className="relative z-10">
+        {/* Label uppercase wide */}
+        <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)] mb-3">
+          {label}
+        </div>
+
+        {/* Value 64px gradient + delta pill — Sprint 23 wave 8 : count-up */}
+        <div className="flex items-end gap-3 mb-3">
+          <span className="text-[56px] sm:text-[64px] leading-none font-bold tabular-nums text-gradient-brand"
+            style={{ letterSpacing: '-0.03em' }}>
+            <AnimatedNumber value={value} />
+          </span>
+          {delta && (
+            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-semibold mb-2"
+              style={{
+                background: deltaUp !== false ? 'rgba(55, 202, 55, 0.12)' : 'rgba(233, 61, 61, 0.12)',
+                color: deltaUp !== false ? '#1f8f1f' : '#c92424',
+                border: deltaUp !== false ? '1px solid rgba(55, 202, 55, 0.3)' : '1px solid rgba(233, 61, 61, 0.3)',
+                boxShadow: deltaUp !== false ? '0 0 12px rgba(55, 202, 55, 0.25)' : '0 0 12px rgba(233, 61, 61, 0.25)',
+              }}>
+              {deltaUp !== false ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+              {delta}
+            </span>
+          )}
+        </div>
+
+        {/* Sparkline avec gradient fill */}
+        {sparkPath && (
+          <svg className="w-full h-10" viewBox="0 0 100 30" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id={`sg-${label.replace(/\s/g, '')}`} x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0" stopColor={sparkColor} stopOpacity={0.35} />
+                <stop offset="1" stopColor={sparkColor} stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <path d={areaPath!} fill={`url(#sg-${label.replace(/\s/g, '')})`} />
+            <path d={sparkPath} fill="none" stroke={sparkColor} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        )}
+
+        {/* Icon en bas-droite, plus discret (la stat est la star) */}
+        <div className="absolute top-0 right-0 w-9 h-9 rounded-xl flex items-center justify-center opacity-50 group-hover:opacity-100 transition-opacity"
+          style={{ background: iconBg }}>
           <span style={{ color: iconColor }}>{icon}</span>
         </div>
-        {delta && (
-          <span className={`text-xs font-semibold flex items-center gap-0.5 px-1.5 py-0.5 rounded-md`}
-            style={{
-              background: deltaUp !== false ? 'var(--success-soft)' : 'var(--danger-soft)',
-              color: deltaUp !== false ? 'var(--success)' : 'var(--danger)',
-              fontVariantNumeric: 'tabular-nums',
-            }}>
-            {deltaUp !== false ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-            {delta}
-          </span>
-        )}
       </div>
-      <div className="text-3xl font-bold tracking-tight" style={{ fontVariantNumeric: 'tabular-nums' }}>{value}</div>
-      <div className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>{label}</div>
-      {sparkPath && (
-        <svg className="w-full h-8 mt-3" viewBox="0 0 100 30" preserveAspectRatio="none">
-          <defs>
-            <linearGradient id={`sg-${label.replace(/\s/g, '')}`} x1="0" x2="0" y1="0" y2="1">
-              <stop offset="0" stopColor={sparkColor} />
-              <stop offset="1" stopColor={sparkColor} stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <path d={areaPath!} fill={`url(#sg-${label.replace(/\s/g, '')})`} opacity={0.2} />
-          <path d={sparkPath} fill="none" stroke={sparkColor} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      )}
     </div>
   );
 }

@@ -2,10 +2,11 @@
 import { useState, useEffect, useCallback, type DragEvent } from 'react';
 import { Link } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Badge, Skeleton, Card, Button, EmptyState } from '@/components/ui';
+import { Badge, Skeleton, Card, Button, EmptyState, PageHero } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { Avatar } from '@/components/ui/Avatar';
 import { getPipeline, getPipelines, updateLead } from '@/lib/api';
+import { confettiBurst } from '@/lib/confetti';
 import { TYPE_LABELS, SOURCE_LABELS, type Lead, type Pipeline, type PipelineStage } from '@/lib/types';
 import { MoreHorizontal, ChevronDown, LayoutList, BarChart3, Kanban, Filter, Clock, DollarSign, TrendingUp, AlertTriangle, X, Check } from 'lucide-react';
 import { ForecastView } from '@/components/pipelines/ForecastView';
@@ -96,6 +97,10 @@ export function PipelinePage() {
     }
 
     setLeads(prev => prev.map(l => l.id === leadId ? { ...l, stage_id: newStageId } : l));
+    // Sprint 23 wave 8 — confetti si drop sur stage gagnant (probability 100)
+    if (targetStage?.probability === 100) {
+      confettiBurst();
+    }
     const result = await updateLead(leadId, { stage_id: newStageId });
     if (result.error) void loadData(activePipelineId!);
   };
@@ -140,6 +145,13 @@ export function PipelinePage() {
 
   return (
     <AppLayout title="Pipeline">
+      <PageHero
+        compact
+        meta="Workspace"
+        title="Pipeline de ventes"
+        highlight="Pipeline"
+        description="Kanban drag-and-drop, vue liste ou forecast. Suivez vos opportunités en temps réel."
+      />
       {/* ── Header : Pipeline selector + KPIs sticky ── */}
       <div className="flex flex-wrap items-center gap-3 mb-5 relative">
         {/* Pipeline selector */}
@@ -174,33 +186,62 @@ export function PipelinePage() {
           )}
         </div>
 
-        {/* KPIs inline */}
-        <div className="flex items-center gap-4 ml-2">
-          <div className="flex items-center gap-1.5 text-xs">
-            <div className="w-7 h-7 rounded-lg bg-[var(--brand-tint)] flex items-center justify-center">
-              <DollarSign size={14} className="text-[var(--brand-primary)]" />
+        {/* KPIs inline — Sprint 23 : mini hero cards */}
+        <div className="flex items-stretch gap-2 ml-2">
+          {/* KPI Valeur */}
+          <div className="relative overflow-hidden flex items-center gap-2 px-3 py-2 rounded-xl transition-all hover:scale-[1.02] cursor-default"
+            style={{
+              background: 'linear-gradient(135deg, #FFFFFF 0%, #F0FAFE 100%)',
+              border: '1px solid rgba(0,157,219,0.25)',
+              boxShadow: '0 1px 2px rgba(0,157,219,0.06), 0 6px 16px -8px rgba(0,157,219,0.25)',
+            }}>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+              style={{ background: 'linear-gradient(135deg, #009DDB 0%, #0086C0 100%)', boxShadow: '0 2px 8px rgba(0,157,219,0.4)' }}>
+              <DollarSign size={15} className="text-white" />
             </div>
             <div>
-              <p className="font-bold text-[var(--text-primary)]">{totalValue.toLocaleString('fr-CA')} $</p>
-              <p className="text-[9px] text-[var(--text-muted)] uppercase tracking-wider">Valeur</p>
+              <p className="text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">Valeur</p>
+              <p className="text-sm font-bold tabular-nums leading-tight" style={{ color: 'var(--brand-primary)' }}>
+                {totalValue.toLocaleString('fr-CA')} <span className="text-[10px] text-[var(--text-muted)]">$</span>
+              </p>
             </div>
           </div>
-          <div className="flex items-center gap-1.5 text-xs">
-            <div className="w-7 h-7 rounded-lg bg-[var(--success-soft)] flex items-center justify-center">
-              <TrendingUp size={14} className="text-[var(--success)]" />
+
+          {/* KPI Prévision */}
+          <div className="relative overflow-hidden flex items-center gap-2 px-3 py-2 rounded-xl transition-all hover:scale-[1.02] cursor-default"
+            style={{
+              background: 'linear-gradient(135deg, #FFFFFF 0%, #F5FBF5 100%)',
+              border: '1px solid rgba(55,202,55,0.25)',
+              boxShadow: '0 1px 2px rgba(55,202,55,0.06), 0 6px 16px -8px rgba(55,202,55,0.25)',
+            }}>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+              style={{ background: 'linear-gradient(135deg, #37CA37 0%, #2ba62b 100%)', boxShadow: '0 2px 8px rgba(55,202,55,0.4)' }}>
+              <TrendingUp size={15} className="text-white" />
             </div>
             <div>
-              <p className="font-bold text-[var(--text-primary)]">{weightedForecast.toLocaleString('fr-CA')} $</p>
-              <p className="text-[9px] text-[var(--text-muted)] uppercase tracking-wider">Prévision</p>
+              <p className="text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">Prévision</p>
+              <p className="text-sm font-bold tabular-nums leading-tight" style={{ color: 'var(--success)' }}>
+                {weightedForecast.toLocaleString('fr-CA')} <span className="text-[10px] text-[var(--text-muted)]">$</span>
+              </p>
             </div>
           </div>
-          <div className="flex items-center gap-1.5 text-xs">
-            <div className="w-7 h-7 rounded-lg bg-[var(--warning-soft)] flex items-center justify-center">
-              <AlertTriangle size={14} className="text-[var(--warning)]" />
+
+          {/* KPI Dormants */}
+          <div className="relative overflow-hidden flex items-center gap-2 px-3 py-2 rounded-xl transition-all hover:scale-[1.02] cursor-default"
+            style={{
+              background: 'linear-gradient(135deg, #FFFFFF 0%, #FFFBF5 100%)',
+              border: '1px solid rgba(255,154,0,0.25)',
+              boxShadow: '0 1px 2px rgba(255,154,0,0.06), 0 6px 16px -8px rgba(255,154,0,0.25)',
+            }}>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+              style={{ background: 'linear-gradient(135deg, #FF9A00 0%, #D96E27 100%)', boxShadow: '0 2px 8px rgba(255,154,0,0.4)' }}>
+              <AlertTriangle size={15} className="text-white" />
             </div>
             <div>
-              <p className="font-bold text-[var(--text-primary)]">{dormantCount}</p>
-              <p className="text-[9px] text-[var(--text-muted)] uppercase tracking-wider">Dormants</p>
+              <p className="text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">Dormants</p>
+              <p className="text-sm font-bold tabular-nums leading-tight" style={{ color: 'var(--warning)' }}>
+                {dormantCount}
+              </p>
             </div>
           </div>
         </div>
@@ -262,27 +303,69 @@ export function PipelinePage() {
 
             return (
               <div key={stage.id}
-                className={`flex flex-col rounded-xl transition-all duration-200 shrink-0 w-[85vw] sm:w-72 snap-center sm:snap-start ${isOver ? 'ring-2 shadow-lg' : ''}`}
-                style={{ 
-                  background: isOver ? hexToRgba(stage.color, 0.08) : hexToRgba(stage.color, 0.03),
-                  borderColor: isOver ? stage.color : 'transparent' 
+                className="pipeline-column relative flex flex-col rounded-2xl overflow-hidden transition-all duration-300 shrink-0 w-[85vw] sm:w-72 snap-center sm:snap-start"
+                style={{
+                  // Sprint 23 — gradient DRAMATIQUE 20% → 3% (au lieu de 8% → 2%)
+                  ['--stage-color' as string]: stage.color,
+                  background: `linear-gradient(180deg, ${hexToRgba(stage.color, isOver ? 0.32 : 0.20)} 0%, ${hexToRgba(stage.color, 0.08)} 35%, ${hexToRgba(stage.color, 0.03)} 100%)`,
+                  border: `1px solid ${hexToRgba(stage.color, isOver ? 0.55 : 0.25)}`,
+                  boxShadow: isOver
+                    ? `0 0 0 3px ${hexToRgba(stage.color, 0.2)}, 0 12px 32px -8px ${hexToRgba(stage.color, 0.55)}`
+                    : `0 4px 24px -8px ${hexToRgba(stage.color, 0.4)}`,
                 }}
                 onDragOver={e => handleDragOver(e, stage.id)}
                 onDragLeave={handleDragLeave}
                 onDrop={e => void handleDrop(e, stage.id)}>
 
-                {/* Column header */}
-                <div className="px-3 pt-3 pb-2">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: stage.color }} />
-                      <h3 className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-primary)] truncate max-w-[150px]">{stage.name}</h3>
+                {/* Trait shimmer animé en haut */}
+                <div className="absolute top-0 left-0 right-0 h-[3px] overflow-hidden pointer-events-none"
+                  style={{ background: hexToRgba(stage.color, 0.3) }}>
+                  <div className="stage-shimmer h-full w-1/3"
+                    style={{
+                      background: `linear-gradient(90deg, transparent, ${stage.color}, transparent)`,
+                      boxShadow: `0 0 12px ${stage.color}`,
+                    }} />
+                </div>
+
+                {/* Header glassmorphism sticky */}
+                <div className="sticky top-0 z-10 px-4 py-3"
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.55)',
+                    backdropFilter: 'blur(12px) saturate(160%)',
+                    WebkitBackdropFilter: 'blur(12px) saturate(160%)',
+                    borderBottom: `1px solid ${hexToRgba(stage.color, 0.18)}`,
+                  }}>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className={`w-2 h-2 rounded-full shrink-0 ${stage.probability <= 25 ? 'status-new-dot' : ''}`}
+                        style={{ background: stage.color, boxShadow: `0 0 10px ${stage.color}`, color: stage.color }} />
+                      <h3 className="text-[11px] font-bold uppercase tracking-[0.15em] truncate"
+                        style={{ color: stage.color }}>{stage.name}</h3>
                     </div>
-                    <span className="text-[10px] font-semibold bg-[var(--bg-surface)] border border-[var(--border-subtle)] px-2 py-0.5 rounded-full text-[var(--text-secondary)]">{colLeads.length}</span>
+                    <span className="text-xs font-mono font-bold tabular-nums px-2 py-0.5 rounded-md shrink-0"
+                      style={{ background: 'rgba(255,255,255,0.7)', color: stage.color, border: `1px solid ${hexToRgba(stage.color, 0.2)}` }}>
+                      {colLeads.length}
+                    </span>
                   </div>
-                  <p className="text-[10px] text-[var(--text-muted)]">{colValue > 0 ? `${colValue.toLocaleString('fr-CA')} $` : '—'} · {prob}%</p>
-                  <div className="h-1 mt-1.5 rounded-full bg-[var(--bg-muted)] overflow-hidden">
-                    <div className="h-full rounded-full transition-all duration-500" style={{ width: `${prob}%`, background: stage.color }} />
+                  <div className="flex items-center justify-between gap-2">
+                    {colValue > 0 ? (
+                      <p className="text-[12px] font-bold tabular-nums text-[var(--text-primary)]">
+                        {colValue.toLocaleString('fr-CA')} <span className="text-[var(--text-muted)] font-normal">$</span>
+                      </p>
+                    ) : (
+                      <span className="text-[10px] text-[var(--text-muted)]">—</span>
+                    )}
+                    <span className="text-[10px] font-bold tabular-nums uppercase tracking-wider"
+                      style={{ color: hexToRgba(stage.color, 0.85) }}>{prob}%</span>
+                  </div>
+                  <div className="h-1 mt-2 rounded-full overflow-hidden"
+                    style={{ background: hexToRgba(stage.color, 0.12) }}>
+                    <div className="h-full rounded-full transition-all duration-700"
+                      style={{
+                        width: `${prob}%`,
+                        background: `linear-gradient(90deg, ${stage.color}, ${hexToRgba(stage.color, 0.7)})`,
+                        boxShadow: prob > 30 ? `0 0 8px ${stage.color}` : undefined,
+                      }} />
                   </div>
                 </div>
 
@@ -305,51 +388,92 @@ export function PipelinePage() {
                   {colLeads.map(lead => {
                     const days = getDaysInStage(lead);
                     const isDormant = days > 7 && stage.probability !== 100 && stage.probability !== 0;
+                    const isHot = lead.score >= 70;
+                    const hasDeal = lead.deal_value > 0;
+                    const hasScore = lead.score > 0;
                     return (
                       <div key={lead.id} draggable
                         onDragStart={e => handleDragStart(e, lead.id)}
-                        className={`group relative bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl p-3 cursor-grab active:cursor-grabbing transition-all hover:shadow-md
-                          ${draggedId === lead.id ? 'opacity-30 scale-95' : ''}
-                          ${isDormant ? 'border-l-[3px]' : ''}
-                        `}
-                        style={isDormant ? { borderLeftColor: 'var(--warning)' } : {}}>
-                        
-                        {/* Row 1 : Avatar + Name + 3-dots */}
-                        <div className="flex items-start gap-2 mb-2">
-                          <Avatar name={lead.name} size="xs" />
+                        className={`group relative rounded-xl p-4 cursor-grab active:cursor-grabbing transition-all duration-300 ${
+                          isHot ? 'hot-lead-card' : 'hover:-translate-y-0.5 hover:scale-[1.01]'
+                        } ${draggedId === lead.id ? 'opacity-40 scale-95 rotate-1' : ''}`}
+                        style={{
+                          // Pattern 1 dramatique pour hot leads
+                          background: isHot
+                            ? 'linear-gradient(135deg, #FFFFFF 0%, #F0FAFE 60%, #E0F4FB 100%)'
+                            : '#FFFFFF',
+                          border: isHot
+                            ? '1.5px solid rgba(0, 157, 219, 0.55)'
+                            : '1px solid var(--border-subtle)',
+                          boxShadow: isHot
+                            ? undefined  // géré par .hot-lead-card animation
+                            : '0 1px 2px rgba(15,23,42,0.04), 0 4px 12px -4px rgba(15,23,42,0.06)',
+                          borderLeft: isDormant ? '3px solid var(--warning)' : undefined,
+                        }}>
+
+                        {/* Badge HOT en absolute top-right pour hot leads */}
+                        {isHot && (
+                          <div className="absolute -top-2 -right-2 px-2 py-0.5 rounded-full text-[10px] font-bold text-white tracking-wider shrink-0 z-10"
+                            style={{
+                              background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
+                              boxShadow: '0 4px 12px rgba(217, 110, 39, 0.45)',
+                            }}>
+                            HOT {lead.score}
+                          </div>
+                        )}
+
+                        {/* Row 1 : Avatar + Name + Score (non-hot) + 3-dots */}
+                        <div className="flex items-start gap-2 mb-2 relative">
+                          <Avatar name={lead.name} size="xs" ring={isHot ? 'hot' : 'none'} />
                           <div className="flex-1 min-w-0">
-                            <Link to={`/leads/${lead.id}`} className="text-[13px] font-semibold text-[var(--text-primary)] hover:text-[var(--brand-primary)] transition-colors truncate block">
+                            <Link to={`/leads/${lead.id}`} className="text-[13px] font-semibold text-[var(--text-primary)] hover:text-[var(--brand-primary)] transition-colors truncate block leading-tight">
                               {lead.name}
                             </Link>
-                            {lead.client_name && <p className="text-[10px] text-[var(--text-muted)] truncate">{lead.client_name}</p>}
+                            {lead.client_name && <p className="text-[10px] text-[var(--text-muted)] truncate mt-0.5">{lead.client_name}</p>}
                           </div>
-                          <button className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-[var(--bg-subtle)] transition-all cursor-pointer text-[var(--text-muted)]">
+                          {hasScore && !isHot && (
+                            <span className="inline-flex items-center justify-center min-w-[26px] h-[18px] px-1.5 rounded-full text-[10px] font-bold tabular-nums shrink-0"
+                              style={{
+                                background: hexToRgba(scoreColor(lead.score).startsWith('var') ? '#FF9A00' : scoreColor(lead.score), 0.12),
+                                color: scoreColor(lead.score),
+                              }}>
+                              {lead.score}
+                            </span>
+                          )}
+                          <button className="opacity-0 group-hover:opacity-100 p-1 -m-1 rounded-md hover:bg-[var(--bg-subtle)] transition-all cursor-pointer text-[var(--text-muted)] shrink-0">
                             <MoreHorizontal size={14} />
                           </button>
                         </div>
 
-                        {/* Row 2 : Type + Value */}
-                        <div className="flex items-center justify-between mb-2">
-                          <Badge color={lead.type === 'inbound' ? 'var(--brand-primary)' : 'var(--warning)'}>{TYPE_LABELS[lead.type]}</Badge>
-                          {lead.deal_value > 0 && (
-                            <span className="text-[11px] font-bold text-[var(--brand-primary)]">{lead.deal_value.toLocaleString('fr-CA')} $</span>
-                          )}
-                        </div>
-
-                        {/* Row 3 : Score bar */}
-                        <div className="flex items-center gap-1.5 mb-2">
-                          <div className="flex-1 h-1.5 rounded-full bg-[var(--bg-muted)] overflow-hidden">
-                            <div className="h-full rounded-full transition-all" style={{ width: `${lead.score}%`, background: scoreColor(lead.score) }} />
+                        {/* Row 2 : Type pill + Deal value (uniquement si > 0) */}
+                        {(hasDeal || lead.type === 'customer') && (
+                          <div className="flex items-center justify-between mb-2">
+                            <Badge color={lead.type === 'inbound' ? 'var(--brand-primary)' : 'var(--warning)'}>{TYPE_LABELS[lead.type]}</Badge>
+                            {hasDeal && (
+                              <span className="text-[12px] font-bold tabular-nums"
+                                style={isHot ? {
+                                  background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
+                                  WebkitBackgroundClip: 'text',
+                                  WebkitTextFillColor: 'transparent',
+                                  backgroundClip: 'text',
+                                } : { color: 'var(--brand-primary)' }}>
+                                {lead.deal_value.toLocaleString('fr-CA')} $
+                              </span>
+                            )}
                           </div>
-                          <span className="text-[10px] font-semibold" style={{ color: scoreColor(lead.score) }}>{lead.score}</span>
-                        </div>
+                        )}
 
-                        {/* Row 4 : Days in stage + Source */}
-                        <div className="flex items-center justify-between text-[10px]">
-                          <span className="flex items-center gap-1 font-medium" style={{ color: daysColor(days) }}>
-                            <Clock size={10} /> {days}j
+                        {/* Row 3 : Days + Source (compact footer) */}
+                        <div className="flex items-center justify-between text-[10px] mt-2 pt-2"
+                          style={{ borderTop: `1px solid ${isHot ? 'rgba(0,157,219,0.15)' : 'rgba(0,0,0,0.05)'}` }}>
+                          <span className="flex items-center gap-1 font-semibold tabular-nums" style={{ color: daysColor(days) }}>
+                            <Clock size={10} />
+                            {days}j
+                            {isDormant && <span className="ml-0.5">⚠</span>}
                           </span>
-                          <span className="text-[var(--text-muted)] truncate max-w-[80px]">{SOURCE_LABELS[lead.source] || lead.source}</span>
+                          <span className="text-[var(--text-muted)] truncate max-w-[100px] uppercase tracking-wider text-[9px] font-medium">
+                            {SOURCE_LABELS[lead.source] || lead.source}
+                          </span>
                         </div>
                       </div>
                     );

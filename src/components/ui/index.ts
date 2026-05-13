@@ -39,6 +39,10 @@ export { ViewTransition } from './ViewTransition';
 
 export { AiSparkles } from './AiSparkles';
 
+export { PageHero } from './PageHero';
+
+export { AnimatedNumber } from './AnimatedNumber';
+
 // ── Utilitaires ─────────────────────────────────────────────
 export { ToastProvider, useToast } from './Toast';
 export { ConfirmProvider, useConfirm, usePrompt } from './ConfirmDialog';

@@ -212,10 +212,23 @@ body {
 
 /* ── Scrollbar ───────────────────────────────────────────── */
 
-::-webkit-scrollbar { width: 6px; height: 6px; }
+/* Sprint 23 — scrollbar branded (cyan tinted) */
+::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(0,157,219,0.25) 0%, rgba(0,157,219,0.4) 100%);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background 200ms;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(0,157,219,0.55) 0%, rgba(217,110,39,0.5) 100%);
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-corner { background: transparent; }
+/* Firefox */
+* { scrollbar-width: thin; scrollbar-color: rgba(0,157,219,0.35) transparent; }
 
 /* ── Animations signature Intralys ───────────────────────── */
 
@@ -617,6 +630,346 @@ body {
 .btn-gradient:hover {
   box-shadow: 0 4px 12px rgba(0, 157, 219, 0.4);
   transform: translateY(-1px);
+}
+
+/* ── Sprint 23 : visual lift dramatique ─────────────────────────
+ * Patterns "Superhuman / Arc" — gradients agressifs, glows visibles,
+ * animations pulse/shimmer infinies. Light theme préservé.
+ */
+
+@keyframes hot-lead-pulse {
+  0%, 100% {
+    border-color: rgba(0, 157, 219, 0.55);
+    box-shadow:
+      0 0 0 1px rgba(0, 157, 219, 0.25),
+      0 1px 2px rgba(0, 157, 219, 0.18),
+      0 8px 16px -4px rgba(0, 157, 219, 0.28),
+      0 20px 40px -12px rgba(0, 157, 219, 0.35);
+  }
+  50% {
+    border-color: rgba(0, 157, 219, 0.95);
+    box-shadow:
+      0 0 0 3px rgba(0, 157, 219, 0.18),
+      0 1px 2px rgba(0, 157, 219, 0.25),
+      0 12px 24px -4px rgba(0, 157, 219, 0.45),
+      0 28px 56px -12px rgba(0, 157, 219, 0.55);
+  }
+}
+.hot-lead-card { animation: hot-lead-pulse 2.4s ease-in-out infinite; }
+.hot-lead-card:hover { animation-play-state: paused; }
+
+@keyframes stage-shimmer-slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+.stage-shimmer { animation: stage-shimmer-slide 2.8s ease-in-out infinite; }
+
+@keyframes hero-orb-float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-10px, 8px) scale(1.08); }
+}
+.hero-stat-orb { animation: hero-orb-float 8s ease-in-out infinite; }
+
+/* Gradient text utility (signature brand cyan→orange) */
+.text-gradient-brand {
+  background: linear-gradient(135deg, #009DDB 0%, #D96E27 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Gradient text success (vert vif) — pour les valeurs positives marquantes */
+.text-gradient-success {
+  background: linear-gradient(135deg, #37CA37 0%, #009DDB 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Background gradient brand — pour boutons primaires premium */
+.bg-gradient-brand {
+  background: linear-gradient(135deg, #009DDB 0%, #D96E27 100%);
+  color: white;
+}
+.bg-gradient-brand:hover {
+  background: linear-gradient(135deg, #00B5F5 0%, #F08B40 100%);
+}
+
+/* Card premium — layered shadows + subtle gradient bg (signature Sprint 23) */
+.card-premium {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #FFFFFF 0%, #FAFBFC 50%, #F0FAFE 100%);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 8px 24px -8px rgba(15, 23, 42, 0.08);
+  transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.card-premium:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 4px 8px rgba(0, 157, 219, 0.08),
+    0 24px 48px -12px rgba(0, 157, 219, 0.22);
+}
+
+/* Card premium hot — pour items chauds avec pulse animation */
+.card-premium-hot {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #FFFFFF 0%, #F0FAFE 60%, #E0F4FB 100%);
+  border: 1.5px solid rgba(0, 157, 219, 0.55);
+  border-radius: 16px;
+  transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  animation: hot-lead-pulse 2.4s ease-in-out infinite;
+}
+.card-premium-hot:hover {
+  animation-play-state: paused;
+  transform: translateY(-2px);
+}
+
+/* Page hero — header avec orb décoratif radial */
+.page-hero-orb {
+  position: absolute;
+  top: -80px;
+  right: -80px;
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle, rgba(217, 110, 39, 0.20) 0%, rgba(0, 157, 219, 0.12) 50%, transparent 75%);
+  filter: blur(48px);
+  animation: hero-orb-float 8s ease-in-out infinite;
+}
+
+/* Badge "HOT" floating top-right (réutilisable) */
+.badge-hot {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 10px;
+  font-weight: 700;
+  color: white;
+  letter-spacing: 0.05em;
+  z-index: 10;
+  background: linear-gradient(135deg, #009DDB 0%, #D96E27 100%);
+  box-shadow: 0 4px 12px rgba(217, 110, 39, 0.45);
+}
+
+/* Section heading premium — uppercase wide tracking */
+.heading-premium {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* Stat number XL (style hero Sprint 23) */
+.stat-xl {
+  font-size: clamp(40px, 5vw, 64px);
+  line-height: 1;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+}
+
+/* Sprint 23 wave 8 — ReactFlow nodes premium (WorkflowBuilder canvas) */
+.react-flow__node {
+  border-radius: 12px !important;
+  box-shadow: 0 1px 2px rgba(15,23,42,0.04), 0 4px 12px -4px rgba(15,23,42,0.06) !important;
+  transition: box-shadow 200ms, transform 200ms !important;
+}
+.react-flow__node:hover {
+  box-shadow: 0 1px 2px rgba(0,157,219,0.08), 0 12px 32px -8px rgba(0,157,219,0.25) !important;
+  transform: translateY(-1px);
+}
+.react-flow__node.selected,
+.react-flow__node-default.selected,
+.react-flow__node-input.selected,
+.react-flow__node-output.selected {
+  box-shadow: 0 0 0 2px rgba(0,157,219,0.55), 0 0 24px -4px rgba(0,157,219,0.45), 0 12px 32px -8px rgba(217,110,39,0.25) !important;
+}
+.react-flow__handle {
+  width: 10px !important;
+  height: 10px !important;
+  border: 2px solid white !important;
+  background: linear-gradient(135deg, #009DDB 0%, #D96E27 100%) !important;
+  box-shadow: 0 0 0 1px rgba(0,157,219,0.4), 0 0 8px rgba(0,157,219,0.4) !important;
+}
+.react-flow__edge-path {
+  stroke: rgba(0,157,219,0.5) !important;
+  stroke-width: 2 !important;
+}
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: #009DDB !important;
+  stroke-width: 3 !important;
+  filter: drop-shadow(0 0 6px rgba(0,157,219,0.5));
+}
+.react-flow__controls {
+  border-radius: 12px !important;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle) !important;
+  box-shadow: 0 4px 16px -4px rgba(0,157,219,0.18) !important;
+  background: rgba(255,255,255,0.95) !important;
+  backdrop-filter: blur(8px);
+}
+.react-flow__controls-button {
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 1px solid var(--border-subtle) !important;
+  transition: all 200ms;
+}
+.react-flow__controls-button:hover {
+  background: linear-gradient(135deg, rgba(0,157,219,0.08) 0%, rgba(217,110,39,0.06) 100%) !important;
+  color: var(--brand-primary) !important;
+}
+.react-flow__background {
+  background-color: var(--bg-canvas) !important;
+}
+
+/* Sprint 23 wave 8 — status badge "new" pulse (dot animé qui ripple) */
+@keyframes status-new-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.5; }
+  50%      { transform: scale(2.2); opacity: 0; }
+}
+.status-new-dot {
+  position: relative;
+  display: inline-block;
+}
+.status-new-dot::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: currentColor;
+  animation: status-new-pulse 1.8s ease-out infinite;
+  pointer-events: none;
+}
+
+/* Sprint 23 wave 8 — Button loading spinner avec halo brand */
+.button-loading-glow {
+  position: relative;
+}
+.button-loading-glow::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(0,157,219,0.4) 0%, rgba(217,110,39,0.4) 100%);
+  filter: blur(8px);
+  z-index: -1;
+  animation: hot-lead-pulse 1.5s ease-in-out infinite;
+}
+
+/* Skeleton branded — shimmer cyan au lieu de gris générique */
+@keyframes skeleton-brand-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton-brand {
+  background: linear-gradient(
+    90deg,
+    rgba(0,157,219,0.06) 0%,
+    rgba(0,157,219,0.14) 50%,
+    rgba(0,157,219,0.06) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-brand-shimmer 1.6s ease-in-out infinite;
+}
+
+/* Avatar ring premium — pour hot/actif (Sprint 23) */
+.avatar-ring-hot {
+  box-shadow:
+    0 0 0 2px white,
+    0 0 0 3.5px rgba(0,157,219,0.5),
+    0 0 12px rgba(217,110,39,0.4);
+}
+.avatar-ring-active {
+  box-shadow:
+    0 0 0 2px white,
+    0 0 0 3.5px var(--success);
+}
+
+/* Sprint 23 — Builder topbars (EmailBuilder, FormBuilder partagent ce style global) */
+.builder-topbar {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: linear-gradient(135deg, rgba(255,255,255,0.85) 0%, rgba(240,250,254,0.85) 100%);
+  backdrop-filter: blur(12px) saturate(160%);
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
+  box-shadow: 0 4px 16px -8px rgba(0,157,219,0.15);
+  position: relative;
+}
+.builder-topbar::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent 0%, rgba(0,157,219,0.5) 30%, rgba(217,110,39,0.5) 70%, transparent 100%);
+}
+.builder-topbar-left { display: flex; align-items: center; gap: 12px; }
+.builder-meta { display: flex; flex-direction: column; gap: 2px; }
+.builder-topbar-actions { display: flex; align-items: center; gap: 8px; }
+.preview-toggle {
+  display: flex;
+  background: rgba(255,255,255,0.7);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  overflow: hidden;
+  padding: 2px;
+}
+.preview-toggle button {
+  padding: 6px 10px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all 0.2s;
+  border-radius: 7px;
+}
+.preview-toggle button:hover { color: var(--brand-primary); }
+.preview-toggle button.active {
+  background: linear-gradient(135deg, #009DDB 0%, #0086C0 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(0,157,219,0.4);
+}
+
+/* Sprint 23 — native <select> premium (focus glow brand, chevron custom) */
+select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23009DDB' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.6rem center;
+  background-size: 12px;
+  padding-right: 2rem !important;
+  transition: all 200ms;
+}
+select:hover {
+  border-color: oklch(0.85 0.02 220) !important;
+}
+select:focus {
+  outline: none !important;
+  border-color: var(--brand-primary) !important;
+  box-shadow: 0 0 0 4px rgba(0,157,219,0.15), 0 0 20px -4px rgba(0,157,219,0.35) !important;
+}
+
+/* Sprint 23 — checkbox + radio premium */
+input[type="checkbox"], input[type="radio"] {
+  cursor: pointer;
+  transition: all 150ms;
+}
+input[type="checkbox"]:checked, input[type="radio"]:checked {
+  box-shadow: 0 0 0 2px rgba(0,157,219,0.2), 0 0 8px rgba(0,157,219,0.4);
+}
+input[type="checkbox"]:focus-visible, input[type="radio"]:focus-visible {
+  outline: 2px solid rgba(0,157,219,0.5);
+  outline-offset: 2px;
 }
 
 /* ── Density modes (Sprint 21) ─────────────────────────────────

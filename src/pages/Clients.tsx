@@ -3,7 +3,7 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, EmptyState, Skeleton } from '@/components/ui';
+import { Card, Button, EmptyState, Skeleton, PageHero } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { getClients, createClient, getLeads } from '@/lib/api';
@@ -66,6 +66,12 @@ export function ClientsPage() {
 
   return (
     <AppLayout title="Clients">
+      <PageHero
+        meta="Workspace"
+        title="Clients"
+        highlight="Clients"
+        description="Vos sous-comptes : agences, équipes ou entreprises gérées. Chaque client = environnement isolé."
+      />
       {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
         <Card className="p-3 text-center">

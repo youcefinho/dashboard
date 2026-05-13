@@ -1,6 +1,6 @@
 ﻿import { useState, useEffect, useCallback, useMemo } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Badge, Skeleton, EmptyState, useToast } from '@/components/ui';
+import { Card, Button, Badge, Skeleton, EmptyState, useToast, PageHero } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { getAppointments, createAppointment, updateAppointment, rescheduleAppointment, getCalendars, getClients, sendAppointmentReminderNow, type Calendar as CalType } from '@/lib/api';
@@ -204,6 +204,14 @@ export function CalendarPage() {
 
   return (
     <AppLayout title="Calendrier">
+      <PageHero
+        compact
+        meta="Workspace"
+        title="Calendrier"
+        highlight="Calendrier"
+        description="Vos rendez-vous, visites et signatures à venir. Glissez-déposez pour replanifier."
+        actions={<Button variant="premium" leftIcon={<Plus size={14} />} onClick={() => { setFormDate(dayStr(new Date())); setShowAddModal(true); }}>Nouveau RDV</Button>}
+      />
       <div className="flex flex-col lg:flex-row gap-6">
         
         {/* ── Sidebar ── */}

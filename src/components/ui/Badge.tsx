@@ -20,16 +20,22 @@ const intentStyles: Record<string, Record<string, string>> = {
 };
 
 export function Badge({ className, intent = 'neutral', fill = 'soft', size = 'sm', color, children, style, ...props }: BadgeProps) {
-  // Si couleur custom passée, on l'utilise directement
+  // Si couleur custom passée, on l'utilise directement (Sprint 23 — border subtile + shadow tinted)
   if (color) {
     return (
       <span
         className={cn(
-          'inline-flex items-center font-medium rounded-full whitespace-nowrap',
+          'inline-flex items-center font-semibold rounded-full whitespace-nowrap',
           size === 'sm' ? 'h-5 px-2 text-[11px]' : 'h-6 px-2.5 text-xs',
           className
         )}
-        style={{ backgroundColor: `color-mix(in srgb, ${color} 15%, transparent)`, color, ...style }}
+        style={{
+          backgroundColor: `color-mix(in srgb, ${color} 12%, transparent)`,
+          color,
+          border: `1px solid color-mix(in srgb, ${color} 25%, transparent)`,
+          boxShadow: `0 1px 2px color-mix(in srgb, ${color} 15%, transparent)`,
+          ...style,
+        }}
         {...props}
       >{children}</span>
     );

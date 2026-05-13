@@ -63,16 +63,20 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
   return (
     <Modal open={true} onOpenChange={() => {}} title="Bienvenue sur Intralys">
       <div className="w-[600px] max-w-full">
-        {/* Progress Bar */}
+        {/* Progress Bar Sprint 23 — gradient + glow */}
         <div className="mb-8">
-          <div className="flex justify-between text-xs text-[var(--text-muted)] mb-2 font-medium">
-            <span>Étape {step} sur {TOTAL_STEPS}</span>
-            <span>{Math.round((step / TOTAL_STEPS) * 100)}% complété</span>
+          <div className="flex justify-between text-xs mb-2 font-semibold">
+            <span className="text-[var(--brand-primary)]">Étape {step} sur {TOTAL_STEPS}</span>
+            <span className="text-[var(--text-muted)] tabular-nums">{Math.round((step / TOTAL_STEPS) * 100)}% complété</span>
           </div>
-          <div className="w-full h-2 bg-[var(--bg-muted)] rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-[var(--brand-primary)] rounded-full transition-all duration-300 ease-out"
-              style={{ width: `${(step / TOTAL_STEPS) * 100}%` }}
+          <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'rgba(0,157,219,0.08)' }}>
+            <div
+              className="h-full rounded-full transition-all duration-500 ease-out"
+              style={{
+                width: `${(step / TOTAL_STEPS) * 100}%`,
+                background: 'linear-gradient(90deg, #009DDB 0%, #D96E27 100%)',
+                boxShadow: '0 0 12px rgba(0,157,219,0.5), 0 0 6px rgba(217,110,39,0.4)',
+              }}
             />
           </div>
         </div>
@@ -81,11 +85,16 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
         <div className="min-h-[300px] mb-8">
           {step === 1 && (
             <div className="text-center animate-fade-in">
-              <div className="w-16 h-16 bg-[var(--brand-tint)] text-[var(--brand-primary)] rounded-full flex items-center justify-center mx-auto mb-6">
-                <Check size={32} />
+              <div className="relative w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6"
+                style={{
+                  background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
+                  boxShadow: '0 8px 32px rgba(0,157,219,0.45), 0 0 40px rgba(217,110,39,0.3)',
+                  animation: 'hot-lead-pulse 3s ease-in-out infinite',
+                }}>
+                <Check size={36} className="text-white" strokeWidth={3} />
               </div>
-              <h2 className="text-2xl font-bold text-[var(--text-primary)] mb-4">
-                Bienvenue, {user?.name?.split(' ')[0] || 'Rochdi'} 👋
+              <h2 className="text-3xl font-bold tracking-tight mb-4">
+                <span className="text-gradient-brand">Bienvenue</span>, {user?.name?.split(' ')[0] || 'Rochdi'} 👋
               </h2>
               <p className="text-[var(--text-secondary)] mb-8 max-w-md mx-auto">
                 Nous sommes ravis de vous accueillir dans Intralys CRM. Prenons 2 minutes pour configurer votre compte afin de vous offrir la meilleure expérience possible.
@@ -288,7 +297,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
                 Précédent
               </Button>
             )}
-            <Button onClick={handleNext} disabled={isSubmitting} className="min-w-[120px]">
+            <Button variant="premium" onClick={handleNext} disabled={isSubmitting} className="min-w-[120px]">
               {step === TOTAL_STEPS ? (
                 isSubmitting ? 'Finalisation...' : 'Commencer le tour'
               ) : (

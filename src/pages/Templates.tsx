@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Badge, Skeleton, EmptyState, Input, useConfirm } from '@/components/ui';
+import { Card, Button, Badge, Skeleton, EmptyState, Input, useConfirm, PageHero } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { getTemplates, createTemplate, updateTemplate, deleteTemplate } from '@/lib/api';
 import { Wand2 } from 'lucide-react';
@@ -120,9 +120,15 @@ export function TemplatesPage() {
 
   return (
     <AppLayout title="Templates">
+      <PageHero
+        meta="Marketing"
+        title="Templates d'emails"
+        highlight="Templates"
+        description={`${templates.length} modèles disponibles pour vos campagnes et relances automatisées.`}
+        actions={<Button variant="premium" onClick={openNewTemplate}>+ Nouveau template</Button>}
+      />
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div className="flex items-center gap-3">
-          <h1 className="text-xl font-bold">📧 Templates d'emails</h1>
           <Badge color="var(--info)">{templates.length} templates</Badge>
         </div>
         <div className="flex items-center gap-2">
@@ -132,7 +138,6 @@ export function TemplatesPage() {
             <button onClick={() => setViewMode('list')}
               className={`px-2 py-1 text-xs rounded cursor-pointer transition-colors ${viewMode === 'list' ? 'bg-[var(--brand-primary)] text-white' : 'text-[var(--text-muted)]'}`}>☰</button>
           </div>
-          <Button onClick={openNewTemplate}>+ Nouveau template</Button>
         </div>
       </div>
 

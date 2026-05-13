@@ -113,25 +113,46 @@ export function ConversationsList({
           conversations.map(conv => {
             const isActive = conv.id === selectedConvId;
             const ChannelIcon = CHANNEL_ICON_MAP[conv.channel] || Mail;
+            const hasUnread = conv.unread_count > 0;
             return (
               <button key={conv.id} onClick={() => setSelectedConvId(conv.id)}
-                className={`w-full flex items-start gap-2.5 px-3 py-2.5 text-left cursor-pointer transition-all border-b border-[var(--border-subtle)]
-                  ${isActive ? 'bg-[var(--brand-tint)]' : 'hover:bg-[var(--bg-subtle)]'}`}>
+                className={`w-full flex items-start gap-2.5 px-3 py-2.5 text-left cursor-pointer transition-all border-b border-[var(--border-subtle)] relative
+                  ${isActive ? '' : 'hover:bg-[var(--bg-subtle)]'}`}
+                style={isActive ? {
+                  // Sprint 23 — active conversation gradient + glow inset
+                  background: 'linear-gradient(90deg, rgba(0,157,219,0.10) 0%, rgba(0,157,219,0.03) 100%)',
+                  boxShadow: 'inset 3px 0 0 0 rgba(0,157,219,0.85), inset 0 0 24px -8px rgba(0,157,219,0.18)',
+                } : undefined}>
+                {/* Indicateur unread dot animé en absolute */}
+                {hasUnread && !isActive && (
+                  <span className="absolute top-3 right-3 w-2 h-2 rounded-full"
+                    style={{ background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)', boxShadow: '0 0 8px rgba(0,157,219,0.6)' }} />
+                )}
                 <Avatar name={conv.lead_name || '?'} size="sm" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-0.5">
-                    <span className={`text-xs font-semibold truncate ${conv.unread_count > 0 ? 'text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'}`}>
+                    <span className={`text-xs truncate ${hasUnread ? 'font-bold text-[var(--text-primary)]' : 'font-semibold text-[var(--text-secondary)]'}`}>
                       {conv.lead_name || 'Inconnu'}
                     </span>
-                    <span className="text-[9px] text-[var(--text-muted)] shrink-0 ml-1">{timeAgo(conv.last_message_at)}</span>
+                    <span className={`text-[9px] shrink-0 ml-1 ${hasUnread ? 'text-[var(--brand-primary)] font-semibold' : 'text-[var(--text-muted)]'}`}>
+                      {timeAgo(conv.last_message_at)}
+                    </span>
                   </div>
                   <div className="flex items-center gap-1">
                     <ChannelIcon size={10} className="text-[var(--text-muted)] shrink-0" />
-                    <p className="text-[10px] text-[var(--text-muted)] truncate">{conv.last_message_preview || '—'}</p>
+                    <p className={`text-[10px] truncate ${hasUnread ? 'text-[var(--text-secondary)] font-medium' : 'text-[var(--text-muted)]'}`}>
+                      {conv.last_message_preview || '—'}
+                    </p>
                   </div>
-                  <div className="flex items-center gap-1 mt-0.5">
-                    {conv.unread_count > 0 && (
-                      <span className="text-[8px] bg-[var(--brand-primary)] text-white px-1.5 py-0.5 rounded-full font-bold">{conv.unread_count}</span>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    {hasUnread && (
+                      <span className="inline-flex items-center justify-center min-w-[18px] h-[16px] px-1.5 text-[9px] font-bold text-white rounded-full"
+                        style={{
+                          background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
+                          boxShadow: '0 2px 6px rgba(0,157,219,0.4)',
+                        }}>
+                        {conv.unread_count}
+                      </span>
                     )}
                     {conv.is_starred ? (
                       <button onClick={(e) => void toggleStar(conv, e)} className="cursor-pointer"><Star size={10} className="text-[var(--warning)] fill-[var(--warning)]" /></button>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Badge, EmptyState, Skeleton } from '@/components/ui';
+import { Card, Button, Badge, EmptyState, Skeleton, PageHero } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { Avatar } from '@/components/ui/Avatar';
 import { getTrash, restoreLead, emptyTrash } from '@/lib/api';
@@ -82,23 +82,18 @@ export function TrashPage() {
 
   return (
     <AppLayout title="Corbeille">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-[var(--text-primary)] tracking-tight flex items-center gap-2">
-            <Trash2 size={24} className="text-[var(--text-muted)]" />
-            Corbeille
-          </h1>
-          <p className="text-sm text-[var(--text-muted)] mt-1">
-            Les leads supprimés sont conservés 30 jours avant d'être définitivement effacés.
-          </p>
-        </div>
-        {items.length > 0 && (
+      <PageHero
+        meta="Système"
+        title="Corbeille"
+        highlight="Corbeille"
+        description="Les leads supprimés sont conservés 30 jours avant d'être définitivement effacés."
+        actions={items.length > 0 && (
           <Button variant="destructive" size="sm" leftIcon={<AlertTriangle size={14} />}
             onClick={() => setShowConfirm(true)}>
             Vider la corbeille
           </Button>
         )}
-      </div>
+      />
 
       {isLoading ? (
         <Card><Skeleton className="h-64 w-full" /></Card>

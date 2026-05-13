@@ -1,4 +1,4 @@
-// ── Skeleton — shimmer wave loader ──────────────────────────
+// ── Skeleton — shimmer wave loader (Sprint 23 — branded cyan) ──────────────
 import { cn } from '@/lib/cn';
 
 interface SkeletonProps {
@@ -7,9 +7,6 @@ interface SkeletonProps {
 
 export function Skeleton({ className }: SkeletonProps) {
   return (
-    <div className={cn(
-      'rounded-[var(--radius-sm)] bg-[var(--bg-muted)] animate-shimmer',
-      className
-    )} />
+    <div className={cn('skeleton-brand rounded-lg', className)} />
   );
 }

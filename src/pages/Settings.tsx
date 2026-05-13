@@ -101,13 +101,25 @@ export function SettingsPage() {
             return groups.map(group => (
               <div key={group} className="mb-6">
                 <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-[0.1em] px-3 mb-2">{group}</p>
-                {visibleTabs.filter(t => t.group === group).map(tab => (
-                  <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-left cursor-pointer transition-all mb-0.5
-                      ${activeTab === tab.id ? 'bg-[var(--brand-tint)] text-[var(--brand-primary)] font-medium shadow-sm' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]'}`}>
-                    <tab.icon size={16} /> {tab.label}
-                  </button>
-                ))}
+                {visibleTabs.filter(t => t.group === group).map(tab => {
+                  const isActive = activeTab === tab.id;
+                  return (
+                    <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-left cursor-pointer transition-all duration-200 mb-0.5 relative
+                        ${isActive ? 'font-semibold' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]'}`}
+                      style={isActive ? {
+                        background: 'linear-gradient(90deg, rgba(0,157,219,0.18) 0%, rgba(0,157,219,0.06) 100%)',
+                        color: 'var(--brand-primary)',
+                        boxShadow: 'inset 0 0 0 1px rgba(0,157,219,0.22), 0 0 16px -4px rgba(0,157,219,0.3)',
+                      } : undefined}>
+                      {isActive && (
+                        <div className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r"
+                          style={{ background: 'linear-gradient(180deg, #009DDB 0%, #D96E27 100%)', boxShadow: '0 0 8px rgba(0,157,219,0.6)' }} />
+                      )}
+                      <tab.icon size={16} /> {tab.label}
+                    </button>
+                  );
+                })}
               </div>
             ));
           })()}

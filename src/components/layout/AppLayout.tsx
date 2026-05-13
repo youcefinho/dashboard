@@ -244,19 +244,32 @@ export function AppLayout({ children, title }: AppLayoutProps) {
               >
                 <Bell size={18} />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-[var(--danger)] text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 text-white text-[10px] font-bold rounded-full flex items-center justify-center"
+                    style={{
+                      background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
+                      boxShadow: '0 2px 8px rgba(217,110,39,0.5), 0 0 12px rgba(0,157,219,0.4)',
+                    }}>
                     {unreadCount}
                   </span>
                 )}
               </button>
 
-              {/* Dropdown notifications */}
+              {/* Dropdown notifications — Sprint 23 premium */}
               {notifOpen && (
-                <div className="absolute right-0 top-12 w-80 max-w-[calc(100vw-2rem)] bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-lg)] shadow-[var(--shadow-popover)] z-50 overflow-hidden animate-slide-down">
-                  <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border-subtle)]">
-                    <h3 className="text-sm font-semibold text-[var(--text-primary)]">Notifications</h3>
+                <div className="absolute right-0 top-12 w-80 max-w-[calc(100vw-2rem)] rounded-2xl z-50 overflow-hidden animate-slide-down"
+                  style={{
+                    background: 'linear-gradient(135deg, #FFFFFF 0%, #FAFBFC 60%, #F0FAFE 100%)',
+                    border: '1px solid var(--border-subtle)',
+                    boxShadow: '0 1px 2px rgba(15,23,42,0.04), 0 16px 48px -12px rgba(0,157,219,0.22), 0 0 40px -8px rgba(217,110,39,0.12)',
+                  }}>
+                  {/* Orb décoratif */}
+                  <div aria-hidden className="absolute -top-12 -right-12 w-40 h-40 rounded-full pointer-events-none opacity-50"
+                    style={{ background: 'radial-gradient(circle, rgba(0,157,219,0.18) 0%, rgba(217,110,39,0.10) 50%, transparent 75%)', filter: 'blur(40px)' }} />
+                  <div className="relative flex items-center justify-between px-4 py-3 border-b border-[var(--border-subtle)]"
+                    style={{ background: 'rgba(255,255,255,0.55)', backdropFilter: 'blur(8px) saturate(160%)' }}>
+                    <h3 className="text-sm font-bold text-[var(--text-primary)] tracking-tight">Notifications</h3>
                     {unreadCount > 0 && (
-                      <button onClick={() => void markAllRead()} className="text-[10px] text-[var(--brand-primary)] hover:underline cursor-pointer">
+                      <button onClick={() => void markAllRead()} className="text-[10px] font-semibold text-[var(--brand-primary)] hover:underline cursor-pointer">
                         Tout marquer lu
                       </button>
                     )}

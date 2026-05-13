@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Badge, Input } from '@/components/ui';
+import { Card, Button, Badge, Input, PageHero } from '@/components/ui';
 
 interface IntegrationConfig {
   id: string;
@@ -132,13 +132,12 @@ export function IntegrationsPage() {
 
   return (
     <AppLayout title="Intégrations">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <div className="flex items-center gap-3">
-          <h1 className="text-xl font-bold">🔌 Intégrations</h1>
-          <Badge color="var(--success)">{activeCount} active{activeCount > 1 ? 's' : ''}</Badge>
-          <Badge>{INTEGRATIONS.length} disponibles</Badge>
-        </div>
-      </div>
+      <PageHero
+        meta="Insights"
+        title="Intégrations"
+        highlight="Intégrations"
+        description={`${activeCount} active${activeCount > 1 ? 's' : ''} sur ${INTEGRATIONS.length} disponibles — Facebook, Google, Calendly, Stripe et plus.`}
+      />
 
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Badge, Skeleton, EmptyState } from '@/components/ui';
+import { Card, Button, Badge, Skeleton, EmptyState, PageHero } from '@/components/ui';
 import { LeadLink } from '@/components/panels/LeadLink';
 import { Modal } from '@/components/ui/Modal';
 import { Avatar } from '@/components/ui/Avatar';
@@ -379,6 +379,17 @@ export function LeadsPage() {
 
   return (
     <AppLayout title="Leads">
+      <PageHero
+        meta="Workspace"
+        title={`${leads.length} Leads`}
+        highlight="Leads"
+        description={`${newCount} nouveaux à qualifier · ${wonCount} signés · Triez par score, statut ou source.`}
+        actions={
+          <Button variant="premium" leftIcon={<Plus size={14} />} onClick={() => setCreateOpen(true)}>
+            Nouveau lead
+          </Button>
+        }
+      />
       {/* Quick stats pills */}
       <div className="flex flex-wrap items-center gap-3 mb-5">
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-xs font-medium text-[var(--text-secondary)]">
@@ -394,11 +405,7 @@ export function LeadsPage() {
           {wonCount} gagnés
         </div>
 
-        <Button variant="primary" size="sm" leftIcon={<Plus size={14} />} onClick={() => setCreateOpen(true)} className="ml-auto">
-          Nouveau lead
-        </Button>
-
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 ml-auto">
           <button onClick={() => setViewMode('table')}
             className={`p-1.5 rounded-[var(--radius-xs)] cursor-pointer transition-all ${viewMode === 'table' ? 'bg-[var(--brand-primary)] text-white' : 'text-[var(--text-muted)] hover:bg-[var(--bg-subtle)]'}`}>
             <LayoutList size={16} />
@@ -506,12 +513,15 @@ export function LeadsPage() {
               >
                 <div {...longPressProps}>
                   <LeadLink leadId={lead.id}
-                    className="block bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-lg)] p-4 hover:border-[var(--brand-primary)] transition-all hover:shadow-[var(--shadow-md)] card-lift relative z-10">
+                    className={`block relative z-10 p-4 ${lead.score >= 70 ? 'card-premium-hot' : 'card-premium'}`}>
+                {lead.score >= 70 && (
+                  <span className="badge-hot">HOT {lead.score}</span>
+                )}
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <Avatar name={lead.name} size="sm" />
                     <div>
-                      <p className="text-[13px] font-medium text-[var(--text-primary)]">{lead.name}</p>
+                      <p className="text-[13px] font-semibold text-[var(--text-primary)]">{lead.name}</p>
                       <p className="text-[10px] text-[var(--text-muted)]">{getClientName(lead)}</p>
                     </div>
                   </div>
@@ -592,10 +602,20 @@ export function LeadsPage() {
               <tbody>
                 {sortedLeads.map((lead, index) => {
                   const scoreColor = lead.score >= 70 ? 'var(--success)' : lead.score >= 40 ? 'var(--warning)' : 'var(--danger)';
+                  const isHot = lead.score >= 70;
                   return (
                     <tr key={lead.id}
-                      className={`border-b border-[var(--border-subtle)] hover:bg-[var(--bg-subtle)] transition-colors ${selectedIds.has(lead.id) ? 'bg-[var(--brand-tint)]' : ''}`}
-                      style={{ animationDelay: `${index * 20}ms` }}>
+                      className={`border-b border-[var(--border-subtle)] transition-all relative ${
+                        selectedIds.has(lead.id) ? 'bg-[var(--brand-tint)]' :
+                        isHot ? 'hover:bg-[oklch(0.97_0.04_220/0.4)]' : 'hover:bg-[var(--bg-subtle)]'
+                      }`}
+                      style={{
+                        animationDelay: `${Math.min(index, 20) * 20}ms`,
+                        background: isHot && !selectedIds.has(lead.id)
+                          ? 'linear-gradient(90deg, rgba(0,157,219,0.04) 0%, rgba(217,110,39,0.02) 100%)'
+                          : undefined,
+                        boxShadow: isHot ? 'inset 3px 0 0 0 rgba(0,157,219,0.6)' : undefined,
+                      }}>
                       <td className="px-4 py-3">
                         <input type="checkbox" checked={selectedIds.has(lead.id)} onChange={() => toggleSelect(lead.id)} className="rounded cursor-pointer accent-[var(--brand-primary)]" />
                       </td>
@@ -603,7 +623,15 @@ export function LeadsPage() {
                         <LeadLink leadId={lead.id} className="flex items-center gap-2.5 hover:text-[var(--brand-primary)] transition-colors">
                           <Avatar name={lead.name} size="xs" />
                           <div>
-                            <p className="font-medium text-[var(--text-primary)] text-[13px]">{lead.name}</p>
+                            <div className="flex items-center gap-1.5">
+                              <p className="font-semibold text-[var(--text-primary)] text-[13px]">{lead.name}</p>
+                              {isHot && (
+                                <span className="inline-flex items-center px-1.5 h-[16px] rounded-full text-[9px] font-bold text-white tracking-wider"
+                                  style={{ background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)', boxShadow: '0 0 8px rgba(217,110,39,0.4)' }}>
+                                  HOT
+                                </span>
+                              )}
+                            </div>
                             {lead.message && <p className="text-[11px] text-[var(--text-muted)] mt-0.5 truncate max-w-56">{lead.message}</p>}
                           </div>
                         </LeadLink>

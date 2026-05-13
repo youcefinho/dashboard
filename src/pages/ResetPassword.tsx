@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useParams } from '@tanstack/react-router';
-import { Card, Button } from '@/components/ui';
+import { Button } from '@/components/ui';
 import { Input } from '@/components/ui/Input';
 import { resetPassword } from '@/lib/api';
 
@@ -41,22 +41,39 @@ export function ResetPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--bg-canvas)] flex flex-col justify-center items-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen flex flex-col justify-center items-center p-4 relative overflow-hidden"
+      style={{ background: 'linear-gradient(135deg, #FFFFFF 0%, #FAFBFC 35%, #F0FAFE 70%, #FFE9D6 100%)' }}>
+      <div className="hero-stat-orb absolute w-[500px] h-[500px] rounded-full -top-48 -right-48 pointer-events-none"
+        style={{ background: 'radial-gradient(circle, rgba(0,157,219,0.28) 0%, transparent 70%)', filter: 'blur(60px)' }} />
+      <div className="hero-stat-orb absolute w-[400px] h-[400px] rounded-full -bottom-32 -left-32 pointer-events-none"
+        style={{ background: 'radial-gradient(circle, rgba(217,110,39,0.25) 0%, transparent 70%)', filter: 'blur(60px)', animationDelay: '3s' }} />
+
+      <div className="w-full max-w-md relative z-10">
         <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <span className="text-2xl">⚡</span>
-            <span className="text-xl font-bold tracking-tight text-[var(--text-primary)]">
-              Intralys <span className="text-[var(--brand-primary)]">CRM</span>
-            </span>
+          <div className="relative w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
+            style={{
+              background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
+              boxShadow: '0 8px 32px rgba(0,157,219,0.45)',
+              animation: 'hot-lead-pulse 3s ease-in-out infinite',
+            }}>
+            <span className="text-white font-bold text-2xl">I</span>
           </div>
-          <h1 className="text-2xl font-bold text-[var(--text-primary)] mt-6">Nouveau mot de passe</h1>
-          <p className="text-[var(--text-secondary)] mt-2">
+          <h1 className="text-3xl font-bold tracking-tight">
+            <span className="text-gradient-brand">Nouveau</span> mot de passe
+          </h1>
+          <p className="text-sm text-[var(--text-secondary)] mt-2">
             Veuillez entrer votre nouveau mot de passe.
           </p>
         </div>
 
-        <Card className="p-6 md:p-8">
+        <div className="p-6 md:p-7 rounded-2xl"
+          style={{
+            background: 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.85) 100%)',
+            backdropFilter: 'blur(16px) saturate(160%)',
+            WebkitBackdropFilter: 'blur(16px) saturate(160%)',
+            border: '1px solid rgba(255,255,255,0.6)',
+            boxShadow: '0 1px 2px rgba(15,23,42,0.04), 0 24px 64px -12px rgba(0,157,219,0.18)',
+          }}>
           {success ? (
             <div className="text-center py-4">
               <div className="w-12 h-12 rounded-full bg-[var(--success-subtle)] text-[var(--success)] flex items-center justify-center mx-auto mb-4">
@@ -93,12 +110,12 @@ export function ResetPasswordPage() {
                 />
               </div>
 
-              <Button type="submit" className="w-full mt-2" disabled={loading || !token}>
+              <Button type="submit" variant="premium" className="w-full mt-2" disabled={loading || !token}>
                 {loading ? 'Enregistrement...' : 'Enregistrer le mot de passe'}
               </Button>
             </form>
           )}
-        </Card>
+        </div>
       </div>
     </div>
   );

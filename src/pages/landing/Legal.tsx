@@ -3,11 +3,18 @@ import { PublicLayout } from './PublicLayout';
 export function LegalPage({ type }: { type: 'privacy' | 'terms' }) {
   return (
     <PublicLayout>
-      <div className="pt-20 pb-24 px-4 sm:px-6 lg:px-8 max-w-3xl mx-auto">
-        <h1 className="text-4xl font-extrabold text-[var(--text-primary)] mb-8">
-          {type === 'privacy' ? 'Politique de Confidentialité' : "Conditions d'Utilisation"}
+      <div className="relative pt-20 pb-24 px-4 sm:px-6 lg:px-8 max-w-3xl mx-auto overflow-hidden">
+        <div className="hero-stat-orb absolute w-[500px] h-[500px] rounded-full -top-60 right-0 pointer-events-none -z-10"
+          style={{ background: 'radial-gradient(circle, rgba(0,157,219,0.10) 0%, transparent 70%)', filter: 'blur(60px)' }} />
+        <p className="heading-premium mb-3">Mentions légales</p>
+        <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-3" style={{ letterSpacing: '-0.03em' }}>
+          {type === 'privacy' ? (
+            <><span className="text-gradient-brand">Confidentialité</span> & Loi 25</>
+          ) : (
+            <><span className="text-gradient-brand">Conditions</span> d'Utilisation</>
+          )}
         </h1>
-        
+
         <div className="prose prose-slate max-w-none">
           <p className="text-[var(--text-muted)] text-sm mb-8">Dernière mise à jour : {new Date().toLocaleDateString('fr-CA')}</p>
           

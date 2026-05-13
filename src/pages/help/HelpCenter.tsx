@@ -70,17 +70,33 @@ export function HelpCenterPage() {
 
   return (
     <PublicLayout>
-      <div className="bg-[var(--brand-primary)] pt-16 pb-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-3xl mx-auto text-center">
-          <h1 className="text-3xl font-bold text-white mb-6">Comment pouvons-nous vous aider ?</h1>
+      {/* Sprint 23 hero centre d'aide */}
+      <div className="relative pt-20 pb-20 px-4 sm:px-6 lg:px-8 overflow-hidden"
+        style={{ background: 'linear-gradient(135deg, #009DDB 0%, #0086C0 50%, #D96E27 100%)' }}>
+        <div aria-hidden className="absolute inset-0 opacity-30 pointer-events-none">
+          <div className="hero-stat-orb absolute w-[700px] h-[700px] rounded-full -top-60 -right-40"
+            style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%)', filter: 'blur(80px)' }} />
+          <div className="hero-stat-orb absolute w-[500px] h-[500px] rounded-full -bottom-32 -left-32"
+            style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.25) 0%, transparent 70%)', filter: 'blur(60px)', animationDelay: '4s' }} />
+        </div>
+        <div className="relative max-w-3xl mx-auto text-center z-10">
+          <p className="text-xs font-semibold text-white/80 uppercase tracking-[0.18em] mb-3">Centre d'aide Intralys</p>
+          <h1 className="text-3xl md:text-5xl font-extrabold text-white mb-8 tracking-tight" style={{ letterSpacing: '-0.02em' }}>
+            Comment pouvons-nous vous aider ?
+          </h1>
           <div className="relative max-w-xl mx-auto">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={20} />
-            <input 
-              type="text" 
-              placeholder="Rechercher des articles, des tutoriels..." 
+            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={20} />
+            <input
+              type="text"
+              placeholder="Rechercher des articles, des tutoriels..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-4 rounded-xl border-none shadow-lg focus:ring-2 focus:ring-[var(--brand-tint)] text-[var(--text-primary)]"
+              className="w-full pl-14 pr-4 py-4 rounded-2xl border-none focus:outline-none text-[var(--text-primary)] font-medium"
+              style={{
+                background: 'rgba(255,255,255,0.97)',
+                backdropFilter: 'blur(8px)',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.15), 0 0 0 1px rgba(255,255,255,0.4)',
+              }}
             />
           </div>
         </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Badge, Skeleton, EmptyState, useToast } from '@/components/ui';
+import { Card, Button, Badge, Skeleton, EmptyState, useToast, PageHero } from '@/components/ui';
 import { Input } from '@/components/ui/Input';
 import { getDocuments, createDocument, sendDocument, getDocumentTemplates, sendSigningSms, apiFetch, type Document, type DocumentTemplate, getLeads } from '@/lib/api';
 import { FileSignature, Plus, Mail, Eye, CheckCircle, Clock, MessageSquare } from 'lucide-react';
@@ -109,20 +109,17 @@ export function DocumentsPage() {
 
   return (
     <AppLayout title="Documents & E-signature">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <FileSignature className="text-[var(--brand-primary)]" />
-            Documents
-          </h1>
-          <p className="text-[var(--text-secondary)] text-sm mt-1">Gérez vos contrats et mandats envoyés pour signature.</p>
-        </div>
-        {!isCreating && (
-          <Button onClick={() => setIsCreating(true)} className="gap-2">
-            <Plus size={16} /> Envoyer un document
+      <PageHero
+        meta="Insights"
+        title="Documents"
+        highlight="Documents"
+        description="Gérez vos contrats et mandats envoyés pour signature électronique."
+        actions={!isCreating && (
+          <Button variant="premium" onClick={() => setIsCreating(true)} leftIcon={<Plus size={14} />}>
+            Envoyer un document
           </Button>
         )}
-      </div>
+      />
 
       {isCreating && (
         <Card className="p-6 mb-6 animate-fade-in border border-[var(--brand-primary)] max-w-2xl">

@@ -332,13 +332,46 @@ export function EmailBuilderPage() {
 }
 
 const emailBuilderStyles = `
-.builder-topbar { display:flex; justify-content:space-between; align-items:center; padding:12px 20px; border-bottom:1px solid var(--border-default); background:var(--bg-surface); }
+.builder-topbar {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:14px 20px;
+  border-bottom:1px solid var(--border-subtle);
+  background: linear-gradient(135deg, rgba(255,255,255,0.85) 0%, rgba(240,250,254,0.85) 100%);
+  backdrop-filter: blur(12px) saturate(160%);
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
+  box-shadow: 0 4px 16px -8px rgba(0,157,219,0.15);
+  position: relative;
+}
+.builder-topbar::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent 0%, rgba(0,157,219,0.5) 30%, rgba(217,110,39,0.5) 70%, transparent 100%);
+}
 .builder-topbar-left { display:flex; align-items:center; gap:12px; }
 .builder-meta { display:flex; flex-direction:column; gap:2px; }
 .builder-topbar-actions { display:flex; align-items:center; gap:8px; }
-.preview-toggle { display:flex; border:1px solid var(--border-default); border-radius:6px; overflow:hidden; }
-.preview-toggle button { padding:6px 10px; border:none; background:transparent; cursor:pointer; color:var(--text-secondary); transition:all 0.15s; }
-.preview-toggle button.active { background:var(--brand-primary); color:white; }
+.preview-toggle {
+  display:flex;
+  background: rgba(255,255,255,0.7);
+  border:1px solid var(--border-subtle);
+  border-radius:10px;
+  overflow:hidden;
+  padding: 2px;
+}
+.preview-toggle button {
+  padding:6px 10px;
+  border:none;
+  background:transparent;
+  cursor:pointer;
+  color:var(--text-secondary);
+  transition:all 0.2s;
+  border-radius: 7px;
+}
+.preview-toggle button:hover { color: var(--brand-primary); }
+.preview-toggle button.active {
+  background: linear-gradient(135deg, #009DDB 0%, #0086C0 100%);
+  color:white;
+  box-shadow: 0 2px 8px rgba(0,157,219,0.4);
+}
 .builder-layout { display:grid; grid-template-columns:200px 1fr 280px; height:calc(100vh - 180px); overflow:hidden; }
 .builder-palette { border-right:1px solid var(--border-default); padding:12px 8px; overflow-y:auto; background:var(--bg-surface); }
 .palette-title { font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin:0 0 8px 4px; font-weight:600; }

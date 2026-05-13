@@ -106,14 +106,21 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         {/* Logo + collapse toggle */}
         <div className="h-14 flex items-center justify-between px-3 border-b border-white/10 shrink-0">
           <div className="flex items-center gap-2.5 overflow-hidden">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 font-bold text-base shadow-lg"
-              style={{ background: 'linear-gradient(135deg, #009DDB 0%, #188BF6 100%)', boxShadow: '0 4px 12px rgba(0,157,219,0.4)', color: 'white' }}>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 font-bold text-base relative"
+              style={{
+                background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
+                boxShadow: '0 4px 16px rgba(0,157,219,0.55), 0 0 24px rgba(217,110,39,0.3)',
+                color: 'white',
+              }}>
               I
+              {/* Subtle pulse halo */}
+              <div className="absolute inset-0 rounded-xl pointer-events-none"
+                style={{ boxShadow: '0 0 0 2px rgba(0,157,219,0.2)', animation: 'hot-lead-pulse 3.5s ease-in-out infinite' }} />
             </div>
             {!collapsed && (
               <div className="overflow-hidden">
-                <h1 className="text-sm font-semibold leading-tight text-white whitespace-nowrap">Intralys</h1>
-                <p className="text-[10px] text-[var(--text-inverse-mut)] uppercase tracking-wider">CRM</p>
+                <h1 className="text-sm font-bold leading-tight text-white whitespace-nowrap tracking-tight">Intralys</h1>
+                <p className="text-[10px] uppercase tracking-[0.15em]" style={{ color: 'rgba(111,206,240,0.7)' }}>CRM</p>
               </div>
             )}
           </div>
@@ -149,18 +156,24 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       title={collapsed ? item.label : undefined}
                       className={`
                         flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium
-                        transition-all duration-[80ms] relative
-                        ${isActive
-                          ? 'text-[#6FCEF0]'
-                          : 'hover:bg-white/[0.05]'
-                        }
+                        transition-all duration-200 relative
+                        ${isActive ? '' : 'hover:bg-white/[0.05]'}
                         ${collapsed ? 'justify-center' : ''}
                       `}
-                      style={isActive ? { background: 'rgba(0,157,219,0.15)' } : { color: 'rgba(255,255,255,0.85)' }}
+                      style={isActive ? {
+                        // Sprint 23 — gradient brand + glow visible
+                        background: 'linear-gradient(90deg, rgba(0,157,219,0.22) 0%, rgba(0,157,219,0.08) 100%)',
+                        color: '#6FCEF0',
+                        boxShadow: 'inset 0 0 0 1px rgba(0,157,219,0.25), 0 0 20px -4px rgba(0,157,219,0.4)',
+                      } : { color: 'rgba(255,255,255,0.85)' }}
                     >
-                      {/* Barre latérale active */}
+                      {/* Barre latérale active glowing */}
                       {isActive && (
-                        <div className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-r" style={{ background: 'var(--brand-primary)' }} />
+                        <div className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r"
+                          style={{
+                            background: 'linear-gradient(180deg, #009DDB 0%, #D96E27 100%)',
+                            boxShadow: '0 0 8px rgba(0,157,219,0.8), 2px 0 4px rgba(0,157,219,0.4)',
+                          }} />
                       )}
                       <span className="shrink-0">{item.icon}</span>
                       {!collapsed && <span className="truncate">{item.label}</span>}
@@ -176,15 +189,27 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       </p>
                     )}
                     {smartLists.slice(0, 5).map(sl => {
-                      const slPath = `/leads?smart=${sl.id}`;
                       const searchStr = typeof location.search === 'string' ? location.search : JSON.stringify(location.search || {});
                       const isActive = location.pathname === '/leads' && searchStr.includes(sl.id);
+                      // Sprint 21 fix : utiliser <a> simple plutôt que TanStack <Link> avec query string
+                      // (Link strict-typed n'accepte pas "/leads?smart=xxx", il faudrait `search={{smart}}`
+                      // mais Leads.tsx ne parse pas encore ce param — pour Sprint 22 ce lien est juste pour
+                      // pré-naviguer, le filtre actuel attend une intégration backend séparée)
                       return (
-                        <Link
+                        <a
                           key={sl.id}
-                          to={slPath}
-                          onClick={onClose}
-                          title={collapsed ? sl.name : sl.name}
+                          href={`/leads?smart=${sl.id}`}
+                          onClick={(e) => {
+                            // Cmd/Ctrl-click → laisser le browser ouvrir un nouvel onglet
+                            if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                            e.preventDefault();
+                            onClose();
+                            // Pas de navigation TanStack ici (pas de typage strict des search params) ;
+                            // on utilise window.history pour préserver le SPA
+                            window.history.pushState({}, '', `/leads?smart=${sl.id}`);
+                            window.dispatchEvent(new PopStateEvent('popstate'));
+                          }}
+                          title={sl.name}
                           className={`
                             flex items-center gap-3 px-3 py-1.5 rounded-lg text-xs font-medium
                             transition-all duration-[80ms] relative
@@ -195,7 +220,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                         >
                           <Bookmark size={14} className="shrink-0" />
                           {!collapsed && <span className="truncate">{sl.name}</span>}
-                        </Link>
+                        </a>
                       );
                     })}
                   </>
@@ -205,23 +230,41 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           })}
         </nav>
 
-        {/* Footer profil */}
+        {/* Footer profil — Sprint 23 : carte premium avec gradient + glow */}
         <div className="px-3 py-3 border-t border-white/5 shrink-0 relative z-10">
-          <div className={`flex items-center ${collapsed ? 'justify-center' : 'gap-2.5 px-2'}`}>
-            <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0"
-              style={{ background: 'linear-gradient(135deg, #D96E27 0%, #FF9A00 100%)', color: 'white' }}>
+          <div className={`flex items-center rounded-xl transition-all ${collapsed ? 'justify-center py-2' : 'gap-2.5 px-2 py-2'}`}
+            style={{
+              background: 'linear-gradient(135deg, rgba(0,157,219,0.12) 0%, rgba(217,110,39,0.08) 100%)',
+              border: '1px solid rgba(0,157,219,0.18)',
+              boxShadow: '0 0 16px -4px rgba(0,157,219,0.2)',
+            }}>
+            <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0 relative"
+              style={{
+                background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
+                color: 'white',
+                boxShadow: '0 4px 12px rgba(217,110,39,0.5), 0 0 8px rgba(0,157,219,0.4)',
+              }}>
               {user?.name?.charAt(0)?.toUpperCase() || 'R'}{user?.name?.split(' ')[1]?.charAt(0)?.toUpperCase() || 'B'}
+              {/* Status dot online */}
+              <span aria-hidden className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2"
+                style={{
+                  background: 'var(--success)',
+                  borderColor: 'oklch(0.18 0.022 260)',
+                  boxShadow: '0 0 6px rgba(55,202,55,0.7)',
+                }} />
             </div>
             {!collapsed && (
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-white truncate">{user?.name || 'Admin'}</p>
-                <p className="text-[10px] text-[var(--text-inverse-mut)] truncate">{isAdmin ? 'Administrateur' : 'Utilisateur'}</p>
+                <p className="text-xs font-semibold text-white truncate">{user?.name || 'Admin'}</p>
+                <p className="text-[10px] truncate" style={{ color: 'rgba(111,206,240,0.7)' }}>
+                  {isAdmin ? '★ Administrateur' : 'Utilisateur'}
+                </p>
               </div>
             )}
             {!collapsed && (
               <button
                 onClick={logout}
-                className="p-1.5 rounded-[var(--radius-xs)] text-[var(--text-inverse-mut)] hover:text-[var(--danger)] hover:bg-white/10 transition-colors cursor-pointer"
+                className="p-1.5 rounded-lg text-[var(--text-inverse-mut)] hover:text-[var(--danger)] hover:bg-white/10 transition-colors cursor-pointer shrink-0"
                 title="Déconnexion"
               >
                 <LogOut size={14} />

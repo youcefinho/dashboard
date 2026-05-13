@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { apiFetch } from '@/lib/api';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Button, Input, Card, Badge, Skeleton, EmptyState, useConfirm, useToast } from '@/components/ui';
+import { Button, Input, Card, Badge, Skeleton, EmptyState, useConfirm, useToast, PageHero } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { Home, RefreshCw, Plus, Search, MapPin, Bed, Bath, Expand, Trash2 } from 'lucide-react';
 
@@ -92,6 +92,12 @@ export function PropertiesPage() {
 
   return (
     <AppLayout title="Inventaire & Propriétés">
+      <PageHero
+        meta="Workspace"
+        title="Inventaire & Propriétés"
+        highlight="Propriétés"
+        description="Vos mandats, fiches Centris et mandats exclusifs. Synchronisez ou ajoutez manuellement."
+      />
       <div className="flex flex-col md:flex-row gap-4 justify-between items-center mb-6">
         <div className="relative w-full md:w-96">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={16} />
@@ -120,14 +126,25 @@ export function PropertiesPage() {
         </div>
       ) : filtered.length === 0 ? (
         <EmptyState
-          icon={<Home size={48} />}
-          title="Aucune propriété pour l'instant"
-          description="Synchronisez votre inventaire depuis Centris ou ajoutez vos mandats exclusifs manuellement."
+          icon={<Home size={32} strokeWidth={1.8} />}
+          meta="Premier pas"
+          title="Votre inventaire est vide pour l'instant"
+          description="Synchronisez votre catalogue depuis Centris pour importer automatiquement vos fiches, ou ajoutez vos mandats exclusifs à la main."
           action={
-            <Button onClick={() => setIsSyncModalOpen(true)} className="gap-2">
-              <RefreshCw size={16} /> Importer depuis Centris
+            <Button onClick={() => setIsSyncModalOpen(true)} leftIcon={<RefreshCw size={14} />}>
+              Importer depuis Centris
             </Button>
           }
+          secondaryAction={
+            <Button variant="ghost" onClick={() => { /* placeholder ajout manuel */ }}>
+              Ajouter manuellement
+            </Button>
+          }
+          tips={[
+            'Connectez Centris dans Paramètres → Intégrations pour synchroniser automatiquement.',
+            'Les propriétés synchronisées remontent dans la map et les fiches lead.',
+            'Vous pouvez aussi importer un CSV de mandats exclusifs (max 500 lignes).',
+          ]}
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">

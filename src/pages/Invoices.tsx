@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Input, Skeleton, EmptyState } from '@/components/ui';
+import { Card, Button, Input, Skeleton, EmptyState, PageHero } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 
 interface Invoice {
@@ -89,13 +89,13 @@ export function InvoicesPage() {
 
   return (
     <AppLayout title="Factures & Paiements">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-[var(--text-primary)] tracking-tight">Facturation</h1>
-          <p className="text-sm text-[var(--text-muted)] mt-1">Gérez vos paiements et encaissements Stripe</p>
-        </div>
-        <Button onClick={() => setShowAdd(true)}>+ Nouvelle facture</Button>
-      </div>
+      <PageHero
+        meta="Workspace"
+        title="Facturation"
+        highlight="Facturation"
+        description="Gérez vos paiements et encaissements via Stripe."
+        actions={<Button variant="premium" onClick={() => setShowAdd(true)}>+ Nouvelle facture</Button>}
+      />
 
       {/* KPIs */}
       {invoices.length > 0 && (

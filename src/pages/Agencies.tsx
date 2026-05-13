@@ -3,7 +3,7 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { useAuth } from '@/lib/auth';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, EmptyState, Skeleton, Badge } from '@/components/ui';
+import { Card, Button, EmptyState, Skeleton, Badge, PageHero } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { getClients, createClient } from '@/lib/api';
@@ -67,15 +67,13 @@ export function AgenciesPage() {
 
   return (
     <AppLayout title="Vue Agence (Master View)">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-[var(--text-primary)] tracking-tight">Vue Agence (Sous-comptes)</h1>
-          <p className="text-sm text-[var(--text-muted)] mt-1">Gérez tous vos sous-comptes clients depuis un seul endroit.</p>
-        </div>
-        <Button onClick={() => setShowAdd(true)} className="gap-2">
-          <Plus size={16} /> Créer un sous-compte
-        </Button>
-      </div>
+      <PageHero
+        meta="Workspace · Master view"
+        title="Vue Agence"
+        highlight="Agence"
+        description="Gérez tous vos sous-comptes clients depuis un seul endroit."
+        actions={<Button variant="premium" onClick={() => setShowAdd(true)} leftIcon={<Plus size={14} />}>Créer un sous-compte</Button>}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <Card className="p-5">

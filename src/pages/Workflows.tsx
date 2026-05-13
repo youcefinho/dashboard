@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Skeleton, EmptyState, useConfirm } from '@/components/ui';
+import { Card, Button, Skeleton, EmptyState, useConfirm, PageHero } from '@/components/ui';
 import { getWorkflows, toggleWorkflow, deleteWorkflow } from '@/lib/api';
 import type { Workflow, TriggerType } from '@/lib/types';
 import { TRIGGER_LABELS, TRIGGER_ICONS } from '@/lib/types';
@@ -59,6 +59,12 @@ export function WorkflowsPage() {
 
   return (
     <AppLayout title="Automations">
+      <PageHero
+        meta="Marketing"
+        title="Automations"
+        highlight="Automations"
+        description="Vos workflows AI : relances automatiques, scoring, attribution, nurturing."
+      />
       {/* ── Header ── */}
       <div className="flex flex-wrap items-center gap-3 mb-5">
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-xs font-medium">

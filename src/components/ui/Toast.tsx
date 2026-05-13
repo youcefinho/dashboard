@@ -45,13 +45,41 @@ const ToastItem = ({ toast, onRemove }: { toast: ToastMessage; onRemove: (id: st
     }
   }, [toast, onRemove]);
 
+  // Sprint 23 — toast premium par type (gradient frame + glow color-coded)
+  const typeStyles: Record<ToastType, { gradient: string; glow: string; accent: string }> = {
+    success: {
+      gradient: 'linear-gradient(135deg, #FFFFFF 0%, #F5FBF5 60%, #E8F7E8 100%)',
+      glow: '0 1px 2px rgba(15,23,42,0.04), 0 12px 32px -8px rgba(55,202,55,0.32), 0 0 0 1px rgba(55,202,55,0.18)',
+      accent: '#37CA37',
+    },
+    error: {
+      gradient: 'linear-gradient(135deg, #FFFFFF 0%, #FEF7F7 60%, #FCEAEA 100%)',
+      glow: '0 1px 2px rgba(15,23,42,0.04), 0 12px 32px -8px rgba(233,61,61,0.32), 0 0 0 1px rgba(233,61,61,0.2)',
+      accent: '#E93D3D',
+    },
+    warning: {
+      gradient: 'linear-gradient(135deg, #FFFFFF 0%, #FFFBF5 60%, #FFF1DD 100%)',
+      glow: '0 1px 2px rgba(15,23,42,0.04), 0 12px 32px -8px rgba(255,154,0,0.32), 0 0 0 1px rgba(255,154,0,0.2)',
+      accent: '#FF9A00',
+    },
+    info: {
+      gradient: 'linear-gradient(135deg, #FFFFFF 0%, #F5FAFE 60%, #E0F0FB 100%)',
+      glow: '0 1px 2px rgba(15,23,42,0.04), 0 12px 32px -8px rgba(0,157,219,0.32), 0 0 0 1px rgba(0,157,219,0.2)',
+      accent: '#009DDB',
+    },
+  };
+  const t = typeStyles[toast.type];
+
   return (
-    <div className="flex items-start gap-3 p-4 bg-[var(--bg-surface)] border border-[var(--border-subtle)] shadow-lg rounded-xl pointer-events-auto transform transition-all duration-300 animate-in slide-in-from-right-full fade-in z-50">
-      <div className="shrink-0 mt-0.5">
+    <div className="relative flex items-start gap-3 p-4 rounded-xl pointer-events-auto transform transition-all duration-300 animate-in slide-in-from-right-full fade-in z-50 overflow-hidden"
+      style={{ background: t.gradient, boxShadow: t.glow }}>
+      {/* Bordure gauche colorée glowing */}
+      <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl" style={{ background: t.accent, boxShadow: `0 0 12px ${t.accent}` }} />
+      <div className="shrink-0 mt-0.5 relative z-10">
         <ToastIcon type={toast.type} />
       </div>
-      <div className="flex-1 min-w-0">
-        {toast.title && <p className="text-sm font-semibold text-[var(--text-primary)]">{toast.title}</p>}
+      <div className="flex-1 min-w-0 relative z-10">
+        {toast.title && <p className="text-sm font-semibold text-[var(--text-primary)] tracking-tight">{toast.title}</p>}
         <p className={`text-sm text-[var(--text-secondary)] ${toast.title ? 'mt-1' : ''}`}>
           {toast.message}
         </p>
@@ -61,7 +89,8 @@ const ToastItem = ({ toast, onRemove }: { toast: ToastMessage; onRemove: (id: st
               toast.action!.onClick();
               onRemove(toast.id);
             }}
-            className="mt-2 text-sm font-medium text-[var(--brand-primary)] hover:underline"
+            className="mt-2 text-sm font-semibold hover:underline"
+            style={{ color: t.accent }}
           >
             {toast.action.label}
           </button>
@@ -69,7 +98,7 @@ const ToastItem = ({ toast, onRemove }: { toast: ToastMessage; onRemove: (id: st
       </div>
       <button
         onClick={() => onRemove(toast.id)}
-        className="shrink-0 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors p-1"
+        className="shrink-0 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors p-1 relative z-10"
       >
         <X size={16} />
       </button>

@@ -7,6 +7,7 @@ import { Card, Button, Badge, Skeleton, EmptyState, useToast, useConfirm, AiSpar
 import { Avatar } from '@/components/ui/Avatar';
 import { getLeadDetail, updateLead, addTag, removeTag, getAppointments, getTasks, updateTask, getLeadNotes, createLeadNote, deleteLeadNote, getLeadScores, getLeadCustomFields, softDeleteLead, restoreLead, apiFetch, getPipelines, getLeadMessages } from '@/lib/api';
 import { getCachedLead, setCachedLead } from '@/lib/prefetch';
+import { confettiBurst } from '@/lib/confetti';
 import { AiNextActionCard } from '@/components/panels/AiNextActionCard';
 import { LeadTimeline } from '@/components/panels/LeadTimeline';
 import { ConversationPanel } from '@/components/conversations/ConversationPanel';
@@ -89,7 +90,13 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
   const handleStatusChange = async (status: LeadStatus) => {
     if (!lead) return;
     const prev = lead;
+    const wasNotWon = lead.status !== 'won';
     setLead({ ...lead, status });
+    // Sprint 23 wave 8 — célébration confetti si passage à 'won'
+    if (status === 'won' && wasNotWon) {
+      confettiBurst();
+      success(`🎉 ${lead.name} gagné !`);
+    }
     const res = await updateLead(leadId, { status });
     if (res.error) {
       setLead(prev);
@@ -185,7 +192,8 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
 
   // Probabilité par stage : source backend (pipeline_stages.probability) via lead.stage_id.
   // Fallback legacy si pas encore migré vers stage_id (anciens leads pré-Multi-Pipelines).
-  const LEGACY_STAGE_PROBABILITY: Record<string, number> = { new: 10, contacted: 25, meeting: 50, signed: 90, closed: 100, lost: 0 };
+  // Fallback aligné sur LEAD_STATUSES réels du codebase (new, contacted, qualified, won, closed, lost)
+  const LEGACY_STAGE_PROBABILITY: Record<string, number> = { new: 10, contacted: 25, qualified: 60, won: 100, closed: 100, lost: 0 };
   const stageFromBackend = pipelineStages.find(s => s.id === (lead as { stage_id?: string }).stage_id);
   const probability = stageFromBackend?.probability ?? LEGACY_STAGE_PROBABILITY[lead.status] ?? 0;
   const forecast = (lead.deal_value || 0) * probability / 100;
@@ -203,18 +211,36 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 max-w-6xl">
         {/* Colonne principale */}
         <div className="lg:col-span-2 space-y-4">
-          {/* En-tête enrichi */}
-          <Card className="p-5">
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <Avatar name={lead.name} size="lg" />
+          {/* En-tête HERO (Sprint 23) — orb décoratif + gradient title */}
+          <div className="relative overflow-hidden rounded-2xl p-6"
+            style={{
+              background: lead.score >= 70
+                ? 'linear-gradient(135deg, #FFFFFF 0%, #F0FAFE 60%, #E0F4FB 100%)'
+                : 'linear-gradient(135deg, #FFFFFF 0%, #FAFBFC 50%, #F0FAFE 100%)',
+              border: lead.score >= 70 ? '1.5px solid rgba(0,157,219,0.45)' : '1px solid var(--border-subtle)',
+              boxShadow: lead.score >= 70
+                ? '0 1px 2px rgba(0,157,219,0.08), 0 12px 32px -8px rgba(0,157,219,0.25)'
+                : '0 1px 2px rgba(15,23,42,0.04), 0 8px 24px -8px rgba(15,23,42,0.08)',
+              marginBottom: '1rem',
+            }}>
+            {/* Orb décoratif animé */}
+            <div className="hero-stat-orb absolute rounded-full pointer-events-none"
+              style={{ background: 'radial-gradient(circle, rgba(217,110,39,0.28) 0%, rgba(0,157,219,0.16) 50%, transparent 80%)', width: 260, height: 260, top: -100, right: -80, filter: 'blur(48px)' }} />
+
+            {lead.score >= 70 && <span className="badge-hot">HOT {lead.score}</span>}
+
+            <div className="relative z-10 flex items-start justify-between mb-4">
+              <div className="flex items-center gap-4">
+                <Avatar name={lead.name} size="lg" ring={lead.score >= 70 ? 'hot' : 'none'} />
                 <div>
-                  <h2 className="text-lg font-bold text-[var(--text-primary)]">{lead.name}</h2>
-                  <div className="flex items-center gap-2 text-sm text-[var(--text-muted)]">
-                    <button onClick={() => void navigate({ to: `/clients/${lead.client_id}` })} className="hover:text-[var(--brand-primary)] cursor-pointer transition-colors">{lead.client_name}</button>
-                    <span>·</span>
+                  <h2 className="text-2xl font-bold tracking-tight leading-tight">
+                    {lead.score >= 70 ? <span className="text-gradient-brand">{lead.name}</span> : lead.name}
+                  </h2>
+                  <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)] mt-1">
+                    <button onClick={() => void navigate({ to: `/clients/${lead.client_id}` })} className="hover:text-[var(--brand-primary)] cursor-pointer transition-colors font-medium">{lead.client_name}</button>
+                    <span className="text-[var(--text-muted)]">·</span>
                     <span>{SOURCE_LABELS[lead.source] || lead.source}</span>
-                    <span>·</span>
+                    <span className="text-[var(--text-muted)]">·</span>
                     <span>{new Date(lead.created_at).toLocaleDateString('fr-CA')}</span>
                   </div>
                 </div>
@@ -357,16 +383,28 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
                 )}
               </div>
             </div>
-          </Card>
+          </div>
 
-          {/* Onglets (Activité, Emails, Tâches, etc.) */}
-          <div className="flex gap-1 border-b border-[var(--border-subtle)] overflow-x-auto">
-            {([['details', 'Détails'], ['notes', `Notes (${leadNotes.length})`], ['conversations', `Conversations (${messagesCount})`], ['scores', 'Scores'], ['activity', 'Activité']] as const).map(([key, label]) => (
-              <button key={key} onClick={() => setActiveTab(key as typeof activeTab)}
-                className={`px-4 py-2.5 text-[13px] font-medium transition-colors cursor-pointer border-b-2 -mb-px whitespace-nowrap ${
-                  activeTab === key ? 'border-[var(--brand-primary)] text-[var(--brand-primary)]' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]'
-                }`}>{label}</button>
-            ))}
+          {/* Onglets Sprint 23 — underline gradient + glow sur active */}
+          <div className="flex gap-1 border-b border-[var(--border-subtle)] overflow-x-auto relative">
+            {([['details', 'Détails'], ['notes', `Notes (${leadNotes.length})`], ['conversations', `Conversations (${messagesCount})`], ['scores', 'Scores'], ['activity', 'Activité']] as const).map(([key, label]) => {
+              const isActive = activeTab === key;
+              return (
+                <button key={key} onClick={() => setActiveTab(key as typeof activeTab)}
+                  className={`relative px-4 py-2.5 text-[13px] font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                    isActive ? 'text-[var(--brand-primary)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+                  }`}>
+                  {label}
+                  {isActive && (
+                    <div className="absolute bottom-0 left-2 right-2 h-[3px] rounded-t-full"
+                      style={{
+                        background: 'linear-gradient(90deg, #009DDB 0%, #D96E27 100%)',
+                        boxShadow: '0 -2px 12px rgba(0,157,219,0.5), 0 0 8px rgba(217,110,39,0.4)',
+                      }} />
+                  )}
+                </button>
+              );
+            })}
           </div>
 
           {/* Contenu par onglet */}

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Button, Card, Badge, EmptyState } from '@/components/ui';
+import { Button, Card, Badge, EmptyState, PageHero } from '@/components/ui';
 import { apiFetch } from '@/lib/api';
 
 interface ReviewStats {
@@ -122,6 +122,12 @@ export function ReviewsPage() {
 
   return (
     <AppLayout title="Avis & Réputation">
+      <PageHero
+        meta="Insights"
+        title="Avis & Réputation"
+        highlight="Avis"
+        description="Suivez vos avis Google et envoyez des demandes ciblées à vos meilleurs clients."
+      />
       {/* Onglets */}
       <div className="flex gap-1 bg-[var(--bg-subtle)] p-1 rounded-[var(--radius-lg)] w-fit mb-6">
         {tabs.map(t => (

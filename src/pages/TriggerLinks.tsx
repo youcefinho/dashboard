@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Badge, Input, EmptyState, Skeleton, useConfirm } from '@/components/ui';
+import { Card, Button, Badge, Input, EmptyState, Skeleton, useConfirm, PageHero } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { getTriggerLinks, createTriggerLink, deleteTriggerLink } from '@/lib/api';
-import { Link2, Plus, Trash2, Copy, ExternalLink, MousePointerClick } from 'lucide-react';
+import { Plus, Trash2, Copy, ExternalLink, MousePointerClick } from 'lucide-react';
 
 interface TriggerLink {
   id: string; name: string; target_url: string;
@@ -61,15 +61,13 @@ export function TriggerLinksPage() {
 
   return (
     <AppLayout title="Trigger Links">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <div>
-          <h1 style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '22px', fontWeight: 700, margin: 0 }}>
-            <Link2 size={24} style={{ color: 'var(--brand-primary)' }} /> Trigger Links
-          </h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginTop: 4 }}>Liens trackés qui déclenchent des workflows au clic</p>
-        </div>
-        <Button variant="primary" onClick={() => setShowCreate(true)}><Plus size={16} /> Nouveau Link</Button>
-      </div>
+      <PageHero
+        meta="Marketing"
+        title="Trigger Links"
+        highlight="Trigger Links"
+        description="Liens trackés qui déclenchent des workflows automatiquement au clic."
+        actions={<Button variant="premium" onClick={() => setShowCreate(true)} leftIcon={<Plus size={14} />}>Nouveau link</Button>}
+      />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 16, marginBottom: 24 }}>
         <Card><div style={{ padding: 16, textAlign: 'center' }}><div style={{ fontSize: '28px', fontWeight: 700, color: 'var(--brand-primary)' }}>{links.length}</div><div style={{ fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Links actifs</div></div></Card>

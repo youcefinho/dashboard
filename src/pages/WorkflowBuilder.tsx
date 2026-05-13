@@ -167,14 +167,23 @@ export function WorkflowBuilderPage() {
       <DesktopOnlyBanner />
       <div className="hidden lg:block">
       <div className="flex flex-col h-[calc(100vh-100px)]">
-        <div className="flex items-center justify-between mb-4">
+        {/* Sprint 23 — builder header premium */}
+        <div className="relative flex items-center justify-between mb-4 p-3 rounded-xl"
+          style={{
+            background: 'linear-gradient(135deg, rgba(255,255,255,0.85) 0%, rgba(240,250,254,0.85) 100%)',
+            backdropFilter: 'blur(12px) saturate(160%)',
+            border: '1px solid var(--border-subtle)',
+            boxShadow: '0 4px 16px -8px rgba(0,157,219,0.18)',
+          }}>
+          <div aria-hidden className="absolute top-0 left-0 right-0 h-[2px] rounded-t-xl"
+            style={{ background: 'linear-gradient(90deg, transparent 0%, rgba(0,157,219,0.5) 30%, rgba(217,110,39,0.5) 70%, transparent 100%)' }} />
           <button onClick={() => void navigate({ to: '/workflows' })}
-            className="text-sm text-[var(--text-muted)] hover:text-[var(--brand-primary)] flex items-center gap-1 cursor-pointer">
+            className="text-sm text-[var(--text-muted)] hover:text-[var(--brand-primary)] flex items-center gap-1 cursor-pointer font-medium">
             ← Retour
           </button>
           <div className="flex gap-2">
             <Button variant="secondary" onClick={() => setShowAddStep(true)}>+ Ajouter Nœud</Button>
-            <Button onClick={() => void handleSave()} disabled={isSaving || !name.trim()}>
+            <Button variant="premium" onClick={() => void handleSave()} disabled={isSaving || !name.trim()}>
               {isSaving ? 'Enregistrement...' : '⚡ Sauvegarder'}
             </Button>
           </div>

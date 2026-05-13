@@ -20,12 +20,17 @@ export function Tooltip({ children, content, side = 'top', className }: TooltipP
             side={side}
             sideOffset={6}
             className={cn(
-              'z-50 px-2.5 py-1.5 text-xs font-medium rounded-[var(--radius-sm)] bg-[var(--bg-inverse)] text-[var(--text-inverse)] shadow-[var(--shadow-md)] animate-in fade-in-0 zoom-in-95',
+              // Sprint 23 — tooltip premium : gradient bg + shadow brand + animation
+              'z-50 px-2.5 py-1.5 text-xs font-semibold rounded-lg text-white animate-in fade-in-0 zoom-in-95',
               className
             )}
+            style={{
+              background: 'linear-gradient(135deg, oklch(0.20 0.02 260) 0%, oklch(0.15 0.025 260) 100%)',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.1), 0 8px 16px -4px rgba(0,157,219,0.25), 0 0 0 1px rgba(0,157,219,0.15)',
+            }}
           >
             {content}
-            <TooltipPrimitive.Arrow className="fill-[var(--bg-inverse)]" />
+            <TooltipPrimitive.Arrow style={{ fill: 'oklch(0.18 0.022 260)' }} />
           </TooltipPrimitive.Content>
         </TooltipPrimitive.Portal>
       </TooltipPrimitive.Root>

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Input } from '@/components/ui';
+import { Card, Button, Input, PageHero } from '@/components/ui';
 import { changePassword } from '@/lib/api';
 
 export function ChangePasswordPage() {
@@ -47,12 +47,15 @@ export function ChangePasswordPage() {
 
   return (
     <AppLayout title="Changer le mot de passe">
-      <div className="max-w-md mx-auto mt-8">
+      <PageHero
+        compact
+        meta="Sécurité"
+        title="🔐 Changement de mot de passe"
+        highlight="mot de passe"
+        description="Votre mot de passe doit faire au moins 8 caractères."
+      />
+      <div className="max-w-md mx-auto">
         <Card className="p-6">
-          <h2 className="text-lg font-semibold mb-1">🔐 Changement de mot de passe</h2>
-          <p className="text-xs text-[var(--text-muted)] mb-6">
-            Votre mot de passe doit faire au moins 8 caractères.
-          </p>
 
           {success ? (
             <div className="p-4 bg-[var(--success)]/10 border border-[var(--success)]/30 rounded-[var(--radius-md)] text-sm text-[var(--success)]">
@@ -107,7 +110,7 @@ export function ChangePasswordPage() {
                 />
               </div>
 
-              <Button type="submit" className="w-full" disabled={loading}>
+              <Button type="submit" variant="premium" className="w-full" disabled={loading}>
                 {loading ? 'Changement...' : 'Changer le mot de passe'}
               </Button>
             </form>

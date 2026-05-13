@@ -6,23 +6,43 @@ import { Shield, Sparkles, Zap, MessageSquare, TrendingUp, Globe } from 'lucide-
 export function HomePage() {
   return (
     <PublicLayout>
-      {/* Hero Section */}
-      <section className="pt-24 pb-16 md:pt-32 md:pb-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-center">
-        <h1 className="text-4xl md:text-6xl font-extrabold text-[var(--text-primary)] tracking-tight mb-6 leading-tight">
-          Le CRM tout-en-un pensé pour les <span className="text-[var(--brand-primary)]">PMEs francophones</span>
+      {/* Hero Section — Sprint 23 immersive marketing */}
+      <section className="relative pt-24 pb-16 md:pt-32 md:pb-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-center overflow-hidden">
+        {/* Orbs décoratifs marketing */}
+        <div className="hero-stat-orb absolute w-[800px] h-[800px] rounded-full -top-80 left-1/2 -translate-x-1/2 pointer-events-none -z-10"
+          style={{ background: 'radial-gradient(circle, rgba(0,157,219,0.18) 0%, rgba(217,110,39,0.10) 40%, transparent 70%)', filter: 'blur(80px)' }} />
+        <div className="hero-stat-orb absolute w-[400px] h-[400px] rounded-full top-40 -right-40 pointer-events-none -z-10"
+          style={{ background: 'radial-gradient(circle, rgba(55,202,55,0.12) 0%, transparent 70%)', filter: 'blur(60px)', animationDelay: '3s' }} />
+
+        {/* Pill badge social proof */}
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 mb-6 rounded-full text-xs font-semibold"
+          style={{
+            background: 'rgba(255,255,255,0.7)',
+            backdropFilter: 'blur(8px)',
+            border: '1px solid rgba(0,157,219,0.2)',
+            boxShadow: '0 4px 16px -4px rgba(0,157,219,0.15)',
+          }}>
+          <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#37CA37', boxShadow: '0 0 6px rgba(55,202,55,0.6)' }} />
+          <span className="text-[var(--text-secondary)]">CRM #1 des PMEs québécoises</span>
+          <span className="text-[var(--brand-primary)]">→</span>
+        </div>
+
+        <h1 className="text-4xl md:text-6xl lg:text-7xl font-extrabold tracking-tight mb-6 leading-[1.05]" style={{ letterSpacing: '-0.03em' }}>
+          Le CRM tout-en-un pensé pour les{' '}
+          <span className="text-gradient-brand">PMEs francophones</span>
         </h1>
-        <p className="text-lg md:text-xl text-[var(--text-secondary)] mb-10 max-w-3xl mx-auto">
+        <p className="text-lg md:text-xl text-[var(--text-secondary)] mb-10 max-w-3xl mx-auto leading-relaxed">
           Arrêtez de jongler entre 5 outils différents. Intralys centralise vos leads, vos communications, vos calendriers et vos factures en une seule plateforme simple et puissante.
         </p>
         <div className="flex flex-col sm:flex-row justify-center gap-4">
           <Link to="/demo">
-            <Button size="lg" className="w-full sm:w-auto text-base px-8 h-14">Démarrer l'essai gratuit de 14j</Button>
+            <Button variant="premium" size="lg" className="w-full sm:w-auto text-base px-8 h-14">Démarrer l'essai gratuit de 14j</Button>
           </Link>
           <Link to="/pricing">
-            <Button variant="secondary" size="lg" className="w-full sm:w-auto text-base px-8 h-14 bg-white border-[var(--border-subtle)]">Voir les tarifs</Button>
+            <Button variant="secondary" size="lg" className="w-full sm:w-auto text-base px-8 h-14">Voir les tarifs</Button>
           </Link>
         </div>
-        <p className="mt-4 text-sm text-[var(--text-muted)]">Aucune carte de crédit requise. Annulez à tout moment.</p>
+        <p className="mt-4 text-sm text-[var(--text-muted)]">✓ Aucune carte de crédit requise · ✓ Annulez à tout moment · ✓ Support FR québécois</p>
         
         {/* Screenshot mock */}
         <div className="mt-16 rounded-2xl border border-[var(--border-subtle)] shadow-2xl overflow-hidden bg-[var(--bg-subtle)] p-2 max-w-5xl mx-auto">
@@ -115,16 +135,26 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* CTA Bottom */}
-      <section className="bg-[var(--brand-primary)] py-20 text-white text-center">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl md:text-4xl font-bold mb-6">Prêt à transformer votre entreprise ?</h2>
-          <p className="text-white/90 text-lg mb-10">Rejoignez des centaines de PMEs qui utilisent Intralys pour générer plus de ventes avec moins d'effort.</p>
+      {/* CTA Bottom Sprint 23 — gradient + orbs */}
+      <section className="relative py-24 text-white text-center overflow-hidden"
+        style={{ background: 'linear-gradient(135deg, #009DDB 0%, #0086C0 50%, #D96E27 100%)' }}>
+        <div className="absolute inset-0 pointer-events-none opacity-30">
+          <div className="hero-stat-orb absolute w-[600px] h-[600px] rounded-full -top-40 -left-40"
+            style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%)', filter: 'blur(60px)' }} />
+          <div className="hero-stat-orb absolute w-[500px] h-[500px] rounded-full -bottom-32 -right-32"
+            style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.25) 0%, transparent 70%)', filter: 'blur(60px)', animationDelay: '4s' }} />
+        </div>
+        <div className="relative max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 z-10">
+          <h2 className="text-3xl md:text-5xl font-bold mb-6 tracking-tight" style={{ letterSpacing: '-0.02em' }}>
+            Prêt à transformer votre entreprise ?
+          </h2>
+          <p className="text-white/90 text-lg mb-10 leading-relaxed">Rejoignez des centaines de PMEs qui utilisent Intralys pour générer plus de ventes avec moins d'effort.</p>
           <Link to="/demo">
-            <Button size="lg" className="bg-white text-[var(--brand-primary)] hover:bg-[var(--bg-subtle)] px-8 h-14 text-lg">
+            <Button size="lg" className="bg-white text-[var(--brand-primary)] hover:bg-[var(--bg-subtle)] px-10 h-14 text-lg font-bold shadow-[0_8px_32px_rgba(0,0,0,0.2)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.25)] transition-all hover:scale-[1.02]">
               Démarrer gratuitement
             </Button>
           </Link>
+          <p className="mt-4 text-sm text-white/70">✓ 14 jours gratuits · ✓ Sans engagement · ✓ Support inclus</p>
         </div>
       </section>
     </PublicLayout>
@@ -133,25 +163,63 @@ export function HomePage() {
 
 function FeatureCard({ icon, title, description }: { icon: React.ReactNode, title: string, description: string }) {
   return (
-    <div className="bg-white p-6 rounded-xl border border-[var(--border-subtle)] shadow-sm hover:shadow-md transition-shadow">
-      <div className="w-12 h-12 bg-[var(--bg-subtle)] rounded-lg flex items-center justify-center mb-4 border border-[var(--border-subtle)]">
+    <div className="group relative bg-white p-6 rounded-2xl border border-[var(--border-subtle)] transition-all duration-300 hover:-translate-y-1 overflow-hidden"
+      style={{ boxShadow: '0 1px 2px rgba(15,23,42,0.04), 0 4px 12px -4px rgba(15,23,42,0.06)' }}
+      onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,157,219,0.06), 0 16px 40px -8px rgba(0,157,219,0.22)'; }}
+      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 1px 2px rgba(15,23,42,0.04), 0 4px 12px -4px rgba(15,23,42,0.06)'; }}>
+      <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"
+        style={{ background: 'radial-gradient(circle, rgba(0,157,219,0.15) 0%, transparent 70%)', filter: 'blur(20px)' }} />
+      <div className="relative w-12 h-12 rounded-xl flex items-center justify-center mb-4"
+        style={{
+          background: 'linear-gradient(135deg, #FFFFFF 0%, #F0FAFE 100%)',
+          border: '1px solid var(--border-subtle)',
+          boxShadow: '0 1px 2px rgba(0,157,219,0.06), 0 0 16px rgba(0,157,219,0.08)',
+        }}>
         {icon}
       </div>
-      <h3 className="text-lg font-bold text-[var(--text-primary)] mb-2">{title}</h3>
-      <p className="text-[var(--text-secondary)] text-sm leading-relaxed">{description}</p>
+      <h3 className="relative text-lg font-bold text-[var(--text-primary)] mb-2 tracking-tight">{title}</h3>
+      <p className="relative text-[var(--text-secondary)] text-sm leading-relaxed">{description}</p>
     </div>
   );
 }
 
 function TestimonialCard({ quote, author, role }: { quote: string, author: string, role: string }) {
   return (
-    <div className="bg-[var(--bg-subtle)] p-8 rounded-xl border border-[var(--border-subtle)]">
-      <div className="flex gap-1 text-amber-400 mb-4">
-        {[...Array(5)].map((_, i) => <svg key={i} className="w-5 h-5 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>)}
+    <div className="relative p-8 rounded-2xl transition-all duration-300 hover:-translate-y-1 overflow-hidden"
+      style={{
+        background: 'linear-gradient(135deg, #FFFFFF 0%, #FAFBFC 50%, #F0FAFE 100%)',
+        border: '1px solid var(--border-subtle)',
+        boxShadow: '0 1px 2px rgba(15,23,42,0.04), 0 8px 24px -8px rgba(15,23,42,0.08)',
+      }}>
+      {/* Quote mark décoratif */}
+      <div aria-hidden className="absolute top-2 right-4 text-7xl font-bold leading-none pointer-events-none opacity-15"
+        style={{
+          background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+        }}>"</div>
+      <div className="relative flex gap-1 mb-4">
+        {[...Array(5)].map((_, i) => (
+          <svg key={i} className="w-5 h-5" viewBox="0 0 20 20" style={{ filter: 'drop-shadow(0 1px 2px rgba(255,154,0,0.4))' }}>
+            <defs>
+              <linearGradient id={`star-${i}-${author.replace(/\s/g, '')}`} x1="0" y1="0" x2="20" y2="20">
+                <stop offset="0%" stopColor="#FF9A00" />
+                <stop offset="100%" stopColor="#D96E27" />
+              </linearGradient>
+            </defs>
+            <path fill={`url(#star-${i}-${author.replace(/\s/g, '')})`} d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+          </svg>
+        ))}
       </div>
-      <p className="text-[var(--text-secondary)] font-medium mb-6">"{quote}"</p>
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 bg-[var(--bg-muted)] rounded-full"></div>
+      <p className="relative text-[var(--text-secondary)] font-medium mb-6 leading-relaxed">"{quote}"</p>
+      <div className="relative flex items-center gap-3">
+        <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
+          style={{
+            background: `linear-gradient(135deg, #009DDB 0%, #D96E27 100%)`,
+            boxShadow: '0 2px 8px rgba(0,157,219,0.3)',
+          }}>
+          {author.charAt(0)}
+        </div>
         <div>
           <div className="font-bold text-[var(--text-primary)] text-sm">{author}</div>
           <div className="text-[var(--text-muted)] text-xs">{role}</div>
