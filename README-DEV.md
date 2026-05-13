@@ -41,6 +41,15 @@ bun run dev:worker   # Worker Wrangler → http://localhost:8787
 
 > Le mot de passe `managed` est un placeholder. L'admin doit bootstrapper son mot de passe via la route `/api/auth/bootstrap`.
 
+### Bypass auth en dev local (optionnel)
+
+Pour skip le login pendant le développement :
+- `.dev.vars` (backend) : `DEV_BYPASS_AUTH=true` → `requireAuth` retourne admin sans vérifier le token
+- `.env.local` (frontend) : `VITE_DEV_BYPASS_AUTH=true` → `login()` retourne un fake token
+
+⚠️ **Sécurité** : les deux variables sont gitignored et ne doivent JAMAIS être définies en prod
+(Cloudflare Pages → si non définies, le vrai flow auth est appliqué — c'est le comportement par défaut).
+
 ---
 
 ## Mode Mock (USE_MOCKS=true)
@@ -73,8 +82,12 @@ ANTHROPIC_API_KEY=sk-ant-xxxx
 | `dev` | `bun run dev` | Frontend Vite (localhost:5173) |
 | `dev:worker` | `bun run dev:worker` | Worker Wrangler local (localhost:8787) |
 | `build` | `bun run build` | Build production (tsc + vite) |
-| `db:setup` | `bun run db:setup` | Init DB complète : schema + seed + toutes migrations |
 | `test` | `bun run test` | Lance les tests Vitest |
+| `db:setup` | `bun run db:setup` | Init DB complète : schema + seed + toutes migrations |
+| `db:migrate` | `bun run db:migrate` | Applique uniquement les migrations non encore jouées (idempotent, local) |
+| `db:migrate:prod` | `bun run db:migrate:prod` | Applique les migrations sur D1 prod (CI / déploiement) |
+| `db:backup` | `bun run db:backup` | Export D1 local en SQL (cf. `docs/BACKUP-RESTORE.md`) |
+| `db:backup:prod` | `bun run db:backup:prod` | Export D1 prod en SQL |
 
 ---
 
