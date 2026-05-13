@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { DesktopOnlyBanner } from '@/components/DesktopOnlyBanner';
-import { Card, Button, Badge, Input } from '@/components/ui';
+import { Card, Button, Badge, Input, Skeleton } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
@@ -65,9 +65,11 @@ export function FormBuilderPage() {
   const [showEmbed, setShowEmbed] = useState(false);
   const [stats, setStats] = useState<FormStatsData | null>(null);
   const [showPreview, setShowPreview] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const loadForm = useCallback(async () => {
-    if (!formId) return;
+    if (!formId) { setIsLoading(false); return; }
+    setIsLoading(true);
     const result = await getForm(formId);
     if (result.data) {
       const d = result.data;
@@ -77,6 +79,7 @@ export function FormBuilderPage() {
       setSuccessMessage((d.success_message as string) || 'Merci !');
       try { setFields(JSON.parse((d.fields as string) || '[]')); } catch { /* ignore */ }
     }
+    setIsLoading(false);
   }, [formId]);
 
   useEffect(() => { void loadForm(); }, [loadForm]);
@@ -161,16 +164,24 @@ export function FormBuilderPage() {
 
         <div className="builder-canvas-container">
           <div className="builder-canvas-blocks" style={{ flex: 1 }}>
-            <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-              <SortableContext items={fields.map(f => f.id)} strategy={verticalListSortingStrategy}>
-                {fields.length === 0 ? (
-                  <div className="canvas-empty"><Plus size={32} style={{ opacity: 0.3 }} /><p>Ajoutez des champs depuis la palette</p></div>
-                ) : fields.map(field => (
-                  <SortableField key={field.id} field={field} isSelected={selectedFieldId === field.id}
-                    onSelect={() => setSelectedFieldId(field.id)} onDelete={() => deleteField(field.id)} />
+            {isLoading ? (
+              <div className="space-y-2">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <Skeleton key={i} className="h-12 w-full" />
                 ))}
-              </SortableContext>
-            </DndContext>
+              </div>
+            ) : (
+              <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <SortableContext items={fields.map(f => f.id)} strategy={verticalListSortingStrategy}>
+                  {fields.length === 0 ? (
+                    <div className="canvas-empty"><Plus size={32} style={{ opacity: 0.3 }} /><p>Ajoutez des champs depuis la palette</p></div>
+                  ) : fields.map(field => (
+                    <SortableField key={field.id} field={field} isSelected={selectedFieldId === field.id}
+                      onSelect={() => setSelectedFieldId(field.id)} onDelete={() => deleteField(field.id)} />
+                  ))}
+                </SortableContext>
+              </DndContext>
+            )}
           </div>
 
           {showPreview && (

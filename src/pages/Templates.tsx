@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Badge, Skeleton, EmptyState, Input } from '@/components/ui';
+import { Card, Button, Badge, Skeleton, EmptyState, Input, useConfirm } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { getTemplates, createTemplate, updateTemplate, deleteTemplate } from '@/lib/api';
 import { Wand2 } from 'lucide-react';
@@ -30,6 +30,7 @@ const CATEGORY_ICONS: Record<TemplateCategory, string> = {
 type ViewMode = 'grid' | 'list';
 
 export function TemplatesPage() {
+  const confirm = useConfirm();
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showEditor, setShowEditor] = useState(false);
@@ -83,7 +84,13 @@ export function TemplatesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Supprimer ce template ?')) return;
+    const ok = await confirm({
+      title: 'Supprimer ce template ?',
+      description: 'Le template sera retiré définitivement. Les emails déjà envoyés ne sont pas affectés.',
+      confirmLabel: 'Supprimer',
+      danger: true,
+    });
+    if (!ok) return;
     await deleteTemplate(id);
     void loadTemplates();
   };

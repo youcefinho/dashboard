@@ -40,7 +40,7 @@ import {
   handleGetSmartLists, handleCreateSmartList, handleDeleteSmartList, handleExecuteSmartList
 } from './worker/custom-fields';
 import { handleGetAppointments, handleCreateAppointment, handleUpdateAppointment, handleDeleteAppointment } from './worker/appointments';
-import { handleGetTasks, handleCreateTask, handlePatchTask, handleDeleteTask, processOverdueTasks } from './worker/tasks';
+import { handleGetTasks, handleGetTask, handleCreateTask, handlePatchTask, handleDeleteTask, processOverdueTasks } from './worker/tasks';
 import { handleGetNotifications, handleReadNotification, handleReadAllNotifications } from './worker/notifications';
 import { handleReportsOverview, handleReportsSources, handleReportsConversion, handleGetSavedReports, handleCreateSavedReport, handleDeleteSavedReport } from './worker/reports';
 import {
@@ -49,7 +49,7 @@ import {
 } from './worker/bookings';
 import { handleGetForms, handleGetForm, handleGetFormStats, handleCreateForm, handleUpdateForm, handleDeleteForm, handleGetFormSubmissions, handlePublicFormGet, handlePublicFormSubmit } from './worker/forms';
 import { handleGetTriggerLinks, handleCreateTriggerLink, handleDeleteTriggerLink, handleTriggerLinkClick, handleGetTriggerLinkStats } from './worker/trigger-links';
-import { handleAiGenerate, handleAiSuggestWorkflow } from './worker/ai';
+import { handleAiGenerate, handleAiSuggestWorkflow, handleAiSummarizeConversation, handleAiSuggestNextAction, handleAiSummarizeLeads } from './worker/ai';
 import { handlePublicUnsubscribe, handleGetUnsubscribes, handleLogConsent, handleGetConsent, handleForgetLead, handleExportPii } from './worker/compliance';
 import { handleGetSubAccounts, handleCreateSubAccount, handleUpdateSubAccount, handleCreateSnapshot, handleApplySnapshot, handleGetWhitelabel, handleUpdateWhitelabel, handleWidgetScript } from './worker/sub-accounts';
 // gcal.ts et gbp.ts déplacés en _v2-backlog/ (Sprint Consolidation)
@@ -571,6 +571,7 @@ async function routeProtected(
   if (path === '/api/tasks' && method === 'GET') return handleGetTasks(env, auth, url);
   if (path === '/api/tasks' && method === 'POST') return handleCreateTask(request, env, auth);
   const taskMatch = path.match(/^\/api\/tasks\/([^/]+)$/);
+  if (taskMatch && method === 'GET') return handleGetTask(env, auth, taskMatch[1]!);
   if (taskMatch && method === 'PATCH') return handlePatchTask(request, env, auth, taskMatch[1]!);
   if (taskMatch && method === 'DELETE') return handleDeleteTask(env, auth, taskMatch[1]!);
 
@@ -721,6 +722,11 @@ async function routeProtected(
 
   if (path === '/api/ai/generate' && method === 'POST') return handleAiGenerate(request, env);
   if (path === '/api/ai/suggest-workflow' && method === 'POST') return handleAiSuggestWorkflow(request, env);
+  // Sprint 20
+  if (path === '/api/ai/summarize-conversation' && method === 'POST') return handleAiSummarizeConversation(request, env);
+  if (path === '/api/ai/suggest-next-action' && method === 'POST') return handleAiSuggestNextAction(request, env);
+  // Sprint 21
+  if (path === '/api/ai/summarize-leads' && method === 'POST') return handleAiSummarizeLeads(request, env);
 
   // Sub-accounts
   if (path === '/api/sub-accounts' && method === 'GET') return handleGetSubAccounts(env, auth);

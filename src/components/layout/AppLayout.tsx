@@ -4,9 +4,14 @@ import { useState, useEffect, useRef, useCallback, type ReactNode } from 'react'
 import { Sidebar } from './Sidebar';
 import { useNavigate, Link } from '@tanstack/react-router';
 import { CommandPalette } from '@/components/CommandPalette';
+import { KeyboardShortcutsModal } from '@/components/KeyboardShortcutsModal';
+import { QuickAddFab } from '@/components/QuickAddFab';
+import { ActivityFeedPanel } from '@/components/ActivityFeedPanel';
+import { Activity as ActivityIcon } from 'lucide-react';
 import { useTheme } from '@/lib/useTheme';
 import { getNotifications, markNotificationRead, markAllNotificationsRead, type NotificationItem } from '@/lib/api';
-import { Search, Bell, Moon, Sun, Menu, Plus } from 'lucide-react';
+import { Search, Bell, Moon, Sun, Menu, Plus, Rows3, Rows2, Rows4 } from 'lucide-react';
+import { useDensity } from '@/lib/useDensity';
 import { MobileBottomNav } from './MobileBottomNav';
 import { InstallPrompt } from '../InstallPrompt';
 import { OnboardingWizard } from '../onboarding/OnboardingWizard';
@@ -48,6 +53,9 @@ export function AppLayout({ children, title }: AppLayoutProps) {
   const notifRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
+  const { density, cycle: cycleDensity } = useDensity();
+  // Sprint 22 : Activity feed panel
+  const [activityOpen, setActivityOpen] = useState(false);
   const { user } = useAuth();
   
   const [showOnboarding, setShowOnboarding] = useState(() => {
@@ -199,6 +207,26 @@ export function AppLayout({ children, title }: AppLayoutProps) {
               Nouveau
             </button>
 
+            {/* Activity feed (Sprint 22) */}
+            <button
+              onClick={() => setActivityOpen(true)}
+              className="p-1.5 rounded-[var(--radius-sm)] text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--brand-primary)] transition-colors cursor-pointer hidden sm:inline-flex"
+              title="Activité de l'équipe"
+              aria-label="Voir l'activité d'équipe"
+            >
+              <ActivityIcon size={18} />
+            </button>
+
+            {/* Density toggle (Sprint 21) */}
+            <button
+              onClick={cycleDensity}
+              className="p-1.5 rounded-[var(--radius-sm)] text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] transition-colors cursor-pointer hidden sm:inline-flex"
+              title={`Densité : ${density === 'compact' ? 'Compacte' : density === 'spacious' ? 'Spacieuse' : 'Confortable'} (clic pour changer)`}
+              aria-label="Changer la densité de l'interface"
+            >
+              {density === 'compact' ? <Rows4 size={18} /> : density === 'spacious' ? <Rows2 size={18} /> : <Rows3 size={18} />}
+            </button>
+
             {/* Theme toggle */}
             <button
               onClick={toggleTheme}
@@ -289,6 +317,9 @@ export function AppLayout({ children, title }: AppLayoutProps) {
       </main>
 
       <CommandPalette isOpen={cmdOpen} onClose={() => setCmdOpen(false)} />
+      <KeyboardShortcutsModal />
+      <QuickAddFab />
+      <ActivityFeedPanel open={activityOpen} onOpenChange={setActivityOpen} />
       <MobileBottomNav />
       <InstallPrompt />
       {showOnboarding && <OnboardingWizard onComplete={() => setShowOnboarding(false)} />}

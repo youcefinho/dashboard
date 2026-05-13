@@ -1,6 +1,6 @@
 ﻿import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Badge, EmptyState } from '@/components/ui';
+import { Card, Button, Badge, EmptyState, Skeleton } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { 
@@ -43,6 +43,7 @@ export function TasksPage() {
 
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>(() => (localStorage.getItem('intralys_tasks_viewmode') as 'list' | 'kanban') || 'list');
   const [sortBy, setSortBy] = useState<'priority' | 'due_date' | 'status'>(() => (localStorage.getItem('intralys_tasks_sortby') as 'priority' | 'due_date' | 'status') || 'due_date');
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => { localStorage.setItem('intralys_tasks_filter', filter); }, [filter]);
   useEffect(() => { localStorage.setItem('intralys_tasks_viewmode', viewMode); }, [viewMode]);
@@ -50,7 +51,13 @@ export function TasksPage() {
 
   useEffect(() => { load(); loadTemplates(); }, []);
 
-  const load = () => { getTasks().then(res => { if (res.data) setTasks(res.data); }).catch(() => {}); };
+  const load = () => {
+    setIsLoading(true);
+    getTasks()
+      .then(res => { if (res.data) setTasks(res.data); })
+      .catch(() => {})
+      .finally(() => setIsLoading(false));
+  };
   const loadTemplates = () => { getTaskTemplates().then(res => { if (res.data) setTemplates(res.data); }).catch(() => {}); };
 
   const loadTaskDetails = async (task: Task) => {
@@ -193,7 +200,23 @@ export function TasksPage() {
       </div>
 
       {/* Kanban / Liste */}
-      {viewMode === 'kanban' ? (
+      {isLoading ? (
+        viewMode === 'kanban' ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[0, 1, 2].map(i => (
+              <div key={i} className="bg-[var(--bg-surface)] rounded-[var(--radius-lg)] p-3 space-y-2">
+                <Skeleton className="h-4 w-24 mb-2" />
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-16 w-full" />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+          </div>
+        )
+      ) : viewMode === 'kanban' ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {(['todo', 'in_progress', 'done'] as const).map(status => (
             <div key={status} className="bg-[var(--bg-surface)] rounded-[var(--radius-lg)] p-3">

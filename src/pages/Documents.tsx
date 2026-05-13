@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Badge, Skeleton, EmptyState } from '@/components/ui';
+import { Card, Button, Badge, Skeleton, EmptyState, useToast } from '@/components/ui';
 import { Input } from '@/components/ui/Input';
 import { getDocuments, createDocument, sendDocument, getDocumentTemplates, sendSigningSms, apiFetch, type Document, type DocumentTemplate, getLeads } from '@/lib/api';
 import { FileSignature, Plus, Mail, Eye, CheckCircle, Clock, MessageSquare } from 'lucide-react';
@@ -14,6 +14,7 @@ function timeAgo(dateStr: string) {
 }
 
 export function DocumentsPage() {
+  const { success, error: toastError, warning } = useToast();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [templates, setTemplates] = useState<DocumentTemplate[]>([]);
   const [leads, setLeads] = useState<any[]>([]);
@@ -66,7 +67,7 @@ export function DocumentsPage() {
       }
     } catch (e) {
       console.error(e);
-      alert('Erreur lors de la création ou de l\'envoi');
+      toastError('Erreur lors de la création ou de l\'envoi');
     }
     setIsCreating(false);
   };
@@ -74,7 +75,7 @@ export function DocumentsPage() {
   const [isGeneratingOaciq, setIsGeneratingOaciq] = useState(false);
   const handleGenerateOaciq = async () => {
     if (!selectedLead) {
-      alert("Veuillez sélectionner un lead.");
+      warning('Sélectionne un lead avant de générer le mandat.');
       return;
     }
     setIsGeneratingOaciq(true);
@@ -84,13 +85,14 @@ export function DocumentsPage() {
         body: JSON.stringify({ lead_id: selectedLead })
       });
       if (res.data?.id) {
+        success('Mandat OACIQ généré');
         setIsCreating(false);
         setSelectedLead('');
         void loadData();
       }
     } catch (e) {
       console.error(e);
-      alert('Erreur lors de la génération du mandat OACIQ');
+      toastError('Erreur lors de la génération du mandat OACIQ');
     }
     setIsGeneratingOaciq(false);
   };
@@ -227,8 +229,8 @@ export function DocumentsPage() {
                       {(doc.status === 'draft' || doc.status === 'sent') && (
                         <Button variant="ghost" size="sm" onClick={async () => {
                           const res = await sendSigningSms(doc.id);
-                          if (res.data) alert(`SMS envoyé à ${res.data.sms_sent_to}`);
-                          else alert(res.error || 'Échec envoi SMS');
+                          if (res.data) success(`SMS envoyé à ${res.data.sms_sent_to}`);
+                          else toastError(res.error || 'Échec envoi SMS');
                         }} title="Envoyer par SMS">
                           <MessageSquare size={14} /> SMS
                         </Button>

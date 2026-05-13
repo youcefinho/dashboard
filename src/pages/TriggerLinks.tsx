@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Badge, Input, EmptyState, Skeleton } from '@/components/ui';
+import { Card, Button, Badge, Input, EmptyState, Skeleton, useConfirm } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { getTriggerLinks, createTriggerLink, deleteTriggerLink } from '@/lib/api';
 import { Link2, Plus, Trash2, Copy, ExternalLink, MousePointerClick } from 'lucide-react';
@@ -13,6 +13,7 @@ interface TriggerLink {
 }
 
 export function TriggerLinksPage() {
+  const confirm = useConfirm();
   const [links, setLinks] = useState<TriggerLink[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -40,7 +41,13 @@ export function TriggerLinksPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Supprimer ce trigger link ?')) return;
+    const ok = await confirm({
+      title: 'Supprimer ce trigger link ?',
+      description: 'Les clics déjà comptabilisés restent dans les stats. Le lien lui-même ne fonctionnera plus.',
+      confirmLabel: 'Supprimer',
+      danger: true,
+    });
+    if (!ok) return;
     await deleteTriggerLink(id);
     void loadLinks();
   };

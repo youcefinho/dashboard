@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { apiFetch } from '@/lib/api';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Button, Input, Card, Badge, Skeleton, EmptyState } from '@/components/ui';
+import { Button, Input, Card, Badge, Skeleton, EmptyState, useConfirm, useToast } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { Home, RefreshCw, Plus, Search, MapPin, Bed, Bath, Expand, Trash2 } from 'lucide-react';
 
@@ -24,6 +24,8 @@ interface Property {
 }
 
 export function PropertiesPage() {
+  const confirm = useConfirm();
+  const { error: toastError, success } = useToast();
   const [properties, setProperties] = useState<Property[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -58,15 +60,22 @@ export function PropertiesPage() {
         setProperties(prev => [res.data.property, ...prev.filter(p => p.mls_number !== mlsInput)]);
         setIsSyncModalOpen(false);
         setMlsInput('');
+        success('Propriété synchronisée depuis Centris');
       }
     } catch (err: any) {
-      alert(err.message || 'Erreur lors de la synchronisation');
+      toastError(err.message || 'Erreur lors de la synchronisation');
     }
     setIsSyncing(false);
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Retirer cette propriété ?')) return;
+    const ok = await confirm({
+      title: 'Retirer cette propriété ?',
+      description: 'La propriété sera retirée de la liste. Cette action ne supprime pas la fiche Centris si elle existe.',
+      confirmLabel: 'Retirer',
+      danger: true,
+    });
+    if (!ok) return;
     try {
       await apiFetch(`/properties/${id}`, { method: 'DELETE' });
       setProperties(prev => prev.filter(p => p.id !== id));

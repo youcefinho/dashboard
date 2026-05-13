@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Card, Button, Badge } from '@/components/ui';
+import { Card, Button, Badge, useConfirm } from '@/components/ui';
 import { GripVertical, Plus, Trash2, Save } from 'lucide-react';
 
 import { getCustomFields, createCustomField, deleteCustomField } from '@/lib/api';
@@ -7,6 +7,7 @@ import type { CustomFieldDef } from '@/lib/types';
 import { toast } from 'sonner';
 
 export function CustomFieldsSettings() {
+  const confirm = useConfirm();
   const [fields, setFields] = useState<CustomFieldDef[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -22,7 +23,13 @@ export function CustomFieldsSettings() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer ce champ ?')) return;
+    const ok = await confirm({
+      title: 'Supprimer ce champ personnalisé ?',
+      description: 'Les valeurs déjà saisies sur les leads pour ce champ seront perdues.',
+      confirmLabel: 'Supprimer',
+      danger: true,
+    });
+    if (!ok) return;
     const res = await deleteCustomField(id);
     if (res.error) toast.error(res.error);
     else {

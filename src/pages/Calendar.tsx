@@ -1,10 +1,10 @@
 ﻿import { useState, useEffect, useCallback, useMemo } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Badge, Skeleton, EmptyState } from '@/components/ui';
+import { Card, Button, Badge, Skeleton, EmptyState, useToast } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
-import { getAppointments, createAppointment, updateAppointment, rescheduleAppointment, getCalendars, sendAppointmentReminderNow, type Calendar as CalType } from '@/lib/api';
-import type { Appointment, AppointmentType, AppointmentStatus } from '@/lib/types';
+import { getAppointments, createAppointment, updateAppointment, rescheduleAppointment, getCalendars, getClients, sendAppointmentReminderNow, type Calendar as CalType } from '@/lib/api';
+import type { Appointment, AppointmentType, AppointmentStatus, Client } from '@/lib/types';
 import { APPOINTMENT_TYPE_LABELS, APPOINTMENT_TYPE_ICONS, APPOINTMENT_TYPE_COLORS, APPOINTMENT_STATUS_LABELS, APPOINTMENT_TYPES } from '@/lib/types';
 import { ChevronLeft, ChevronRight, CalendarDays, Clock, MapPin, User, Plus, Check, X, BellRing, ExternalLink } from 'lucide-react';
 import { DndContext, useDraggable, useDroppable, DragEndEvent, pointerWithin } from '@dnd-kit/core';
@@ -40,8 +40,10 @@ function DroppableSlot({ id, date, hour, children, className }: { id: string, da
 // ----------------------
 
 export function CalendarPage() {
+  const { success, error: toastError } = useToast();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [calendars, setCalendars] = useState<CalType[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
   const [viewMode, setViewMode] = useState<ViewMode>(() => typeof window !== 'undefined' && window.innerWidth < 768 ? 'day' : 'month');
@@ -63,15 +65,17 @@ export function CalendarPage() {
   const [formLocation, setFormLocation] = useState('');
   const [formType, setFormType] = useState<AppointmentType>('meeting');
   const [formCalendarId, setFormCalendarId] = useState('');
+  const [formClientId, setFormClientId] = useState('');
   const [formRecurring, setFormRecurring] = useState('none');
   const [formReminder, setFormReminder] = useState(60);
   const [isSaving, setIsSaving] = useState(false);
 
   const load = useCallback(async () => {
     setIsLoading(true);
-    const [apptRes, calRes] = await Promise.all([
+    const [apptRes, calRes, clientsRes] = await Promise.all([
       getAppointments(),
-      getCalendars()
+      getCalendars(),
+      getClients(),
     ]);
     if (apptRes.data) setAppointments(apptRes.data);
     if (calRes.data) {
@@ -79,6 +83,12 @@ export function CalendarPage() {
       if (calRes.data.length > 0 && selectedCalendars.size === 0) {
         setSelectedCalendars(new Set(calRes.data.map(c => c.id)));
         setFormCalendarId(calRes.data[0]!.id);
+      }
+    }
+    if (clientsRes.data) {
+      setClients(clientsRes.data);
+      if (clientsRes.data.length > 0) {
+        setFormClientId(prev => prev || clientsRes.data![0]!.id);
       }
     }
     setIsLoading(false);
@@ -125,20 +135,20 @@ export function CalendarPage() {
   };
 
   const handleCreate = async () => {
-    if (!formTitle || !formDate) return;
+    if (!formTitle || !formDate || !formClientId) return;
     setIsSaving(true);
     let rrule = formRecurring === 'none' ? null : `FREQ=${formRecurring.toUpperCase()}`;
-    await createAppointment({ 
-      title: formTitle, 
-      description: formDescription, 
-      start_time: `${formDate}T${formTimeStart}:00`, 
-      end_time: `${formDate}T${formTimeEnd}:00`, 
-      location: formLocation, 
-      type: formType, 
+    await createAppointment({
+      title: formTitle,
+      description: formDescription,
+      start_time: `${formDate}T${formTimeStart}:00`,
+      end_time: `${formDate}T${formTimeEnd}:00`,
+      location: formLocation,
+      type: formType,
       calendar_id: formCalendarId,
       recurring_rule: rrule,
       reminder_minutes: formReminder,
-      client_id: 'internal' // or dynamic
+      client_id: formClientId,
     });
     setIsSaving(false); setShowAddModal(false);
     setFormTitle(''); setFormDescription(''); setFormDate(''); setFormLocation(''); setFormRecurring('none');
@@ -178,8 +188,9 @@ export function CalendarPage() {
   };
 
   const sendReminder = async (id: string) => {
-    await sendAppointmentReminderNow(id);
-    alert('Rappel envoyé !');
+    const res = await sendAppointmentReminderNow(id);
+    if (res.error) toastError(`Échec de l'envoi du rappel: ${res.error}`);
+    else success('Rappel envoyé');
   };
 
   const hours = Array.from({ length: 15 }, (_, i) => i + 7); // 7h-21h
@@ -432,15 +443,23 @@ export function CalendarPage() {
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
+              <label className="text-xs font-medium mb-1 block">Client (sous-compte) <span className="text-[var(--danger)]">*</span></label>
+              <select className="w-full px-3 py-2 rounded-lg border text-sm" value={formClientId} onChange={e => setFormClientId(e.target.value)}>
+                <option value="">Sélectionner un client…</option>
+                {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+            <div>
               <label className="text-xs font-medium mb-1 block">Calendrier</label>
               <select className="w-full px-3 py-2 rounded-lg border text-sm" value={formCalendarId} onChange={e => setFormCalendarId(e.target.value)}>
                 {calendars.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
-            <div>
-              <label className="text-xs font-medium mb-1 block">Titre</label>
-              <Input value={formTitle} onChange={e => setFormTitle(e.target.value)} placeholder="Ex: Démo SaaS" />
-            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-medium mb-1 block">Titre <span className="text-[var(--danger)]">*</span></label>
+            <Input value={formTitle} onChange={e => setFormTitle(e.target.value)} placeholder="Ex: Démo SaaS" />
           </div>
           
           <div className="grid grid-cols-3 gap-3">
@@ -482,7 +501,7 @@ export function CalendarPage() {
 
           <div className="flex gap-2 justify-end pt-2">
             <Button variant="ghost" onClick={() => setShowAddModal(false)}>Annuler</Button>
-            <Button onClick={() => void handleCreate()} disabled={isSaving || !formTitle || !formDate || !formCalendarId}>
+            <Button onClick={() => void handleCreate()} disabled={isSaving || !formTitle || !formDate || !formCalendarId || !formClientId}>
               {isSaving ? 'Création...' : 'Créer le RDV'}
             </Button>
           </div>

@@ -1,8 +1,9 @@
 ﻿import { useState, useEffect } from 'react';
-import { Card, Button, Input, Badge } from '@/components/ui';
+import { Card, Button, Input, Badge, useToast } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 
 export function ApiWebhooksSettings() {
+  const { success, error: toastError } = useToast();
   const [keys, setKeys] = useState<any[]>([]);
   const [webhooks, setWebhooks] = useState<any[]>([]);
   const [showKeyModal, setShowKeyModal] = useState(false);
@@ -69,11 +70,8 @@ export function ApiWebhooksSettings() {
 
   const testWebhook = async (webhookId: string) => {
     const res = await fetch(`/api/settings/webhooks/${webhookId}/test`, { method: 'POST' });
-    if (res.ok) {
-      alert("Test envoyé avec succès !");
-    } else {
-      alert("Échec du test.");
-    }
+    if (res.ok) success('Webhook test envoyé');
+    else toastError('Échec du test webhook');
   };
 
   return (

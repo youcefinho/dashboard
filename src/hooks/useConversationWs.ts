@@ -1,18 +1,23 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import type { Message } from '@/lib/types';
 
+export type WsStatus = 'idle' | 'connecting' | 'connected' | 'reconnecting' | 'closed';
+
 export function useConversationWs(conversationId: string | null, channel: string | null) {
   const [messages, setMessages] = useState<Message[]>([]);
+  const [status, setStatus] = useState<WsStatus>('idle');
   const ws = useRef<WebSocket | null>(null);
+  const reconnectAttempts = useRef(0);
 
   const connect = useCallback(() => {
-    if (!conversationId || channel !== 'webchat') return;
+    if (!conversationId || channel !== 'webchat') {
+      setStatus('idle');
+      return;
+    }
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    // Le port 5174 est le port dev. En prod c'est le domaine courant.
     const baseUrl = import.meta.env.DEV ? `ws://localhost:5174` : `${protocol}//${window.location.host}`;
-    
-    // Auth user name pour l'agent
+
     const authDataStr = localStorage.getItem('intralys_auth');
     let agentName = 'Agent Intralys';
     if (authDataStr) {
@@ -22,17 +27,21 @@ export function useConversationWs(conversationId: string | null, channel: string
       } catch { /* */ }
     }
 
+    setStatus(reconnectAttempts.current === 0 ? 'connecting' : 'reconnecting');
     const url = `${baseUrl}/api/webchat/ws?conversation_id=${conversationId}&role=agent&name=${encodeURIComponent(agentName)}`;
     ws.current = new WebSocket(url);
 
+    ws.current.onopen = () => {
+      reconnectAttempts.current = 0;
+      setStatus('connected');
+    };
+
     ws.current.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      
+
       if (data.type === 'history') {
         // Optionnel : ne pas écraser si l'API REST a déjà chargé l'historique
-        // setMessages(data.messages);
       } else if (data.type === 'message' || data.type === 'system') {
-        // Transformer au format Message
         const newMsg: Message = {
           id: crypto.randomUUID(),
           lead_id: '',
@@ -54,25 +63,31 @@ export function useConversationWs(conversationId: string | null, channel: string
     };
 
     ws.current.onclose = () => {
-      // Reconnexion auto si la conversation est toujours active
+      setStatus('closed');
+      // Reconnexion auto avec backoff si la conversation est toujours active
+      reconnectAttempts.current += 1;
+      const delay = Math.min(3000 * reconnectAttempts.current, 15000);
       setTimeout(() => {
         if (ws.current?.readyState === WebSocket.CLOSED) {
           connect();
         }
-      }, 3000);
+      }, delay);
     };
 
   }, [conversationId, channel]);
 
   useEffect(() => {
     setMessages([]);
+    reconnectAttempts.current = 0;
     if (ws.current) {
       ws.current.close();
       ws.current = null;
     }
-    
+
     if (channel === 'webchat') {
       connect();
+    } else {
+      setStatus('idle');
     }
 
     return () => {
@@ -91,5 +106,5 @@ export function useConversationWs(conversationId: string | null, channel: string
     return false;
   }, []);
 
-  return { wsMessages: messages, sendWsMessage: sendMessage };
+  return { wsMessages: messages, sendWsMessage: sendMessage, wsStatus: status };
 }

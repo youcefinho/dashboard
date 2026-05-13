@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { DesktopOnlyBanner } from '@/components/DesktopOnlyBanner';
-import { Button, Badge, Input } from '@/components/ui';
+import { Button, Badge, Input, useToast, usePrompt } from '@/components/ui';
 import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -158,6 +158,8 @@ function BlockProperties({ block, onChange }: { block: EmailBlock | null; onChan
 export function EmailBuilderPage() {
   const { templateId } = useParams({ strict: false }) as { templateId: string };
   const navigate = useNavigate();
+  const { success, error: toastError } = useToast();
+  const prompt = usePrompt();
   const [blocks, setBlocks] = useState<EmailBlock[]>([]);
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [previewMode, setPreviewMode] = useState<PreviewMode>('desktop');
@@ -224,12 +226,18 @@ export function EmailBuilderPage() {
   };
 
   const handleSendTest = async () => {
-    const email = prompt('Adresse email de test :');
+    const email = await prompt({
+      title: 'Envoyer un email test',
+      description: 'À quelle adresse envoyer la version test de ce template ?',
+      placeholder: 'toi@exemple.com',
+      confirmLabel: 'Envoyer',
+    });
     if (!email) return;
     setIsSending(true);
-    await sendTestEmail(templateId, email);
+    const res = await sendTestEmail(templateId, email);
     setIsSending(false);
-    alert('Email test envoyé !');
+    if (res.error) toastError(`Échec de l'envoi: ${res.error}`);
+    else success(`Email test envoyé à ${email}`);
   };
 
   return (

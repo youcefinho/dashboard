@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { getLeadMessages, sendMessage, getTemplates } from '@/lib/api';
-import { Button, Badge, Skeleton } from '@/components/ui';
+import { Button, Badge, Skeleton, AiSparkles } from '@/components/ui';
 import type { Message, EmailTemplate } from '@/lib/types';
 import { CHANNEL_ICONS, MESSAGE_STATUS_LABELS } from '@/lib/types';
 
@@ -226,14 +226,17 @@ export function ConversationPanel({ leadId, leadName, leadEmail, leadPhone }: Co
           )}
 
           {/* Corps du message */}
-          <textarea
-            placeholder={channel === 'email' ? 'Rédigez votre email...' : channel === 'sms' ? 'Rédigez votre SMS...' : 'Ajoutez une note interne...'}
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            rows={channel === 'sms' ? 3 : 6}
-            maxLength={channel === 'sms' ? 160 : undefined}
-            className="w-full px-3 py-2 bg-[var(--bg-subtle)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand-primary)] resize-none"
-          />
+          <div className="relative">
+            <textarea
+              placeholder={channel === 'email' ? 'Rédigez votre email...' : channel === 'sms' ? 'Rédigez votre SMS...' : 'Ajoutez une note interne...'}
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              rows={channel === 'sms' ? 3 : 6}
+              maxLength={channel === 'sms' ? 160 : undefined}
+              className="w-full px-3 py-2 pr-10 bg-[var(--bg-subtle)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand-primary)] resize-none"
+            />
+            <AiSparkles value={body} onChange={setBody} leadId={leadId} className="absolute bottom-2 right-2" />
+          </div>
 
           {/* Compteur SMS */}
           {channel === 'sms' && (

@@ -1,18 +1,18 @@
 // ── Page Leads — Liste globale + Vue Carte (Sprint 6 D3) ─────
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Link } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, Button, Badge, Skeleton, EmptyState } from '@/components/ui';
+import { LeadLink } from '@/components/panels/LeadLink';
 import { Modal } from '@/components/ui/Modal';
 import { Avatar } from '@/components/ui/Avatar';
 import { Input } from '@/components/ui/Input';
-import { getLeads, getClients, updateLead, exportLeadsCsv, createLead, softDeleteLead, restoreLead } from '@/lib/api';
+import { getLeads, getClients, updateLead, exportLeadsCsv, createLead, softDeleteLead, restoreLead, aiSummarizeLeads, type AiBatchLeadSummary } from '@/lib/api';
 import { STATUS_LABELS, STATUS_COLORS, SOURCE_LABELS, LEAD_STATUSES, type Lead, type LeadStatus, type Client, type SmartList } from '@/lib/types';
-import { Search, X, Download, Save, LayoutGrid, LayoutList, Map, MoreHorizontal, ArrowUpDown, ChevronUp, ChevronDown, StickyNote, Users, UserPlus, Zap, ExternalLink, Check, Plus, Trash2 } from 'lucide-react';
+import { Search, X, Download, Save, LayoutGrid, LayoutList, Map, MoreHorizontal, ArrowUpDown, ChevronUp, ChevronDown, StickyNote, Users, UserPlus, Zap, ExternalLink, Check, Plus, Trash2, Sparkles, Loader2 } from 'lucide-react';
 import { SwipeAction } from '@/components/ui/SwipeAction';
 import { useLongPress } from '@/hooks/useLongPress';
-import { useToast } from '@/components/ui';
+import { useToast, useConfirm, usePrompt } from '@/components/ui';
 
 // Fixtures mock pour leads sans coordonnées (mode mock QC)
 const QC_FIXTURES: Array<{ lat: number; lng: number; city: string }> = [
@@ -26,18 +26,33 @@ const QC_FIXTURES: Array<{ lat: number; lng: number; city: string }> = [
   { lat: 46.3432, lng: -72.5480, city: 'Trois-Rivières' },
 ];
 
+// Hash déterministe d'un string → [0, 1) — pour offset stable des pins sans coord
+function stableOffset(seed: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) {
+    h = Math.imul(h ^ seed.charCodeAt(i), 16777619);
+  }
+  return ((h >>> 0) % 10000) / 10000;
+}
+
 // Composant Map (Mapbox ou fallback SVG mock)
 function LeadsMapView({ leads }: { leads: Lead[] }) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const [mapError, setMapError] = useState(false);
   const [selectedPin, setSelectedPin] = useState<Lead | null>(null);
 
-  // Enrichir les leads avec des coordonnées mock si manquantes
-  const enrichedLeads = leads.slice(0, 50).map((lead, i) => ({
-    ...lead,
-    lat: (lead as Lead & { lat?: number }).lat || QC_FIXTURES[i % QC_FIXTURES.length]!.lat + (Math.random() - 0.5) * 0.1,
-    lng: (lead as Lead & { lng?: number }).lng || QC_FIXTURES[i % QC_FIXTURES.length]!.lng + (Math.random() - 0.5) * 0.1,
-  }));
+  // Enrichir les leads avec des coordonnées déterministes si manquantes (offset hashé sur lead.id)
+  // → les pins ne bougent plus à chaque render, contrairement à Math.random() qui rendait la carte mensongère.
+  const enrichedLeads = leads.slice(0, 50).map((lead, i) => {
+    const fixture = QC_FIXTURES[i % QC_FIXTURES.length]!;
+    const offsetLat = (stableOffset(lead.id + ':lat') - 0.5) * 0.1;
+    const offsetLng = (stableOffset(lead.id + ':lng') - 0.5) * 0.1;
+    return {
+      ...lead,
+      lat: (lead as Lead & { lat?: number }).lat || fixture.lat + offsetLat,
+      lng: (lead as Lead & { lng?: number }).lng || fixture.lng + offsetLng,
+    };
+  });
 
   // Essayer de charger Mapbox si token dispo (runtime, pas bundlé)
   useEffect(() => {
@@ -108,8 +123,8 @@ function LeadsMapView({ leads }: { leads: Lead[] }) {
         {/* Pins mock */}
         <div className="absolute inset-0 p-4">
           {enrichedLeads.slice(0, 20).map((lead, i) => {
-            const x = 5 + (i % 6) * 16 + Math.random() * 4;
-            const y = 10 + Math.floor(i / 6) * 22 + Math.random() * 4;
+            const x = 5 + (i % 6) * 16 + stableOffset(lead.id + ':x') * 4;
+            const y = 10 + Math.floor(i / 6) * 22 + stableOffset(lead.id + ':y') * 4;
             return (
               <button key={lead.id}
                 onClick={() => setSelectedPin(prev => prev?.id === lead.id ? null : lead)}
@@ -134,10 +149,10 @@ function LeadsMapView({ leads }: { leads: Lead[] }) {
             <p className="font-semibold text-sm text-[var(--text-primary)]">{selectedPin.name}</p>
             <p className="text-xs text-[var(--text-muted)]">{selectedPin.email}</p>
             <p className="text-xs mt-1" style={{ color: scoreColor(selectedPin.score) }}>Score : {selectedPin.score}</p>
-            <Link to={`/leads/${selectedPin.id}`}
+            <LeadLink leadId={selectedPin.id}
               className="flex items-center gap-1 text-xs text-[var(--brand-primary)] mt-1.5 hover:underline">
               <ExternalLink size={10} /> Voir le profil
-            </Link>
+            </LeadLink>
           </div>
         )}
       </div>
@@ -151,10 +166,10 @@ function LeadsMapView({ leads }: { leads: Lead[] }) {
         <div className="absolute top-4 right-4 bg-[var(--bg-canvas)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] p-3 shadow-lg max-w-48 z-10">
           <p className="font-semibold text-sm text-[var(--text-primary)]">{selectedPin.name}</p>
           <p className="text-xs text-[var(--text-muted)]">{selectedPin.email}</p>
-          <Link to={`/leads/${selectedPin.id}`}
+          <LeadLink leadId={selectedPin.id}
             className="flex items-center gap-1 text-xs text-[var(--brand-primary)] mt-1.5 hover:underline">
             <ExternalLink size={10} /> Voir le profil
-          </Link>
+          </LeadLink>
         </div>
       )}
     </div>
@@ -163,6 +178,8 @@ function LeadsMapView({ leads }: { leads: Lead[] }) {
 
 export function LeadsPage() {
   const { success, error: toastError } = useToast();
+  const confirm = useConfirm();
+  const prompt = usePrompt();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -179,6 +196,18 @@ export function LeadsPage() {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [editNotes, setEditNotes] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  // Sprint 21 : AI batch summarize
+  const [batchSummary, setBatchSummary] = useState<AiBatchLeadSummary | null>(null);
+  const [isBatchSummarizing, setIsBatchSummarizing] = useState(false);
+
+  const handleBatchSummarize = async () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    setIsBatchSummarizing(true);
+    const res = await aiSummarizeLeads(ids);
+    setIsBatchSummarizing(false);
+    if (res.data) setBatchSummary(res.data);
+  };
   const [smartLists, setSmartLists] = useState<SmartList[]>(() => {
     try { return JSON.parse(localStorage.getItem('intralys_smart_lists') || '[]') as SmartList[]; } catch { return []; }
   });
@@ -268,8 +297,14 @@ export function LeadsPage() {
   };
 
   const bulkTrash = async () => {
-    if (!confirm(`Déplacer ${selectedIds.size} prospects vers la corbeille ?`)) return;
-    
+    const ok = await confirm({
+      title: 'Déplacer vers la corbeille ?',
+      description: `${selectedIds.size} prospect${selectedIds.size > 1 ? 's' : ''} ${selectedIds.size > 1 ? 'seront déplacés' : 'sera déplacé'} vers la corbeille. Vous pourrez les restaurer pendant 30 jours.`,
+      confirmLabel: 'Déplacer',
+      danger: true,
+    });
+    if (!ok) return;
+
     const ids = Array.from(selectedIds);
     let errorCount = 0;
     
@@ -298,12 +333,18 @@ export function LeadsPage() {
     }
   };
 
-  const saveSmartList = () => {
-    const name = prompt('Nom de la liste intelligente :');
+  const saveSmartList = async () => {
+    const name = await prompt({
+      title: 'Sauvegarder cette vue',
+      description: 'Donne un nom à cette combinaison de filtres pour la retrouver rapidement.',
+      placeholder: 'Ex: Leads chauds Facebook',
+      confirmLabel: 'Sauvegarder',
+    });
     if (!name) return;
     const newList: SmartList = { id: `sl-${Date.now()}`, user_id: 'local', client_id: 'local', name, filters: { status: statusFilter || undefined, source: sourceFilter || undefined, client_id: clientFilter || undefined, search: search || undefined }, count: leads.length, created_at: new Date().toISOString() };
     const updated = [...smartLists, newList]; setSmartLists(updated);
     localStorage.setItem('intralys_smart_lists', JSON.stringify(updated));
+    success(`Vue "${name}" sauvegardée`);
   };
   const loadSmartList = (sl: SmartList) => { setStatusFilter((sl.filters.status as string) || ''); setSourceFilter((sl.filters.source as string) || ''); setClientFilter((sl.filters.client_id as string) || ''); setSearch((sl.filters.search as string) || ''); };
   const deleteSmartList = (id: string) => { const updated = smartLists.filter(s => s.id !== id); setSmartLists(updated); localStorage.setItem('intralys_smart_lists', JSON.stringify(updated)); };
@@ -430,8 +471,15 @@ export function LeadsPage() {
       {isLoading ? (
         <Card><Skeleton className="h-96 w-full" /></Card>
       ) : leads.length === 0 ? (
-        <EmptyState icon={<Users size={48} />} title="Aucun lead trouvé" description="Aucun lead ne correspond à vos filtres."
-          action={<Button variant="secondary" onClick={() => { setSearch(''); setStatusFilter(''); }}>Réinitialiser</Button>} />
+        hasFilters ? (
+          <EmptyState icon={<Users size={48} />} title="Aucun lead ne correspond à vos filtres"
+            description="Essayez d'élargir vos critères ou réinitialisez les filtres."
+            action={<Button variant="secondary" onClick={() => { setSearch(''); setStatusFilter(''); setSourceFilter(''); setClientFilter(''); }}>Réinitialiser les filtres</Button>} />
+        ) : (
+          <EmptyState icon={<Users size={48} />} title="Aucun lead pour l'instant"
+            description="Créez votre premier lead manuellement ou attendez vos captures via formulaires et intégrations."
+            action={<Button variant="primary" leftIcon={<Plus size={14} />} onClick={() => setCreateOpen(true)}>Nouveau lead</Button>} />
+        )
       ) : viewMode === 'map' ? (
         /* ── Vue Carte ── */
         <LeadsMapView leads={sortedLeads} />
@@ -457,7 +505,7 @@ export function LeadsPage() {
                 rightThreshold={110}
               >
                 <div {...longPressProps}>
-                  <Link to={`/leads/${lead.id}`}
+                  <LeadLink leadId={lead.id}
                     className="block bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-lg)] p-4 hover:border-[var(--brand-primary)] transition-all hover:shadow-[var(--shadow-md)] card-lift relative z-10">
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex items-center gap-2">
@@ -488,7 +536,7 @@ export function LeadsPage() {
                     {lead.tags.slice(0, 3).map(t => <span key={t} className="text-[9px] px-1.5 py-0.5 rounded-full bg-[var(--bg-muted)] text-[var(--text-muted)]">{t}</span>)}
                   </div>
                 )}
-              </Link>
+              </LeadLink>
                 </div>
               </SwipeAction>
             );
@@ -508,11 +556,18 @@ export function LeadsPage() {
               <Button variant="ghost" size="sm" onClick={bulkTrash} className="text-[var(--danger)] hover:bg-[var(--danger)]/10 hover:text-[var(--danger)]" leftIcon={<Trash2 size={14} />}>
                 Supprimer
               </Button>
+              <button onClick={() => void handleBatchSummarize()} disabled={isBatchSummarizing}
+                className="inline-flex items-center gap-1.5 px-3 h-8 text-xs font-semibold text-white rounded-[var(--radius-xs)] transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                style={{ background: 'linear-gradient(135deg, var(--brand-primary), var(--accent-orange))' }}
+                title="Résumer les leads sélectionnés avec l'AI">
+                {isBatchSummarizing ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                Résumer ({selectedIds.size})
+              </button>
               <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>Annuler</Button>
             </div>
           )}
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm density-table">
               <thead>
                 <tr className="border-b border-[var(--border-subtle)] bg-[var(--bg-subtle)]">
                   <th className="px-4 py-3 w-10">
@@ -545,13 +600,13 @@ export function LeadsPage() {
                         <input type="checkbox" checked={selectedIds.has(lead.id)} onChange={() => toggleSelect(lead.id)} className="rounded cursor-pointer accent-[var(--brand-primary)]" />
                       </td>
                       <td className="px-4 py-3">
-                        <Link to={`/leads/${lead.id}`} className="flex items-center gap-2.5 hover:text-[var(--brand-primary)] transition-colors">
+                        <LeadLink leadId={lead.id} className="flex items-center gap-2.5 hover:text-[var(--brand-primary)] transition-colors">
                           <Avatar name={lead.name} size="xs" />
                           <div>
                             <p className="font-medium text-[var(--text-primary)] text-[13px]">{lead.name}</p>
                             {lead.message && <p className="text-[11px] text-[var(--text-muted)] mt-0.5 truncate max-w-56">{lead.message}</p>}
                           </div>
-                        </Link>
+                        </LeadLink>
                       </td>
                       <td className="px-4 py-3">
                         <span className="text-xs px-2 py-1 rounded-[var(--radius-xs)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] font-medium">{getClientName(lead)}</span>
@@ -670,6 +725,50 @@ export function LeadsPage() {
             </Button>
           </div>
         </div>
+      </Modal>
+
+      {/* Sprint 21 — Modal AI batch summary */}
+      <Modal open={!!batchSummary} onOpenChange={() => setBatchSummary(null)} title="Résumé AI des leads sélectionnés" size="lg">
+        {batchSummary && (
+          <div className="space-y-4">
+            <div className="p-3 rounded-[var(--radius-md)] bg-gradient-to-br from-[var(--brand-primary)]/5 to-[var(--accent-orange)]/5 border border-[var(--brand-primary)]/20">
+              <div className="flex items-start gap-2">
+                <Sparkles size={14} className="text-[var(--brand-primary)] mt-0.5 shrink-0" />
+                <p className="text-sm text-[var(--text-primary)] leading-relaxed">{batchSummary.overview}</p>
+              </div>
+            </div>
+            <div className="max-h-96 overflow-y-auto rounded-[var(--radius-md)] border border-[var(--border-subtle)]">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0">
+                  <tr className="bg-[var(--bg-subtle)] border-b border-[var(--border-subtle)]">
+                    <th className="text-left px-3 py-2 text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Lead</th>
+                    <th className="text-left px-3 py-2 text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Résumé AI + action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {batchSummary.per_lead.map(item => (
+                    <tr key={item.lead_id} className="border-b border-[var(--border-subtle)] last:border-b-0 hover:bg-[var(--bg-subtle)] transition-colors">
+                      <td className="px-3 py-2 text-xs font-medium text-[var(--text-primary)] whitespace-nowrap">{item.name}</td>
+                      <td className="px-3 py-2 text-xs text-[var(--text-secondary)]">{item.summary}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] text-[var(--text-muted)]">Généré par Claude Haiku 4.5</p>
+              <Button variant="secondary" leftIcon={<Download size={14} />} onClick={() => {
+                if (!batchSummary) return;
+                const csv = ['Nom,Résumé AI', ...batchSummary.per_lead.map(l => `"${l.name.replace(/"/g, '""')}","${l.summary.replace(/"/g, '""')}"`)].join('\n');
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = `resume-leads-${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+                URL.revokeObjectURL(url);
+              }}>Exporter CSV</Button>
+            </div>
+          </div>
+        )}
       </Modal>
 
       {/* Modal Notes */}

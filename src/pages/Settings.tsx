@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useAuth } from '@/lib/auth';
 import { getPacks, installPack, type IndustryPack } from '@/lib/api';
-import { Card, Button, Badge } from '@/components/ui';
+import { Card, Button, Badge, useToast, useConfirm } from '@/components/ui';
 import { 
   User, Bell, Shield, Palette, 
   Columns, Package, Brain, Users, Key, FileText, CreditCard,
@@ -124,6 +124,8 @@ export function SettingsPage() {
 
 // ── Composant Inline PacksSettings ──
 function PacksSettings() {
+  const { success, error: toastError } = useToast();
+  const confirm = useConfirm();
   const [packs, setPacks] = useState<IndustryPack[]>([]);
   const [loading, setLoading] = useState(true);
   const [installingId, setInstallingId] = useState<string | null>(null);
@@ -136,18 +138,23 @@ function PacksSettings() {
   }, []);
 
   const handleInstall = async (packId: string) => {
-    if (!confirm('Attention : L\'installation d\'un pack va ajouter des champs, templates et pipelines à votre CRM. Continuer ?')) return;
-    
+    const ok = await confirm({
+      title: 'Installer ce pack industrie ?',
+      description: 'L\'installation va ajouter des champs personnalisés, des templates email et des pipelines à votre CRM. Vous pourrez désinstaller à tout moment depuis les paramètres.',
+      confirmLabel: 'Installer',
+    });
+    if (!ok) return;
+
     setInstallingId(packId);
     try {
       const res = await installPack(packId, 'gatineau');
       if (res.data) {
-        alert('✅ Pack installé avec succès ! Rechargez la page pour voir les changements.');
+        success('Pack installé. Rechargez la page pour voir les changements.', { duration: 8000 });
       } else if (res.error) {
-        alert(`❌ Erreur: ${res.error}`);
+        toastError(`Échec de l'installation: ${res.error}`);
       }
     } catch (err: any) {
-      alert(`❌ Erreur: ${err.message}`);
+      toastError(`Erreur: ${err.message}`);
     } finally {
       setInstallingId(null);
     }

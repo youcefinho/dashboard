@@ -3,30 +3,38 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Badge, Skeleton, EmptyState, useToast } from '@/components/ui';
+import { Card, Button, Badge, Skeleton, EmptyState, useToast, useConfirm, AiSparkles, usePanelStack } from '@/components/ui';
 import { Avatar } from '@/components/ui/Avatar';
-import { getLeadDetail, updateLead, addTag, removeTag, getAppointments, getTasks, updateTask, getLeadNotes, createLeadNote, deleteLeadNote, getLeadScores, getLeadCustomFields, softDeleteLead, restoreLead, apiFetch } from '@/lib/api';
+import { getLeadDetail, updateLead, addTag, removeTag, getAppointments, getTasks, updateTask, getLeadNotes, createLeadNote, deleteLeadNote, getLeadScores, getLeadCustomFields, softDeleteLead, restoreLead, apiFetch, getPipelines, getLeadMessages } from '@/lib/api';
+import { getCachedLead, setCachedLead } from '@/lib/prefetch';
+import { AiNextActionCard } from '@/components/panels/AiNextActionCard';
+import { LeadTimeline } from '@/components/panels/LeadTimeline';
 import { ConversationPanel } from '@/components/conversations/ConversationPanel';
 import {
-  STATUS_LABELS, STATUS_COLORS, SOURCE_LABELS,
-  ACTIVITY_LABELS, ACTIVITY_ICONS, LEAD_STATUSES,
+  STATUS_LABELS, STATUS_COLORS, SOURCE_LABELS, LEAD_STATUSES,
   LIFECYCLE_LABELS, LIFECYCLE_COLORS, NOTE_CATEGORY_LABELS, NOTE_CATEGORY_ICONS,
   APPOINTMENT_TYPE_ICONS, APPOINTMENT_TYPE_LABELS, APPOINTMENT_STATUS_LABELS,
   TASK_PRIORITY_ICONS, TASK_STATUS_ICONS, TASK_STATUS_LABELS,
-  type LeadDetail, type LeadStatus, type ActivityType, type Appointment, type Task,
+  type LeadDetail, type LeadStatus, type Appointment, type Task,
   type LeadNote, type LeadScore, type CustomFieldValue, type LifecycleStage,
+  type PipelineStage,
 } from '@/lib/types';
 import { ArrowLeft, Star, Phone, Mail, CalendarPlus, CheckSquare, Trash2, Compass } from 'lucide-react';
 import { PhoneLink } from '@/components/ui/PhoneLink';
 
-export function LeadDetailPage() {
-  const { leadId } = useParams({ strict: false }) as { leadId: string };
+/**
+ * Corps de la fiche lead — utilisable en page complète (via LeadDetailPage)
+ * ou dans un SlidePanel (via LeadPanel). Pas d'AppLayout interne.
+ */
+export function LeadDetailBody({ leadId, compact = false }: { leadId: string; compact?: boolean }) {
   const navigate = useNavigate();
   const { success, error: toastError } = useToast();
-  const [lead, setLead] = useState<LeadDetail | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [editNotes, setEditNotes] = useState('');
-  const [isEditingNotes, setIsEditingNotes] = useState(false);
+  const confirm = useConfirm();
+  const { openPanel } = usePanelStack();
+  // Initial state hydraté depuis le cache prefetch (hover) → 0 flash si frais
+  const cachedLead = getCachedLead(leadId);
+  const [lead, setLead] = useState<LeadDetail | null>(cachedLead);
+  const [isLoading, setIsLoading] = useState(!cachedLead);
   const [newTag, setNewTag] = useState('');
   const [editDealValue, setEditDealValue] = useState('');
   const [isEditingDeal, setIsEditingDeal] = useState(false);
@@ -39,15 +47,18 @@ export function LeadDetailPage() {
   const [leadNotes, setLeadNotes] = useState<LeadNote[]>([]);
   const [leadScores, setLeadScores] = useState<LeadScore[]>([]);
   const [customFields, setCustomFields] = useState<CustomFieldValue[]>([]);
+  const [pipelineStages, setPipelineStages] = useState<PipelineStage[]>([]);
+  const [messagesCount, setMessagesCount] = useState(0);
   const [newNoteBody, setNewNoteBody] = useState('');
   const [newNoteCategory, setNewNoteCategory] = useState('general');
 
   const loadLead = useCallback(async () => {
-    setIsLoading(true);
+    // Si on a déjà un cache frais, on continue à afficher pendant le refresh background
+    if (!getCachedLead(leadId)) setIsLoading(true);
     const result = await getLeadDetail(leadId);
     if (result.data) {
       setLead(result.data);
-      setEditNotes(result.data.notes || '');
+      setCachedLead(leadId, result.data); // alimente le cache pour les prochains navigations
       setEditDealValue(String(result.data.deal_value || 0));
     }
     setIsLoading(false);
@@ -65,44 +76,80 @@ export function LeadDetailPage() {
     getLeadNotes(leadId).then(r => { if (r.data) setLeadNotes(r.data); }).catch(() => {});
     getLeadScores(leadId).then(r => { if (r.data) setLeadScores(r.data); }).catch(() => {});
     getLeadCustomFields(leadId).then(r => { if (r.data) setCustomFields(r.data); }).catch(() => {});
+    getPipelines().then(r => {
+      if (r.data) {
+        const defaultPipeline = r.data.find(p => p.is_default) || r.data[0];
+        if (defaultPipeline?.stages) setPipelineStages(defaultPipeline.stages);
+      }
+    }).catch(() => {});
+    getLeadMessages(leadId).then(r => { if (r.data) setMessagesCount(r.data.length); }).catch(() => {});
   }, [loadLead, leadId]);
 
+  // ── Optimistic mutations : UI update immédiate, rollback en cas d'erreur ──
   const handleStatusChange = async (status: LeadStatus) => {
-    await updateLead(leadId, { status });
-    void loadLead();
-  };
-
-  const handleSaveNotes = async () => {
-    await updateLead(leadId, { notes: editNotes });
-    setIsEditingNotes(false);
-    void loadLead();
+    if (!lead) return;
+    const prev = lead;
+    setLead({ ...lead, status });
+    const res = await updateLead(leadId, { status });
+    if (res.error) {
+      setLead(prev);
+      toastError(`Erreur de mise à jour du statut : ${res.error}`);
+    }
   };
 
   const handleSaveDeal = async () => {
-    await updateLead(leadId, { deal_value: Number(editDealValue) || 0 });
+    if (!lead) return;
+    const newValue = Number(editDealValue) || 0;
+    const prev = lead;
+    setLead({ ...lead, deal_value: newValue });
     setIsEditingDeal(false);
-    void loadLead();
+    const res = await updateLead(leadId, { deal_value: newValue });
+    if (res.error) {
+      setLead(prev);
+      toastError(`Erreur de mise à jour de la valeur : ${res.error}`);
+    }
   };
 
   const handleAddTag = async () => {
-    if (!newTag.trim()) return;
-    await addTag(leadId, newTag.trim());
+    if (!newTag.trim() || !lead) return;
+    const tag = newTag.trim();
     setNewTag('');
-    void loadLead();
+    if (lead.tags?.includes(tag)) return; // évite doublon
+    const prev = lead;
+    setLead({ ...lead, tags: [...(lead.tags || []), tag] });
+    const res = await addTag(leadId, tag);
+    if (res.error) {
+      setLead(prev);
+      toastError(`Erreur d'ajout du tag : ${res.error}`);
+    }
   };
 
   const handleRemoveTag = async (tag: string) => {
-    await removeTag(leadId, tag);
-    void loadLead();
+    if (!lead) return;
+    const prev = lead;
+    setLead({ ...lead, tags: (lead.tags || []).filter(t => t !== tag) });
+    const res = await removeTag(leadId, tag);
+    if (res.error) {
+      setLead(prev);
+      toastError(`Erreur de suppression du tag : ${res.error}`);
+    }
   };
 
   const handleForgetLead = async () => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer les données personnelles de ce lead (Droit à l\'oubli / Loi 25) ? Cette action est irréversible.')) return;
+    const ok = await confirm({
+      title: 'Droit à l\'oubli (Loi 25)',
+      description: `Cette action est IRRÉVERSIBLE. Toutes les données personnelles de ${lead?.name || 'ce lead'} (nom, email, téléphone, adresse, messages, notes) seront effacées de manière définitive.\n\nL'enregistrement anonymisé sera conservé pour conformité comptable et statistiques agrégées.`,
+      requireText: 'SUPPRIMER',
+      confirmLabel: 'Effacer les données',
+      danger: true,
+    });
+    if (!ok) return;
     try {
       await apiFetch(`/leads/${leadId}/forget`, { method: 'POST' });
+      success('Données personnelles effacées (Loi 25)');
       navigate({ to: '/leads' });
     } catch (e) {
-      alert('Erreur lors de la suppression');
+      toastError('Erreur lors de la suppression');
     }
   };
 
@@ -110,35 +157,19 @@ export function LeadDetailPage() {
     window.open(`/api/leads/${leadId}/export-pii`, '_blank');
   };
 
-  const timeAgo = (dateStr: string): string => {
-    const diffMs = Date.now() - new Date(dateStr).getTime();
-    const diffMin = Math.floor(diffMs / 60000);
-    const diffH = Math.floor(diffMin / 60);
-    const diffD = Math.floor(diffH / 24);
-    if (diffMin < 1) return 'à l\'instant';
-    if (diffMin < 60) return `il y a ${diffMin} min`;
-    if (diffH < 24) return `il y a ${diffH}h`;
-    if (diffD === 1) return 'hier';
-    return `il y a ${diffD}j`;
-  };
-
   if (isLoading) {
     return (
-      <AppLayout title="Fiche lead">
-        <div className="max-w-4xl space-y-4">
-          <Skeleton className="h-40 w-full" />
-          <Skeleton className="h-60 w-full" />
-        </div>
-      </AppLayout>
+      <div className={compact ? 'space-y-4' : 'max-w-4xl space-y-4'}>
+        <Skeleton className="h-40 w-full" />
+        <Skeleton className="h-60 w-full" />
+      </div>
     );
   }
 
   if (!lead) {
     return (
-      <AppLayout title="Lead introuvable">
-        <EmptyState title="Lead introuvable" description="Ce lead n'existe pas ou a été supprimé."
-          action={<Button onClick={() => void navigate({ to: '/leads' })}>Retour aux leads</Button>} />
-      </AppLayout>
+      <EmptyState title="Lead introuvable" description="Ce lead n'existe pas ou a été supprimé."
+        action={<Button onClick={() => void navigate({ to: '/leads' })}>Retour aux leads</Button>} />
     );
   }
 
@@ -152,17 +183,22 @@ export function LeadDetailPage() {
 
   // Avatar géré par le composant Avatar
 
-  // Probabilité par stage
-  const stageProbability: Record<string, number> = { new: 10, contacted: 25, meeting: 50, signed: 90, closed: 100, lost: 0 };
-  const forecast = (lead.deal_value || 0) * (stageProbability[lead.status] || 0) / 100;
+  // Probabilité par stage : source backend (pipeline_stages.probability) via lead.stage_id.
+  // Fallback legacy si pas encore migré vers stage_id (anciens leads pré-Multi-Pipelines).
+  const LEGACY_STAGE_PROBABILITY: Record<string, number> = { new: 10, contacted: 25, meeting: 50, signed: 90, closed: 100, lost: 0 };
+  const stageFromBackend = pipelineStages.find(s => s.id === (lead as { stage_id?: string }).stage_id);
+  const probability = stageFromBackend?.probability ?? LEGACY_STAGE_PROBABILITY[lead.status] ?? 0;
+  const forecast = (lead.deal_value || 0) * probability / 100;
 
   return (
-    <AppLayout title={lead.name}>
-      {/* Bouton retour */}
-      <button onClick={() => void navigate({ to: '/leads' })}
-        className="text-sm text-[var(--text-muted)] hover:text-[var(--brand-primary)] mb-4 flex items-center gap-1.5 cursor-pointer transition-colors">
-        <ArrowLeft size={16} /> Retour aux leads
-      </button>
+    <>
+      {/* Bouton retour — masqué en mode compact (panel) */}
+      {!compact && (
+        <button onClick={() => void navigate({ to: '/leads' })}
+          className="text-sm text-[var(--text-muted)] hover:text-[var(--brand-primary)] mb-4 flex items-center gap-1.5 cursor-pointer transition-colors">
+          <ArrowLeft size={16} /> Retour aux leads
+        </button>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 max-w-6xl">
         {/* Colonne principale */}
@@ -184,7 +220,14 @@ export function LeadDetailPage() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <button onClick={async () => { await updateLead(leadId, { favorite: lead.favorite ? 0 : 1 } as Record<string, unknown>); void loadLead(); }}
+                <button onClick={async () => {
+                    if (!lead) return;
+                    const prev = lead;
+                    const nextFav = lead.favorite ? 0 : 1;
+                    setLead({ ...lead, favorite: nextFav } as typeof lead);
+                    const res = await updateLead(leadId, { favorite: nextFav } as Record<string, unknown>);
+                    if (res.error) { setLead(prev); toastError(`Erreur favori : ${res.error}`); }
+                  }}
                   className="p-1 cursor-pointer hover:scale-110 transition-transform" title={lead.favorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}>
                   <Star size={18} className={lead.favorite ? 'fill-[var(--warning)] text-[var(--warning)]' : 'text-[var(--text-muted)]'} />
                 </button>
@@ -200,7 +243,13 @@ export function LeadDetailPage() {
                 {lead.dnd ? <span title="Ne pas déranger" className="text-sm">🔕</span> : null}
                 <button
                   onClick={async () => {
-                    if (confirm('Déplacer ce lead vers la corbeille ?')) {
+                    const ok = await confirm({
+                      title: 'Déplacer vers la corbeille ?',
+                      description: `${lead.name} sera déplacé vers la corbeille. Vous pourrez le restaurer pendant 30 jours.`,
+                      confirmLabel: 'Déplacer',
+                      danger: true,
+                    });
+                    if (ok) {
                       const res = await softDeleteLead(leadId);
                       if (res.error) {
                         toastError(res.error);
@@ -213,8 +262,8 @@ export function LeadDetailPage() {
                               const restoreRes = await restoreLead(leadId);
                               if (!restoreRes.error) {
                                 success('Lead restauré');
-                                // Force page reload to reflect restored lead
-                                window.location.reload();
+                                // Revenir sur la fiche restaurée plutôt que de full-reload
+                                void navigate({ to: `/leads/${leadId}` });
                               } else {
                                 toastError('Erreur lors de la restauration');
                               }
@@ -289,18 +338,18 @@ export function LeadDetailPage() {
               </div>
             )}
 
-            {/* Champs Personnalisés (P3.4) */}
+            {/* Champs Personnalisés — source unique : customFields state (chargé via getLeadCustomFields) */}
             <div className="mt-4 pt-4 border-t border-[var(--border-subtle)]">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">Champs Personnalisés</h3>
-                <button className="text-[10px] text-[var(--brand-primary)] hover:underline cursor-pointer">Gérer les champs</button>
+                <button onClick={() => void navigate({ to: '/settings' })} className="text-[10px] text-[var(--brand-primary)] hover:underline cursor-pointer">Gérer les champs</button>
               </div>
               <div className="grid grid-cols-2 gap-3 text-sm">
-                {(lead as any).custom_fields && (lead as any).custom_fields.length > 0 ? (
-                  ((lead as any).custom_fields as {id: string, name: string, value: string}[]).map(cf => (
-                    <div key={cf.id}>
-                      <p className="text-[var(--text-muted)] text-[10px] uppercase tracking-wider mb-0.5">{cf.name}</p>
-                      <p>{cf.value}</p>
+                {customFields.length > 0 ? (
+                  customFields.map(cf => (
+                    <div key={cf.field_id}>
+                      <p className="text-[var(--text-muted)] text-[10px] uppercase tracking-wider mb-0.5">{cf.field_name}</p>
+                      <p>{cf.value || '—'}</p>
                     </div>
                   ))
                 ) : (
@@ -312,7 +361,7 @@ export function LeadDetailPage() {
 
           {/* Onglets (Activité, Emails, Tâches, etc.) */}
           <div className="flex gap-1 border-b border-[var(--border-subtle)] overflow-x-auto">
-            {([['details', 'Détails'], ['notes', `Notes (${leadNotes.length})`], ['conversations', 'Conversations'], ['scores', 'Scores'], ['activity', 'Activité']] as const).map(([key, label]) => (
+            {([['details', 'Détails'], ['notes', `Notes (${leadNotes.length})`], ['conversations', `Conversations (${messagesCount})`], ['scores', 'Scores'], ['activity', 'Activité']] as const).map(([key, label]) => (
               <button key={key} onClick={() => setActiveTab(key as typeof activeTab)}
                 className={`px-4 py-2.5 text-[13px] font-medium transition-colors cursor-pointer border-b-2 -mb-px whitespace-nowrap ${
                   activeTab === key ? 'border-[var(--brand-primary)] text-[var(--brand-primary)]' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]'
@@ -321,30 +370,7 @@ export function LeadDetailPage() {
           </div>
 
           {/* Contenu par onglet */}
-          {activeTab === 'details' && (
-          <>
-          {/* Notes */}
-          <Card className="p-5">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold">📝 Notes</h3>
-              {!isEditingNotes && <button onClick={() => setIsEditingNotes(true)} className="text-xs text-[var(--brand-primary)] hover:underline cursor-pointer">Modifier</button>}
-            </div>
-            {isEditingNotes ? (
-              <div className="space-y-2">
-                <textarea value={editNotes} onChange={(e) => setEditNotes(e.target.value)} rows={4}
-                  className="w-full px-3 py-2 text-sm bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-[var(--text-primary)] resize-none focus:border-[var(--brand-primary)] focus:outline-none" />
-                <div className="flex gap-2">
-                  <Button size="sm" onClick={() => void handleSaveNotes()}>Sauvegarder</Button>
-                  <Button size="sm" variant="ghost" onClick={() => { setIsEditingNotes(false); setEditNotes(lead.notes || ''); }}>Annuler</Button>
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm text-[var(--text-secondary)] whitespace-pre-wrap">{lead.notes || 'Aucune note pour le moment.'}</p>
-            )}
-          </Card>
-
-          </>
-          )}
+          {/* Note legacy lead.notes : déplacée dans l'onglet Notes (voir activeTab === 'notes'). */}
 
           {activeTab === 'conversations' && (
           <Card className="p-5">
@@ -360,53 +386,56 @@ export function LeadDetailPage() {
 
           {activeTab === 'activity' && (
           <Card className="p-5">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold">📋 Timeline d'activité</h3>
-              <span className="text-[10px] text-[var(--text-muted)]">{lead.activity?.length || 0} événements</span>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold">📋 Timeline complète</h3>
+              <span className="text-[10px] text-[var(--text-muted)]">Activité · Notes · RDV · Tâches</span>
             </div>
-            {lead.activity && lead.activity.length > 0 ? (
-              <div className="relative pl-6">
-                {/* Ligne verticale */}
-                <div className="absolute left-[9px] top-2 bottom-2 w-px bg-[var(--border-subtle)]" />
-                <div className="space-y-4">
-                  {lead.activity.map((act, i) => {
-                    const actionType = act.action as ActivityType;
-                    const dotColor = actionType === 'email_sent' || actionType === 'sms_sent' ? 'var(--info)'
-                      : actionType === 'status_change' ? 'var(--warning)'
-                      : actionType === 'created' ? 'var(--success)'
-                      : actionType === 'deal_value_changed' ? 'var(--brand-primary)'
-                      : 'var(--text-muted)';
-                    return (
-                      <div key={i} className="relative flex items-start gap-3 text-sm">
-                        {/* Pastille */}
-                        <div className="absolute -left-6 top-1 w-[10px] h-[10px] rounded-full border-2 border-[var(--bg-surface)]" style={{ background: dotColor }} />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm">{ACTIVITY_ICONS[actionType] || '•'}</span>
-                            <span className="font-medium text-sm">{ACTIVITY_LABELS[actionType] || act.action}</span>
-                            <span className="text-[10px] text-[var(--text-muted)] ml-auto shrink-0">{timeAgo(act.created_at)}</span>
-                          </div>
-                          {act.details && <p className="text-xs text-[var(--text-muted)] mt-0.5 pl-6">{act.details}</p>}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm text-[var(--text-muted)]">Aucune activité enregistrée.</p>
-            )}
+            <LeadTimeline lead={lead} notes={leadNotes} appointments={leadAppointments} tasks={leadTasks} />
           </Card>
           )}
 
           {activeTab === 'notes' && (
           <Card className="p-5">
             <h3 className="text-sm font-semibold mb-3">📝 Notes ({leadNotes.length})</h3>
+            {/* Note héritée (lead.notes legacy) — proposée à la conversion en note structurée */}
+            {lead.notes && lead.notes.trim() && (
+              <div className="mb-4 p-3 rounded-[var(--radius-md)] border border-[var(--warning)] bg-[oklch(0.95_0.02_90)]">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs font-medium text-[var(--text-muted)]">📌 Note héritée (ancien format)</span>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={async () => {
+                        await createLeadNote(leadId, { body: lead.notes!, category: 'general' });
+                        await updateLead(leadId, { notes: '' });
+                        const r = await getLeadNotes(leadId); if (r.data) setLeadNotes(r.data);
+                        void loadLead();
+                      }}
+                      className="text-xs text-[var(--brand-primary)] hover:underline cursor-pointer">
+                      Convertir en note
+                    </button>
+                    <button
+                      onClick={async () => {
+                        const ok = await confirm({ title: 'Supprimer la note héritée ?', confirmLabel: 'Supprimer', danger: true });
+                        if (!ok) return;
+                        await updateLead(leadId, { notes: '' });
+                        void loadLead();
+                      }}
+                      className="text-xs text-[var(--danger)] hover:underline cursor-pointer">
+                      Supprimer
+                    </button>
+                  </div>
+                </div>
+                <p className="text-sm text-[var(--text-secondary)] whitespace-pre-wrap">{lead.notes}</p>
+              </div>
+            )}
             {/* Formulaire ajout note */}
             <div className="mb-4 space-y-2 p-3 rounded-[var(--radius-md)] bg-[var(--bg-subtle)]">
-              <textarea value={newNoteBody} onChange={e => setNewNoteBody(e.target.value)} rows={3}
-                placeholder="Ajouter une note..."
-                className="w-full px-3 py-2 text-sm bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-[var(--text-primary)] resize-none focus:border-[var(--brand-primary)] focus:outline-none" />
+              <div className="relative">
+                <textarea value={newNoteBody} onChange={e => setNewNoteBody(e.target.value)} rows={3}
+                  placeholder="Ajouter une note..."
+                  className="w-full px-3 py-2 pr-10 text-sm bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-[var(--text-primary)] resize-none focus:border-[var(--brand-primary)] focus:outline-none" />
+                <AiSparkles value={newNoteBody} onChange={setNewNoteBody} leadId={leadId} className="absolute bottom-2 right-2" />
+              </div>
               <div className="flex items-center gap-2">
                 <select value={newNoteCategory} onChange={e => setNewNoteCategory(e.target.value)}
                   className="text-xs px-2 py-1 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] text-[var(--text-secondary)]">
@@ -435,7 +464,12 @@ export function LeadDetailPage() {
                         <span>·</span>
                         <span>{new Date(note.created_at).toLocaleDateString('fr-CA')}</span>
                       </div>
-                      <button onClick={async () => { await deleteLeadNote(leadId, note.id); const r = await getLeadNotes(leadId); if (r.data) setLeadNotes(r.data); }}
+                      <button onClick={async () => {
+                          const prev = leadNotes;
+                          setLeadNotes(leadNotes.filter(n => n.id !== note.id));
+                          const res = await deleteLeadNote(leadId, note.id);
+                          if (res.error) { setLeadNotes(prev); toastError(`Erreur suppression note : ${res.error}`); }
+                        }}
                         className="text-xs text-[var(--danger)] hover:underline cursor-pointer">✕</button>
                     </div>
                     <p className="text-sm text-[var(--text-secondary)] whitespace-pre-wrap">{note.body}</p>
@@ -468,20 +502,7 @@ export function LeadDetailPage() {
                 ))}
               </div>
             )}
-            {/* Custom Fields */}
-            {customFields.length > 0 && (
-              <>
-                <h3 className="text-sm font-semibold mt-6 mb-3">🏷️ Champs personnalisés</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  {customFields.map(cf => (
-                    <div key={cf.field_id} className="p-2 rounded-[var(--radius-sm)] bg-[var(--bg-subtle)]">
-                      <p className="text-[10px] uppercase tracking-wider text-[var(--text-muted)]">{cf.field_name}</p>
-                      <p className="text-sm font-medium">{cf.value || '—'}</p>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
+            {/* Custom Fields rendus dans le tab Détails (source unique) */}
           </Card>
           )}
 
@@ -523,12 +544,12 @@ export function LeadDetailPage() {
                 )}
               </div>
               <div>
-                <p className="text-[10px] text-[var(--text-muted)] mb-0.5">Probabilité ({STATUS_LABELS[lead.status]})</p>
+                <p className="text-[10px] text-[var(--text-muted)] mb-0.5">Probabilité ({stageFromBackend?.name || STATUS_LABELS[lead.status]})</p>
                 <div className="flex items-center gap-2">
                   <div className="flex-1 h-1.5 rounded-full bg-[var(--bg-subtle)] overflow-hidden">
-                    <div className="h-full rounded-full bg-[var(--brand-primary)] transition-all" style={{ width: `${stageProbability[lead.status] || 0}%` }} />
+                    <div className="h-full rounded-full bg-[var(--brand-primary)] transition-all" style={{ width: `${probability}%` }} />
                   </div>
-                  <span className="text-xs font-semibold text-[var(--brand-primary)]">{stageProbability[lead.status] || 0}%</span>
+                  <span className="text-xs font-semibold text-[var(--brand-primary)]">{probability}%</span>
                 </div>
               </div>
               {forecast > 0 && (
@@ -681,21 +702,43 @@ export function LeadDetailPage() {
             </p>
           </Card>
 
+          {/* Sprint 20 : suggestion AI prochaine étape — affichée seulement si lead inactif >7j */}
+          {(() => {
+            const daysSinceUpdate = Math.floor((Date.now() - new Date(lead.updated_at).getTime()) / 86400000);
+            const isActive = !['closed', 'lost'].includes(lead.status);
+            return daysSinceUpdate >= 7 && isActive ? <AiNextActionCard leadId={leadId} /> : null;
+          })()}
+
           {/* Tâches liées */}
           <Card className="p-4">
             <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">📋 Tâches</h3>
             {leadTasks.length > 0 ? (
               <div className="space-y-1.5">
                 {leadTasks.map(task => (
-                  <button key={task.id}
-                    onClick={() => { const next = task.status === 'done' ? 'todo' as const : 'done' as const; setLeadTasks(prev => prev.map(t => t.id === task.id ? {...t, status: next} : t)); void updateTask(task.id, { status: next }); }}
-                    className={`w-full text-left p-2 rounded-[var(--radius-sm)] bg-[var(--bg-subtle)] cursor-pointer hover:bg-[var(--bg-subtle)] transition-colors ${task.status === 'done' ? 'opacity-50' : ''}`}>
+                  <div key={task.id}
+                    onClick={() => openPanel({ type: 'task', id: task.id })}
+                    className={`w-full text-left p-2 rounded-[var(--radius-sm)] bg-[var(--bg-subtle)] cursor-pointer hover:bg-[var(--bg-muted)] transition-colors ${task.status === 'done' ? 'opacity-50' : ''}`}>
                     <div className="flex items-center gap-1.5">
-                      <span className="text-xs">{TASK_STATUS_ICONS[task.status]}</span>
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          const next = task.status === 'done' ? 'todo' as const : 'done' as const;
+                          const prevStatus = task.status;
+                          setLeadTasks(prev => prev.map(t => t.id === task.id ? {...t, status: next} : t));
+                          const res = await updateTask(task.id, { status: next });
+                          if (res.error) {
+                            setLeadTasks(prev => prev.map(t => t.id === task.id ? {...t, status: prevStatus} : t));
+                            toastError(`Erreur mise à jour tâche : ${res.error}`);
+                          }
+                        }}
+                        className="text-xs cursor-pointer hover:scale-110 transition-transform"
+                        aria-label={task.status === 'done' ? 'Marquer comme à faire' : 'Marquer comme terminée'}>
+                        {TASK_STATUS_ICONS[task.status]}
+                      </button>
                       <span className={`text-xs font-medium truncate ${task.status === 'done' ? 'line-through' : ''}`}>{task.title}</span>
                     </div>
                     <span className="text-[10px] text-[var(--text-muted)]">{TASK_PRIORITY_ICONS[task.priority]} {TASK_STATUS_LABELS[task.status]}</span>
-                  </button>
+                  </div>
                 ))}
               </div>
             ) : (
@@ -728,6 +771,16 @@ export function LeadDetailPage() {
           </Card>
         </div>
       </div>
+    </>
+  );
+}
+
+/** Wrapper page-complète (URL route /leads/:leadId) */
+export function LeadDetailPage() {
+  const { leadId } = useParams({ strict: false }) as { leadId: string };
+  return (
+    <AppLayout title="Fiche lead">
+      <LeadDetailBody leadId={leadId} />
     </AppLayout>
   );
 }

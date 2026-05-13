@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect } from 'react';
-import { Card, Button, useToast } from '@/components/ui';
+import { Card, Button, useToast, useConfirm } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { getSessions, deleteSession, deleteOtherSessions, generateBackupCodes, type AdminSession } from '@/lib/api';
 import { Smartphone, Monitor, Download, Copy, AlertTriangle } from 'lucide-react';
@@ -11,6 +11,7 @@ export function SecuritySettings() {
   const [showBackupCodes, setShowBackupCodes] = useState(false);
   const [loading, setLoading] = useState(true);
   const { success, error: toastError } = useToast();
+  const confirm = useConfirm();
 
   const fetchSessions = async () => {
     setLoading(true);
@@ -32,7 +33,13 @@ export function SecuritySettings() {
   };
 
   const revokeOtherSessions = async () => {
-    if (!confirm('Voulez-vous vraiment fermer toutes les autres sessions ?')) return;
+    const ok = await confirm({
+      title: 'Fermer toutes les autres sessions ?',
+      description: 'Les autres appareils connectés à votre compte seront déconnectés immédiatement.',
+      confirmLabel: 'Fermer les sessions',
+      danger: true,
+    });
+    if (!ok) return;
     const res = await deleteOtherSessions();
     if (!res.error) {
       success('Toutes les autres sessions ont été fermées');
@@ -41,7 +48,13 @@ export function SecuritySettings() {
   };
 
   const handleGenerateBackupCodes = async () => {
-    if (!confirm('Générer de nouveaux codes de secours invalidere les anciens. Continuer ?')) return;
+    const ok = await confirm({
+      title: 'Générer de nouveaux codes de secours ?',
+      description: 'Les anciens codes seront invalidés immédiatement. Conservez les nouveaux en lieu sûr.',
+      confirmLabel: 'Générer',
+      danger: true,
+    });
+    if (!ok) return;
     const res = await generateBackupCodes();
     if (res.data) {
       setBackupCodes(res.data.codes);

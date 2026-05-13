@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback, type DragEvent } from 'react';
 import { Link } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Badge, Skeleton, Card, Button } from '@/components/ui';
+import { Badge, Skeleton, Card, Button, EmptyState } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { Avatar } from '@/components/ui/Avatar';
 import { getPipeline, getPipelines, updateLead } from '@/lib/api';
@@ -245,6 +245,13 @@ export function PipelinePage() {
             <div key={s} className="space-y-3"><Skeleton className="h-10 w-full" /><Skeleton className="h-28 w-full" /><Skeleton className="h-28 w-full" /></div>
           ))}
         </div>
+      ) : leads.length === 0 && activeFilters.length === 0 ? (
+        <EmptyState
+          icon={<TrendingUp size={48} />}
+          title="Aucun lead dans le pipeline"
+          description="Vos leads apparaîtront ici une fois capturés (formulaires, webhooks, intégrations) ou ajoutés manuellement."
+          action={<Link to="/leads"><Button>Voir mes leads</Button></Link>}
+        />
       ) : viewMode === 'kanban' ? (
         <div className="flex gap-3 overflow-x-auto pb-4 min-h-[calc(100vh-14rem)] snap-x snap-mandatory custom-scrollbar pr-4">
           {stages.map(stage => {
@@ -287,9 +294,13 @@ export function PipelinePage() {
                 {/* Cards */}
                 <div className="flex-1 space-y-2 px-2 pb-2 overflow-y-auto max-h-[calc(100vh-20rem)] custom-scrollbar">
                   {colLeads.length === 0 && (
-                    <div className="text-center py-8 text-[10px] text-[var(--text-muted)] border-2 border-dashed border-[var(--border-subtle)] rounded-xl mx-1">
-                      Déposez ici
-                    </div>
+                    draggedId ? (
+                      <div className="text-center py-8 text-[10px] text-[var(--text-muted)] border-2 border-dashed rounded-xl mx-1 transition-colors" style={{ borderColor: isOver ? stage.color : 'var(--border-subtle)' }}>
+                        Déposez ici
+                      </div>
+                    ) : (
+                      <div className="text-center py-6 text-[10px] text-[var(--text-muted)] mx-1 opacity-40">—</div>
+                    )
                   )}
                   {colLeads.map(lead => {
                     const days = getDaysInStage(lead);

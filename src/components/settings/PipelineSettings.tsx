@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Card, Button, Badge } from '@/components/ui';
+import { Card, Button, Badge, useConfirm, useToast } from '@/components/ui';
 import { Input } from '@/components/ui/Input';
 import { getPipelines, createPipeline, updatePipeline, deletePipeline, createPipelineStage, updatePipelineStage, deletePipelineStage } from '@/lib/api';
 import type { Pipeline } from '@/lib/types';
 import { Plus, Trash2, Edit2, Check, X, ArrowUp, ArrowDown } from 'lucide-react';
 
 export function PipelineSettings() {
+  const confirm = useConfirm();
+  const { error: toastError } = useToast();
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
   const [activePipelineId, setActivePipelineId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -68,13 +70,19 @@ export function PipelineSettings() {
   };
 
   const handleDeletePipeline = async (id: string) => {
-    if (!confirm('Voulez-vous vraiment supprimer ce pipeline ? Les leads associés seront déplacés vers le pipeline par défaut.')) return;
+    const ok = await confirm({
+      title: 'Supprimer ce pipeline ?',
+      description: 'Les leads qui y sont associés seront automatiquement déplacés vers le pipeline par défaut.',
+      confirmLabel: 'Supprimer',
+      danger: true,
+    });
+    if (!ok) return;
     const res = await deletePipeline(id);
     if (res.data?.success) {
       setActivePipelineId(null);
       await loadPipelines();
     } else if (res.error) {
-      alert(res.error);
+      toastError(res.error);
     }
   };
 
@@ -112,7 +120,13 @@ export function PipelineSettings() {
 
   const handleDeleteStage = async (stageId: string) => {
     if (!activePipeline) return;
-    if (!confirm('Voulez-vous vraiment supprimer cette étape ?')) return;
+    const ok = await confirm({
+      title: 'Supprimer cette étape ?',
+      description: 'Les leads présents dans cette étape seront déplacés vers l\'étape par défaut du pipeline.',
+      confirmLabel: 'Supprimer',
+      danger: true,
+    });
+    if (!ok) return;
     await deletePipelineStage(activePipeline.id, stageId);
     await loadPipelines();
   };

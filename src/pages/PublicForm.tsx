@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams } from '@tanstack/react-router';
-import { Button, Card } from '@/components/ui';
+import { Button, Card, useToast } from '@/components/ui';
 import React from 'react';
 
 type Field = {
@@ -25,6 +25,7 @@ type FormConfig = {
 };
 
 export function PublicFormPage() {
+  const { error: toastError } = useToast();
   const { slug } = useParams({ strict: false }) as { slug: string };
   const [config, setConfig] = useState<FormConfig | null>(null);
   const [fields, setFields] = useState<Field[]>([]);
@@ -95,7 +96,7 @@ export function PublicFormPage() {
       }
 
     } catch (err: any) {
-      alert(err.message);
+      toastError(err.message || 'Erreur lors de l\'envoi du formulaire');
     } finally {
       setIsSubmitting(false);
     }

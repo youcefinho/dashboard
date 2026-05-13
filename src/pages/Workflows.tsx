@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Skeleton, EmptyState } from '@/components/ui';
+import { Card, Button, Skeleton, EmptyState, useConfirm } from '@/components/ui';
 import { getWorkflows, toggleWorkflow, deleteWorkflow } from '@/lib/api';
 import type { Workflow, TriggerType } from '@/lib/types';
 import { TRIGGER_LABELS, TRIGGER_ICONS } from '@/lib/types';
@@ -16,6 +16,7 @@ type FolderFilter = 'all' | 'onboarding' | 'sales' | 'reactivation' | 'custom';
 const FOLDER_LABELS: Record<FolderFilter, string> = { all: 'Tous', onboarding: 'Onboarding', sales: 'Ventes', reactivation: 'Réactivation', custom: 'Personnalisé' };
 
 export function WorkflowsPage() {
+  const confirm = useConfirm();
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filterMode, setFilterMode] = useState<FilterMode>('all');
@@ -33,7 +34,17 @@ export function WorkflowsPage() {
   useEffect(() => { void load(); }, [load]);
 
   const handleToggle = async (id: string, active: number) => { await toggleWorkflow(id, active === 0); void load(); };
-  const handleDelete = async (id: string) => { if (!confirm('Supprimer ce workflow et toutes ses données ?')) return; await deleteWorkflow(id); void load(); };
+  const handleDelete = async (id: string) => {
+    const ok = await confirm({
+      title: 'Supprimer ce workflow ?',
+      description: 'Toutes les inscriptions actives et l\'historique d\'exécution seront effacés. Les leads concernés ne recevront plus les actions de ce workflow.',
+      confirmLabel: 'Supprimer',
+      danger: true,
+    });
+    if (!ok) return;
+    await deleteWorkflow(id);
+    void load();
+  };
 
   const activeCount = workflows.filter(w => w.is_active).length;
   const totalExecs = workflows.reduce((s, w) => s + (w.total_executions ?? 0), 0);

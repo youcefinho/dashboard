@@ -29,6 +29,20 @@ export async function handleGetTasks(env: Env, auth: { userId: string; role: str
   return json({ data: results || [] });
 }
 
+// Sprint 22 — Single task GET pour TaskPanel
+export async function handleGetTask(env: Env, auth: { userId: string; role: string }, taskId: string): Promise<Response> {
+  let query = `SELECT t.*, l.name as lead_name FROM tasks t
+               LEFT JOIN leads l ON t.lead_id = l.id WHERE t.id = ?`;
+  const params: string[] = [taskId];
+  if (auth.role !== 'admin') {
+    query += ' AND (t.assigned_to = ? OR t.created_by = ?)';
+    params.push(auth.userId, auth.userId);
+  }
+  const row = await env.DB.prepare(query).bind(...params).first();
+  if (!row) return json({ error: 'Tâche introuvable' }, 404);
+  return json({ data: row });
+}
+
 export async function handleCreateTask(request: Request, env: Env, auth: { userId: string; role: string }): Promise<Response> {
   const body = await request.json() as Record<string, unknown>;
   const title = sanitizeInput(body.title as string, 200);

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Card, Button, Input, Badge } from '@/components/ui';
+import { Card, Button, Input, Badge, useConfirm } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { getSnippets, createSnippet, updateSnippet, deleteSnippet } from '@/lib/api';
 import type { Snippet } from '@/lib/types';
@@ -8,6 +8,7 @@ import { useToast } from '@/components/ui';
 
 export function SnippetsSettings() {
   const { success, error: toastError } = useToast();
+  const confirm = useConfirm();
   const [snippets, setSnippets] = useState<Snippet[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -59,7 +60,13 @@ export function SnippetsSettings() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer cette réponse rapide ?')) return;
+    const ok = await confirm({
+      title: 'Supprimer cette réponse rapide ?',
+      description: 'Cette action est irréversible.',
+      confirmLabel: 'Supprimer',
+      danger: true,
+    });
+    if (!ok) return;
     const res = await deleteSnippet(id);
     if (res.error) toastError(res.error);
     else { success('Réponse rapide supprimée', { action: { label: 'Annuler', onClick: () => { /* Undo non implémenté pour snippets encore */ } } }); void loadSnippets(); }

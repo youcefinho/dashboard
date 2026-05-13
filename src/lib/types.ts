@@ -167,7 +167,8 @@ export type MessageDirection = typeof MESSAGE_DIRECTIONS[number];
 export const MESSAGE_CHANNELS = ['email', 'sms', 'webchat', 'facebook_messenger', 'instagram_dm', 'internal_note'] as const;
 export type MessageChannel = typeof MESSAGE_CHANNELS[number];
 
-export const MESSAGE_STATUSES = ['draft', 'sent', 'delivered', 'failed', 'read', 'bounced'] as const;
+// 'sending' = état optimistic client-only (Sprint 19) — n'existe jamais en DB
+export const MESSAGE_STATUSES = ['draft', 'sending', 'sent', 'delivered', 'failed', 'read', 'bounced'] as const;
 export type MessageStatus = typeof MESSAGE_STATUSES[number];
 
 export const CONVERSATION_STATUSES = ['open', 'closed', 'snoozed'] as const;
@@ -632,6 +633,7 @@ export const CONVERSATION_STATUS_COLORS: Record<ConversationStatus, string> = {
 
 export const MESSAGE_STATUS_LABELS: Record<MessageStatus, string> = {
   draft: 'Brouillon',
+  sending: 'Envoi…',
   sent: 'Envoyé',
   delivered: 'Livré',
   failed: 'Échoué',

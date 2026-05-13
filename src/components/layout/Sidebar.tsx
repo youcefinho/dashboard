@@ -7,8 +7,10 @@ import {
   LayoutDashboard, Users, Briefcase, MessageSquare, Mail,
   Zap, FileText, Star, CalendarDays, CheckSquare, Plug,
   BarChart3, Settings, LogOut, ChevronLeft, ChevronRight,
-  UserCircle, CreditCard, Trash2, Link2, ClipboardList,
+  UserCircle, CreditCard, Trash2, Link2, ClipboardList, Bookmark,
 } from 'lucide-react';
+import { getSmartLists } from '@/lib/api';
+import type { SmartList } from '@/lib/types';
 
 interface NavSection {
   label?: string;
@@ -72,10 +74,16 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { user, logout } = useAuth();
   const isAdmin = user?.role === 'admin';
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('sidebar_collapsed') === '1');
+  // Sprint 21 : smart lists pinned (saved views first-class)
+  const [smartLists, setSmartLists] = useState<SmartList[]>([]);
 
   useEffect(() => {
     localStorage.setItem('sidebar_collapsed', collapsed ? '1' : '0');
   }, [collapsed]);
+
+  useEffect(() => {
+    getSmartLists().then(r => { if (r.data) setSmartLists(r.data); }).catch(() => {});
+  }, []);
 
   const sidebarWidth = collapsed ? 'w-16' : 'w-60';
 
@@ -159,6 +167,39 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                     </Link>
                   );
                 })}
+                {/* Sprint 21 — Smart Lists pinées sous la section Workspace */}
+                {section.label === 'WORKSPACE' && smartLists.length > 0 && (
+                  <>
+                    {!collapsed && (
+                      <p className="px-3 pt-3 pb-1 text-[9px] font-semibold uppercase tracking-wider text-[var(--text-inverse-mut)]/70">
+                        Vues sauvegardées
+                      </p>
+                    )}
+                    {smartLists.slice(0, 5).map(sl => {
+                      const slPath = `/leads?smart=${sl.id}`;
+                      const searchStr = typeof location.search === 'string' ? location.search : JSON.stringify(location.search || {});
+                      const isActive = location.pathname === '/leads' && searchStr.includes(sl.id);
+                      return (
+                        <Link
+                          key={sl.id}
+                          to={slPath}
+                          onClick={onClose}
+                          title={collapsed ? sl.name : sl.name}
+                          className={`
+                            flex items-center gap-3 px-3 py-1.5 rounded-lg text-xs font-medium
+                            transition-all duration-[80ms] relative
+                            ${isActive ? 'text-[#6FCEF0]' : 'hover:bg-white/[0.05]'}
+                            ${collapsed ? 'justify-center' : ''}
+                          `}
+                          style={isActive ? { background: 'rgba(0,157,219,0.15)' } : { color: 'rgba(255,255,255,0.7)' }}
+                        >
+                          <Bookmark size={14} className="shrink-0" />
+                          {!collapsed && <span className="truncate">{sl.name}</span>}
+                        </Link>
+                      );
+                    })}
+                  </>
+                )}
               </div>
             );
           })}

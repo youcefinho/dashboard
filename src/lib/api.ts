@@ -744,6 +744,11 @@ export async function createTask(
   });
 }
 
+// Sprint 22 — Single task fetch pour TaskPanel
+export async function getTask(taskId: string): Promise<ApiResponse<Task>> {
+  return apiFetch<Task>(`/tasks/${taskId}`);
+}
+
 export async function updateTask(
   id: string,
   updates: Partial<Task>
@@ -1388,11 +1393,17 @@ export async function unregisterDevice(token: string): Promise<ApiResponse<{ suc
 
 // ── Sprint 6 : AI Content Generator (D2) ────────────────────
 
-export type AiAction = 'email_followup' | 'email_welcome' | 'sms_followup' | 'social_post' | 'objection_handler' | 'meeting_agenda' | 'proposal_intro' | 'recap_call';
+export type AiAction =
+  | 'email_followup' | 'email_welcome' | 'sms_followup' | 'social_post'
+  | 'objection_handler' | 'meeting_agenda' | 'proposal_intro' | 'recap_call'
+  // Sprint 19 — actions inline pour AiSparkles (rewrite générique)
+  | 'improve_text' | 'shorten' | 'formalize' | 'casualize';
 
 export async function aiGenerate(params: {
   action: AiAction;
   context?: string;
+  /** Sprint 19 — texte source à transformer pour les actions inline (improve_text, shorten, formalize, casualize) */
+  text?: string;
   lead_id?: string;
   client_id?: string;
   brand_voice?: string;
@@ -1407,6 +1418,40 @@ export async function aiSuggestWorkflow(prompt: string): Promise<ApiResponse<{ s
   return apiFetch<{ steps: Array<Record<string, unknown>> }>('/ai/suggest-workflow', {
     method: 'POST',
     body: JSON.stringify({ prompt }),
+  });
+}
+
+// ── Sprint 20 : AI Summarize Conversation ──────────────────
+export async function aiSummarizeConversation(conversationId: string): Promise<ApiResponse<{ summary: string[]; cached?: boolean }>> {
+  return apiFetch<{ summary: string[]; cached?: boolean }>('/ai/summarize-conversation', {
+    method: 'POST',
+    body: JSON.stringify({ conversation_id: conversationId }),
+  });
+}
+
+// ── Sprint 20 : AI Suggest Next Action ─────────────────────
+export interface AiNextAction {
+  action: 'email' | 'sms' | 'call';
+  reason: string;
+  draft: string;
+}
+export async function aiSuggestNextAction(leadId: string): Promise<ApiResponse<AiNextAction>> {
+  return apiFetch<AiNextAction>('/ai/suggest-next-action', {
+    method: 'POST',
+    body: JSON.stringify({ lead_id: leadId }),
+  });
+}
+
+// ── Sprint 21 : AI Batch Summarize Leads ───────────────────
+export interface AiBatchLeadSummary {
+  per_lead: Array<{ lead_id: string; name: string; summary: string }>;
+  overview: string;
+  stats: { total: number; hot: number; warm: number; cold: number; inactiveDays: number; totalDealValue: number };
+}
+export async function aiSummarizeLeads(leadIds: string[]): Promise<ApiResponse<AiBatchLeadSummary>> {
+  return apiFetch<AiBatchLeadSummary>('/ai/summarize-leads', {
+    method: 'POST',
+    body: JSON.stringify({ lead_ids: leadIds }),
   });
 }
 

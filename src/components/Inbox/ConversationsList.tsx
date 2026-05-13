@@ -99,7 +99,7 @@ export function ConversationsList({
       </div>
 
       {/* Conversation list */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto density-list">
         {isLoading ? (
           <div className="p-3 space-y-2">
             {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-16 rounded-lg" />)}

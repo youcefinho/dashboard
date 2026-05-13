@@ -1,6 +1,6 @@
-import { useState, useRef } from 'react';
-import { Button } from '@/components/ui';
-import { Send, Wand2, FileText } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { Button, AiSparkles } from '@/components/ui';
+import { Send, FileText } from 'lucide-react';
 import type { MessageChannel, Snippet, EmailTemplate } from '@/lib/types';
 import { CHANNEL_LABELS } from '@/lib/types';
 import { interpolateTemplate } from '@/lib/api';
@@ -8,7 +8,7 @@ import { interpolateTemplate } from '@/lib/api';
 interface Props {
   composerText: string;
   setComposerText: (t: string) => void;
-  handleSend: () => void;
+  handleSend: (bodyOverride?: string) => void | Promise<void>;
   isSending: boolean;
   channel: MessageChannel;
   snippets?: Snippet[];
@@ -17,7 +17,6 @@ interface Props {
 }
 
 export function MessageComposer({ composerText, setComposerText, handleSend, isSending, channel, snippets = [], templates = [], leadId }: Props) {
-  const [isGenerating, setIsGenerating] = useState(false);
   const [showSnippets, setShowSnippets] = useState(false);
   const [snippetQuery, setSnippetQuery] = useState('');
   const [showTemplates, setShowTemplates] = useState(false);
@@ -83,27 +82,6 @@ export function MessageComposer({ composerText, setComposerText, handleSend, isS
     inputRef.current?.focus();
   };
 
-  const handleAIGenerate = async () => {
-    setIsGenerating(true);
-    try {
-      const res = await fetch('/api/ai/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'reply_message',
-          context: composerText || 'Un message cordial pour répondre à ce lead.',
-        }),
-      });
-      const data = await res.json() as any;
-      if (data?.data?.content) {
-        setComposerText(data.data.content);
-      }
-    } catch (e) {
-      console.error('Erreur IA:', e);
-    }
-    setIsGenerating(false);
-  };
-  
   const placeholder = `Répondre via ${CHANNEL_LABELS[channel] || channel} (tapez / pour modèles rapides)...`;
   const filteredSnippets = snippets.filter(s => s.shortcut.toLowerCase().includes(snippetQuery) || s.name.toLowerCase().includes(snippetQuery)).slice(0, 5);
   const channelTemplates = templates.filter(t => t.channel === channel);
@@ -172,13 +150,11 @@ export function MessageComposer({ composerText, setComposerText, handleSend, isS
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
             rows={3}
-            className="w-full px-3 py-2 text-xs bg-[var(--bg-canvas)] border border-[var(--border-subtle)] rounded-lg text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:border-[var(--brand-primary)] resize-none"
+            className="w-full px-3 py-2 pr-10 text-xs bg-[var(--bg-canvas)] border border-[var(--border-subtle)] rounded-lg text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:border-[var(--brand-primary)] resize-none"
           />
+          <AiSparkles value={composerText} onChange={setComposerText} leadId={leadId} className="absolute bottom-2 right-2" />
         </div>
         <div className="flex flex-col gap-1.5 h-full">
-          <Button variant="ghost" size="sm" onClick={() => void handleAIGenerate()} isLoading={isGenerating} leftIcon={<Wand2 size={14} className="text-[#A855F7]" />} className="h-[28px] border border-[var(--border-subtle)] bg-white hover:bg-purple-50 hover:text-purple-700 hover:border-purple-200">
-            IA
-          </Button>
           <Button size="sm" onClick={() => handleSend()} isLoading={isSending} leftIcon={<Send size={14} />} className="h-[28px]">
             Envoyer
           </Button>

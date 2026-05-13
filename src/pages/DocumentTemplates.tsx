@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Badge, Skeleton, EmptyState } from '@/components/ui';
+import { Card, Button, Badge, Skeleton, EmptyState, useConfirm } from '@/components/ui';
 import { Input } from '@/components/ui/Input';
 import { getDocumentTemplates, createDocumentTemplate, deleteDocumentTemplate, type DocumentTemplate } from '@/lib/api';
 import { FileText, Plus, Trash2, Edit } from 'lucide-react';
 
 export function DocumentTemplatesPage() {
+  const confirm = useConfirm();
   const [templates, setTemplates] = useState<DocumentTemplate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
@@ -46,7 +47,13 @@ export function DocumentTemplatesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Supprimer ce template ?')) return;
+    const ok = await confirm({
+      title: 'Supprimer ce template ?',
+      description: 'Le template sera retiré définitivement. Les documents déjà envoyés ne sont pas affectés.',
+      confirmLabel: 'Supprimer',
+      danger: true,
+    });
+    if (!ok) return;
     try {
       await deleteDocumentTemplate(id);
       void loadTemplates();

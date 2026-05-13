@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Badge, Skeleton, Button } from '@/components/ui';
+import { Card, Badge, Skeleton, Button, useToast } from '@/components/ui';
 import { getLeads, getClients } from '@/lib/api';
 import type { Lead, Client } from '@/lib/types';
 import { STATUS_LABELS, STATUS_COLORS, SOURCE_LABELS } from '@/lib/types';
@@ -40,6 +40,7 @@ const TABS: { id: ReportTab; icon: typeof BarChart3; label: string; group: strin
 ];
 
 export function ReportsPage() {
+  const { success, error: toastError } = useToast();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -76,9 +77,11 @@ export function ReportsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: `Rapport ${activeTab}`, type: activeTab, config_json: { period, comparePeriod } })
       });
-      if (res.ok) alert('Rapport sauvegardé avec succès !');
+      if (res.ok) success('Rapport sauvegardé');
+      else toastError('Échec de la sauvegarde du rapport');
     } catch (e) {
       console.error(e);
+      toastError('Erreur réseau lors de la sauvegarde');
     }
   };
 

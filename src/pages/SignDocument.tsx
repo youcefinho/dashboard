@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from '@tanstack/react-router';
 import { apiFetch } from '@/lib/api';
-import { Button, Card, Badge } from '@/components/ui';
+import { Button, Card, Badge, useToast } from '@/components/ui';
 import { PenTool, CheckCircle, Shield, AlertTriangle } from 'lucide-react';
 import SignatureCanvas from 'react-signature-canvas';
 
@@ -13,6 +13,7 @@ interface PublicDocument {
 }
 
 export function SignDocumentPage() {
+  const { warning } = useToast();
   const { token } = useParams({ strict: false }) as { token: string };
   const [doc, setDoc] = useState<PublicDocument | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -42,12 +43,12 @@ export function SignDocumentPage() {
 
   const handleSign = async () => {
     if (!sigCanvas.current || sigCanvas.current.isEmpty()) {
-      alert('Veuillez signer le document avant de soumettre.');
+      warning('Veuillez signer le document avant de soumettre.');
       return;
     }
-    
+
     if (!signerName.trim()) {
-      alert('Veuillez entrer votre nom.');
+      warning('Veuillez entrer votre nom.');
       return;
     }
 

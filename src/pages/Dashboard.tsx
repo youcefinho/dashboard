@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { getDashboardStats, getLeads, getClients } from '@/lib/api';
+import { getDashboardStats, getLeads, getClients, exportLeadsCsv } from '@/lib/api';
+import { usePanelStack } from '@/components/ui';
 import {
   STATUS_LABELS, STATUS_COLORS, ACTIVITY_LABELS,
   type DashboardStats, type Lead, type Client,
@@ -12,7 +13,7 @@ import {
 import { XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 import {
   TrendingUp, TrendingDown, Users, Target, DollarSign, Zap,
-  Download, ArrowRight, Filter, Settings2,
+  Download, ArrowRight, Settings2,
   ChevronUp, ChevronDown, Eye, EyeOff,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
@@ -85,6 +86,7 @@ export function DashboardPage() {
   const [showConfig, setShowConfig] = useState(false);
   const [widgets, setWidgets] = useState<WidgetConfig[]>(loadWidgetConfig);
   const navigate = useNavigate();
+  const { openPanel } = usePanelStack();
   const { user } = useAuth();
 
   const updateWidgets = useCallback((fn: (prev: WidgetConfig[]) => WidgetConfig[]) => {
@@ -152,9 +154,8 @@ export function DashboardPage() {
 
 
   const periodDays = period === '7d' ? 7 : period === '30d' ? 30 : 90;
-  const periodLeads = allLeads.filter(l => (Date.now() - new Date(l.created_at).getTime()) / 86400000 <= periodDays);
-  const prevCount = Math.max(1, Math.round(periodLeads.length * 0.8));
-  const growthPct = Math.round(((periodLeads.length - prevCount) / prevCount) * 100);
+  // TODO: vraie comparaison période précédente requiert backend (getDashboardStats({period_compare}))
+  // Pour l'instant, on affiche le count brut sans delta tant qu'on n'a pas de baseline fiable.
 
   // Données pour le donut pipeline
   const pipelineData = Object.entries(
@@ -199,7 +200,8 @@ export function DashboardPage() {
                   </button>
                 ))}
               </div>
-              <button className="h-9 px-3 rounded-lg text-sm font-medium flex items-center gap-2 transition hover:bg-[var(--bg-subtle)] cursor-pointer"
+              <button onClick={() => void exportLeadsCsv()}
+                className="h-9 px-3 rounded-lg text-sm font-medium flex items-center gap-2 transition hover:bg-[var(--bg-subtle)] cursor-pointer"
                 style={{ border: '1px solid var(--border-default)', color: 'var(--text-secondary)' }}>
                 <Download size={16} /> Exporter
               </button>
@@ -274,16 +276,16 @@ export function DashboardPage() {
             <>
               <StatCardMockup label="Total contacts" value={stats?.total_leads ?? 0}
                 icon={<Users size={20} />} iconBg="var(--brand-tint)" iconColor="var(--brand-primary)"
-                delta={`+${growthPct}%`} deltaUp sparkColor="#009DDB" sparkData={sparkPts} />
+                sparkColor="#009DDB" sparkData={sparkPts} />
               <StatCardMockup label="Pipeline value" value={`${((stats?.total_deal_value ?? 0) / 1000).toFixed(1)}K $`}
                 icon={<DollarSign size={20} />} iconBg="var(--success-soft)" iconColor="var(--success)"
-                delta="+28.3%" deltaUp sparkColor="#37CA37" sparkData={sparkPts.slice(-7)} />
+                sparkColor="#37CA37" sparkData={sparkPts.slice(-7)} />
               <StatCardMockup label="Taux conversion" value={`${stats?.conversion_rate ?? 0}%`}
                 icon={<Target size={20} />} iconBg="var(--accent-orange-soft)" iconColor="var(--accent-orange)"
-                delta="-2.1%" deltaUp={false} sparkColor="#D96E27" sparkData={[8,10,7,12,9,15,12,18]} />
+                sparkColor="#D96E27" />
               <StatCardMockup label="Revenu (Mois)" value={`${((stats?.revenue_value ?? 0) / 1000).toFixed(1)}K $`}
                 icon={<Zap size={20} />} iconBg="var(--info-soft)" iconColor="var(--info)"
-                delta="+12.0%" deltaUp sparkColor="#188BF6" sparkData={[20,18,15,16,10,12,7,5]} />
+                sparkColor="#188BF6" />
             </>
           )}
         </div>
@@ -350,14 +352,10 @@ export function DashboardPage() {
             )}
           </div>
 
-          {/* Activité récente (maquette : Live badge) */}
+          {/* Activité récente */}
           <div className="p-6 rounded-xl card-lift" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-base font-semibold">Activité récente</h3>
-              <span className="flex items-center gap-1.5 text-xs font-semibold px-2 py-1 rounded-md" style={{ background: 'var(--success-soft)', color: 'var(--success)' }}>
-                <span className="w-1.5 h-1.5 rounded-full pulse-live" style={{ background: 'var(--success)' }} />
-                Live
-              </span>
             </div>
             <div className="space-y-4">
               {isLoading ? (
@@ -461,17 +459,13 @@ export function DashboardPage() {
 
   function DashboardContactsWidget() {
     return (
-        <div className="rounded-xl overflow-x-auto card-lift" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
-          <div className="px-6 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+        <div className="rounded-xl card-lift" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
+          <div className="px-4 sm:px-6 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
             <div>
               <h3 className="text-base font-semibold">Derniers contacts</h3>
               <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>{recentLeads.length} contacts actifs cette semaine</p>
             </div>
             <div className="flex items-center gap-2">
-              <button className="h-8 px-3 rounded-lg text-xs font-medium flex items-center gap-1.5 transition cursor-pointer hover:bg-[var(--bg-subtle)]"
-                style={{ color: 'var(--text-secondary)', border: '1px solid var(--border-default)' }}>
-                <Filter size={14} /> Filtrer
-              </button>
               <button onClick={() => void navigate({ to: '/leads' })}
                 className="h-8 px-3 rounded-lg text-xs font-semibold flex items-center gap-1 transition cursor-pointer hover:bg-[var(--brand-tint)]"
                 style={{ color: 'var(--brand-primary)' }}>
@@ -479,7 +473,48 @@ export function DashboardPage() {
               </button>
             </div>
           </div>
-          <table className="w-full">
+          {/* ── Mobile : card list (≤md) ── */}
+          <div className="md:hidden divide-y" style={{ borderColor: 'var(--border-subtle)' }}>
+            {isLoading ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="px-4 py-3"><Skeleton className="h-12 w-full" /></div>
+              ))
+            ) : recentLeads.map((lead, i) => {
+              const score = lead.score ?? 0;
+              const scoreColor = score >= 80 ? 'var(--success)' : score >= 50 ? 'var(--warning)' : 'var(--danger)';
+              const statusColor = STATUS_COLORS[lead.status] || 'var(--text-muted)';
+              const statusBg = `color-mix(in srgb, ${statusColor} 12%, transparent)`;
+              return (
+                <div key={lead.id} className="px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-[var(--bg-subtle)] transition"
+                  style={{ borderTop: i === 0 ? 'none' : '1px solid var(--border-subtle)' }}
+                  onClick={() => openPanel({ type: 'lead', id: lead.id })}>
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-semibold shrink-0"
+                    style={{ background: AVATAR_GRADIENTS[i % AVATAR_GRADIENTS.length], color: 'white' }}>
+                    {getInitials(lead.name)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="text-sm font-medium truncate">{lead.name}</span>
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold shrink-0"
+                        style={{ background: statusBg, color: statusColor }}>
+                        {STATUS_LABELS[lead.status]}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                      <span className="truncate">{lead.source === 'website' ? 'Site web' : lead.source === 'facebook' ? 'Facebook' : lead.source || 'Direct'}</span>
+                      <span>·</span>
+                      <span style={{ fontVariantNumeric: 'tabular-nums' }}>{lead.deal_value ? `${(lead.deal_value / 1000).toFixed(0)}k$` : '—'}</span>
+                      <span>·</span>
+                      <span style={{ color: scoreColor, fontVariantNumeric: 'tabular-nums' }}>Score {score}</span>
+                    </div>
+                  </div>
+                  <span className="text-[10px] shrink-0" style={{ color: 'var(--text-muted)' }}>{timeAgo(lead.created_at)}</span>
+                </div>
+              );
+            })}
+          </div>
+          {/* ── Desktop : table (≥md) ── */}
+          <table className="hidden md:table w-full">
             <thead>
               <tr style={{ background: 'var(--bg-subtle)' }}>
                 <th className="text-left px-6 py-2.5 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Contact</th>
@@ -496,14 +531,14 @@ export function DashboardPage() {
                   <tr key={i}><td colSpan={6} className="px-6 py-3"><Skeleton className="h-8 w-full" /></td></tr>
                 ))
               ) : recentLeads.map((lead, i) => {
-                const score = lead.score || Math.floor(Math.random() * 60 + 20);
+                const score = lead.score ?? 0;
                 const scoreColor = score >= 80 ? 'var(--success)' : score >= 50 ? 'var(--warning)' : 'var(--danger)';
                 const statusColor = STATUS_COLORS[lead.status] || 'var(--text-muted)';
                 const statusBg = `color-mix(in srgb, ${statusColor} 12%, transparent)`;
                 return (
                   <tr key={lead.id} className="hover:bg-[var(--bg-subtle)] transition cursor-pointer"
                     style={{ borderTop: '1px solid var(--border-subtle)' }}
-                    onClick={() => void navigate({ to: `/leads/${lead.id}` })}>
+                    onClick={() => openPanel({ type: 'lead', id: lead.id })}>
                     <td className="px-6 py-3">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-semibold"
@@ -554,7 +589,7 @@ export function DashboardPage() {
 function StatCardMockup({ label, value, icon, iconBg, iconColor, delta, deltaUp, sparkColor, sparkData }: {
   label: string; value: number | string; icon: React.ReactNode;
   iconBg: string; iconColor: string;
-  delta: string; deltaUp?: boolean; sparkColor: string; sparkData?: number[];
+  delta?: string; deltaUp?: boolean; sparkColor: string; sparkData?: number[];
 }) {
   // Générer le SVG sparkline path
   const sparkPath = (sparkData && sparkData.length > 1) ? (() => {
@@ -577,15 +612,17 @@ function StatCardMockup({ label, value, icon, iconBg, iconColor, delta, deltaUp,
         <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: iconBg }}>
           <span style={{ color: iconColor }}>{icon}</span>
         </div>
-        <span className={`text-xs font-semibold flex items-center gap-0.5 px-1.5 py-0.5 rounded-md`}
-          style={{
-            background: deltaUp !== false ? 'var(--success-soft)' : 'var(--danger-soft)',
-            color: deltaUp !== false ? 'var(--success)' : 'var(--danger)',
-            fontVariantNumeric: 'tabular-nums',
-          }}>
-          {deltaUp !== false ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-          {delta}
-        </span>
+        {delta && (
+          <span className={`text-xs font-semibold flex items-center gap-0.5 px-1.5 py-0.5 rounded-md`}
+            style={{
+              background: deltaUp !== false ? 'var(--success-soft)' : 'var(--danger-soft)',
+              color: deltaUp !== false ? 'var(--success)' : 'var(--danger)',
+              fontVariantNumeric: 'tabular-nums',
+            }}>
+            {deltaUp !== false ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+            {delta}
+          </span>
+        )}
       </div>
       <div className="text-3xl font-bold tracking-tight" style={{ fontVariantNumeric: 'tabular-nums' }}>{value}</div>
       <div className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>{label}</div>
