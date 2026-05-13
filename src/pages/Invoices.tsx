@@ -1,8 +1,8 @@
-﻿// ── Invoices — Gestion de la facturation ──────────────────
+// ── Invoices — Gestion de la facturation ──────────────────
 
 import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Input } from '@/components/ui';
+import { Card, Button, Input, Skeleton, EmptyState } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 
 interface Invoice {
@@ -74,8 +74,8 @@ export function InvoicesPage() {
 
   const getStatusBadge = (status: Invoice['status']) => {
     const map = {
-      draft: { label: 'Brouillon', color: 'bg-gray-100 text-gray-800 border-gray-200' },
-      sent: { label: 'Envoyée', color: 'bg-blue-100 text-blue-800 border-blue-200' },
+      draft: { label: 'Brouillon', color: 'bg-[var(--bg-muted)] text-[var(--text-secondary)] border-[var(--border-default)]' },
+      sent: { label: 'Envoyée', color: 'bg-[var(--info)]/15 text-[var(--info)] border-[var(--info)]/30' },
       paid: { label: 'Payée', color: 'bg-[var(--success)]/15 text-[var(--success)] border-[var(--success)]/30' },
       cancelled: { label: 'Annulée', color: 'bg-[var(--danger)]/15 text-[var(--danger)] border-[var(--danger)]/30' }
     };
@@ -126,16 +126,14 @@ export function InvoicesPage() {
 
       <Card className="overflow-hidden">
         {isLoading ? (
-          <div className="p-8 text-center text-[var(--text-muted)] animate-pulse">Chargement des factures...</div>
+          <div className="p-8"><Skeleton className="h-48 w-full" /></div>
         ) : invoices.length === 0 ? (
-          <div className="p-12 text-center flex flex-col items-center justify-center border-t border-[var(--border-subtle)] bg-[var(--bg-subtle)]">
-            <div className="w-16 h-16 bg-[var(--brand-primary)]/10 text-[var(--brand-primary)] rounded-full flex items-center justify-center mb-4">
-              💳
-            </div>
-            <h3 className="text-lg font-semibold text-[var(--text-primary)]">Aucune facture</h3>
-            <p className="text-sm text-[var(--text-muted)] mt-2 max-w-sm">Vous n'avez pas encore émis de facture ou reçu de paiement.</p>
-            <Button className="mt-6" onClick={() => setShowAdd(true)}>Créer une facture</Button>
-          </div>
+          <EmptyState
+            icon={<span className="text-5xl">💳</span>}
+            title="Aucune facture pour l'instant"
+            description="Vous n'avez pas encore émis de facture ou reçu de paiement."
+            action={<Button onClick={() => setShowAdd(true)}>Créer une facture</Button>}
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">

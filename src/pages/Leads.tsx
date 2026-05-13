@@ -1,4 +1,4 @@
-﻿// ── Page Leads — Liste globale + Vue Carte (Sprint 6 D3) ─────
+// ── Page Leads — Liste globale + Vue Carte (Sprint 6 D3) ─────
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from '@tanstack/react-router';
@@ -126,7 +126,7 @@ function LeadsMapView({ leads }: { leads: Lead[] }) {
           <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-green-500" /> Score ≥70</span>
           <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-yellow-500" /> 40-69</span>
           <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-red-500" /> &lt;40</span>
-          <span className="text-gray-400 ml-2">| Configurez VITE_MAPBOX_TOKEN pour la vraie carte</span>
+          <span className="text-[var(--text-muted)] ml-2">| Configurez VITE_MAPBOX_TOKEN pour la vraie carte</span>
         </div>
         {/* Popup */}
         {selectedPin && (

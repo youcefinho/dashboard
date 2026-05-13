@@ -1,8 +1,8 @@
-﻿// ── TriggerLinks — Page de gestion des liens trackés — Intralys CRM ──
+// ── TriggerLinks — Page de gestion des liens trackés — Intralys CRM ──
 
 import { useState, useEffect, useCallback } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Badge, Input, EmptyState } from '@/components/ui';
+import { Card, Button, Badge, Input, EmptyState, Skeleton } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { getTriggerLinks, createTriggerLink, deleteTriggerLink } from '@/lib/api';
 import { Link2, Plus, Trash2, Copy, ExternalLink, MousePointerClick } from 'lucide-react';
@@ -71,9 +71,9 @@ export function TriggerLinksPage() {
       </div>
 
       {isLoading ? (
-        <Card><div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Chargement...</div></Card>
+        <Card><Skeleton className="h-48 w-full" /></Card>
       ) : links.length === 0 ? (
-        <EmptyState title="Aucun trigger link" description="Créez un lien tracké pour commencer" />
+        <EmptyState title="Aucun trigger link pour l'instant" description="Créez un lien tracké pour commencer." action={<Button onClick={() => setShowCreate(true)}>Nouveau Link</Button>} />
       ) : (
         <Card>
           <div className="overflow-x-auto">

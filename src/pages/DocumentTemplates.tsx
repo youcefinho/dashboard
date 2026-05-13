@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Badge } from '@/components/ui';
+import { Card, Button, Badge, Skeleton, EmptyState } from '@/components/ui';
 import { Input } from '@/components/ui/Input';
 import { getDocumentTemplates, createDocumentTemplate, deleteDocumentTemplate, type DocumentTemplate } from '@/lib/api';
 import { FileText, Plus, Trash2, Edit } from 'lucide-react';
@@ -105,14 +105,14 @@ export function DocumentTemplatesPage() {
       )}
 
       {isLoading ? (
-        <div className="text-center py-10 text-[var(--text-muted)]">Chargement...</div>
+        <Card><Skeleton className="h-48 w-full" /></Card>
       ) : templates.length === 0 && !isCreating ? (
-        <div className="text-center py-12 bg-[var(--bg-surface)] border border-dashed border-[var(--border-default)] rounded-[var(--radius-lg)]">
-          <FileText size={48} className="mx-auto text-[var(--text-muted)] mb-4" />
-          <h3 className="text-lg font-medium text-[var(--text-primary)]">Aucun modèle</h3>
-          <p className="text-[var(--text-secondary)] mt-1 mb-4">Créez votre premier modèle de document pour commencer.</p>
-          <Button onClick={() => setIsCreating(true)}>Créer un modèle</Button>
-        </div>
+        <EmptyState
+          icon={<FileText size={48} />}
+          title="Aucun modèle pour l'instant"
+          description="Créez votre premier modèle de document pour commencer."
+          action={<Button onClick={() => setIsCreating(true)}>Créer un modèle</Button>}
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {templates.map(tpl => (

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Badge } from '@/components/ui';
+import { Card, Button, Badge, Skeleton, EmptyState } from '@/components/ui';
 import { Input } from '@/components/ui/Input';
 import { getDocuments, createDocument, sendDocument, getDocumentTemplates, sendSigningSms, apiFetch, type Document, type DocumentTemplate, getLeads } from '@/lib/api';
 import { FileSignature, Plus, Mail, Eye, CheckCircle, Clock, MessageSquare } from 'lucide-react';
@@ -178,14 +178,14 @@ export function DocumentsPage() {
       )}
 
       {isLoading ? (
-        <div className="text-center py-10 text-[var(--text-muted)]">Chargement...</div>
+        <Card><Skeleton className="h-64 w-full" /></Card>
       ) : documents.length === 0 && !isCreating ? (
-        <div className="text-center py-12 bg-[var(--bg-surface)] border border-dashed border-[var(--border-default)] rounded-[var(--radius-lg)]">
-          <FileSignature size={48} className="mx-auto text-[var(--text-muted)] mb-4" />
-          <h3 className="text-lg font-medium text-[var(--text-primary)]">Aucun document</h3>
-          <p className="text-[var(--text-secondary)] mt-1 mb-4">Envoyez votre premier document pour signature.</p>
-          <Button onClick={() => setIsCreating(true)}>Envoyer un document</Button>
-        </div>
+        <EmptyState
+          icon={<FileSignature size={48} />}
+          title="Aucun document pour l'instant"
+          description="Envoyez votre premier document pour signature."
+          action={<Button onClick={() => setIsCreating(true)}>Envoyer un document</Button>}
+        />
       ) : (
         <div className="card p-0 overflow-x-auto">
           <table className="w-full text-left text-sm">

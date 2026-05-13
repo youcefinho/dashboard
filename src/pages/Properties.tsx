@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { apiFetch } from '@/lib/api';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Button, Input, Card, Badge } from '@/components/ui';
+import { Button, Input, Card, Badge, Skeleton, EmptyState } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { Home, RefreshCw, Plus, Search, MapPin, Bed, Bath, Expand, Trash2 } from 'lucide-react';
 
@@ -106,20 +106,20 @@ export function PropertiesPage() {
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {[1, 2, 3, 4].map(i => (
-            <div key={i} className="rounded-xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] h-80 animate-pulse" />
+            <Card key={i}><Skeleton className="h-80 w-full" /></Card>
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-20 bg-[var(--bg-surface)] rounded-xl border border-dashed border-[var(--border-strong)]">
-          <Home size={48} className="mx-auto text-[var(--text-muted)] mb-4 opacity-50" />
-          <h3 className="text-lg font-bold mb-2">Aucune propriété trouvée</h3>
-          <p className="text-[var(--text-secondary)] mb-6 max-w-md mx-auto">
-            Synchronisez votre inventaire depuis Centris avec vos numéros MLS, ou ajoutez vos mandats exclusifs manuellement.
-          </p>
-          <Button onClick={() => setIsSyncModalOpen(true)} className="gap-2 mx-auto">
-            <RefreshCw size={16} /> Importer depuis Centris
-          </Button>
-        </div>
+        <EmptyState
+          icon={<Home size={48} />}
+          title="Aucune propriété pour l'instant"
+          description="Synchronisez votre inventaire depuis Centris ou ajoutez vos mandats exclusifs manuellement."
+          action={
+            <Button onClick={() => setIsSyncModalOpen(true)} className="gap-2">
+              <RefreshCw size={16} /> Importer depuis Centris
+            </Button>
+          }
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filtered.map(property => (
