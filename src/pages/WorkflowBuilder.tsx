@@ -1,8 +1,9 @@
-import { useState, useCallback, useEffect } from 'react';
+﻿import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { DesktopOnlyBanner } from '@/components/DesktopOnlyBanner';
-import { Card, Button, Input, Modal } from '@/components/ui';
+import { Card, Button, Input } from '@/components/ui';
+import { Modal } from '@/components/ui/Modal';
 import { createWorkflow, getPipelines } from '@/lib/api';
 import type { TriggerType, StepType, Pipeline } from '@/lib/types';
 import { TRIGGER_LABELS, TRIGGER_ICONS, STEP_TYPE_LABELS, STEP_TYPE_ICONS, STEP_TYPES, TRIGGER_TYPES } from '@/lib/types';
@@ -303,7 +304,7 @@ export function WorkflowBuilderPage() {
       </div>
 
       {/* Modal ajout step */}
-      <Modal isOpen={showAddStep} onClose={() => setShowAddStep(false)} title="Ajouter un nœud">
+      <Modal open={showAddStep} onOpenChange={() => setShowAddStep(false)} title="Ajouter un nœud">
         <div className="grid grid-cols-2 gap-2">
           {STEP_TYPES.map((st) => (
             <button

@@ -1,9 +1,10 @@
-// ── Page Leads — Liste globale + Vue Carte (Sprint 6 D3) ─────
+﻿// ── Page Leads — Liste globale + Vue Carte (Sprint 6 D3) ─────
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Badge, Skeleton, EmptyState, Modal } from '@/components/ui';
+import { Card, Button, Badge, Skeleton, EmptyState } from '@/components/ui';
+import { Modal } from '@/components/ui/Modal';
 import { Avatar } from '@/components/ui/Avatar';
 import { Input } from '@/components/ui/Input';
 import { getLeads, getClients, updateLead, exportLeadsCsv, createLead, softDeleteLead, restoreLead } from '@/lib/api';
@@ -593,7 +594,7 @@ export function LeadsPage() {
       )}
 
       {/* Modal — Nouveau lead */}
-      <Modal isOpen={createOpen} onClose={closeCreate} title="Nouveau lead">
+      <Modal open={createOpen} onOpenChange={closeCreate} title="Nouveau lead">
         <div className="space-y-3">
           {createError && (
             <div className="text-xs text-[var(--danger)] px-3 py-2 rounded-[var(--radius-sm)] bg-[var(--danger)]/10 border border-[var(--danger)]/20">
@@ -672,7 +673,7 @@ export function LeadsPage() {
       </Modal>
 
       {/* Modal Notes */}
-      <Modal isOpen={!!selectedLead} onClose={() => setSelectedLead(null)} title={`Notes — ${selectedLead?.name || ''}`}>
+      <Modal open={!!selectedLead} onOpenChange={() => setSelectedLead(null)} title={`Notes — ${selectedLead?.name || ''}`}>
         {selectedLead && (
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-2 text-sm">

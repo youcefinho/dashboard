@@ -94,27 +94,31 @@ export function LoginPage() {
 
         {/* Formulaire */}
         <form onSubmit={handleSubmit} className="card p-6 space-y-4">
-          <Input
-            label="Adresse email"
-            type="email"
-            id="login-email"
-            placeholder="rochdi@intralys.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoComplete="email"
-            required
-          />
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="login-email" className="text-sm font-medium text-[var(--text-secondary)]">Adresse email</label>
+            <Input
+              type="email"
+              id="login-email"
+              placeholder="rochdi@intralys.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+              required
+            />
+          </div>
 
-          <Input
-            label="Mot de passe"
-            type="password"
-            id="login-password"
-            placeholder="••••••••"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="current-password"
-            required
-          />
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="login-password" className="text-sm font-medium text-[var(--text-secondary)]">Mot de passe</label>
+            <Input
+              type="password"
+              id="login-password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+              required
+            />
+          </div>
 
           {error && (
             <div className="p-3 rounded-[var(--radius-md)] bg-[color-mix(in_oklch,var(--danger)_10%,transparent)] border border-[color-mix(in_oklch,var(--danger)_30%,transparent)] text-sm text-[var(--danger)] animate-fade-in">

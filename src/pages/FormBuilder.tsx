@@ -1,10 +1,11 @@
-// ── FormBuilder — Éditeur de formulaires — Intralys CRM ─────
+﻿// ── FormBuilder — Éditeur de formulaires — Intralys CRM ─────
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { DesktopOnlyBanner } from '@/components/DesktopOnlyBanner';
-import { Card, Button, Badge, Input, Modal } from '@/components/ui';
+import { Card, Button, Badge, Input } from '@/components/ui';
+import { Modal } from '@/components/ui/Modal';
 import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -240,7 +241,7 @@ export function FormBuilderPage() {
         </div>
       </div>
 
-      <Modal isOpen={showStats} onClose={() => setShowStats(false)} title="Statistiques">
+      <Modal open={showStats} onOpenChange={() => setShowStats(false)} title="Statistiques">
         {stats ? (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
             <Card><div style={{ textAlign: 'center', padding: 12 }}><div style={{ fontSize: '28px', fontWeight: 700, color: 'var(--brand-primary)' }}>{stats.total_views}</div><div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Vues</div></div></Card>
@@ -250,7 +251,7 @@ export function FormBuilderPage() {
         ) : <p style={{ color: 'var(--text-muted)' }}>Chargement...</p>}
       </Modal>
 
-      <Modal isOpen={showEmbed} onClose={() => setShowEmbed(false)} title="Intégration">
+      <Modal open={showEmbed} onOpenChange={() => setShowEmbed(false)} title="Intégration">
         <div>
           <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: 12 }}>
             URL publique : <code style={{ color: 'var(--brand-primary)' }}>https://crm.intralys.com/f/{formSlug}</code>
@@ -263,7 +264,7 @@ export function FormBuilderPage() {
         </div>
       </Modal>
 
-      <Modal isOpen={showSettings} onClose={() => setShowSettings(false)} title="Paramètres">
+      <Modal open={showSettings} onOpenChange={() => setShowSettings(false)} title="Paramètres">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div><label className="prop-label">Message de succès</label><Input value={successMessage} onChange={e => setSuccessMessage(e.target.value)} /></div>
           <div><label className="prop-label">Slug URL</label><Input value={formSlug} onChange={e => setFormSlug(e.target.value)} /></div>

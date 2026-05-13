@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+﻿import { useState, useEffect, useCallback, useMemo } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Badge, Modal, Skeleton, EmptyState } from '@/components/ui';
+import { Card, Button, Badge, Skeleton, EmptyState } from '@/components/ui';
+import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { getAppointments, createAppointment, updateAppointment, rescheduleAppointment, getCalendars, sendAppointmentReminderNow, type Calendar as CalType } from '@/lib/api';
 import type { Appointment, AppointmentType, AppointmentStatus } from '@/lib/types';
@@ -427,7 +428,7 @@ export function CalendarPage() {
       </div>
 
       {/* ── Modal Creation ── */}
-      <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="Nouveau rendez-vous">
+      <Modal open={showAddModal} onOpenChange={() => setShowAddModal(false)} title="Nouveau rendez-vous">
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -490,7 +491,7 @@ export function CalendarPage() {
 
       {/* ── Modal Detail ── */}
       {showDetailModal && (
-        <Modal isOpen={!!showDetailModal} onClose={() => setShowDetailModal(null)} title="Détails du rendez-vous">
+        <Modal open={!!showDetailModal} onOpenChange={() => setShowDetailModal(null)} title="Détails du rendez-vous">
           <div className="space-y-4">
             <div>
               <h3 className="text-lg font-bold">{showDetailModal.title}</h3>

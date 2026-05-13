@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Badge, Modal, EmptyState } from '@/components/ui';
+import { Card, Button, Badge, EmptyState } from '@/components/ui';
+import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { 
   getTasks, createTask, updateTask, deleteTask,
@@ -286,7 +287,7 @@ export function TasksPage() {
       )}
 
       {/* Modal Ajout Tâche */}
-      <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="Nouvelle Tâche">
+      <Modal open={showAddModal} onOpenChange={() => setShowAddModal(false)} title="Nouvelle Tâche">
         <div className="space-y-4">
           {templates.length > 0 && (
             <div className="bg-[var(--bg-subtle)] p-3 rounded-lg flex items-center justify-between">
@@ -339,7 +340,7 @@ export function TasksPage() {
 
       {/* Modal Détails Tâche (Subtasks & Comments) */}
       {showDetailModal && (
-        <Modal isOpen={!!showDetailModal} onClose={() => setShowDetailModal(null)} title="Détails de la tâche">
+        <Modal open={!!showDetailModal} onOpenChange={() => setShowDetailModal(null)} title="Détails de la tâche">
           <div className="space-y-5">
             <div className="flex items-center justify-between">
               <h2 className={`text-lg font-bold ${showDetailModal.status === 'done' ? 'line-through text-[var(--text-muted)]' : ''}`}>{showDetailModal.title}</h2>

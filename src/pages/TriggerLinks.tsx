@@ -1,8 +1,9 @@
-// ── TriggerLinks — Page de gestion des liens trackés — Intralys CRM ──
+﻿// ── TriggerLinks — Page de gestion des liens trackés — Intralys CRM ──
 
 import { useState, useEffect, useCallback } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Badge, Input, Modal, EmptyState } from '@/components/ui';
+import { Card, Button, Badge, Input, EmptyState } from '@/components/ui';
+import { Modal } from '@/components/ui/Modal';
 import { getTriggerLinks, createTriggerLink, deleteTriggerLink } from '@/lib/api';
 import { Link2, Plus, Trash2, Copy, ExternalLink, MousePointerClick } from 'lucide-react';
 
@@ -118,7 +119,7 @@ export function TriggerLinksPage() {
         </Card>
       )}
 
-      <Modal isOpen={showCreate} onClose={() => setShowCreate(false)} title="Nouveau Trigger Link">
+      <Modal open={showCreate} onOpenChange={() => setShowCreate(false)} title="Nouveau Trigger Link">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div><label className="prop-label">Nom</label><Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="ex: Lien guide gratuit" autoFocus /></div>
           <div><label className="prop-label">URL cible</label><Input value={newUrl} onChange={e => setNewUrl(e.target.value)} placeholder="https://..." /></div>

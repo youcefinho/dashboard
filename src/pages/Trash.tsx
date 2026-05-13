@@ -1,8 +1,9 @@
-// ── Page Corbeille — Leads supprimés ──────────────────────
+﻿// ── Page Corbeille — Leads supprimés ──────────────────────
 
 import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Badge, EmptyState, Skeleton, Modal } from '@/components/ui';
+import { Card, Button, Badge, EmptyState, Skeleton } from '@/components/ui';
+import { Modal } from '@/components/ui/Modal';
 import { Avatar } from '@/components/ui/Avatar';
 import { getTrash, restoreLead, emptyTrash } from '@/lib/api';
 import { Trash2, RotateCcw, AlertTriangle } from 'lucide-react';
@@ -156,7 +157,7 @@ export function TrashPage() {
       )}
 
       {/* Modal confirmation vider */}
-      <Modal isOpen={showConfirm} onClose={() => setShowConfirm(false)} title="Vider la corbeille ?">
+      <Modal open={showConfirm} onOpenChange={() => setShowConfirm(false)} title="Vider la corbeille ?">
         <div className="space-y-4">
           <div className="flex items-start gap-3 p-4 bg-[var(--danger)]/8 rounded-xl border border-[var(--danger)]/20">
             <AlertTriangle size={20} className="text-[var(--danger)] shrink-0 mt-0.5" />

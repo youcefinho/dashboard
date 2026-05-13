@@ -1,8 +1,9 @@
-// ── TemplatesPage — Gestion avancée des templates d'emails ──
+﻿// ── TemplatesPage — Gestion avancée des templates d'emails ──
 
 import { useState, useEffect, useCallback } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Badge, Skeleton, EmptyState, Input, Modal } from '@/components/ui';
+import { Card, Button, Badge, Skeleton, EmptyState, Input } from '@/components/ui';
+import { Modal } from '@/components/ui/Modal';
 import { getTemplates, createTemplate, updateTemplate, deleteTemplate } from '@/lib/api';
 import { Wand2 } from 'lucide-react';
 import type { EmailTemplate, TemplateCategory } from '@/lib/types';
@@ -248,7 +249,7 @@ export function TemplatesPage() {
       )}
 
       {/* Modal éditeur avec preview live */}
-      <Modal isOpen={showEditor} onClose={() => { setShowEditor(false); resetForm(); }} title={editingId ? 'Modifier le template' : 'Nouveau template'}>
+      <Modal open={showEditor} onOpenChange={() => { setShowEditor(false); resetForm(); }} title={editingId ? 'Modifier le template' : 'Nouveau template'}>
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -338,7 +339,7 @@ export function TemplatesPage() {
       </Modal>
 
       {/* Modal aperçu enrichi */}
-      <Modal isOpen={!!previewId} onClose={() => setPreviewId(null)} title={previewTemplate ? `Aperçu : ${previewTemplate.name}` : 'Aperçu'}>
+      <Modal open={!!previewId} onOpenChange={() => setPreviewId(null)} title={previewTemplate ? `Aperçu : ${previewTemplate.name}` : 'Aperçu'}>
         {previewTemplate && (
           <div className="space-y-4">
             {/* En-tête email simulé */}

@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
-import { Card, Button, Input, Modal, Badge } from '@/components/ui';
+﻿import { useState, useEffect } from 'react';
+import { Card, Button, Input, Badge } from '@/components/ui';
+import { Modal } from '@/components/ui/Modal';
 
 export function ApiWebhooksSettings() {
   const [keys, setKeys] = useState<any[]>([]);
@@ -122,7 +123,7 @@ export function ApiWebhooksSettings() {
         </div>
       </Card>
 
-      <Modal isOpen={showKeyModal} onClose={() => setShowKeyModal(false)} title="Créer une clé API">
+      <Modal open={showKeyModal} onOpenChange={() => setShowKeyModal(false)} title="Créer une clé API">
         {createdKey ? (
           <div>
             <p className="text-sm text-[var(--warning)] mb-3 font-semibold">Copiez cette clé maintenant, elle ne sera plus jamais affichée !</p>
@@ -137,7 +138,7 @@ export function ApiWebhooksSettings() {
         )}
       </Modal>
 
-      <Modal isOpen={showWhModal} onClose={() => setShowWhModal(false)} title="Ajouter un Webhook">
+      <Modal open={showWhModal} onOpenChange={() => setShowWhModal(false)} title="Ajouter un Webhook">
         <div className="space-y-3">
           <Input placeholder="https://votre-serveur.com/webhook" value={newWhUrl} onChange={e => setNewWhUrl(e.target.value)} />
           <select className="w-full px-3 py-2 text-sm border border-[var(--border-subtle)] rounded bg-[var(--bg-surface)]" value={newWhEvents} onChange={e => setNewWhEvents(e.target.value)}>
@@ -154,7 +155,7 @@ export function ApiWebhooksSettings() {
         </div>
       </Modal>
 
-      <Modal isOpen={showLogsModal} onClose={() => setShowLogsModal(false)} title="Logs de livraison Webhook">
+      <Modal open={showLogsModal} onOpenChange={() => setShowLogsModal(false)} title="Logs de livraison Webhook">
         <div className="max-h-[60vh] overflow-y-auto space-y-3">
           {deliveries.length === 0 ? (
             <p className="text-sm text-[var(--text-muted)] text-center py-4">Aucune livraison enregistrée.</p>

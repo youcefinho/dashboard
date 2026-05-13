@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Card, Button, Input, Modal, Badge } from '@/components/ui';
+import { Card, Button, Input, Badge } from '@/components/ui';
+import { Modal } from '@/components/ui/Modal';
 import { getSnippets, createSnippet, updateSnippet, deleteSnippet } from '@/lib/api';
 import type { Snippet } from '@/lib/types';
 import { Plus, Search, Edit2, Trash2, MessageSquare, Terminal } from 'lucide-react';
@@ -84,7 +85,7 @@ export function SnippetsSettings() {
         <div className="flex gap-4 mb-4">
           <div className="flex-1 max-w-sm">
             <Input 
-              icon={<Search size={16} />}
+              leftIcon={<Search size={16} />}
               placeholder="Rechercher un snippet..."
               value={search}
               onChange={e => setSearch(e.target.value)}
@@ -124,7 +125,7 @@ export function SnippetsSettings() {
         )}
       </Card>
 
-      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editingSnippet ? "Modifier le snippet" : "Nouveau snippet"}>
+      <Modal open={modalOpen} onOpenChange={() => setModalOpen(false)} title={editingSnippet ? "Modifier le snippet" : "Nouveau snippet"}>
         <div className="space-y-4">
           <div>
             <label className="text-sm font-medium text-[var(--text-secondary)] block mb-1.5">Nom du snippet</label>

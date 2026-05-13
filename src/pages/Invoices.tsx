@@ -1,8 +1,9 @@
-// ── Invoices — Gestion de la facturation ──────────────────
+﻿// ── Invoices — Gestion de la facturation ──────────────────
 
 import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Modal, Input } from '@/components/ui';
+import { Card, Button, Input } from '@/components/ui';
+import { Modal } from '@/components/ui/Modal';
 
 interface Invoice {
   id: string;
@@ -187,7 +188,7 @@ export function InvoicesPage() {
         )}
       </Card>
 
-      <Modal isOpen={showAdd} onClose={() => setShowAdd(false)} title="Nouvelle facture (Lien de paiement)">
+      <Modal open={showAdd} onOpenChange={() => setShowAdd(false)} title="Nouvelle facture (Lien de paiement)">
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Montant (CAD)</label>

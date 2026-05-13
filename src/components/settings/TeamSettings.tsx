@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
-import { Card, Button, Input, Modal, Badge } from '@/components/ui';
+﻿import { useState, useEffect } from 'react';
+import { Card, Button, Input, Badge } from '@/components/ui';
+import { Modal } from '@/components/ui/Modal';
 
 export function TeamSettings() {
   const [users, setUsers] = useState<any[]>([]);
@@ -69,7 +70,7 @@ export function TeamSettings() {
         </div>
       </Card>
 
-      <Modal isOpen={showInviteModal} onClose={() => setShowInviteModal(false)} title="Inviter un collaborateur">
+      <Modal open={showInviteModal} onOpenChange={() => setShowInviteModal(false)} title="Inviter un collaborateur">
         <div className="space-y-3">
           <Input placeholder="Email" type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)} />
           <select className="w-full px-3 py-2 text-sm border border-[var(--border-subtle)] rounded bg-[var(--bg-surface)]" value={newRole} onChange={e => setNewRole(e.target.value)}>

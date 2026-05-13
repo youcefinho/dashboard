@@ -3,7 +3,9 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { useAuth } from '@/lib/auth';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Modal, Input, EmptyState, Skeleton, Badge } from '@/components/ui';
+import { Card, Button, EmptyState, Skeleton, Badge } from '@/components/ui';
+import { Modal } from '@/components/ui/Modal';
+import { Input } from '@/components/ui/Input';
 import { getClients, createClient } from '@/lib/api';
 import type { Client } from '@/lib/types';
 import { Building, Copy, Plus, Activity, DollarSign, Package } from 'lucide-react';
@@ -187,11 +189,20 @@ export function AgenciesPage() {
         </div>
       )}
 
-      <Modal isOpen={showAdd} onClose={() => setShowAdd(false)} title="Créer un sous-compte">
+      <Modal open={showAdd} onOpenChange={setShowAdd} title="Créer un sous-compte">
         <form onSubmit={handleCreate} className="space-y-4">
-          <Input label="Nom du sous-compte / Client" value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Mathis Guimont" required />
-          <Input label="Email de contact" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Ex: mathis@exemple.com" />
-          <Input label="Téléphone" value={phone} onChange={e => setPhone(e.target.value)} placeholder="Ex: 819-555-0000" />
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-[var(--text-secondary)]">Nom du sous-compte / Client</label>
+            <Input value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Mathis Guimont" required />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-[var(--text-secondary)]">Email de contact</label>
+            <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Ex: mathis@exemple.com" />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-[var(--text-secondary)]">Téléphone</label>
+            <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Ex: 819-555-0000" />
+          </div>
           
           <div className="pt-2">
             <label className="text-xs font-medium text-[var(--text-muted)] mb-2 block">Appliquer un Snapshot</label>

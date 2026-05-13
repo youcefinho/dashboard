@@ -2,7 +2,8 @@
 import { useState, useEffect } from 'react';
 import { apiFetch } from '@/lib/api';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Button, Input, Modal, Card, Badge } from '@/components/ui';
+import { Button, Input, Card, Badge } from '@/components/ui';
+import { Modal } from '@/components/ui/Modal';
 import { Home, RefreshCw, Plus, Search, MapPin, Bed, Bath, Expand, Trash2 } from 'lucide-react';
 
 interface Property {
@@ -175,18 +176,20 @@ export function PropertiesPage() {
         </div>
       )}
 
-      <Modal isOpen={isSyncModalOpen} onClose={() => setIsSyncModalOpen(false)} title="Synchroniser avec Centris">
+      <Modal open={isSyncModalOpen} onOpenChange={() => setIsSyncModalOpen(false)} title="Synchroniser avec Centris">
         <div className="space-y-4">
           <p className="text-sm text-[var(--text-secondary)]">
             Entrez le numéro MLS d'une propriété active pour importer ses photos, son prix et sa description automatiquement.
           </p>
-          <Input 
-            label="Numéro MLS (ex: 12345678)" 
-            value={mlsInput} 
-            onChange={(e: any) => setMlsInput(e.target.value)} 
-            placeholder="12345678"
-            autoFocus
-          />
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-[var(--text-secondary)]">Numéro MLS (ex: 12345678)</label>
+            <Input 
+              value={mlsInput} 
+              onChange={(e: any) => setMlsInput(e.target.value)} 
+              placeholder="12345678"
+              autoFocus
+            />
+          </div>
           <div className="flex justify-end gap-3 mt-6">
             <Button variant="secondary" onClick={() => setIsSyncModalOpen(false)}>Annuler</Button>
             <Button onClick={handleSync} disabled={!mlsInput || isSyncing}>

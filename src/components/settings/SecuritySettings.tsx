@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
-import { Card, Button, Modal, useToast } from '@/components/ui';
+﻿import { useState, useEffect } from 'react';
+import { Card, Button, useToast } from '@/components/ui';
+import { Modal } from '@/components/ui/Modal';
 import { getSessions, deleteSession, deleteOtherSessions, generateBackupCodes, type AdminSession } from '@/lib/api';
 import { Smartphone, Monitor, Download, Copy, AlertTriangle } from 'lucide-react';
 
@@ -121,7 +122,7 @@ export function SecuritySettings() {
         </div>
       </Card>
 
-      <Modal isOpen={showBackupCodes} onClose={() => setShowBackupCodes(false)} title="Codes de secours 2FA">
+      <Modal open={showBackupCodes} onOpenChange={() => setShowBackupCodes(false)} title="Codes de secours 2FA">
         <div className="p-4 space-y-4">
           <div className="flex items-start gap-3 p-3 bg-[var(--warning)]/10 text-[var(--warning)] rounded-lg">
             <AlertTriangle size={20} className="mt-0.5 shrink-0" />

@@ -1,8 +1,9 @@
-// ── Page Pipeline — Kanban refondu Sprint Design 2 (D2.1) + Multi-Pipelines (Phase C)
+﻿// ── Page Pipeline — Kanban refondu Sprint Design 2 (D2.1) + Multi-Pipelines (Phase C)
 import { useState, useEffect, useCallback, type DragEvent } from 'react';
 import { Link } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Badge, Skeleton, Card, Modal, Button } from '@/components/ui';
+import { Badge, Skeleton, Card, Button } from '@/components/ui';
+import { Modal } from '@/components/ui/Modal';
 import { Avatar } from '@/components/ui/Avatar';
 import { getPipeline, getPipelines, updateLead } from '@/lib/api';
 import { TYPE_LABELS, SOURCE_LABELS, type Lead, type Pipeline, type PipelineStage } from '@/lib/types';
@@ -407,7 +408,7 @@ export function PipelinePage() {
       )}
 
       {/* ── Modal Lost Reason ── */}
-      <Modal isOpen={lostModal.show} onClose={() => setLostModal({ leadId: '', show: false })} title="Marquer comme perdu">
+      <Modal open={lostModal.show} onOpenChange={() => setLostModal({ leadId: '', show: false })} title="Marquer comme perdu">
         <div className="space-y-4">
           <div>
             <label className="text-sm font-medium text-[var(--text-secondary)] block mb-1.5">Raison de la perte</label>

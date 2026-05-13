@@ -3,7 +3,9 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Input, Modal, EmptyState, Skeleton } from '@/components/ui';
+import { Card, Button, EmptyState, Skeleton } from '@/components/ui';
+import { Modal } from '@/components/ui/Modal';
+import { Input } from '@/components/ui/Input';
 import { getClients, createClient, getLeads } from '@/lib/api';
 import type { Client, Lead } from '@/lib/types';
 
@@ -185,7 +187,7 @@ export function ClientsPage() {
 
       {/* Modal ajout client */}
       <AddClientModal
-        isOpen={showModal}
+        open={showModal}
         onClose={() => setShowModal(false)}
         onCreated={() => { setShowModal(false); void loadClients(); }}
       />
@@ -196,8 +198,8 @@ export function ClientsPage() {
 // ── Modal Ajout Client ──────────────────────────────────────
 
 function AddClientModal({
-  isOpen, onClose, onCreated,
-}: { isOpen: boolean; onClose: () => void; onCreated: () => void }) {
+  open, onClose, onCreated,
+}: { open: boolean; onClose: () => void; onCreated: () => void }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -226,14 +228,32 @@ function AddClientModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Ajouter un client">
+    <Modal open={open} onOpenChange={(v) => { if (!v) onClose(); }} title="Ajouter un client">
       <form onSubmit={handleSubmit} className="space-y-3">
-        <Input label="Nom de l'entreprise / client" id="client-name" value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Lumière Nettoyage Pro" required />
-        <Input label="Email" id="client-email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="contact@entreprise.com" required />
-        <Input label="Téléphone" id="client-phone" value={phone} onChange={e => setPhone(e.target.value)} placeholder="514-555-1234" />
-        <Input label="Ville" id="client-city" value={city} onChange={e => setCity(e.target.value)} placeholder="Montréal" />
-        <Input label="Bannière / Industrie" id="client-banner" value={banner} onChange={e => setBanner(e.target.value)} placeholder="Ex: Nettoyage" />
-        <Input label="URL du site" id="client-site" value={siteUrl} onChange={e => setSiteUrl(e.target.value)} placeholder="https://lumiere-nettoyage.com" />
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="client-name" className="text-sm font-medium text-[var(--text-secondary)]">Nom de l'entreprise / client</label>
+          <Input id="client-name" value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Lumière Nettoyage Pro" required />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="client-email" className="text-sm font-medium text-[var(--text-secondary)]">Email</label>
+          <Input id="client-email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="contact@entreprise.com" required />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="client-phone" className="text-sm font-medium text-[var(--text-secondary)]">Téléphone</label>
+          <Input id="client-phone" value={phone} onChange={e => setPhone(e.target.value)} placeholder="514-555-1234" />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="client-city" className="text-sm font-medium text-[var(--text-secondary)]">Ville</label>
+          <Input id="client-city" value={city} onChange={e => setCity(e.target.value)} placeholder="Montréal" />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="client-banner" className="text-sm font-medium text-[var(--text-secondary)]">Bannière / Industrie</label>
+          <Input id="client-banner" value={banner} onChange={e => setBanner(e.target.value)} placeholder="Ex: Nettoyage" />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="client-site" className="text-sm font-medium text-[var(--text-secondary)]">URL du site</label>
+          <Input id="client-site" value={siteUrl} onChange={e => setSiteUrl(e.target.value)} placeholder="https://lumiere-nettoyage.com" />
+        </div>
 
         {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
 

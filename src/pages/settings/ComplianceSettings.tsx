@@ -108,12 +108,14 @@ export function ComplianceSettings() {
             <label htmlFor="amf-req" className="text-sm">Activer les mentions légales automatiques dans les emails</label>
           </div>
           {amfRequired && (
-            <Input 
-              label="Texte de la mention légale (ex: Numéro de permis, AMF, etc.)" 
-              value={amfCert} 
-              onChange={(e: any) => setAmfCert(e.target.value)} 
-              placeholder="ex: 123456" 
-            />
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-[var(--text-secondary)]">Texte de la mention légale (ex: Numéro de permis, AMF, etc.)</label>
+              <Input 
+                value={amfCert} 
+                onChange={(e: any) => setAmfCert(e.target.value)} 
+                placeholder="ex: 123456" 
+              />
+            </div>
           )}
           <Button onClick={handleSaveAmf} disabled={isSaving || (amfRequired && !amfCert)}>
             {isSaving ? 'Enregistrement...' : 'Sauvegarder'}
