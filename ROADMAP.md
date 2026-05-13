@@ -45,14 +45,20 @@ Voir `README-DEV.md` pour le setup local sans clés externes.
 | 14.5 | Hotfix audit GHL Migration (OAuth CSRF/AES, tags/CF, idempotence réelle) | ~1j | ✅ Commité |
 | 16 | Design System Migration — Legacy Modal/Input éliminés | ~1j | ✅ Commité |
 | 16.5 | Polish visuel + tokens CSS dans toutes les pages | ~0.5j | ✅ Commité |
+| 17 | Crédibilité avant beta — fix P0/P1 UX-friction (résidus + WS status + notes dedup + mobile responsive) | ~2j | 🟡 Code-complete (build/tests à valider) |
+| 18 | Slide-over panels + perf optimiste (différenciation UX vs GHL) | ~5j | 🟡 Code-complete (build/tests à valider) |
+| 19 | AI Sparkles inline + Command palette intent engine + optimistic msg send | ~5j | 🟡 Code-complete (build/tests à valider) |
+| 20 | AI summarize convo + suggest next action + keyboard shortcuts + retry failed | ~4j | 🟡 Code-complete (build/tests à valider) |
+| 21 | Quick-Add FAB + density modes + AI batch summarize + smart lists pinned sidebar | ~5j | 🟡 Code-complete (build/tests à valider) |
+| 22 | TaskPanel (stack 3-deep) + Activity feed temps réel + Lead timeline unifiée | ~5j | 🟡 Code-complete (build/tests à valider) |
 
-**Total livré : ~192 jours de dev.**
+**Total livré : ~218 jours de dev.**
 
 ## Sprint actuel 🔜
 
 | Sprint | Thème | Durée estimée | Statut |
 |---|---|---|---|
-| 17 | (non défini) | - | 🟡 À planifier |
+| 23 | (optionnel) ConversationPanel + semantic search (Vectorize) + bulk AI actions | ~6j | 🟡 À planifier après validation beta réelle |
 
 ## Sprints restants
 
