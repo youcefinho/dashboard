@@ -43,14 +43,14 @@ Voir `README-DEV.md` pour le setup local sans clés externes.
 | 13.5 | Hotfix audit (tsconfig worker.ts + webhooks robustes + role api) | ~2j | ✅ Commité |
 | 14 | GHL Migration importer (CSV + OAuth hybride) | ~15j | ✅ Commité |
 | 14.5 | Hotfix audit GHL Migration (OAuth CSRF/AES, tags/CF, idempotence réelle) | ~1j | ✅ Commité |
+| 16 | Design System Migration — Legacy Modal/Input éliminés | ~1j | ✅ Commité |
 
-**Total livré : ~190 jours de dev.**
+**Total livré : ~191 jours de dev.**
 
 ## Sprint actuel 🔜
 
 | Sprint | Thème | Durée estimée | Statut |
 |---|---|---|---|
-| 16 | Design System Migration + Cohérence visuelle | ~10j | 🟡 En cours |
 
 ## Sprints restants
 
