@@ -120,13 +120,13 @@ export function PublicFormPage() {
       <div className="min-h-screen flex items-center justify-center p-4 bg-transparent font-inter">
         <Card className="w-full max-w-md text-center p-8 border-none shadow-none bg-transparent">
           <div className="w-16 h-16 bg-green-50 text-green-500 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">✓</div>
-          <h2 className="text-xl font-bold mb-2 text-gray-900">Succès</h2>
-          <p className="text-gray-500 whitespace-pre-wrap">{submitResult.message}</p>
+          <h2 className="text-xl font-bold mb-2 text-[var(--text-primary)]">Succès</h2>
+          <p className="text-[var(--text-muted)] whitespace-pre-wrap">{submitResult.message}</p>
           
           {submitResult.quiz_result && (
             <div className="mt-6 p-4 rounded-xl bg-blue-50 text-left">
               <p className="text-sm font-semibold text-blue-600 mb-1">Votre résultat :</p>
-              <p className="text-gray-900">{submitResult.quiz_result.message}</p>
+              <p className="text-[var(--text-primary)]">{submitResult.quiz_result.message}</p>
             </div>
           )}
         </Card>
@@ -134,15 +134,15 @@ export function PublicFormPage() {
     );
   }
 
-  const inputClasses = "w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500";
-  const labelClasses = "mb-1 block text-sm font-medium text-gray-700";
+  const inputClasses = "w-full rounded-md border border-[var(--border-default)] bg-white px-3 py-2 text-sm placeholder:text-[var(--text-muted)] focus:border-[var(--brand-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--ring)]";
+  const labelClasses = "mb-1 block text-sm font-medium text-[var(--text-secondary)]";
 
   return (
     <div className="min-h-screen bg-transparent p-4 flex justify-center items-start font-inter">
       <Card className="w-full max-w-lg border-none shadow-none bg-transparent">
         <div className="p-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">{config.name}</h1>
-          {config.description && <p className="text-gray-500 mb-6 text-sm">{config.description}</p>}
+          <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-2">{config.name}</h1>
+          {config.description && <p className="text-[var(--text-muted)] mb-6 text-sm">{config.description}</p>}
           
           <form onSubmit={handleSubmit} className="space-y-5">
             {fields.map(f => {
@@ -208,7 +208,7 @@ export function PublicFormPage() {
                       </label>
                       <div className="space-y-2">
                         {f.options?.map((opt, i) => (
-                          <label key={i} className="flex items-center gap-3 cursor-pointer p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
+                          <label key={i} className="flex items-center gap-3 cursor-pointer p-3 rounded-lg border border-[var(--border-subtle)] hover:bg-gray-50 transition-colors">
                             <input
                               type="radio"
                               name={f.name}
@@ -216,9 +216,9 @@ export function PublicFormPage() {
                               required={f.required}
                               checked={formData[f.name] === opt.value}
                               onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleFieldChange(f.name, e.target.value)}
-                              className="text-blue-600 focus:ring-blue-500"
+                              className="text-blue-600 focus:ring-[var(--ring)]"
                             />
-                            <span className="text-sm font-medium text-gray-900">{opt.label}</span>
+                            <span className="text-sm font-medium text-[var(--text-primary)]">{opt.label}</span>
                           </label>
                         ))}
                       </div>
@@ -233,9 +233,9 @@ export function PublicFormPage() {
                         required={f.required}
                         checked={formData[f.name] || false}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleFieldChange(f.name, e.target.checked)}
-                        className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4"
+                        className="rounded text-blue-600 focus:ring-[var(--ring)] h-4 w-4"
                       />
-                      <label htmlFor={f.id} className="text-sm font-medium text-gray-700">
+                      <label htmlFor={f.id} className="text-sm font-medium text-[var(--text-secondary)]">
                         {f.label} {f.required && <span className="text-red-500">*</span>}
                       </label>
                     </div>
@@ -251,7 +251,7 @@ export function PublicFormPage() {
               </Button>
             </div>
             
-            <p className="text-center text-[10px] text-gray-400 pt-2">
+            <p className="text-center text-[10px] text-[var(--text-muted)] pt-2">
               Propulsé par <strong>Intralys</strong>
             </p>
           </form>

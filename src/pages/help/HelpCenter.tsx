@@ -74,13 +74,13 @@ export function HelpCenterPage() {
         <div className="max-w-3xl mx-auto text-center">
           <h1 className="text-3xl font-bold text-white mb-6">Comment pouvons-nous vous aider ?</h1>
           <div className="relative max-w-xl mx-auto">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={20} />
             <input 
               type="text" 
               placeholder="Rechercher des articles, des tutoriels..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-4 rounded-xl border-none shadow-lg focus:ring-2 focus:ring-[var(--brand-tint)] text-slate-900"
+              className="w-full pl-12 pr-4 py-4 rounded-xl border-none shadow-lg focus:ring-2 focus:ring-[var(--brand-tint)] text-[var(--text-primary)]"
             />
           </div>
         </div>
@@ -92,7 +92,7 @@ export function HelpCenterPage() {
           <div className="md:col-span-1 space-y-8">
             {categories.map(cat => (
               <div key={cat.id}>
-                <h3 className="font-bold text-slate-900 flex items-center gap-2 mb-3">
+                <h3 className="font-bold text-[var(--text-primary)] flex items-center gap-2 mb-3">
                   {cat.icon} {cat.name}
                 </h3>
                 <ul className="space-y-2">
@@ -102,7 +102,7 @@ export function HelpCenterPage() {
                     <li key={id}>
                       <button 
                         onClick={() => setSelectedArticle(id)}
-                        className={`text-sm text-left w-full hover:text-[var(--brand-primary)] transition-colors ${selectedArticle === id ? 'text-[var(--brand-primary)] font-medium' : 'text-slate-600'}`}
+                        className={`text-sm text-left w-full hover:text-[var(--brand-primary)] transition-colors ${selectedArticle === id ? 'text-[var(--brand-primary)] font-medium' : 'text-[var(--text-secondary)]'}`}
                       >
                         {article.title}
                       </button>
@@ -116,19 +116,19 @@ export function HelpCenterPage() {
           {/* Content */}
           <div className="md:col-span-3">
             {selectedArticle ? (
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 min-h-[500px]">
+              <div className="bg-white rounded-2xl border border-[var(--border-subtle)] shadow-sm p-8 min-h-[500px]">
                 <button onClick={() => setSelectedArticle(null)} className="text-sm text-[var(--brand-primary)] font-medium flex items-center gap-1 mb-6 hover:underline">
                   <ChevronRight size={16} className="rotate-180" /> Retour à l'accueil du centre d'aide
                 </button>
                 {isLoading ? (
                   <div className="animate-pulse space-y-4">
-                    <div className="h-8 bg-slate-100 rounded w-1/3"></div>
-                    <div className="h-4 bg-slate-100 rounded w-full mt-8"></div>
-                    <div className="h-4 bg-slate-100 rounded w-5/6"></div>
-                    <div className="h-4 bg-slate-100 rounded w-4/6"></div>
+                    <div className="h-8 bg-[var(--bg-muted)] rounded w-1/3"></div>
+                    <div className="h-4 bg-[var(--bg-muted)] rounded w-full mt-8"></div>
+                    <div className="h-4 bg-[var(--bg-muted)] rounded w-5/6"></div>
+                    <div className="h-4 bg-[var(--bg-muted)] rounded w-4/6"></div>
                   </div>
                 ) : (
-                  <article className="prose prose-slate max-w-none prose-headings:text-slate-900 prose-a:text-[var(--brand-primary)]">
+                  <article className="prose prose-neutral max-w-none prose-headings:text-[var(--text-primary)] prose-a:text-[var(--brand-primary)]">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                       {markdownContent}
                     </ReactMarkdown>
@@ -136,10 +136,10 @@ export function HelpCenterPage() {
                 )}
               </div>
             ) : (
-              <div className="bg-slate-50 rounded-2xl border border-slate-100 p-12 text-center h-full flex flex-col items-center justify-center">
-                <Book className="text-slate-300 mb-4" size={48} />
-                <h2 className="text-xl font-bold text-slate-900 mb-2">Sélectionnez un article</h2>
-                <p className="text-slate-500">Choisissez un sujet dans le menu de gauche pour commencer votre lecture.</p>
+              <div className="bg-[var(--bg-subtle)] rounded-2xl border border-[var(--border-subtle)] p-12 text-center h-full flex flex-col items-center justify-center">
+                <Book className="text-[var(--text-muted)] mb-4" size={48} />
+                <h2 className="text-xl font-bold text-[var(--text-primary)] mb-2">Sélectionnez un article</h2>
+                <p className="text-[var(--text-muted)]">Choisissez un sujet dans le menu de gauche pour commencer votre lecture.</p>
               </div>
             )}
           </div>

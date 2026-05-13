@@ -4,12 +4,12 @@ export function LegalPage({ type }: { type: 'privacy' | 'terms' }) {
   return (
     <PublicLayout>
       <div className="pt-20 pb-24 px-4 sm:px-6 lg:px-8 max-w-3xl mx-auto">
-        <h1 className="text-4xl font-extrabold text-slate-900 mb-8">
+        <h1 className="text-4xl font-extrabold text-[var(--text-primary)] mb-8">
           {type === 'privacy' ? 'Politique de Confidentialité' : "Conditions d'Utilisation"}
         </h1>
         
         <div className="prose prose-slate max-w-none">
-          <p className="text-slate-500 text-sm mb-8">Dernière mise à jour : {new Date().toLocaleDateString('fr-CA')}</p>
+          <p className="text-[var(--text-muted)] text-sm mb-8">Dernière mise à jour : {new Date().toLocaleDateString('fr-CA')}</p>
           
           {type === 'privacy' ? (
             <>

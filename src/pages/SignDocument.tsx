@@ -158,7 +158,7 @@ export function SignDocumentPage() {
                 />
                 <button 
                   onClick={clearSignature}
-                  className="absolute bottom-2 right-2 text-xs bg-gray-100 px-2 py-1 rounded hover:bg-gray-200 text-gray-600"
+                  className="absolute bottom-2 right-2 text-xs bg-[var(--bg-subtle)] px-2 py-1 rounded hover:bg-[var(--bg-muted)] text-[var(--text-secondary)]"
                 >
                   Effacer
                 </button>
