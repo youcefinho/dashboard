@@ -42,8 +42,9 @@ Voir `README-DEV.md` pour le setup local sans clés externes.
 | 13 | API publique + Webhooks OUT + Zapier | ~10j | ✅ Commité |
 | 13.5 | Hotfix audit (tsconfig worker.ts + webhooks robustes + role api) | ~2j | ✅ Commité |
 | 14 | GHL Migration importer (CSV + OAuth hybride) | ~15j | ✅ Commité |
+| 14.5 | Hotfix audit GHL Migration (OAuth CSRF/AES, tags/CF, idempotence réelle) | ~1j | ✅ Commité |
 
-**Total livré : ~189 jours de dev.**
+**Total livré : ~190 jours de dev.**
 
 ## Sprint actuel 🔜
 
