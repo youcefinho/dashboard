@@ -51,6 +51,7 @@ Voir `README-DEV.md` pour le setup local sans clés externes.
 
 | Sprint | Thème | Durée estimée | Statut |
 |---|---|---|---|
+| 16.5 | Polish visuel + snapshots Playwright | ~3j | 🟡 En cours |
 
 ## Sprints restants
 
