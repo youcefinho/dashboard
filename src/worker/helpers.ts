@@ -141,6 +141,13 @@ export async function validateSession(token: string, env: Env): Promise<{ valid:
 }
 
 export async function requireAuth(request: Request, env: Env): Promise<Response | { userId: string; role: string }> {
+  // ── DEV BYPASS ──
+  // Active UNIQUEMENT si env.DEV_BYPASS_AUTH === 'true' (via .dev.vars en local).
+  // En prod (Cloudflare Pages), la variable n'est pas définie → vrai check token.
+  if (env.DEV_BYPASS_AUTH === 'true') {
+    return { userId: 'admin', role: 'admin' };
+  }
+
   const token = extractToken(request);
   if (!token) return json({ error: 'Non autorisé' }, 401);
 
