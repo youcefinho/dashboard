@@ -1,10 +1,13 @@
 // ── App — Routing TanStack Router ───────────────────────────
 
-import { createRouter, createRoute, createRootRoute, RouterProvider, Navigate } from '@tanstack/react-router';
+import { createRouter, createRoute, createRootRoute, RouterProvider, Navigate, Outlet } from '@tanstack/react-router';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { LoginPage } from '@/pages/Login';
 import { DashboardPage } from '@/pages/Dashboard';
 import { Suspense, lazy, type ReactNode } from 'react';
+import { PanelStackProvider, ViewTransition } from '@/components/ui';
+import { LeadPanel } from '@/components/panels/LeadPanel';
+import { TaskPanel } from '@/components/panels/TaskPanel';
 
 // ── Code splitting : chargement différé des pages secondaires ──
 const ClientsPage = lazy(() => import('@/pages/Clients').then(m => ({ default: m.ClientsPage })));
@@ -80,7 +83,22 @@ function LazyGuard({ children }: { children: ReactNode }) {
 
 // ── Routes ──────────────────────────────────────────────────
 
-const rootRoute = createRootRoute();
+// Root route avec PanelStackProvider — permet d'ouvrir des slide-over panels
+// depuis n'importe quelle page sans full-page nav (différenciateur UX vs GHL).
+const PANEL_RENDERERS = {
+  lead: LeadPanel,
+  task: TaskPanel,
+} as const;
+
+const rootRoute = createRootRoute({
+  component: () => (
+    <PanelStackProvider renderers={PANEL_RENDERERS}>
+      <ViewTransition>
+        <Outlet />
+      </ViewTransition>
+    </PanelStackProvider>
+  ),
+});
 
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -432,14 +450,16 @@ const router = createRouter({ routeTree });
 
 // ── App Root ────────────────────────────────────────────────
 
-import { ToastProvider } from '@/components/ui';
+import { ToastProvider, ConfirmProvider } from '@/components/ui';
 
 export default function App() {
   return (
     <ToastProvider>
-      <AuthProvider>
-        <RouterProvider router={router} />
-      </AuthProvider>
+      <ConfirmProvider>
+        <AuthProvider>
+          <RouterProvider router={router} />
+        </AuthProvider>
+      </ConfirmProvider>
     </ToastProvider>
   );
 }

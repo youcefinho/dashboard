@@ -29,6 +29,17 @@ export { Tooltip } from './Tooltip';
 
 export { Tabs, TabsList, TabsTrigger, TabsContent } from './Tabs';
 
+export { SlidePanel } from './SlidePanel';
+export type { SlidePanelSize } from './SlidePanel';
+
+export { PanelStackProvider, usePanelStack } from './PanelStack';
+export type { PanelDescriptor } from './PanelStack';
+
+export { ViewTransition } from './ViewTransition';
+
+export { AiSparkles } from './AiSparkles';
+
 // ── Utilitaires ─────────────────────────────────────────────
 export { ToastProvider, useToast } from './Toast';
+export { ConfirmProvider, useConfirm, usePrompt } from './ConfirmDialog';
 export * from './DateRangePicker';
