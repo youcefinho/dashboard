@@ -48,7 +48,9 @@ Voir `README-DEV.md` pour le setup local sans clés externes.
 
 ## Sprint actuel 🔜
 
-| 15 | App mobile React Native V2 | ~30j | ⏳ En attente de traction |
+| Sprint | Thème | Durée estimée | Statut |
+|---|---|---|---|
+| 16 | Design System Migration + Cohérence visuelle | ~10j | 🟡 En cours |
 
 ## Sprints restants
 
