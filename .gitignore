@@ -9,3 +9,6 @@ post-deploy.cjs
 .idea/
 ios/
 android/
+# Playwright
+tests/visual/results/
+playwright-report/
