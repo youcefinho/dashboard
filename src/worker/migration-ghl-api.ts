@@ -137,7 +137,7 @@ async function runMigrationLoop(
           for (const cf of customFields) {
             const mapped = mapGhlCustomField(cf, clientId);
             await env.DB.prepare(
-              `INSERT OR IGNORE INTO custom_field_defs (id, client_id, name, slug, field_type, options_json)
+              `INSERT OR IGNORE INTO custom_field_defs (id, client_id, name, slug, field_type, options)
                VALUES (?, ?, ?, ?, ?, ?)`
             ).bind(mapped.id, clientId, mapped.name, mapped.slug, mapped.field_type, mapped.options).run();
           }
@@ -155,7 +155,7 @@ async function runMigrationLoop(
               if (!mapped) continue;
 
               const result = await env.DB.prepare(
-                `INSERT INTO leads (id, client_id, name, email, phone, source, type, status, dnd, dnd_settings_json, migrated_from)
+                `INSERT INTO leads (id, client_id, name, email, phone, source, type, status, dnd, dnd_settings, migrated_from)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
               ).bind(
                 mapped.id, clientId, sanitizeInput(mapped.name, 100), mapped.email, mapped.phone, mapped.source, mapped.type, mapped.status, mapped.dnd, mapped.dnd_settings, mapped.migrated_from
@@ -322,7 +322,7 @@ async function runMigrationLoop(
             const mapped = mapGhlAppointment(ev, clientId);
             try {
               await env.DB.prepare(
-                `INSERT INTO appointments (id, client_id, lead_id, title, starts_at, ends_at, status, created_at)
+                `INSERT INTO appointments (id, client_id, lead_id, title, start_time, end_time, status, created_at)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
               ).bind(mapped.id, clientId, mapRow.intralys_id, sanitizeInput(mapped.title, 200), mapped.start_time, mapped.end_time, mapped.status, mapped.created_at).run();
 
