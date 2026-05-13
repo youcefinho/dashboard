@@ -4,6 +4,7 @@ import { json, audit } from './helpers';
 import { hashPassword, verifyPassword } from './crypto';
 
 const LOGIN_WINDOW_HOURS = 1;
+const MAX_LOGIN_ATTEMPTS = 5;
 const SESSION_DURATION_HOURS = 72;
 
 // ── Schemas de validation ───────────────────────────────────
@@ -41,18 +42,21 @@ function extractToken(request: Request): string | null {
   return null;
 }
 
-export async function requireAuth(_request: Request, _env: Env): Promise<{ userId: string; role: string } | Response> {
-  // BYPASS PROVISOIRE
-  return { userId: 'admin', role: 'admin' };
-  
-  /*
+export async function requireAuth(request: Request, env: Env): Promise<{ userId: string; role: string } | Response> {
+  // ── DEV BYPASS ──
+  // Active UNIQUEMENT si env.DEV_BYPASS_AUTH === 'true' (via .dev.vars en local).
+  // En prod (Cloudflare Pages), la variable n'est pas définie → vrai check token.
+  if (env.DEV_BYPASS_AUTH === 'true') {
+    return { userId: 'admin', role: 'admin' };
+  }
+
   const token = extractToken(request);
-  if (!token) return json({ error: 'Token d\'authentification manquant' }, 401);
+  if (!token) return json({ error: "Token d'authentification manquant" }, 401);
   const session = await env.DB.prepare(
     "SELECT user_id, role FROM admin_sessions WHERE token = ? AND expires_at > datetime('now')"
   ).bind(token).first() as { user_id: string; role: string } | null;
-  return { userId: session?.user_id || '', role: session?.role || '' };
-  */
+  if (!session) return json({ error: 'Session invalide ou expirée' }, 401);
+  return { userId: session.user_id, role: session.role };
 }
 
 // ── Handlers ────────────────────────────────────────────────
@@ -60,12 +64,18 @@ export async function requireAuth(_request: Request, _env: Env): Promise<{ userI
 export async function handleLogin(request: Request, env: Env): Promise<Response> {
   const ip = request.headers.get('CF-Connecting-IP') || '127.0.0.1';
   const ua = request.headers.get('User-Agent') || 'Unknown Browser';
-  const windowStart = new Date(Date.now() - LOGIN_WINDOW_HOURS * 60 * 60 * 1000).toISOString();
-  const { results: _attempts } = await env.DB.prepare(
-    'SELECT COUNT(*) as count FROM login_attempts WHERE ip = ? AND attempted_at > ?'
-  ).bind(ip, windowStart).all();
-  // BYPASS PROVISOIRE : on ignore le rate limit
-  // if (attemptCount >= MAX_LOGIN_ATTEMPTS) return json({ error: 'Trop de tentatives. Réessayez dans 1 heure.' }, 429);
+  const devBypass = env.DEV_BYPASS_AUTH === 'true';
+
+  // Rate limit (skip en dev bypass)
+  if (!devBypass) {
+    const windowStart = new Date(Date.now() - LOGIN_WINDOW_HOURS * 60 * 60 * 1000).toISOString();
+    const attempts = await env.DB.prepare(
+      'SELECT COUNT(*) as count FROM login_attempts WHERE ip = ? AND attempted_at > ?'
+    ).bind(ip, windowStart).first() as { count: number } | null;
+    if (attempts && attempts.count >= MAX_LOGIN_ATTEMPTS) {
+      return json({ error: 'Trop de tentatives. Réessayez dans 1 heure.' }, 429);
+    }
+  }
 
   const raw = await request.json();
   const parsed = validate(loginSchema, raw);
@@ -80,7 +90,8 @@ export async function handleLogin(request: Request, env: Env): Promise<Response>
   ).bind(email).first() as { id: string; name: string; role: string; client_id: string | null; password_hash: string; is_active: number; must_change_password: number } | null;
 
   if (!user) {
-    // BYPASS PROVISOIRE
+    // En dev bypass : auto-créer le user. En prod : refuser.
+    if (!devBypass) return json({ error: 'Identifiants incorrects' }, 401);
     const userId = crypto.randomUUID();
     const hash = await hashPassword(password);
     await env.DB.prepare("INSERT INTO users (id, email, password_hash, name, role, must_change_password) VALUES (?, ?, ?, 'Rochdi', 'admin', 1)").bind(userId, email, hash).run();
@@ -89,8 +100,15 @@ export async function handleLogin(request: Request, env: Env): Promise<Response>
 
   if (!user.is_active) return json({ error: 'Compte désactivé' }, 401);
 
-  // BYPASS PROVISOIRE
-  let passwordOk = true;
+  // Vérification password (skip en dev bypass)
+  let passwordOk = devBypass;
+  if (!devBypass) {
+    if (user.password_hash && user.password_hash.startsWith('pbkdf2$')) {
+      passwordOk = await verifyPassword(password, user.password_hash);
+    } else {
+      passwordOk = password === env.ADMIN_PASSWORD;
+    }
+  }
 
   if (!passwordOk) return json({ error: 'Identifiants incorrects' }, 401);
 

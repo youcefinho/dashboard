@@ -26,6 +26,7 @@ export interface Env {
   GHL_REDIRECT_URI?: string;
   TOKEN_KEY?: string; // 32-char string pour AES-GCM chiffrement tokens OAuth
   STATE_STORE?: KVNamespace; // KV namespace pour nonces CSRF OAuth (TTL 10min)
+  DEV_BYPASS_AUTH?: string; // 'true' = bypass login + rate limit + password (UNIQUEMENT en dev local via .dev.vars, JAMAIS en prod)
   // V2 backlog (désactivés Sprint Consolidation)
   // OPENAI_API_KEY: string;
   // GOOGLE_CLIENT_ID: string;

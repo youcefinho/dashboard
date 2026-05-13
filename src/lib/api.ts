@@ -74,25 +74,26 @@ export interface LoginResponse {
   user: { id: string; name: string; role: string; email: string; onboarding_step?: number; onboarding_skipped?: boolean };
 }
 
-export async function login(_email: string, _password: string): Promise<ApiResponse<LoginResponse>> {
-  // BYPASS PROVISOIRE : Fausse réponse pour éviter le worker qui ne recharge pas
-  const fakeData: LoginResponse = {
-    token: 'fake-bypass-token-123456',
-    must_change_password: false,
-    user: { id: 'admin', name: 'Rochdi (Bypass)', role: 'admin', email: 'rochdi@intralys.com', onboarding_step: 0, onboarding_skipped: false }
-  };
-  setToken(fakeData.token);
-  localStorage.setItem('intralys_user', JSON.stringify(fakeData.user));
-  localStorage.removeItem('must_change_password');
-  return { data: fakeData };
+export async function login(email: string, password: string): Promise<ApiResponse<LoginResponse>> {
+  // DEV BYPASS — actif UNIQUEMENT si VITE_DEV_BYPASS_AUTH=true dans .env.local.
+  // En prod, la variable n'est pas définie → vrai appel /auth/login.
+  if (import.meta.env.VITE_DEV_BYPASS_AUTH === 'true') {
+    const fakeData: LoginResponse = {
+      token: 'dev-bypass-token',
+      must_change_password: false,
+      user: { id: 'admin', name: 'Rochdi (Dev)', role: 'admin', email: email || 'rochdi@intralys.com', onboarding_step: 0, onboarding_skipped: false }
+    };
+    setToken(fakeData.token);
+    localStorage.setItem('intralys_user', JSON.stringify(fakeData.user));
+    localStorage.removeItem('must_change_password');
+    return { data: fakeData };
+  }
 
-  /*
   const result = await apiFetch<LoginResponse>('/auth/login', {
     method: 'POST',
     body: JSON.stringify({ email, password }),
   });
 
-  // Le worker renvoie {success, token, user} directement
   const raw = result as unknown as Record<string, unknown>;
   if (raw['token'] || (result.data && 'token' in result.data)) {
     const loginData = (result.data || raw) as unknown as LoginResponse;
@@ -107,7 +108,6 @@ export async function login(_email: string, _password: string): Promise<ApiRespo
   }
 
   return result;
-  */
 }
 
 export async function logout(): Promise<void> {

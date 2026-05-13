@@ -25,7 +25,7 @@ describe('Auth Sessions & 2FA Tests - Phase D', () => {
     first: vi.fn(),
     batch: vi.fn(),
   };
-  const mockEnv = { DB: mockDb } as unknown as Env;
+  const mockEnv = { DB: mockDb, DEV_BYPASS_AUTH: 'true' } as unknown as Env;
 
   beforeEach(() => {
     vi.clearAllMocks();
