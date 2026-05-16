@@ -14,8 +14,12 @@
 
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { X, ExternalLink } from 'lucide-react';
+// Sprint 33 vague 33-1A — Icon primitive (stroke 1.75 unifié)
+import { Icon } from './Icon';
 import { cn } from '@/lib/cn';
 import { type ReactNode } from 'react';
+// Sprint 44 M3.4 — Edge swipe back ferme le SlidePanel le plus haut dans le stack
+import { useBackHandler } from '@/hooks/useBackHandler';
 
 export type SlidePanelSize = 'sm' | 'md' | 'lg' | 'xl';
 
@@ -66,6 +70,11 @@ export function SlidePanel({
     ? `translateX(-${Math.min(stackLevel, 2) * 32}px) scale(${1 - Math.min(stackLevel, 2) * 0.02})`
     : undefined;
 
+  // Sprint 44 M3.4 — Edge swipe back ferme le panel s'il est ouvert.
+  // S'enregistre dans le back-handler stack tant que `open` est true.
+  // Le AppLayout consume LIFO → si plusieurs panels stack, le top ferme en premier.
+  useBackHandler(() => onOpenChange(false), open);
+
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange} modal={stackLevel === 0}>
       <DialogPrimitive.Portal>
@@ -76,7 +85,9 @@ export function SlidePanel({
         )}
         <DialogPrimitive.Content
           className={cn(
-            'fixed right-0 top-0 bottom-0 z-50 flex flex-col bg-[var(--bg-surface)] shadow-[var(--shadow-xl)] border-l border-[var(--border-subtle)]',
+            // Sprint 25 vague 2B — surface-3 + shadow-brand-2xl (panel premium)
+            // Fallback bg-[var(--bg-surface)] solide conservé en cascade.
+            'fixed right-0 top-0 bottom-0 z-50 flex flex-col bg-[var(--bg-surface)] surface-3 shadow-brand-2xl border-l border-[var(--border-subtle)]',
             'data-[state=open]:animate-in data-[state=closed]:animate-out',
             'data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right',
             'data-[state=open]:duration-250 data-[state=closed]:duration-200',
@@ -112,18 +123,18 @@ export function SlidePanel({
                     if (onOpenFull) onOpenFull();
                     else if (openFullHref) window.location.assign(openFullHref);
                   }}
-                  className="rounded-[var(--radius-sm)] p-1.5 text-[var(--text-muted)] hover:bg-[var(--bg-subtle)] hover:text-[var(--brand-primary)] transition-colors cursor-pointer"
+                  className="rounded-[var(--radius-sm)] p-1.5 text-[var(--text-muted)] hover:bg-[var(--bg-subtle)] hover:text-[var(--primary)] transition-colors cursor-pointer"
                   title="Ouvrir en page complète"
                   aria-label="Ouvrir en page complète"
                 >
-                  <ExternalLink className="h-4 w-4" />
+                  <Icon as={ExternalLink} size={16} />
                 </button>
               )}
               <DialogPrimitive.Close
                 className="rounded-[var(--radius-sm)] p-1.5 text-[var(--text-muted)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
                 aria-label="Fermer"
               >
-                <X className="h-4 w-4" />
+                <Icon as={X} size={16} />
               </DialogPrimitive.Close>
             </div>
           </div>

@@ -14,6 +14,8 @@ import { createContext, useContext, useState, useCallback, type ReactNode } from
 import { Modal } from './Modal';
 import { Button } from './Button';
 import { Input } from './Input';
+// Sprint 25 vague 4B — son success au confirm (silent au cancel)
+import { playSound } from '@/lib/sensorial';
 
 interface ConfirmOptions {
   title: string;
@@ -64,6 +66,10 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const closeConfirm = (result: boolean) => {
+    // Sprint 25 vague 4B — son success uniquement sur confirm OK (silent au cancel)
+    if (result) {
+      playSound('success');
+    }
     if (confirmState) confirmState.resolver(result);
     setConfirmState(null);
   };

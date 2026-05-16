@@ -116,6 +116,59 @@ export async function handleWidgetScript(env: Env, url: URL): Promise<Response> 
   try { fields = JSON.parse(form.fields as string); } catch { /* */ }
   if (fields.length === 0) { fields = [{ name: 'nom', label: 'Nom complet', type: 'text', required: true }, { name: 'email', label: 'Courriel', type: 'email', required: true }, { name: 'phone', label: 'Téléphone', type: 'tel' }, { name: 'message', label: 'Message', type: 'textarea' }]; }
   const apiBase = url.origin;
-  const script = `(function(){var c=document.getElementById('intralys-form');if(!c)return;var f=${JSON.stringify(fields)};var h='<div class="ilf"><form id="ilf-form">';f.forEach(function(x){h+='<label>'+x.label+(x.required?' *':'')+'</label>';h+=x.type==='textarea'?'<textarea name="'+x.name+'"'+(x.required?' required':'')+''+'></textarea>':'<input type="'+x.type+'" name="'+x.name+'"'+(x.required?' required':'')+' />';});h+='<button type="submit">Envoyer</button></form></div>';c.innerHTML=h;document.getElementById('ilf-form').addEventListener('submit',function(e){e.preventDefault();var d={};f.forEach(function(x){d[x.name]=e.target.elements[x.name].value;});var b=e.target.querySelector('button');b.textContent='Envoi...';b.disabled=true;fetch('${apiBase}/api/form/submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({form_id:'${form.id}',data:d})}).then(function(r){return r.json()}).then(function(r){if(r.data){c.querySelector('.ilf').innerHTML='<div class="ilf-ok">'+(r.data.success_message||'Merci !')+'</div>';}else{b.textContent='Envoyer';b.disabled=false;}}).catch(function(){b.textContent='Envoyer';b.disabled=false;});});})();`;
+
+  // Sprint 51 M3.2 — bloc consentement Loi 25 lu depuis settings_json (back-compat)
+  let requireConsent = false;
+  let consentText = "J'accepte d'être recontacté(e) conformément à la Loi 25.";
+  try {
+    const s = JSON.parse((form.settings_json as string) || '{}') as { require_consent?: boolean; consent_text?: string };
+    if (s.require_consent === true) requireConsent = true;
+    if (s.consent_text) consentText = String(s.consent_text);
+  } catch { /* */ }
+  const redirectUrl = (form.redirect_url as string) || '';
+  const successMsg = (form.success_message as string) || 'Merci ! Nous vous recontacterons sous peu.';
+
+  const cfg = JSON.stringify({
+    formId: form.id, apiBase, fields, requireConsent, consentText,
+    redirectUrl, successMsg,
+  });
+
+  // Script auto-contenu, zéro dépendance, CORS *. Back-compat : ancien markup
+  // (#intralys-form, .ilf, #ilf-form) conservé. Nouveaux comportements sûrs par défaut :
+  // honeypot anti-spam, capture attribution (utm/gclid/fbclid/referrer), anti double-submit.
+  const script = `(function(){var C=${cfg};var c=document.getElementById('intralys-form');if(!c)return;` +
+    `var f=C.fields;` +
+    // Attribution : lue sur la page hôte (querystring + referrer)
+    `function attr(){var p=new URLSearchParams(window.location.search||'');var a={};` +
+    `['utm_source','utm_medium','utm_campaign','utm_term','utm_content','gclid','fbclid'].forEach(function(k){var v=p.get(k);if(v)a[k]=v;});` +
+    `if(document.referrer)a.referrer=document.referrer;return a;}` +
+    // Anti double-submit : verrou localStorage 30s par formulaire
+    `var LK='ilf_sent_'+C.formId;function locked(){try{var t=localStorage.getItem(LK);return t&&(Date.now()-parseInt(t,10))<30000;}catch(e){return false;}}` +
+    `function lock(){try{localStorage.setItem(LK,String(Date.now()));}catch(e){}}` +
+    // Markup
+    `var h='<div class="ilf"><form id="ilf-form" novalidate>';` +
+    `f.forEach(function(x){var id='ilf-'+x.name;h+='<label for="'+id+'">'+x.label+(x.required?' <span aria-hidden=\\'true\\'>*</span>':'')+'</label>';` +
+    `h+=x.type==='textarea'?'<textarea id="'+id+'" name="'+x.name+'"'+(x.required?' required':'')+' aria-required="'+(x.required?'true':'false')+'"></textarea>':'<input id="'+id+'" type="'+x.type+'" name="'+x.name+'"'+(x.required?' required':'')+' aria-required="'+(x.required?'true':'false')+'" />';});` +
+    // Honeypot (caché des humains + lecteurs d'écran)
+    `h+='<div style="position:absolute;left:-9999px;top:-9999px;" aria-hidden="true"><label>Ne pas remplir</label><input type="text" name="ilf_hp" tabindex="-1" autocomplete="off" /></div>';` +
+    // Consentement obligatoire Loi 25
+    `if(C.requireConsent){h+='<div class="ilf-consent" style="display:flex;align-items:flex-start;gap:8px;margin:10px 0;"><input type="checkbox" id="ilf-consent" name="consent" required aria-required="true" /><label for="ilf-consent" style="font-size:13px;font-weight:400;">'+C.consentText+' <span aria-hidden="true">*</span></label></div>';}` +
+    `h+='<div class="ilf-err" role="alert" aria-live="polite" style="display:none;color:#c0392b;font-size:13px;margin:6px 0;"></div>';` +
+    `h+='<button type="submit">Envoyer</button></form></div>';c.innerHTML=h;` +
+    `var form=document.getElementById('ilf-form');var errBox=c.querySelector('.ilf-err');` +
+    `form.addEventListener('submit',function(e){e.preventDefault();` +
+    // Honeypot rempli → drop silencieux (faux succès, pas d'appel réseau)
+    `if(e.target.elements['ilf_hp']&&e.target.elements['ilf_hp'].value){c.querySelector('.ilf').innerHTML='<div class="ilf-ok">'+C.successMsg+'</div>';return;}` +
+    `if(locked()){errBox.style.display='block';errBox.textContent='Demande déjà envoyée. Merci de patienter quelques instants.';return;}` +
+    // Consentement requis non coché → blocage
+    `if(C.requireConsent){var cb=e.target.elements['consent'];if(!cb||!cb.checked){errBox.style.display='block';errBox.textContent='Veuillez accepter le consentement pour continuer.';return;}}` +
+    `errBox.style.display='none';var d={};f.forEach(function(x){var el=e.target.elements[x.name];if(el)d[x.name]=el.value;});` +
+    `if(C.requireConsent)d.consent=true;` +
+    `var A=attr();Object.keys(A).forEach(function(k){d[k]=A[k];});` +
+    `var b=e.target.querySelector('button[type=submit]');b.textContent='Envoi...';b.disabled=true;` +
+    `fetch(C.apiBase+'/api/form/submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({form_id:C.formId,data:d})}).then(function(r){return r.json()}).then(function(r){` +
+    `if(r&&r.data){lock();var ru=(r.data.redirect_url)||C.redirectUrl;if(ru){window.location.href=ru;return;}c.querySelector('.ilf').innerHTML='<div class="ilf-ok">'+(r.data.success_message||C.successMsg)+'</div>';}` +
+    `else{b.textContent='Envoyer';b.disabled=false;errBox.style.display='block';errBox.textContent=(r&&r.error)||'Une erreur est survenue. Réessayez.';}` +
+    `}).catch(function(){b.textContent='Envoyer';b.disabled=false;errBox.style.display='block';errBox.textContent='Connexion impossible. Vérifiez votre réseau et réessayez.';});});})();`;
   return new Response(script, { headers: { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'public, max-age=300', 'Access-Control-Allow-Origin': '*' } });
 }

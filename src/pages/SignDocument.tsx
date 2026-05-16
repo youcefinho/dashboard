@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from '@tanstack/react-router';
 import { apiFetch } from '@/lib/api';
-import { Button, Card, Badge, useToast } from '@/components/ui';
+import { Button, Card, Tag, Input, useToast, Icon } from '@/components/ui';
 import { PenTool, CheckCircle, Shield, AlertTriangle } from 'lucide-react';
 import SignatureCanvas from 'react-signature-canvas';
 
@@ -77,7 +77,7 @@ export function SignDocumentPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--bg-canvas)] p-4">
         <Card className="max-w-md w-full p-8 text-center border-[var(--danger)]">
-          <AlertTriangle size={48} className="mx-auto text-[var(--danger)] mb-4" />
+          <Icon as={AlertTriangle} size={48} className="mx-auto text-[var(--danger)] mb-4" />
           <h1 className="text-xl font-bold mb-2 text-[var(--danger)]">Document indisponible</h1>
           <p className="text-[var(--text-secondary)]">{error}</p>
         </Card>
@@ -89,13 +89,13 @@ export function SignDocumentPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--bg-canvas)] p-4">
         <Card className="max-w-md w-full p-8 text-center border-[var(--success)] shadow-lg">
-          <CheckCircle size={64} className="mx-auto text-[var(--success)] mb-4" />
+          <Icon as={CheckCircle} size={64} className="mx-auto text-[var(--success)] mb-4" />
           <h1 className="text-2xl font-bold mb-2">Document Signé !</h1>
           <p className="text-[var(--text-secondary)] mb-6">
             Merci. Votre signature a été enregistrée avec succès de manière sécurisée. Vous pouvez maintenant fermer cette page.
           </p>
           <div className="p-4 bg-[var(--bg-subtle)] rounded-[var(--radius-md)] flex items-center justify-center gap-2 text-sm text-[var(--text-muted)]">
-            <Shield size={16} /> Signature certifiée & cryptée
+            <Icon as={Shield} size="md" /> Signature certifiée & cryptée
           </div>
         </Card>
       </div>
@@ -132,7 +132,7 @@ export function SignDocumentPage() {
             <span className="text-gradient-brand">INTRALYS</span>
           </div>
         </div>
-        <Badge color="var(--brand-primary)">En attente de signature</Badge>
+        <Tag variant="brand" size="sm">En attente de signature</Tag>
       </div>
 
       <div className="relative w-full max-w-4xl rounded-2xl overflow-hidden flex flex-col md:flex-row z-10"
@@ -143,6 +143,15 @@ export function SignDocumentPage() {
           border: '1px solid var(--border-subtle)',
           boxShadow: '0 1px 2px rgba(15,23,42,0.04), 0 24px 64px -12px rgba(0,157,219,0.18)',
         }}>
+        {/* Bandeau top — gradient brand 30% */}
+        <div
+          aria-hidden
+          className="absolute top-0 left-0 right-0 h-[2px] z-10"
+          style={{
+            background: 'linear-gradient(90deg, rgba(0,157,219,0.85) 0%, rgba(217,110,39,0.85) 100%)',
+            boxShadow: '0 0 14px -2px rgba(0,157,219,0.45)',
+          }}
+        />
         {/* Document Content */}
         <div className="flex-1 p-8 sm:p-12 overflow-y-auto max-h-[70vh] md:max-h-[85vh] border-b md:border-b-0 md:border-r border-[var(--border-subtle)]">
           <h1 className="text-2xl font-bold mb-8 text-black border-b pb-4">{doc.title}</h1>
@@ -156,7 +165,7 @@ export function SignDocumentPage() {
         <div className="w-full md:w-96 bg-[var(--bg-surface)] p-6 flex flex-col">
           <div className="mb-6">
             <h3 className="font-bold text-lg flex items-center gap-2 mb-1">
-              <PenTool size={18} /> Espace de signature
+              <Icon as={PenTool} size={18} /> Espace de signature
             </h3>
             <p className="text-xs text-[var(--text-muted)]">En signant, vous acceptez les termes de ce document.</p>
           </div>
@@ -164,9 +173,8 @@ export function SignDocumentPage() {
           <div className="space-y-4 flex-1">
             <div>
               <label className="block text-sm font-medium mb-1">Votre nom complet</label>
-              <input 
-                type="text" 
-                className="w-full p-2.5 bg-white border border-[var(--border-default)] rounded shadow-sm focus:outline-none focus:border-[var(--brand-primary)]"
+              <Input
+                type="text"
                 placeholder="Ex: Jean Dupont"
                 value={signerName}
                 onChange={e => setSignerName(e.target.value)}
@@ -191,7 +199,7 @@ export function SignDocumentPage() {
             </div>
             
             <div className="text-xs text-[var(--text-muted)] flex items-start gap-1.5 p-3 bg-[var(--bg-subtle)] rounded">
-              <Shield size={14} className="shrink-0 mt-0.5 text-[var(--brand-primary)]" />
+              <Icon as={Shield} size="sm" className="shrink-0 mt-0.5 text-[var(--primary)]" />
               <p>Votre adresse IP et la date de signature seront enregistrées pour garantir l'authenticité de ce document (Loi 25).</p>
             </div>
           </div>

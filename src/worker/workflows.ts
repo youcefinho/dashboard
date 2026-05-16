@@ -238,11 +238,58 @@ export async function handleEnrollLead(
 }
 
 // ── Auto-enroll helper ──────────────────────────────────────
+//
+// Sprint E9 M1 — généralisation entité-agnostique RÉTRO-COMPAT.
+// `EnrollTarget` permet d'enrôler un lead CRM (rétro-compat Sprint 46/E7),
+// un client e-comm, ou une commande e-comm. Le contrat FIGÉ (M2/M3 codent
+// contre) :
+//   type EnrollTarget = { leadId?:string; customerId?:string; orderId?:string }
+//   autoEnrollForTrigger(env, triggerType, target: string | EnrollTarget)
+//   - `string`  ⇒ leadId (RÉTRO-COMPAT : tous les call sites existants —
+//                 forms/tasks/bookings/scoring/tracking/E7 cart-recovery
+//                 l.233 — restent valides bit-pour-bit, entity_type='lead').
+//   - `{customerId|orderId}` sans leadId ⇒ entité e-comm, lead_id reste NULL.
+// Triggers e-comm reconnus : 'order_created' | 'order_paid' |
+//   'cart_abandoned' (existant E7) | 'post_purchase' | 'win_back' |
+//   'refund_issued'. (Triggers CRM Sprint 46 inchangés.)
+export type EnrollTarget = { leadId?: string; customerId?: string; orderId?: string };
 
-export async function autoEnroll(env: Env, workflowId: string, leadId: string): Promise<void> {
+// Normalise la cible vers (entity_type, leadId, customerId, orderId).
+// string ⇒ leadId (branche LEAD historique). Objet ⇒ priorité order > customer
+// > lead (un order implique un customer ; entity_type le plus spécifique).
+function resolveEnrollTarget(target: string | EnrollTarget): {
+  entityType: 'lead' | 'customer' | 'order';
+  leadId: string | null;
+  customerId: string | null;
+  orderId: string | null;
+} {
+  if (typeof target === 'string') {
+    return { entityType: 'lead', leadId: target, customerId: null, orderId: null };
+  }
+  if (target.orderId) {
+    return { entityType: 'order', leadId: target.leadId || null, customerId: target.customerId || null, orderId: target.orderId };
+  }
+  if (target.customerId) {
+    return { entityType: 'customer', leadId: target.leadId || null, customerId: target.customerId, orderId: null };
+  }
+  return { entityType: 'lead', leadId: target.leadId || null, customerId: null, orderId: null };
+}
+
+export async function autoEnroll(env: Env, workflowId: string, target: string | EnrollTarget): Promise<void> {
+  const t = resolveEnrollTarget(target);
+
+  // Garde anti-doublon par entité (même logique que Sprint 46 pour les leads :
+  // un seul enrollment actif par (workflow, entité)).
+  let dedupCol: 'lead_id' | 'customer_id' | 'order_id';
+  let dedupVal: string | null;
+  if (t.entityType === 'order') { dedupCol = 'order_id'; dedupVal = t.orderId; }
+  else if (t.entityType === 'customer') { dedupCol = 'customer_id'; dedupVal = t.customerId; }
+  else { dedupCol = 'lead_id'; dedupVal = t.leadId; }
+  if (!dedupVal) return;
+
   const exists = await env.DB.prepare(
-    "SELECT id FROM workflow_enrollments WHERE workflow_id = ? AND lead_id = ? AND status = 'active'"
-  ).bind(workflowId, leadId).first();
+    `SELECT id FROM workflow_enrollments WHERE workflow_id = ? AND ${dedupCol} = ? AND status = 'active'`
+  ).bind(workflowId, dedupVal).first();
   if (exists) return;
   const firstStep = await env.DB.prepare(
     'SELECT id, config, step_type FROM workflow_steps WHERE workflow_id = ? AND (parent_step_id IS NULL OR parent_step_id = \'trigger_1\') ORDER BY step_order ASC LIMIT 1'
@@ -253,18 +300,18 @@ export async function autoEnroll(env: Env, workflowId: string, leadId: string): 
     try { nextAt = new Date(Date.now() + ((JSON.parse(firstStep.config) as { delay_minutes?: number }).delay_minutes || 0) * 60_000).toISOString(); } catch { /* */ }
   }
   await env.DB.prepare(
-    `INSERT INTO workflow_enrollments (id, workflow_id, lead_id, current_step_id, status, next_action_at)
-     VALUES (?, ?, ?, ?, 'active', ?)`
-  ).bind(crypto.randomUUID(), workflowId, leadId, firstStep.id, nextAt).run();
+    `INSERT INTO workflow_enrollments (id, workflow_id, lead_id, customer_id, order_id, entity_type, current_step_id, status, next_action_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?)`
+  ).bind(crypto.randomUUID(), workflowId, t.leadId, t.customerId, t.orderId, t.entityType, firstStep.id, nextAt).run();
 }
 
-export async function autoEnrollForTrigger(env: Env, triggerType: string, leadId: string): Promise<void> {
+export async function autoEnrollForTrigger(env: Env, triggerType: string, target: string | EnrollTarget): Promise<void> {
   const { results: workflows } = await env.DB.prepare(
     "SELECT id FROM workflows WHERE is_active = 1 AND trigger_type = ?"
   ).bind(triggerType).all();
   if (workflows && workflows.length > 0) {
     for (const w of workflows as { id: string }[]) {
-      await autoEnroll(env, w.id, leadId);
+      await autoEnroll(env, w.id, target);
     }
   }
 }
@@ -293,13 +340,90 @@ export async function processWorkflowQueue(env: Env): Promise<void> {
   }
 }
 
+// Sprint E9 M1 — projette une entité e-comm (customer/order) en un record
+// "lead-shaped" pour que `executeStep` reste INCHANGÉ (interpolation
+// {{name}}/{{email}}, DND, INSERT messages — clés id/email/name/phone/
+// client_id préservées). Si l'entité e-comm est rattachée à un lead CRM
+// (customers.lead_id, réconciliation E1), on retourne le VRAI lead :
+// les steps mutateurs (add_tag/change_status/...) agissent alors sur le
+// lead réel, cohérent avec le CRM. Sinon, on synthétise un record sûr
+// (id e-comm — jamais persisté côté leads). Best-effort : null ⇒ enrollment
+// annulé proprement (même comportement que la branche lead si lead absent).
+async function resolveEcomEntity(
+  env: Env,
+  enrollment: Record<string, unknown>,
+): Promise<Record<string, unknown> | null> {
+  const entityType = (enrollment.entity_type as string) || 'lead';
+  const customerId = (enrollment.customer_id as string) || null;
+  const orderId = (enrollment.order_id as string) || null;
+
+  // Résout le customer (directement, ou via la commande).
+  let custId = customerId;
+  let orderRow: Record<string, unknown> | null = null;
+  if (entityType === 'order' && orderId) {
+    orderRow = await env.DB.prepare(
+      'SELECT id, customer_id, client_id, email FROM orders WHERE id = ?'
+    ).bind(orderId).first() as Record<string, unknown> | null;
+    if (!orderRow) return null;
+    if (!custId) custId = (orderRow.customer_id as string) || null;
+  }
+
+  let cust: Record<string, unknown> | null = null;
+  if (custId) {
+    cust = await env.DB.prepare(
+      'SELECT id, lead_id, client_id, email, phone, first_name, last_name FROM customers WHERE id = ?'
+    ).bind(custId).first() as Record<string, unknown> | null;
+  }
+
+  // Réconciliation E1 : si le customer est lié à un lead CRM, on agit sur
+  // le VRAI lead (cohérence CRM, steps mutateurs sûrs).
+  if (cust && cust.lead_id) {
+    const realLead = await env.DB.prepare('SELECT * FROM leads WHERE id = ?')
+      .bind(cust.lead_id as string).first() as Record<string, unknown> | null;
+    if (realLead) return realLead;
+  }
+
+  if (!cust && !orderRow) return null;
+
+  // Projection lead-shaped (aucune écriture côté leads — id e-comm).
+  const first = String(cust?.first_name || '').trim();
+  const last = String(cust?.last_name || '').trim();
+  const name = `${first} ${last}`.trim() || String(cust?.email || orderRow?.email || '');
+  return {
+    id: String(cust?.id || orderRow?.id || ''),
+    client_id: String(cust?.client_id || orderRow?.client_id || ''),
+    email: String(cust?.email || orderRow?.email || ''),
+    phone: cust?.phone ?? null,
+    name,
+    first_name: first,
+    last_name: last,
+    status: 'customer',
+    entity_type: entityType,
+    customer_id: custId,
+    order_id: orderId,
+  };
+}
+
 async function advanceEnrollment(env: Env, enrollment: Record<string, unknown>): Promise<void> {
   const enrollmentId = enrollment.id as string;
   const workflowId = enrollment.workflow_id as string;
   const leadId = enrollment.lead_id as string;
   const currentStepId = enrollment.current_step_id as string | null;
 
-  const lead = await env.DB.prepare('SELECT * FROM leads WHERE id = ?').bind(leadId).first() as Record<string, unknown> | null;
+  // Sprint E9 M1 — résolution entité-agnostique. La branche LEAD est
+  // INCHANGÉE bit-pour-bit (entity_type 'lead' OU absent = enrollments
+  // pré-E9 / call sites string) : on lit `SELECT * FROM leads` exactement
+  // comme Sprint 46, et `executeStep` reçoit le même record `lead`.
+  // Les entités e-comm (customer/order) sont projetées en un record
+  // "lead-shaped" (id/email/name/phone/client_id) pour que `executeStep`
+  // (interpolation {{name}}, DND, messages) fonctionne SANS modification.
+  const entityType = (enrollment.entity_type as string) || 'lead';
+  let lead: Record<string, unknown> | null;
+  if (entityType === 'lead') {
+    lead = await env.DB.prepare('SELECT * FROM leads WHERE id = ?').bind(leadId).first() as Record<string, unknown> | null;
+  } else {
+    lead = await resolveEcomEntity(env, enrollment);
+  }
   if (!lead) {
     await env.DB.prepare("UPDATE workflow_enrollments SET status = 'cancelled' WHERE id = ?").bind(enrollmentId).run();
     return;

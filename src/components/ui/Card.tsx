@@ -1,34 +1,45 @@
-// ── Card — surface container (Sprint 23 — premium baseline) ────────────────
-import { forwardRef, type HTMLAttributes } from 'react';
+// ── Card — surface container (Sprint 38 — Stripe-clean refactor) ────────────
+// Subtle white surface + thin gray border + shadow-xs. Hover lift -1px sur
+// interactive (CSS only, plus de mouseEnter inline JS shadow brand).
+//
+// API préservée 100% :
+//   - `interactive?: boolean`        (legacy Sprint 24 W6B — focusable + hover)
+//   - `variant?: 'default'|'interactive'|'premium'`  (legacy compat — `premium` = `default`)
+//   - `as?: ElementType`             (polymorphic — render as 'a', 'section', etc.)
+//   - tous les HTMLAttributes (onClick, data-*, className, style, children, ...)
+import { forwardRef, type HTMLAttributes, type ElementType } from 'react';
 import { cn } from '@/lib/cn';
 
+export type CardVariant = 'default' | 'interactive' | 'premium';
+
 export interface CardProps extends HTMLAttributes<HTMLDivElement> {
+  /** Sprint 24 W6B — hover lift + focusable. Préservé. */
   interactive?: boolean;
+  /** Sprint 38 — variant explicite. `interactive` ≡ `interactive:true`. `premium` ≡ `default` (legacy). */
+  variant?: CardVariant;
+  /** Polymorphic — rend en autre tag qu'un `div` (a, section, article, ...). */
+  as?: ElementType;
 }
 
 export const Card = forwardRef<HTMLDivElement, CardProps>(
-  ({ className, interactive, style, ...props }, ref) => {
+  ({ className, interactive, variant, tabIndex, as, ...props }, ref) => {
+    // Résolution variant → flag interactive effectif
+    const isInteractive = interactive === true || variant === 'interactive';
+    const Tag = (as ?? 'div') as ElementType;
+
     return (
-      <div
+      <Tag
         ref={ref}
+        // a11y : auto-tabIndex=0 si interactive sans override
+        tabIndex={isInteractive && tabIndex === undefined ? 0 : tabIndex}
         className={cn(
-          'rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-[var(--space-6)] transition-all duration-300',
-          interactive && 'cursor-pointer hover:-translate-y-0.5',
+          // Baseline Stripe : white surface, thin gray border, radius-xl, shadow-xs, padding 20px
+          'rounded-[var(--radius-xl)] border border-[var(--border)] bg-[var(--bg-surface)] shadow-[var(--shadow-xs)] p-5 transition-[box-shadow,transform,border-color] duration-[var(--duration-base)] ease-[var(--ease)]',
+          // Sprint 38 — hover lift -1px CSS-only, shadow-sm, border-strong. Pas de cyan-tinted.
+          isInteractive &&
+            'cursor-pointer hover:-translate-y-px hover:shadow-[var(--shadow-sm)] hover:border-[var(--border-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2',
           className
         )}
-        style={{
-          // Sprint 23 — shadow étagée 2 couches (subtle ambient + soft lift)
-          boxShadow: '0 1px 2px rgba(15,23,42,0.04), 0 4px 12px -4px rgba(15,23,42,0.06)',
-          ...style,
-        }}
-        onMouseEnter={interactive ? (e) => {
-          e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,157,219,0.06), 0 12px 32px -8px rgba(0,157,219,0.18)';
-          e.currentTarget.style.borderColor = 'rgba(0,157,219,0.3)';
-        } : undefined}
-        onMouseLeave={interactive ? (e) => {
-          e.currentTarget.style.boxShadow = '0 1px 2px rgba(15,23,42,0.04), 0 4px 12px -4px rgba(15,23,42,0.06)';
-          e.currentTarget.style.borderColor = '';
-        } : undefined}
         {...props}
       />
     );

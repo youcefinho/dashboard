@@ -62,14 +62,53 @@ export async function handlePublicFormSubmit(request: Request, env: Env): Promis
   // Créer lead si submit_action = 'create_lead'
   if (form.submit_action === 'create_lead') {
     const d = body.data as Record<string, string>;
-    const leadId = crypto.randomUUID();
-    await env.DB.prepare(
-      `INSERT INTO leads (id, client_id, name, email, phone, source, message, status, pipeline_id, stage_id)
-       VALUES (?, ?, ?, ?, ?, 'form', ?, 'new', 'pipeline-default', 'stage-new')`
-    ).bind(leadId, form.client_id as string, sanitizeInput(d.name || d.nom || '', 100),
-      sanitizeInput(d.email || '', 200).toLowerCase(), sanitizeInput(d.phone || d.telephone || '', 30),
-      sanitizeInput(d.message || d.note || '', 2000)).run();
-    await env.DB.prepare('UPDATE form_submissions SET lead_id = ? WHERE id = ?').bind(leadId, subId).run();
+    const fName = sanitizeInput(d.name || d.nom || '', 100);
+    const fEmail = sanitizeInput(d.email || '', 200).toLowerCase();
+    const fPhone = sanitizeInput(d.phone || d.telephone || '', 30);
+    const fMsg = sanitizeInput(d.message || d.note || '', 2000);
+
+    // Sprint 51 M3.1 — attribution + consentement (alignés sur le moteur M2).
+    // applyLeadMapping lit utm_*/gclid/fbclid/referrer + consent depuis le payload
+    // injecté par widget.js (M3.2). consent_status : granted/denied/unknown.
+    const { applyLeadMapping } = await import('./lead-mapping');
+    const { logIngestConsent } = await import('./leads');
+    const m = applyLeadMapping(body.data as Record<string, unknown>, null);
+    const consentStatus = m.consent === true ? 'granted'
+      : m.consent === false ? 'denied' : 'unknown';
+    const attr = m.attribution;
+
+    // Sprint 51 M2 — dédoublonnage unifié (le form submit n'en avait pas).
+    // Non destructif : merge enrichit, skip = idempotent. Création conservée.
+    const { resolveDedup, mergeIntoLead } = await import('./lead-dedup');
+    const decision = await resolveDedup(env, 'email_phone', {
+      clientId: form.client_id as string, email: fEmail, phone: fPhone,
+    });
+
+    let leadId: string;
+    if (decision.action !== 'create' && decision.existingId) {
+      leadId = decision.existingId;
+      if (decision.action === 'merge') {
+        await mergeIntoLead(env, leadId, {
+          name: fName, phone: fPhone, message: fMsg, ...attr,
+        });
+        await audit(env, leadId, 'updated', 'Lead enrichi via formulaire public', '');
+      }
+      await env.DB.prepare('UPDATE form_submissions SET lead_id = ? WHERE id = ?').bind(leadId, subId).run();
+      await logIngestConsent(env, request, leadId, m.consent, consentStatus);
+    } else {
+      leadId = crypto.randomUUID();
+      await env.DB.prepare(
+        `INSERT INTO leads (id, client_id, name, email, phone, source, message, status, pipeline_id, stage_id,
+           utm_source, utm_medium, utm_campaign, utm_term, utm_content, gclid, fbclid, referrer, consent_status)
+         VALUES (?, ?, ?, ?, ?, 'form', ?, 'new', 'pipeline-default', 'stage-new', ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      ).bind(
+        leadId, form.client_id as string, fName, fEmail, fPhone, fMsg,
+        attr.utm_source, attr.utm_medium, attr.utm_campaign, attr.utm_term, attr.utm_content,
+        attr.gclid, attr.fbclid, attr.referrer, consentStatus
+      ).run();
+      await env.DB.prepare('UPDATE form_submissions SET lead_id = ? WHERE id = ?').bind(leadId, subId).run();
+      await logIngestConsent(env, request, leadId, m.consent, consentStatus);
+    }
 
     // Mapper custom fields si présents
     const fields = form.fields as string;
@@ -197,6 +236,8 @@ export async function handleUpdateForm(request: Request, env: Env, auth: { role:
   if (body.fields) { u.push('fields = ?'); p.push(JSON.stringify(body.fields)); }
   if (body.is_active !== undefined) { u.push('is_active = ?'); p.push(body.is_active as number); }
   if (body.success_message) { u.push('success_message = ?'); p.push(sanitizeInput(body.success_message as string, 500)); }
+  // Sprint 51 M3.1 — redirect_url configurable (utilisé par le widget après succès)
+  if (body.redirect_url !== undefined) { u.push('redirect_url = ?'); p.push(sanitizeInput(body.redirect_url as string, 500)); }
   if (body.submit_action) { u.push('submit_action = ?'); p.push(body.submit_action as string); }
   if (body.form_type) { u.push('form_type = ?'); p.push(body.form_type as string); }
   if (body.settings_json) { u.push('settings_json = ?'); p.push(JSON.stringify(body.settings_json)); }

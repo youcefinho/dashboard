@@ -1,8 +1,18 @@
-// ── Modal — Radix Dialog primitive ──────────────────────────
+// ── Modal — Radix Dialog primitive (Sprint 38 — refonte Stripe-clean) ───────
+// Stripe-style : backdrop dark transparent, contenu blanc, shadow-overlay,
+// fadeIn backdrop + slideUp content. Pas de gradient/glass/orbs/halos.
+// API publique 100% préservée (open, onOpenChange, title, description,
+// children, className, size, modal). Nouvelles props optionnelles :
+// - closeOnOverlay (default true) — désactive si false
+// - position (default 'center') — 'bottom' = sheet mobile slide-up
+
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
+import { Icon } from './Icon';
 import { cn } from '@/lib/cn';
-import { type ReactNode } from 'react';
+import { type CSSProperties, type ReactNode } from 'react';
+// Sprint 44 M3.4 — Edge swipe back ferme le modal top of stack
+import { useBackHandler } from '@/hooks/useBackHandler';
 
 interface ModalProps {
   open: boolean;
@@ -11,47 +21,141 @@ interface ModalProps {
   description?: string;
   children: ReactNode;
   className?: string;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | 'xl';
+  /** Désactive le close button + clic outside (modale modale) */
+  modal?: boolean;
+  /** Sprint 38 — désactive fermeture par clic backdrop (default true) */
+  closeOnOverlay?: boolean;
+  /** Sprint 38 — position du panneau ('center' default, 'bottom' = sheet) */
+  position?: 'center' | 'bottom';
 }
 
-const sizeMap = { sm: 'max-w-md', md: 'max-w-xl', lg: 'max-w-4xl' };
+const sizeMap = {
+  sm: 'max-w-md',
+  md: 'max-w-xl',
+  lg: 'max-w-4xl',
+  xl: 'max-w-6xl',
+};
 
-export function Modal({ open, onOpenChange, title, description, children, className, size = 'md' }: ModalProps) {
+export function Modal({
+  open,
+  onOpenChange,
+  title,
+  description,
+  children,
+  className,
+  size = 'md',
+  modal = false,
+  closeOnOverlay = true,
+  position = 'center',
+}: ModalProps) {
+  const isBottom = position === 'bottom';
+
+  // Sprint 44 M3.4 — Edge swipe back ferme ce modal (sauf modal === true qui
+  // explicite l'intention "non-fermable par gesture", ex: confirm critique).
+  useBackHandler(() => onOpenChange(false), open && !modal && closeOnOverlay);
+
+  // Outside click is suppressed when modal=true OR closeOnOverlay=false
+  const suppressOutside = modal || !closeOnOverlay;
+
+  const contentStyle: CSSProperties = {
+    background: '#FFFFFF',
+    borderRadius: isBottom
+      ? 'var(--radius-xl) var(--radius-xl) 0 0'
+      : 'var(--radius-xl)',
+    boxShadow: 'var(--shadow-overlay)',
+    border: '1px solid var(--border)',
+  };
+
+  const positionClasses = isBottom
+    ? // Bottom sheet : full width mobile, slide up from bottom
+      'fixed left-0 right-0 bottom-0 z-50 w-full overflow-hidden flex flex-col max-h-[90vh] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=open]:slide-in-from-bottom-4 data-[state=closed]:slide-out-to-bottom-4'
+    : // Center : translate -50/-50, slideUp entrance
+      'fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-2rem)] overflow-hidden flex flex-col max-h-[90vh] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=open]:slide-in-from-bottom-2 data-[state=closed]:slide-out-to-bottom-2';
+
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-[oklch(0.18_0.015_260/0.55)] backdrop-blur-[6px] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
-        <DialogPrimitive.Content className={cn(
-          // Sprint 23 — modal premium : layered shadow + gradient bg subtil + orb décoratif
-          'fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 rounded-2xl w-[calc(100%-2rem)] overflow-hidden',
-          'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
-          sizeMap[size], className
-        )}
+        {/* Backdrop — Stripe pattern : rgba(15,17,26,0.4) flat, fadeIn */}
+        <DialogPrimitive.Overlay
+          className="fixed inset-0 z-50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
           style={{
-            background: 'linear-gradient(135deg, #FFFFFF 0%, #FAFBFC 50%, #F0FAFE 100%)',
-            border: '1px solid var(--border-subtle)',
-            boxShadow: '0 1px 2px rgba(15,23,42,0.04), 0 24px 64px -8px rgba(15,23,42,0.18), 0 0 60px -12px rgba(0,157,219,0.18)',
-          }}>
-          {/* Orb décoratif top-right */}
+            background: 'rgba(15, 17, 26, 0.4)',
+            animationDuration: 'var(--duration-base)',
+            animationTimingFunction: 'var(--ease)',
+          }}
+        />
+        <DialogPrimitive.Content
+          onPointerDownOutside={
+            suppressOutside ? (e) => e.preventDefault() : undefined
+          }
+          onEscapeKeyDown={modal ? (e) => e.preventDefault() : undefined}
+          className={cn(positionClasses, !isBottom && sizeMap[size], className)}
+          style={{
+            ...contentStyle,
+            animationDuration: 'var(--duration-base)',
+            animationTimingFunction: 'var(--ease)',
+          }}
+        >
+          {/* Header — sticky top, plain white, simple border-bottom */}
           <div
-            aria-hidden
-            className="absolute -top-12 -right-12 w-48 h-48 rounded-full pointer-events-none opacity-50"
-            style={{
-              background: 'radial-gradient(circle, rgba(217,110,39,0.22) 0%, rgba(0,157,219,0.12) 50%, transparent 75%)',
-              filter: 'blur(40px)',
-            }}
-          />
-          <div className="relative flex items-center justify-between px-6 py-4 border-b border-[var(--border-subtle)]"
-            style={{ background: 'rgba(255,255,255,0.55)', backdropFilter: 'blur(12px) saturate(160%)' }}>
+            className="flex items-start justify-between gap-3 px-6 pt-5 pb-4 shrink-0"
+            style={{ borderBottom: '1px solid var(--border)' }}
+          >
             <div className="min-w-0 flex-1">
-              <DialogPrimitive.Title className="text-base font-semibold text-[var(--text-primary)] tracking-tight">{title}</DialogPrimitive.Title>
-              {description && <DialogPrimitive.Description className="text-xs text-[var(--text-muted)] mt-0.5">{description}</DialogPrimitive.Description>}
+              <DialogPrimitive.Title
+                className="font-semibold tracking-tight"
+                style={{
+                  color: 'var(--text-primary)',
+                  fontSize: '16px',
+                  lineHeight: '24px',
+                }}
+              >
+                {title}
+              </DialogPrimitive.Title>
+              {description && (
+                <DialogPrimitive.Description
+                  className="mt-1 leading-relaxed"
+                  style={{
+                    color: 'var(--text-muted)',
+                    fontSize: 'var(--text-caption)',
+                  }}
+                >
+                  {description}
+                </DialogPrimitive.Description>
+              )}
             </div>
-            <DialogPrimitive.Close className="rounded-lg p-1.5 text-[var(--text-muted)] hover:bg-[var(--bg-subtle)] hover:text-[var(--brand-primary)] transition-colors cursor-pointer shrink-0">
-              <X className="h-4 w-4" />
-            </DialogPrimitive.Close>
+            {!modal && (
+              <DialogPrimitive.Close
+                className="shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-[var(--radius-md)] transition-colors outline-none"
+                style={{ color: 'var(--text-muted)' }}
+                aria-label="Fermer"
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLElement).style.background =
+                    'var(--bg-hover)';
+                  (e.currentTarget as HTMLElement).style.color =
+                    'var(--text-primary)';
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLElement).style.background = '';
+                  (e.currentTarget as HTMLElement).style.color =
+                    'var(--text-muted)';
+                }}
+                onFocus={(e) => {
+                  (e.currentTarget as HTMLElement).style.boxShadow =
+                    '0 0 0 3px var(--primary-ring)';
+                }}
+                onBlur={(e) => {
+                  (e.currentTarget as HTMLElement).style.boxShadow = '';
+                }}
+              >
+                <Icon as={X} size={14} />
+              </DialogPrimitive.Close>
+            )}
           </div>
-          <div className="relative p-6">{children}</div>
+
+          {/* Content — scrollable, padding 24px */}
+          <div className="px-6 py-5 overflow-y-auto flex-1">{children}</div>
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>

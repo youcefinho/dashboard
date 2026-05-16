@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Intralys CRM Open Graph image — Sprint 34 vague 34-1B
+     Aspect 1200×630 (recommandé Facebook/LinkedIn/Twitter Cards summary_large_image). -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" fill="none" role="img" aria-label="Intralys CRM — CRM tout-en-un pour PMEs francophones">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="0.55" stop-color="#FAFBFC"/>
+      <stop offset="1" stop-color="#F0FAFE"/>
+    </linearGradient>
+    <radialGradient id="orb-cyan" cx="18%" cy="22%" r="55%">
+      <stop offset="0" stop-color="#009DDB" stop-opacity="0.32"/>
+      <stop offset="1" stop-color="#009DDB" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="orb-orange" cx="82%" cy="78%" r="58%">
+      <stop offset="0" stop-color="#D96E27" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#D96E27" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="brand-text" x1="120" y1="0" x2="1080" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#009DDB"/>
+      <stop offset="1" stop-color="#D96E27"/>
+    </linearGradient>
+    <linearGradient id="accent-bar" x1="0" y1="0" x2="1200" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#009DDB"/>
+      <stop offset="1" stop-color="#D96E27"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background + brand orbs -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#orb-cyan)"/>
+  <rect width="1200" height="630" fill="url(#orb-orange)"/>
+
+  <!-- Top accent bar (signature brand) -->
+  <rect x="0" y="0" width="1200" height="10" fill="url(#accent-bar)"/>
+
+  <!-- Tagline meta (small uppercase) -->
+  <text x="120" y="180" font-family="-apple-system, 'Segoe UI', Inter, sans-serif" font-size="22" font-weight="600" letter-spacing="6" fill="#4A5468">
+    CRM TOUT-EN-UN POUR PMES FRANCOPHONES
+  </text>
+
+  <!-- Brand wordmark (gradient cyan→orange) -->
+  <text x="120" y="320" font-family="-apple-system, 'Segoe UI', Inter, sans-serif" font-size="128" font-weight="800" letter-spacing="-3" fill="url(#brand-text)">
+    Intralys
+  </text>
+
+  <!-- Subline value-prop -->
+  <text x="120" y="400" font-family="-apple-system, 'Segoe UI', Inter, sans-serif" font-size="34" font-weight="500" fill="#0d0d18">
+    Leads · Pipeline · Workflows · Rapports
+  </text>
+
+  <!-- Differentiators row (chips style) -->
+  <g font-family="-apple-system, 'Segoe UI', Inter, sans-serif" font-size="20" font-weight="600" fill="#0d0d18">
+    <rect x="120" y="468" width="220" height="48" rx="24" fill="#FFFFFF" stroke="#009DDB" stroke-opacity="0.35"/>
+    <text x="148" y="500">Loi 25 native</text>
+
+    <rect x="354" y="468" width="220" height="48" rx="24" fill="#FFFFFF" stroke="#009DDB" stroke-opacity="0.35"/>
+    <text x="382" y="500">AI FR québécois</text>
+
+    <rect x="588" y="468" width="260" height="48" rx="24" fill="#FFFFFF" stroke="#009DDB" stroke-opacity="0.35"/>
+    <text x="616" y="500">Packs industrie 1-clic</text>
+  </g>
+
+  <!-- URL bottom-right -->
+  <text x="1080" y="592" text-anchor="end" font-family="-apple-system, 'Segoe UI', Inter, sans-serif" font-size="22" font-weight="600" letter-spacing="2" fill="#009DDB">
+    intralys.com
+  </text>
+</svg>

@@ -1,10 +1,17 @@
 // ── Page Propriétés (Centris Sync) — Intralys CRM (Sprint 9) ──
-import { useState, useEffect } from 'react';
+// Sprint 31 vague 31-2A — Table premium (frozen first col + expand row inline)
+import { useState, useEffect, useRef, Fragment } from 'react';
 import { apiFetch } from '@/lib/api';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Button, Input, Card, Badge, Skeleton, EmptyState, useConfirm, useToast, PageHero } from '@/components/ui';
+import { Button, Input, Card, Tag, Skeleton, EmptyState, useConfirm, useToast, PageHero, KpiStrip, Icon, type KpiItem } from '@/components/ui';
+// Sprint 44 M3.3 — Pull-to-refresh
+import { usePullToRefresh } from '@/hooks/usePullToRefresh';
+import { PullToRefreshIndicator } from '@/components/ui/PullToRefreshIndicator';
 import { Modal } from '@/components/ui/Modal';
-import { Home, RefreshCw, Plus, Search, MapPin, Bed, Bath, Expand, Trash2 } from 'lucide-react';
+// Sprint 48 M3 — Intl currency + number formatters
+import { formatMoneyCAD, formatNumber } from '@/lib/i18n/number';
+import { getLocale } from '@/lib/i18n';
+import { Home, RefreshCw, Plus, Search, MapPin, Trash2, ChevronRight } from 'lucide-react';
 
 interface Property {
   id: string;
@@ -32,6 +39,13 @@ export function PropertiesPage() {
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
   const [mlsInput, setMlsInput] = useState('');
   const [isSyncing, setIsSyncing] = useState(false);
+  // Sprint 31 vague 31-2A — expand row inline detail
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const toggleExpand = (id: string) => setExpandedRows(prev => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
 
   useEffect(() => {
     loadProperties();
@@ -90,14 +104,39 @@ export function PropertiesPage() {
     p.city.toLowerCase().includes(search.toLowerCase())
   );
 
+  // Sprint 44 M3.3 — Pull-to-refresh
+  const scrollParentRef = useRef<HTMLElement | null>(null);
+  useEffect(() => { scrollParentRef.current = document.getElementById('main-content'); }, []);
+  const ptr = usePullToRefresh(async () => { await loadProperties(); }, { scrollParent: scrollParentRef });
+
   return (
     <AppLayout title="Inventaire & Propriétés">
+      <div ref={ptr.containerRef}>
+      <PullToRefreshIndicator distance={ptr.pullDistance} progress={ptr.pullProgress} isRefreshing={ptr.isRefreshing} />
       <PageHero
         meta="Workspace"
         title="Inventaire & Propriétés"
         highlight="Propriétés"
         description="Vos mandats, fiches Centris et mandats exclusifs. Synchronisez ou ajoutez manuellement."
       />
+
+      {/* KPI Strip — Sprint 23 wave 17 */}
+      {!isLoading && properties.length > 0 && (
+        <KpiStrip
+          items={(() => {
+            const active = properties.filter(p => p.status === 'active' || p.status === 'for_sale').length;
+            const sold = properties.filter(p => p.status === 'sold' || p.status === 'closed').length;
+            const totalValue = properties.reduce((s, p) => s + (p.price || 0), 0);
+            return [
+              { label: 'Total', value: properties.length, color: 'brand', icon: <Home size={11} /> },
+              { label: 'Actives', value: active, color: 'success' },
+              { label: 'Vendues', value: sold, color: 'info' },
+              { label: 'Valeur $', value: `${(totalValue / 1000000).toFixed(1)}M`, color: 'accent' },
+            ] satisfies KpiItem[];
+          })()}
+        />
+      )}
+
       <div className="flex flex-col md:flex-row gap-4 justify-between items-center mb-6">
         <div className="relative w-full md:w-96">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={16} />
@@ -110,22 +149,35 @@ export function PropertiesPage() {
         </div>
         <div className="flex gap-3 w-full md:w-auto">
           <Button variant="secondary" onClick={() => setIsSyncModalOpen(true)} className="flex-1 md:flex-none gap-2">
-            <RefreshCw size={16} /> Sync Centris
+            <Icon as={RefreshCw} size="md" /> Sync Centris
           </Button>
           <Button className="flex-1 md:flex-none gap-2">
-            <Plus size={16} /> Ajouter manuellement
+            <Icon as={Plus} size="md" /> Ajouter manuellement
           </Button>
         </div>
       </div>
 
       {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {[1, 2, 3, 4].map(i => (
-            <Card key={i}><Skeleton className="h-80 w-full" /></Card>
-          ))}
-        </div>
+        <Card className="p-0 overflow-hidden">
+          <div className="px-4 py-3 border-b border-[var(--border-subtle)] bg-[var(--bg-subtle)] flex items-center gap-6">
+            {[1,2,3,4,5,6].map(i => <Skeleton key={i} className="h-3 w-20 rounded" />)}
+          </div>
+          <div className="divide-y divide-[var(--border-subtle)]">
+            {[1,2,3,4,5,6,7,8].map(i => (
+              <div key={i} className="flex items-center gap-4 px-4 py-3">
+                <Skeleton className="h-10 w-14 rounded shrink-0" />
+                <Skeleton className="h-4 w-1/3 rounded" />
+                <Skeleton className="h-3 w-20 rounded" />
+                <Skeleton className="h-3 w-24 rounded" />
+                <Skeleton className="h-5 w-16 rounded-full" />
+                <Skeleton className="h-3 w-16 rounded ml-auto" />
+              </div>
+            ))}
+          </div>
+        </Card>
       ) : filtered.length === 0 ? (
         <EmptyState
+          variant="first-time"
           icon={<Home size={32} strokeWidth={1.8} />}
           meta="Premier pas"
           title="Votre inventaire est vide pour l'instant"
@@ -147,59 +199,157 @@ export function PropertiesPage() {
           ]}
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filtered.map(property => (
-            <Card key={property.id} className="overflow-hidden flex flex-col hover:border-[var(--brand-primary)]/50 transition-colors group">
-              <div className="relative aspect-video bg-[var(--bg-subtle)]">
-                {property.image_url ? (
-                  <img src={property.image_url} alt={property.title} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-[var(--text-muted)]">
-                    <Home size={32} />
-                  </div>
-                )}
-                <div className="absolute top-3 left-3">
-                  <Badge color={property.status === 'active' ? 'var(--success)' : 'var(--text-muted)'}>
-                    {property.status === 'active' ? 'À vendre' : property.status}
-                  </Badge>
-                </div>
-                <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-md text-white text-xs font-bold px-2 py-1 rounded">
-                  MLS: {property.mls_number || 'N/A'}
-                </div>
-              </div>
-              <div className="p-4 flex flex-col flex-1">
-                <div className="flex justify-between items-start mb-1">
-                  <h3 className="font-bold text-lg line-clamp-1" title={property.title}>{property.title}</h3>
-                </div>
-                <p className="text-[var(--brand-primary)] font-bold text-lg mb-2">
-                  {property.price.toLocaleString('fr-CA')} $
-                </p>
-                <div className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)] mb-4">
-                  <MapPin size={12} /> {property.city}
-                </div>
-                
-                <div className="grid grid-cols-3 gap-2 border-t border-[var(--border-subtle)] pt-4 mt-auto">
-                  <div className="flex items-center gap-1.5 text-xs font-medium" title="Chambres">
-                    <Bed size={14} className="text-[var(--text-muted)]" /> {property.bedrooms}
-                  </div>
-                  <div className="flex items-center gap-1.5 text-xs font-medium" title="Salles de bain">
-                    <Bath size={14} className="text-[var(--text-muted)]" /> {property.bathrooms}
-                  </div>
-                  <div className="flex items-center gap-1.5 text-xs font-medium" title="Superficie">
-                    <Expand size={14} className="text-[var(--text-muted)]" /> {property.area_sqft} pc
-                  </div>
-                </div>
-
-                {/* Actions overlay */}
-                <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
-                  <button onClick={(e) => { e.stopPropagation(); handleDelete(property.id); }} className="p-1.5 bg-black/60 backdrop-blur-md text-red-400 hover:text-red-300 rounded">
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
+        /* Sprint 31 vague 31-2A — Table premium (frozen first col + expand row inline) */
+        <Card className="p-0 overflow-hidden">
+          <div className="table-premium-container overflow-x-auto">
+            <table className="table-premium print-data-table">
+              <thead>
+                <tr>
+                  <th className="col-frozen" style={{ minWidth: 280 }}>Propriété</th>
+                  <th className="text-left">MLS</th>
+                  <th className="text-right">Prix</th>
+                  <th className="text-left">Ville</th>
+                  <th className="text-left">Type</th>
+                  <th className="text-center">Chambres</th>
+                  <th className="text-center">SDB</th>
+                  <th className="text-right">Superficie</th>
+                  <th className="text-left">Statut</th>
+                  <th data-print-hide style={{ width: 48 }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((property, idx) => {
+                  const isExpanded = expandedRows.has(property.id);
+                  return (
+                    <Fragment key={property.id}>
+                      <tr
+                        className="list-item-enter"
+                        style={{ animationDelay: `${idx * 28}ms` }}
+                      >
+                        <td className="col-frozen">
+                          <div className="flex items-center gap-3">
+                            <button
+                              type="button"
+                              className={`table-expand-trigger ${isExpanded ? 'is-expanded' : ''}`}
+                              onClick={() => toggleExpand(property.id)}
+                              aria-label={isExpanded ? 'Réduire les détails' : 'Afficher les détails'}
+                            >
+                              <ChevronRight size={14} />
+                            </button>
+                            <div
+                              className="h-10 w-14 rounded-md overflow-hidden bg-[var(--bg-subtle)] flex items-center justify-center shrink-0 border border-[var(--border-subtle)]"
+                              aria-hidden
+                            >
+                              {property.image_url ? (
+                                <img src={property.image_url} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
+                              ) : (
+                                <Icon as={Home} size="sm" className="text-[var(--text-muted)]" />
+                              )}
+                            </div>
+                            <div className="flex flex-col min-w-0">
+                              <span className="font-semibold text-[13px] truncate" title={property.title}>
+                                {property.title || 'Sans titre'}
+                              </span>
+                              <span className="text-[11px] text-[var(--text-muted)] truncate">
+                                {property.address || '—'}
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="text-[12px] font-mono text-[var(--text-secondary)]">
+                          {property.mls_number || '—'}
+                        </td>
+                        <td className="text-right font-semibold t-mono-num" style={{ color: 'var(--primary)' }}>
+                          {property.price ? formatMoneyCAD(property.price, getLocale()) : '—'}
+                        </td>
+                        <td className="text-[12px]">
+                          <span className="inline-flex items-center gap-1">
+                            <Icon as={MapPin} size="xs" className="text-[var(--text-muted)]" />
+                            {property.city || '—'}
+                          </span>
+                        </td>
+                        <td className="text-[12px] text-[var(--text-secondary)]">
+                          {property.property_type || '—'}
+                        </td>
+                        <td className="text-center t-mono-num text-[12px]">
+                          {property.bedrooms || '—'}
+                        </td>
+                        <td className="text-center t-mono-num text-[12px]">
+                          {property.bathrooms || '—'}
+                        </td>
+                        <td className="text-right t-mono-num text-[12px] text-[var(--text-secondary)]">
+                          {property.area_sqft ? `${formatNumber(property.area_sqft, getLocale())} pc` : '—'}
+                        </td>
+                        <td>
+                          <Tag dot size="sm" variant={
+                            property.status === 'active' || property.status === 'for_sale' ? 'success'
+                            : property.status === 'sold' || property.status === 'closed' ? 'info'
+                            : 'neutral'
+                          }>
+                            {property.status === 'active' || property.status === 'for_sale' ? 'À vendre'
+                              : property.status === 'sold' || property.status === 'closed' ? 'Vendue'
+                              : property.status || '—'}
+                          </Tag>
+                        </td>
+                        <td data-print-hide className="text-right">
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(property.id)}
+                            className="p-1.5 rounded text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-[var(--danger)]/10 transition-colors"
+                            aria-label="Retirer la propriété"
+                            title="Retirer"
+                          >
+                            <Icon as={Trash2} size="sm" />
+                          </button>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td colSpan={10} style={{ padding: 0, border: 'none' }}>
+                          <div className={`table-expand-content ${isExpanded ? 'is-open' : ''}`}>
+                            <div className="table-expand-inner">
+                              <div className="table-expand-detail">
+                                <div className="table-expand-detail-section" style={{ flex: '1 1 320px' }}>
+                                  <span className="table-expand-detail-label">Description</span>
+                                  <span className="table-expand-detail-value text-[12px] leading-relaxed">
+                                    {property.description || 'Aucune description fournie pour cette propriété.'}
+                                  </span>
+                                </div>
+                                <div className="table-expand-detail-section">
+                                  <span className="table-expand-detail-label">Source</span>
+                                  <span className="table-expand-detail-value text-[12px]">
+                                    {property.sync_source || 'Manuel'}
+                                  </span>
+                                </div>
+                                <div className="table-expand-detail-section">
+                                  <span className="table-expand-detail-label">Adresse complète</span>
+                                  <span className="table-expand-detail-value text-[12px]">
+                                    {property.address || '—'}
+                                    {property.city && <>, {property.city}</>}
+                                  </span>
+                                </div>
+                                {property.image_url && (
+                                  <div className="table-expand-detail-section">
+                                    <span className="table-expand-detail-label">Photo</span>
+                                    <img
+                                      src={property.image_url}
+                                      alt={property.title}
+                                      className="h-24 rounded-md object-cover border border-[var(--border-subtle)]"
+                                      loading="lazy"
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    </Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </Card>
       )}
 
       <Modal open={isSyncModalOpen} onOpenChange={() => setIsSyncModalOpen(false)} title="Synchroniser avec Centris">
@@ -224,6 +374,7 @@ export function PropertiesPage() {
           </div>
         </div>
       </Modal>
+      </div>
     </AppLayout>
   );
 }

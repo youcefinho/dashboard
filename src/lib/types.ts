@@ -36,6 +36,8 @@ export interface Client {
   city: string;
   banner: string;
   is_active: number;
+  // Sprint E1 M2.1 — feature-flag modules par tenant (JSON, défaut '["crm"]')
+  modules_json?: string;
   created_at: string;
   updated_at: string;
   // Jointures optionnelles
@@ -63,6 +65,14 @@ export interface Lead {
   utm_source: string;
   utm_medium: string;
   utm_campaign: string;
+  // Sprint 51 M3 — attribution étendue (colonnes ajoutées par M1/M2, lecture seule UI)
+  utm_term?: string;
+  utm_content?: string;
+  gclid?: string;
+  fbclid?: string;
+  referrer?: string;
+  consent_status?: string;
+  lead_source_id?: string;
   assigned_to: string;
   score: number;
   created_at: string;
@@ -250,7 +260,10 @@ export const TRIGGER_TYPES = [
   'lead_created', 'status_changed', 'pipeline_stage_changed', 'tag_added', 'form_submitted', 
   'score_threshold', 'lead_score_changed', 'deal_won', 'task_overdue',
   'email_opened', 'link_clicked', 'appointment_booked', 'appointment_cancelled', 'appointment_no_show',
-  'opportunity_status_changed', 'note_added', 'task_completed', 'inactivity_threshold', 'birthday_today', 'manual'
+  'opportunity_status_changed', 'note_added', 'task_completed', 'inactivity_threshold', 'birthday_today', 'manual',
+  // ── Sprint E9 — triggers e-commerce (ADDITIF, triggers CRM ci-dessus
+  // INTACTS). Reconnus par le moteur workflows M1 (worker/workflows.ts).
+  'order_created', 'order_paid', 'cart_abandoned', 'post_purchase', 'win_back', 'refund_issued',
 ] as const;
 export type TriggerType = typeof TRIGGER_TYPES[number];
 
@@ -516,7 +529,7 @@ export const STATUS_LABELS: Record<LeadStatus, string> = {
 };
 
 export const STATUS_COLORS: Record<LeadStatus, string> = {
-  new: 'var(--brand-primary)',
+  new: 'var(--primary)',
   contacted: 'var(--info)',
   qualified: 'var(--warning)',
   won: 'var(--success)',
@@ -552,7 +565,7 @@ export const LIFECYCLE_LABELS: Record<LifecycleStage, string> = {
 
 export const LIFECYCLE_COLORS: Record<LifecycleStage, string> = {
   lead: 'var(--info)',
-  mql: 'var(--brand-primary)',
+  mql: 'var(--primary)',
   sql: 'var(--warning)',
   opportunity: 'oklch(0.7 0.18 60)',
   customer: 'var(--success)',
@@ -673,6 +686,13 @@ export const TRIGGER_LABELS: Record<TriggerType, string> = {
   inactivity_threshold: 'Inactivité (Seuil)',
   birthday_today: 'Anniversaire',
   manual: 'Manuel',
+  // ── Sprint E9 — libellés FR québécois e-commerce (additif) ──
+  order_created: 'Commande créée',
+  order_paid: 'Commande payée',
+  cart_abandoned: 'Panier abandonné',
+  post_purchase: 'Après-achat',
+  win_back: 'Reconquête client',
+  refund_issued: 'Remboursement émis',
 };
 
 export const TRIGGER_ICONS: Record<TriggerType, string> = {
@@ -696,6 +716,13 @@ export const TRIGGER_ICONS: Record<TriggerType, string> = {
   inactivity_threshold: '😴',
   birthday_today: '🎂',
   manual: '⚡',
+  // ── Sprint E9 — icônes e-commerce (additif) ──
+  order_created: '🛒',
+  order_paid: '💳',
+  cart_abandoned: '🛍️',
+  post_purchase: '📦',
+  win_back: '🔁',
+  refund_issued: '↩️',
 };
 
 export const STEP_TYPE_LABELS: Record<StepType, string> = {
@@ -778,7 +805,7 @@ export const APPOINTMENT_TYPE_ICONS: Record<AppointmentType, string> = {
 };
 
 export const APPOINTMENT_TYPE_COLORS: Record<AppointmentType, string> = {
-  meeting: 'var(--brand-primary)',
+  meeting: 'var(--primary)',
   call: 'var(--info)',
   visit: 'var(--success)',
   signing: 'var(--warning)',
@@ -824,4 +851,667 @@ export const TASK_STATUS_ICONS: Record<TaskStatus, string> = {
   in_progress: '🔄',
   done: '✅',
 };
+
+// ════════════════════════════════════════════════════════════
+// Sprint E1 M1 — Module e-commerce (B2 : Intralys = la boutique)
+// Univers parallèle au CRM. customers.lead_id = lien faible réconciliation.
+// Money en cents (INTEGER) partout. snake_case aligné colonnes D1.
+// ════════════════════════════════════════════════════════════
+
+// ── Unions de statuts ───────────────────────────────────────
+
+export const PRODUCT_STATUSES = ['draft', 'active', 'archived'] as const;
+export type ProductStatus = typeof PRODUCT_STATUSES[number];
+
+export const ORDER_STATUSES = [
+  'pending', 'paid', 'preparing', 'shipped', 'delivered', 'cancelled', 'refunded',
+] as const;
+export type OrderStatus = typeof ORDER_STATUSES[number];
+
+export const FINANCIAL_STATUSES = [
+  'unpaid', 'paid', 'partially_refunded', 'refunded',
+] as const;
+export type FinancialStatus = typeof FINANCIAL_STATUSES[number];
+
+export const FULFILLMENT_STATUSES = [
+  'unfulfilled', 'partial', 'fulfilled',
+] as const;
+export type FulfillmentStatus = typeof FULFILLMENT_STATUSES[number];
+
+export const CART_STATUSES = ['active', 'abandoned', 'converted'] as const;
+export type CartStatus = typeof CART_STATUSES[number];
+
+export const INVENTORY_MOVEMENT_REASONS = [
+  'sale', 'restock', 'adjustment', 'return', 'reservation',
+] as const;
+export type InventoryMovementReason = typeof INVENTORY_MOVEMENT_REASONS[number];
+
+// RFM segments (réconciliation analytics, ex 'champions', 'at_risk'...)
+export const RFM_SEGMENTS = [
+  'champions', 'loyal', 'potential_loyalist', 'new', 'promising',
+  'needs_attention', 'at_risk', 'hibernating', 'lost',
+] as const;
+export type RfmSegment = typeof RFM_SEGMENTS[number];
+
+// ── Entités e-commerce ──────────────────────────────────────
+
+export interface Product {
+  id: string;
+  client_id: string;
+  title: string;
+  slug: string;
+  description: string;
+  status: ProductStatus;
+  product_type: string;
+  vendor: string;
+  base_price: number;       // cents
+  currency: string;
+  tax_class: string;
+  seo_title: string;
+  seo_description: string;
+  created_at: string;
+  updated_at: string;
+  // Jointures optionnelles
+  variants?: ProductVariant[];
+  images?: ProductImage[];
+  categories?: ProductCategory[];
+}
+
+export interface ProductVariant {
+  id: string;
+  product_id: string;
+  sku: string | null;
+  title: string;
+  price_override: number | null;   // cents
+  options_json: string;            // JSON ex {"color":"Rouge","size":"L"}
+  barcode: string | null;
+  weight_grams: number | null;
+  position: number;
+  created_at: string;
+  updated_at: string;
+  // Jointures optionnelles
+  inventory?: InventoryRecord;
+}
+
+export interface ProductCategory {
+  id: string;
+  client_id: string;
+  name: string;
+  slug: string;
+  parent_id: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+  // Jointures optionnelles
+  children?: ProductCategory[];
+  product_count?: number;
+}
+
+export interface ProductImage {
+  id: string;
+  product_id: string;
+  variant_id: string | null;
+  url: string;
+  alt: string;
+  position: number;
+  created_at: string;
+}
+
+export interface InventoryRecord {
+  id: string;
+  variant_id: string;
+  quantity: number;
+  reserved: number;
+  low_stock_threshold: number;
+  track_inventory: number;
+  allow_backorder: number;
+  location: string | null;
+  updated_at: string;
+}
+
+export interface InventoryMovement {
+  id: string;
+  variant_id: string;
+  delta: number;
+  reason: InventoryMovementReason;
+  reference_type: string | null;
+  reference_id: string | null;
+  note: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface Customer {
+  id: string;
+  client_id: string;
+  lead_id: string | null;       // lien faible réconciliation CRM
+  email: string;
+  phone: string | null;
+  first_name: string;
+  last_name: string;
+  accepts_marketing: number;
+  total_spent_cents: number;
+  orders_count: number;
+  avg_order_value_cents: number;
+  first_order_at: string | null;
+  last_order_at: string | null;
+  rfm_segment: RfmSegment | null;
+  tags_json: string | null;          // JSON array
+  default_address_json: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Order {
+  id: string;
+  client_id: string;
+  customer_id: string | null;        // null = guest checkout
+  order_number: string | null;
+  status: OrderStatus;
+  financial_status: FinancialStatus;
+  fulfillment_status: FulfillmentStatus;
+  subtotal_cents: number;
+  tps_cents: number;
+  tvq_cents: number;
+  shipping_cents: number;
+  discount_cents: number;
+  total_cents: number;
+  currency: string;
+  email: string;
+  shipping_address_json: string | null;
+  billing_address_json: string | null;
+  note: string;
+  source: string;                    // web/shopify/woo/manual
+  external_id: string | null;
+  placed_at: string | null;
+  // Sprint E3 M1 — timestamps de cycle de vie (machine à états lifecycle).
+  paid_at?: string | null;
+  shipped_at?: string | null;
+  cancelled_at?: string | null;
+  created_at: string;
+  updated_at: string;
+  // Jointures optionnelles
+  items?: OrderItem[];
+  customer?: Customer;
+  // Sprint E3 M1 — enrichissements list/get.
+  items_count?: number;
+  customer_email?: string | null;
+  customer_first_name?: string | null;
+  customer_last_name?: string | null;
+}
+
+export interface OrderItem {
+  id: string;
+  order_id: string;
+  variant_id: string | null;
+  product_title_snapshot: string;
+  variant_title_snapshot: string;
+  sku_snapshot: string;
+  unit_price_cents: number;
+  quantity: number;
+  total_cents: number;
+  tax_cents: number;
+  created_at: string;
+}
+
+export interface Cart {
+  id: string;
+  client_id: string;
+  customer_id: string | null;
+  token: string;
+  status: CartStatus;
+  abandoned_at: string | null;
+  recovered_at: string | null;
+  currency: string;
+  created_at: string;
+  updated_at: string;
+  // Jointures optionnelles
+  items?: CartItem[];
+}
+
+export interface CartItem {
+  id: string;
+  cart_id: string;
+  variant_id: string;
+  quantity: number;
+  added_at: string;
+}
+
+// ── Sprint E-R M2 — Internationalisation : config région boutique ────────────
+// Additif pur : aucun type existant modifié. snake_case cohérent avec le reste
+// des entités e-commerce. Aligné moteur fiscal M1 (ecommerce-tax-engine.ts).
+
+/** Régime fiscal du tenant — STRICTEMENT aligné sur le moteur M1. */
+export type TaxRegime = 'qc' | 'eu' | 'dz' | 'exempt';
+
+/** Devises supportées (extensible). 'CAD' = défaut rétro-compat Québec. */
+export type SupportedCurrency = 'CAD' | 'EUR' | 'DZD';
+
+/** Code pays ISO 3166-1 alpha-2 utilisé par les formats + le moteur fiscal. */
+export type CountryCode = 'CA' | 'FR' | 'DZ' | (string & {});
+
+/** Drapeaux légaux régionaux — FLAGS uniquement (impl. légale = Sprint E6). */
+export interface LegalFlags {
+  loi25?: boolean;   // Québec — Loi 25 (protection renseignements personnels)
+  rgpd?: boolean;    // UE — RGPD
+  casl?: boolean;    // Canada — anti-pourriel
+  conso_dz?: boolean; // Algérie — protection du consommateur
+}
+
+/** Config région résolue du tenant courant (contrat endpoint /region). */
+export interface RegionConfig {
+  region: string;                 // ex 'QC' / 'EU' / 'DZ'
+  country: CountryCode;           // ex 'CA' / 'FR' / 'DZ'
+  currency: SupportedCurrency;    // devise par défaut boutique
+  tax_regime: TaxRegime;          // régime fiscal (aligné moteur M1)
+  legal_flags: LegalFlags;        // flags légaux régionaux (parsés)
+}
+
+/** Contexte région consommable par le backend commande (resolveRegionContext). */
+export interface RegionContext {
+  region: string;
+  country: CountryCode;
+  currency: SupportedCurrency;
+  tax_regime: TaxRegime;
+  /** true = prix TTC (UE) / false = HT (QC/DZ) — cohérent moteur M1. */
+  tax_inclusive_default: boolean;
+}
+
+// ── Sprint E4 — Paiement multi-provider/région ──────────────────────────────
+// Additif PUR : aucun type existant modifié. Contrat FIGÉ (M2/M3 codent
+// contre). PCI : aucun type ne porte de donnée carte (PAN/CVV/expiry) — que
+// des références opaques côté provider.
+
+/**
+ * Statut d'un paiement marchand — CONTRAT FIGÉ.
+ * `pending_cod` = paiement à la livraison non capturé (≠ payé : la commande
+ * reste 'unpaid' tant que non encaissé). `paid` = seul état déclenchant le
+ * pont lifecycle (commitSale via recordPaymentTransition).
+ */
+export type PaymentStatus =
+  | 'pending'
+  | 'pending_cod'
+  | 'authorized'
+  | 'paid'
+  | 'failed';
+
+/** Méthode de paiement (libellé logique, indépendant du provider). */
+export type PaymentMethod =
+  | 'card'
+  | 'cod'
+  | 'bank_transfer'
+  | 'dz_local';
+
+/** Identifiant de provider de paiement — CONTRAT FIGÉ. */
+export type PaymentProviderId = 'stripe' | 'cod' | 'dz_gateway';
+
+/** Ligne `payments` (référence opaque provider — JAMAIS de donnée carte). */
+export interface PaymentRecord {
+  id: string;
+  client_id: string;
+  order_id: string;
+  provider: PaymentProviderId;
+  method: PaymentMethod | string;
+  amount_cents: number;
+  currency: SupportedCurrency;
+  status: PaymentStatus;
+  provider_ref: string | null;
+  idempotency_key: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Résultat d'init de paiement renvoyé par l'endpoint (contrat figé). */
+export interface PaymentInitResult {
+  payment_id: string;
+  status: PaymentStatus;
+  redirect_url?: string;
+}
+
+/** Résultat normalisé d'un webhook provider (pont lifecycle). */
+export interface PaymentWebhookResult {
+  order_id: string;
+  payment_ref: string;
+  status: PaymentStatus;
+}
+
+/** Capabilities d'un provider filtrées par contexte région (devises/méthodes). */
+export interface PaymentCapabilities {
+  methods: PaymentMethod[];
+  currencies: SupportedCurrency[];
+}
+
+// ── Sprint E5 ───────────────────────────────────────────────────────────────
+// Fulfillment region-aware. Additif PUR : aucun type existant modifié
+// (FulfillmentStatus E1 INTOUCHÉ — l'expédition ne le remplace pas, elle le
+// recalcule de façon déterministe côté handler). Bloc UNIQUE writer E5 :
+// inclut les types M1 (shipments) ET M2 (zones/tarifs) pour que M2/M3 les
+// importent sans toucher ce fichier (zéro race).
+
+/**
+ * Statut d'une expédition — machine PROPRE au shipment, DISTINCTE de la
+ * machine commande E3 (preparing→shipped→delivered). Une expédition est une
+ * TRACE PURE : elle ne touche jamais le stock ni le statut de la commande.
+ */
+export type ShipmentStatus =
+  | 'preparing'
+  | 'shipped'
+  | 'in_transit'
+  | 'delivered'
+  | 'failed';
+
+/** Ligne `shipments` — trace d'un envoi (total ou partiel) d'une commande. */
+export interface Shipment {
+  id: string;
+  client_id: string;
+  order_id: string;
+  status: ShipmentStatus;
+  carrier: string | null;
+  tracking_number: string | null;
+  tracking_url: string | null;
+  shipped_at: string | null;
+  delivered_at: string | null;
+  note: string | null;
+  created_at: string;
+  updated_at: string;
+  /** Lignes expédiées (jointes par handleGetShipment / handleListShipments). */
+  items?: ShipmentItem[];
+}
+
+/** Ligne `shipment_items` — quelle ligne de commande, quelle quantité. */
+export interface ShipmentItem {
+  id: string;
+  shipment_id: string;
+  order_item_id: string;
+  quantity: number;
+  created_at?: string;
+}
+
+/**
+ * Zone d'expédition (M2) — regroupement géographique (pays/régions) auquel
+ * s'appliquent des tarifs. Multi-tenant. `countries` = liste de codes ISO
+ * alpha-2 couverts par la zone.
+ */
+export interface ShippingZone {
+  id: string;
+  client_id: string;
+  name: string;
+  countries: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Tarif d'expédition (M2) — rattaché à une zone. `min_subtotal_cents` /
+ * `max_subtotal_cents` : palier optionnel de déclenchement (panier). Money
+ * TOUJOURS en cents INTEGER.
+ */
+export interface ShippingRate {
+  id: string;
+  client_id: string;
+  zone_id: string;
+  name: string;
+  price_cents: number;
+  min_subtotal_cents: number | null;
+  max_subtotal_cents: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Résultat de résolution d'un tarif (M2) — POST /shipping/resolve. */
+export interface ShippingRateResult {
+  zone_id: string | null;
+  rate_id: string | null;
+  name: string | null;
+  price_cents: number;
+  /** false si aucune zone/tarif ne couvre la destination (repli marchand). */
+  matched: boolean;
+}
+
+// ── Sprint E6 ───────────────────────────────────────────────────────────────
+// Remboursements / litiges / RMA + politique conso indicative. M3 est le SEUL
+// writer E6 de ce fichier : bloc UNIQUE, additif PUR (aucun type existant
+// modifié — RefundRecord/DisputeRecord côté api.ts restent les vues client
+// déjà publiées par M1). snake_case cohérent e-commerce. Money en cents.
+// ⚠️ ZONE RÉGULÉE — la politique conso (ConsumerPolicy) est INDICATIVE :
+// revue légale requise avant activation commerciale (la bannière UI le dit).
+
+/** Statut d'un remboursement (vue marchand) — machine M1 (E4 délégué). */
+export type RefundStatus = 'pending' | 'succeeded' | 'failed';
+
+/** Statut d'un litige / chargeback — enregistrement DB seul (régulé, libre). */
+export type DisputeStatus =
+  | 'open'
+  | 'under_review'
+  | 'won'
+  | 'lost'
+  | 'refunded'
+  | (string & {});
+
+/** Statut d'une demande de retour (RMA) — machine PROPRE au RMA (M2). */
+export type RmaStatus =
+  | 'pending'
+  | 'approved'
+  | 'received'
+  | 'refunded'
+  | 'rejected';
+
+/** Remboursement marchand (réfs opaques — ZÉRO donnée carte, PCI). */
+export interface Refund {
+  id: string;
+  order_id: string;
+  payment_id: string;
+  amount_cents: number;
+  currency: string;
+  status: RefundStatus | string;
+  provider_ref: string | null;
+  reason: string | null;
+  restocked: boolean;
+  created_at: string;
+}
+
+/** Litige / chargeback provider (réf opaque uniquement, jamais de carte). */
+export interface Dispute {
+  id: string;
+  order_id: string;
+  payment_id: string | null;
+  provider: string;
+  provider_dispute_ref: string;
+  status: DisputeStatus;
+  amount_cents: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Ligne d'une demande de retour (article + quantité + intention restock). */
+export interface RmaItem {
+  id: string;
+  return_request_id: string;
+  order_item_id: string;
+  quantity: number;
+  restock: boolean;
+  created_at?: string;
+}
+
+/** Demande de retour (RMA) — cycle dédié, distinct commande E3 / shipment E5. */
+export interface ReturnRequest {
+  id: string;
+  client_id: string;
+  order_id: string;
+  status: RmaStatus;
+  reason: string | null;
+  created_at: string;
+  updated_at: string;
+  /** Lignes du retour (jointes par handleListReturns M2). */
+  items?: RmaItem[];
+}
+
+/**
+ * Politique de rétractation INDICATIVE renvoyée par handleGetOrderPolicy.
+ * ⚠️ RÉGULÉ : informatif uniquement — revue légale requise avant activation.
+ * `withdrawal_window_days` = fenêtre indicative depuis la livraison (E5).
+ */
+export interface ConsumerPolicy {
+  withdrawal_window_days: number;
+  mentions: string[];
+  region: string;
+}
+
+// ════════════════════════════════════════════════════════════
+// ── Sprint E7 ── Customer 360 + RFM + LTV multi-devise + panier abandonné
+// ════════════════════════════════════════════════════════════
+//
+// LTV PAR DEVISE BOUTIQUE (resolveRegionContext().currency). PAS de conversion
+// FX (aucun taux en base — sommer CAD+EUR+DZD est INTERDIT). total_spent_cents
+// = somme NET (orders − refunds succeeded), devise boutique uniquement, clampé
+// ≥ 0. Les autres devises sont ventilées séparément dans spend_by_currency.
+// RfmSegment réutilise l'union E1 (RFM_SEGMENTS) — pas de redéfinition.
+
+/** Métriques agrégées d'un client (recalcul FULL idempotent, net-of-refunds). */
+export interface CustomerMetrics {
+  /** LTV nette en cents, DEVISE BOUTIQUE uniquement (jamais convertie). */
+  total_spent_cents: number;
+  orders_count: number;
+  avg_order_value_cents: number;
+  first_order_at: string | null;
+  last_order_at: string | null;
+  /** Devise boutique de référence (resolveRegionContext). */
+  currency: SupportedCurrency;
+}
+
+/** Ventilation des dépenses par devise (aucune somme cross-devise). */
+export interface SpendByCurrency {
+  currency: string;
+  /** Net (commandes − remboursements succeeded) en cents pour CETTE devise. */
+  net_spent_cents: number;
+  orders_count: number;
+}
+
+/** Payload agrégé GET /api/ecommerce/customers/:id/360. */
+export interface Customer360 {
+  customer: Customer;
+  metrics: CustomerMetrics;
+  /** Ventilation multi-devise (devise boutique incluse, jamais sommée). */
+  spend_by_currency: SpendByCurrency[];
+  orders: Order[];
+  refunds: Array<Record<string, unknown>>;
+  shipments: Array<Record<string, unknown>>;
+  returns: Array<Record<string, unknown>>;
+  /** Panier actif (non converti / non abandonné) ou null. */
+  active_cart: Record<string, unknown> | null;
+  /** Lead CRM réconcilié (lien faible customers.lead_id) ou null. */
+  linked_lead: { id: string; name: string; email: string } | null;
+}
+
+/**
+ * Panier abandonné (M2 : detectAbandonedCarts + handleListAbandonedCarts +
+ * handleRecoverCart). Type partagé exposé ici (M1 = seul writer types E7).
+ */
+export interface AbandonedCart {
+  id: string;
+  client_id: string;
+  customer_id: string | null;
+  email: string | null;
+  status: CartStatus;
+  items_count: number;
+  subtotal_cents: number;
+  currency: string;
+  updated_at: string;
+  /** Posé par le flux de récupération M2 (relance envoyée). */
+  recovery_sent_at?: string | null;
+}
+
+// ════════════════════════════════════════════════════════════
+// ── Sprint E9 ── Analytics e-commerce + recommandations / churn
+// ════════════════════════════════════════════════════════════
+//
+// DERNIER sprint roadmap e-comm. Section ADDITIVE (append-only) : zéro
+// type E1-E8 modifié. Contrats FIGÉS M2 (ecommerce-analytics.ts /
+// ecommerce-reco.ts). RÈGLE D'OR multi-devise héritée E7 : on NE SOMME
+// JAMAIS deux devises (aucun taux FX en base). Le revenu est TOUJOURS
+// ventilé par devise. Montants en cents (formatMoneyCents côté UI).
+
+/** Revenu net ventilé pour UNE devise (jamais sommé cross-devise). */
+export interface RevenueByCurrency {
+  currency: string;
+  /** Brut encaissé en cents pour CETTE devise. */
+  gross: number;
+  /** Remboursements succeeded en cents pour CETTE devise. */
+  refunds: number;
+  /** Net = gross − refunds en cents, clampé ≥ 0. */
+  net: number;
+  orders: number;
+  /** Panier moyen net en cents pour CETTE devise. */
+  aov: number;
+}
+
+/** Payload GET /api/ecommerce/analytics/revenue. */
+export interface EcommerceRevenue {
+  by_currency: RevenueByCurrency[];
+}
+
+/** Une cohorte mensuelle d'acquisition + courbe de rétention. */
+export interface RevenueCohort {
+  /** Mois d'acquisition (YYYY-MM). */
+  month: string;
+  /** Taille de la cohorte (clients acquis ce mois). */
+  size: number;
+  /** Rétention par mois relatif (index 0 = mois d'acquisition), en %. */
+  retention: number[];
+}
+
+/** Payload GET /api/ecommerce/analytics/cohorts. */
+export interface EcommerceCohorts {
+  cohorts: RevenueCohort[];
+}
+
+/** Payload GET /api/ecommerce/analytics/ltv (ventilé devise, jamais sommé). */
+export interface EcommerceLtv {
+  by_currency: Array<{ currency: string; ltv_cents: number; customers: number }>;
+  /** Taux de rachat global (0..1) — clients avec ≥ 2 commandes. */
+  repurchase_rate: number;
+}
+
+/** Une ligne du classement produits (par devise, jamais sommée). */
+export interface TopProductRow {
+  variant_id: string;
+  title: string;
+  qty: number;
+  revenue_cents: number;
+  currency: string;
+}
+
+/** Payload GET /api/ecommerce/analytics/top-products. */
+export interface EcommerceTopProducts {
+  products: TopProductRow[];
+}
+
+/** Une recommandation produit (cross-sell / up-sell, contrat M2). */
+export interface ProductReco {
+  variant_id: string;
+  title: string;
+  /** Type de reco : croisée (souvent achetés ensemble) ou montée en gamme. */
+  kind: 'cross_sell' | 'up_sell';
+  /** Score de confiance 0..1 (heuristique M2). */
+  score: number;
+  price_cents?: number;
+  currency?: string;
+}
+
+/** Payload GET /api/ecommerce/reco/products/:id. */
+export interface ProductRecoResult {
+  recommendations: ProductReco[];
+}
+
+/** Prédiction de désabonnement client (contrat M2). */
+export interface CustomerChurnPrediction {
+  /** Score de risque 0..1 (1 = risque maximal de churn). */
+  score: number;
+  /** Bucket lisible dérivé du score. */
+  risk: 'low' | 'medium' | 'high';
+  /** Raisons explicables (RGPD : décision compréhensible). */
+  reasons: string[];
+  /** True si M2 a renvoyé une heuristique de repli (données insuffisantes). */
+  fallback: boolean;
+}
 

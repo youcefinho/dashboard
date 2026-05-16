@@ -3,17 +3,25 @@
 import { useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Input, PageHero } from '@/components/ui';
+import { Card, Button, Input, PageHero, Icon } from '@/components/ui';
 import { changePassword } from '@/lib/api';
+import { Lock, KeyRound, ShieldCheck } from 'lucide-react';
 
 export function ChangePasswordPage() {
   const navigate = useNavigate();
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [touched, setTouched] = useState<{ next: boolean; confirm: boolean }>({ next: false, confirm: false });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Sprint 26-2B — validation visuelle par champ
+  const nextTooShort = touched.next && next.length > 0 && next.length < 8;
+  const nextValid = next.length >= 8;
+  const confirmMismatch = touched.confirm && confirm.length > 0 && confirm !== next;
+  const confirmMatch = touched.confirm && nextValid && confirm === next;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,46 +77,47 @@ export function ChangePasswordPage() {
                 </div>
               )}
 
-              <div>
-                <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">
-                  Mot de passe actuel
-                </label>
-                <Input
-                  type="password"
-                  value={current}
-                  onChange={(e) => setCurrent(e.target.value)}
-                  placeholder="Votre mot de passe actuel"
-                  required
-                />
-              </div>
+              <Input
+                type="password"
+                label="Mot de passe actuel"
+                value={current}
+                onChange={(e) => setCurrent(e.target.value)}
+                placeholder="Votre mot de passe actuel"
+                required
+                leftSlot={<Icon as={Lock} size="sm" />}
+                autoComplete="current-password"
+              />
 
-              <div>
-                <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">
-                  Nouveau mot de passe
-                </label>
-                <Input
-                  type="password"
-                  value={next}
-                  onChange={(e) => setNext(e.target.value)}
-                  placeholder="Min. 8 caractères"
-                  required
-                  minLength={8}
-                />
-              </div>
+              <Input
+                type="password"
+                label="Nouveau mot de passe"
+                value={next}
+                onChange={(e) => setNext(e.target.value)}
+                onBlur={() => setTouched((t) => ({ ...t, next: true }))}
+                placeholder="Min. 8 caractères"
+                required
+                minLength={8}
+                leftSlot={<Icon as={KeyRound} size="sm" />}
+                autoComplete="new-password"
+                error={nextTooShort ? 'Minimum 8 caractères requis' : undefined}
+                success={touched.next && nextValid ? 'Longueur suffisante' : undefined}
+                helper={!touched.next ? 'Au moins 8 caractères — mélangez chiffres et lettres' : undefined}
+              />
 
-              <div>
-                <label className="block text-xs font-medium mb-1 text-[var(--text-secondary)]">
-                  Confirmer le nouveau mot de passe
-                </label>
-                <Input
-                  type="password"
-                  value={confirm}
-                  onChange={(e) => setConfirm(e.target.value)}
-                  placeholder="Retapez le nouveau mot de passe"
-                  required
-                  minLength={8}
-                />
-              </div>
+              <Input
+                type="password"
+                label="Confirmer le nouveau mot de passe"
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                onBlur={() => setTouched((t) => ({ ...t, confirm: true }))}
+                placeholder="Retapez le nouveau mot de passe"
+                required
+                minLength={8}
+                leftSlot={<Icon as={ShieldCheck} size="sm" />}
+                autoComplete="new-password"
+                error={confirmMismatch ? 'Les mots de passe ne correspondent pas' : undefined}
+                success={confirmMatch ? 'Mots de passe identiques' : undefined}
+              />
 
               <Button type="submit" variant="premium" className="w-full" disabled={loading}>
                 {loading ? 'Changement...' : 'Changer le mot de passe'}

@@ -2,64 +2,91 @@
 
 import { Link, useLocation } from '@tanstack/react-router';
 import { useAuth } from '@/lib/auth';
-import { useState, useEffect, type ReactNode } from 'react';
+import { useState, useEffect, useCallback, type ReactNode, type KeyboardEvent as ReactKeyboardEvent, type CSSProperties } from 'react';
 import {
   LayoutDashboard, Users, Briefcase, MessageSquare, Mail,
   Zap, FileText, Star, CalendarDays, CheckSquare, Plug,
   BarChart3, Settings, LogOut, ChevronLeft, ChevronRight,
   UserCircle, CreditCard, Trash2, Link2, ClipboardList, Bookmark,
+  ShieldCheck, Store, Package, ShoppingCart, Contact,
 } from 'lucide-react';
-import { getSmartLists } from '@/lib/api';
+import { Icon } from '@/components/ui';
+import { getSmartLists, getLeads, getTasks, getNotifications, getModules, type ModuleId } from '@/lib/api';
 import type { SmartList } from '@/lib/types';
+// Sprint 45 M1.4 — Onboarding progress chip (auto-hide quand 5/5 atteint)
+import { OnboardingProgressChip } from '@/components/onboarding/OnboardingProgressChip';
 
 interface NavSection {
   label?: string;
-  items: { path: string; label: string; icon: ReactNode; adminOnly?: boolean }[];
+  items: { path: string; label: string; icon: ReactNode; adminOnly?: boolean; moduleRequired?: ModuleId; badgeKey?: 'leadsNew' | 'tasksTodo' | 'notifsUnread' }[];
 }
 
 const NAV_SECTIONS: NavSection[] = [
   {
     items: [
-      { path: '/dashboard', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
+      { path: '/dashboard', label: 'Dashboard', icon: <Icon as={LayoutDashboard} size={18} /> },
     ],
   },
   {
     label: 'WORKSPACE',
     items: [
-      { path: '/leads', label: 'Leads', icon: <Users size={18} /> },
-      { path: '/properties', label: 'Propriétés', icon: <Briefcase size={18} /> },
-      { path: '/agencies', label: 'Agences', icon: <Briefcase size={18} />, adminOnly: true },
-      { path: '/clients', label: 'Clients', icon: <UserCircle size={18} />, adminOnly: true },
-      { path: '/pipeline', label: 'Pipeline', icon: <Briefcase size={18} /> },
-      { path: '/invoices', label: 'Factures', icon: <CreditCard size={18} /> },
-      { path: '/conversations', label: 'Conversations', icon: <MessageSquare size={18} /> },
+      { path: '/leads', label: 'Leads', icon: <Icon as={Users} size={18} />, badgeKey: 'leadsNew' },
+      { path: '/properties', label: 'Propriétés', icon: <Icon as={Briefcase} size={18} /> },
+      { path: '/agencies', label: 'Agences', icon: <Icon as={Briefcase} size={18} />, adminOnly: true },
+      { path: '/clients', label: 'Clients', icon: <Icon as={UserCircle} size={18} />, adminOnly: true },
+      { path: '/pipeline', label: 'Pipeline', icon: <Icon as={Briefcase} size={18} /> },
+      { path: '/invoices', label: 'Factures', icon: <Icon as={CreditCard} size={18} /> },
+      { path: '/conversations', label: 'Conversations', icon: <Icon as={MessageSquare} size={18} />, badgeKey: 'notifsUnread' },
     ],
   },
   {
     label: 'MARKETING',
     items: [
-      { path: '/templates', label: 'Templates', icon: <Mail size={18} /> },
-      { path: '/workflows', label: 'Automations', icon: <Zap size={18} /> },
-      { path: '/trigger-links', label: 'Trigger Links', icon: <Link2 size={18} /> },
-      { path: '/forms/builder/new', label: 'Formulaires', icon: <ClipboardList size={18} /> },
+      { path: '/templates', label: 'Templates', icon: <Icon as={Mail} size={18} /> },
+      { path: '/workflows', label: 'Automations', icon: <Icon as={Zap} size={18} /> },
+      { path: '/trigger-links', label: 'Trigger Links', icon: <Icon as={Link2} size={18} /> },
+      { path: '/forms/builder/new', label: 'Formulaires', icon: <Icon as={ClipboardList} size={18} /> },
     ],
   },
   {
     label: 'INSIGHTS',
     items: [
-      { path: '/documents', label: 'Documents', icon: <FileText size={18} /> },
-      { path: '/documents/templates', label: 'Modèles docs', icon: <FileText size={18} /> },
-      { path: '/reviews', label: 'Avis', icon: <Star size={18} /> },
-      { path: '/calendar', label: 'Calendrier', icon: <CalendarDays size={18} /> },
-      { path: '/tasks', label: 'Tâches', icon: <CheckSquare size={18} /> },
-      { path: '/integrations', label: 'Intégrations', icon: <Plug size={18} /> },
-      { path: '/reports', label: 'Rapports', icon: <BarChart3 size={18} /> },
+      { path: '/documents', label: 'Documents', icon: <Icon as={FileText} size={18} /> },
+      { path: '/documents/templates', label: 'Modèles docs', icon: <Icon as={FileText} size={18} /> },
+      { path: '/reviews', label: 'Avis', icon: <Icon as={Star} size={18} /> },
+      { path: '/calendar', label: 'Calendrier', icon: <Icon as={CalendarDays} size={18} /> },
+      { path: '/tasks', label: 'Tâches', icon: <Icon as={CheckSquare} size={18} />, badgeKey: 'tasksTodo' },
+      { path: '/integrations', label: 'Intégrations', icon: <Icon as={Plug} size={18} /> },
+      { path: '/reports', label: 'Rapports', icon: <Icon as={BarChart3} size={18} /> },
+    ],
+  },
+  // Sprint 46 M2.1 — Section Administration (visible admin/owner uniquement
+  // via flag adminOnly + filtre isAdmin déjà en place). Section dédiée pour
+  // que la nav admin (overview, audit, etc.) ne pollue pas l'arborescence
+  // user standard.
+  {
+    label: 'ADMINISTRATION',
+    items: [
+      { path: '/admin/overview', label: "Vue d'ensemble", icon: <Icon as={ShieldCheck} size={18} />, adminOnly: true },
+    ],
+  },
+  // Sprint E1 M2.2 — Section Boutique (module e-commerce B2). Rendue
+  // conditionnellement : visible UNIQUEMENT si le tenant a le module
+  // `ecommerce` actif (modules_json). Items placeholder ; M3 wirera les
+  // vraies pages derrière <ModuleGuard>. Pattern aligné sur adminOnly.
+  {
+    label: 'BOUTIQUE',
+    items: [
+      { path: '/boutique', label: 'Tableau de bord', icon: <Icon as={Store} size={18} />, moduleRequired: 'ecommerce' },
+      { path: '/boutique/produits', label: 'Produits', icon: <Icon as={Package} size={18} />, moduleRequired: 'ecommerce' },
+      { path: '/boutique/commandes', label: 'Commandes', icon: <Icon as={ShoppingCart} size={18} />, moduleRequired: 'ecommerce' },
+      { path: '/boutique/clients', label: 'Clients', icon: <Icon as={Contact} size={18} />, moduleRequired: 'ecommerce' },
     ],
   },
   {
     items: [
-      { path: '/settings', label: 'Paramètres', icon: <Settings size={18} /> },
-      { path: '/trash', label: 'Corbeille', icon: <Trash2 size={18} /> },
+      { path: '/settings', label: 'Paramètres', icon: <Icon as={Settings} size={18} /> },
+      { path: '/trash', label: 'Corbeille', icon: <Icon as={Trash2} size={18} /> },
     ],
   },
 ];
@@ -76,6 +103,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('sidebar_collapsed') === '1');
   // Sprint 21 : smart lists pinned (saved views first-class)
   const [smartLists, setSmartLists] = useState<SmartList[]>([]);
+  // Sprint 23 wave 16 — count badges (signature GHL)
+  const [badgeCounts, setBadgeCounts] = useState<{ leadsNew: number; tasksTodo: number; notifsUnread: number }>({ leadsNew: 0, tasksTodo: 0, notifsUnread: 0 });
+  // Sprint E1 M2.2 — modules actifs du tenant (gate la section BOUTIQUE).
+  // Défaut ['crm'] : tant que non chargé, section e-commerce masquée (no flash).
+  const [activeModules, setActiveModules] = useState<ModuleId[]>(['crm']);
 
   useEffect(() => {
     localStorage.setItem('sidebar_collapsed', collapsed ? '1' : '0');
@@ -85,7 +117,58 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     getSmartLists().then(r => { if (r.data) setSmartLists(r.data); }).catch(() => {});
   }, []);
 
+  // Sprint E1 M2.2 — charge les modules actifs (gate section BOUTIQUE)
+  useEffect(() => {
+    let cancelled = false;
+    getModules()
+      .then(r => { if (!cancelled && r.data?.active) setActiveModules(r.data.active); })
+      .catch(() => { /* fallback ['crm'] : section e-commerce masquée */ });
+    return () => { cancelled = true; };
+  }, []);
+
+  // Sprint 23 wave 16 — fetch counts pour badges sidebar. Refresh sur route change.
+  useEffect(() => {
+    let cancelled = false;
+    const fetchCounts = async () => {
+      try {
+        const [leadsRes, tasksRes, notifsRes] = await Promise.all([
+          getLeads({ status: 'new' }).catch(() => ({ data: null })),
+          getTasks({ status: 'todo' }).catch(() => ({ data: null })),
+          getNotifications({ unread: true }).catch(() => ({ data: null })),
+        ]);
+        if (cancelled) return;
+        setBadgeCounts({
+          leadsNew: leadsRes.data?.length || 0,
+          tasksTodo: tasksRes.data?.length || 0,
+          notifsUnread: notifsRes.data?.length || 0,
+        });
+      } catch { /* silent */ }
+    };
+    void fetchCounts();
+    return () => { cancelled = true; };
+  }, [location.pathname]);
+
   const sidebarWidth = collapsed ? 'w-16' : 'w-60';
+
+  // Sprint 23 wave 47A2 — keyboard nav flèches haut/bas sur items sidebar (a11y).
+  // Délègue au nav parent : récupère tous les items focusables, navigue circulaire.
+  const handleNavKeyDown = useCallback((e: ReactKeyboardEvent<HTMLElement>) => {
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp' && e.key !== 'Home' && e.key !== 'End') return;
+    const nav = e.currentTarget;
+    const items = Array.from(nav.querySelectorAll<HTMLElement>('.sidebar-nav-item'));
+    if (items.length === 0) return;
+    const activeEl = document.activeElement as HTMLElement | null;
+    const currentIndex = activeEl ? items.indexOf(activeEl) : -1;
+    let nextIndex = currentIndex;
+    if (e.key === 'ArrowDown') nextIndex = currentIndex < items.length - 1 ? currentIndex + 1 : 0;
+    else if (e.key === 'ArrowUp') nextIndex = currentIndex > 0 ? currentIndex - 1 : items.length - 1;
+    else if (e.key === 'Home') nextIndex = 0;
+    else if (e.key === 'End') nextIndex = items.length - 1;
+    if (nextIndex !== currentIndex && items[nextIndex]) {
+      e.preventDefault();
+      items[nextIndex]?.focus();
+    }
+  }, []);
 
   return (
     <>
@@ -96,55 +179,66 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
       <aside className={`
         fixed top-0 left-0 z-50 h-full ${sidebarWidth}
-        bg-[var(--bg-inverse)] text-[var(--text-inverse)]
-        flex flex-col transition-all duration-200 relative overflow-hidden
+        bg-[var(--bg-surface)] text-[var(--text-primary)]
+        flex flex-col transition-all duration-200 overflow-hidden
+        border-r border-[var(--border)]
         lg:translate-x-0 lg:static lg:z-auto
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
-        {/* Blob décoratif (maquette) */}
-        <div className="absolute rounded-full pointer-events-none" style={{ background: '#009DDB', width: 240, height: 240, top: -60, right: -120, opacity: 0.4, filter: 'blur(40px)' }} />
-        {/* Logo + collapse toggle */}
-        <div className="h-14 flex items-center justify-between px-3 border-b border-white/10 shrink-0">
+        {/* Logo + collapse toggle — Stripe-clean : white bg, signature Intralys gradient préservée uniquement sur le logo chip */}
+        <div className="h-14 flex items-center justify-between px-3 border-b border-[var(--border)] shrink-0">
           <div className="flex items-center gap-2.5 overflow-hidden">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 font-bold text-base relative"
+            {/* Sprint 39 39-3B — logo bump 32→36 + wordmark "Intralys" en t-h3 primary (Stripe Dashboard pattern) */}
+            <div className="w-9 h-9 rounded-md flex items-center justify-center shrink-0 font-bold text-[15px] text-white"
               style={{
                 background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
-                boxShadow: '0 4px 16px rgba(0,157,219,0.55), 0 0 24px rgba(217,110,39,0.3)',
-                color: 'white',
               }}>
               I
-              {/* Subtle pulse halo */}
-              <div className="absolute inset-0 rounded-xl pointer-events-none"
-                style={{ boxShadow: '0 0 0 2px rgba(0,157,219,0.2)', animation: 'hot-lead-pulse 3.5s ease-in-out infinite' }} />
             </div>
             {!collapsed && (
               <div className="overflow-hidden">
-                <h1 className="text-sm font-bold leading-tight text-white whitespace-nowrap tracking-tight">Intralys</h1>
-                <p className="text-[10px] uppercase tracking-[0.15em]" style={{ color: 'rgba(111,206,240,0.7)' }}>CRM</p>
+                <h1 className="text-[15px] font-bold leading-tight text-[var(--primary)] whitespace-nowrap tracking-tight">Intralys</h1>
+                <p className="text-[10px] uppercase tracking-[0.12em] text-[var(--text-muted)]">CRM</p>
               </div>
             )}
           </div>
           <button
             onClick={() => setCollapsed(!collapsed)}
-            className="hidden lg:flex p-1 rounded-[var(--radius-xs)] text-[var(--text-inverse-mut)] hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+            aria-label={collapsed ? 'Déplier la barre latérale' : 'Replier la barre latérale'}
+            aria-expanded={!collapsed}
+            className="hidden lg:inline-flex items-center justify-center h-7 w-7 rounded-md text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
           >
-            {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+            {collapsed ? <Icon as={ChevronRight} size={14} /> : <Icon as={ChevronLeft} size={14} />}
           </button>
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto py-2 px-3 space-y-0.5 relative z-10">
+        {/* Navigation — Stripe-clean : nav items sober, active = primary-soft bg + primary text + left border */}
+        <nav
+          data-tour-id="sidebar-nav"
+          aria-label="Navigation principale"
+          onKeyDown={handleNavKeyDown}
+          className="flex-1 overflow-y-auto py-3 px-2 space-y-px sidebar-scroll"
+        >
           {NAV_SECTIONS.map((section, si) => {
-            const items = section.items.filter(it => !it.adminOnly || isAdmin);
+            const items = section.items.filter(it =>
+              (!it.adminOnly || isAdmin) &&
+              // Sprint E1 M2.2 — gate par module : item masqué si le module
+              // requis n'est pas actif pour le tenant (e-commerce off ⇒ rien)
+              (!it.moduleRequired || activeModules.includes(it.moduleRequired)),
+            );
             if (items.length === 0) return null;
             return (
               <div key={si}>
                 {section.label && !collapsed && (
-                  <p className="px-3 pt-4 pb-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-inverse-mut)]">
-                    {section.label}
-                  </p>
+                  <div className="px-3 pt-5 pb-1.5">
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">
+                      {section.label}
+                    </span>
+                  </div>
                 )}
-                {section.label && collapsed && <div className="my-2 mx-2 border-t border-white/10" />}
+                {section.label && collapsed && (
+                  <div className="my-2 mx-3 h-px bg-[var(--border)]" />
+                )}
                 {items.map(item => {
                   const isActive = location.pathname === item.path ||
                     (item.path !== '/dashboard' && location.pathname.startsWith(item.path));
@@ -154,29 +248,50 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       to={item.path}
                       onClick={onClose}
                       title={collapsed ? item.label : undefined}
-                      className={`
-                        flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium
-                        transition-all duration-200 relative
-                        ${isActive ? '' : 'hover:bg-white/[0.05]'}
-                        ${collapsed ? 'justify-center' : ''}
-                      `}
-                      style={isActive ? {
-                        // Sprint 23 — gradient brand + glow visible
-                        background: 'linear-gradient(90deg, rgba(0,157,219,0.22) 0%, rgba(0,157,219,0.08) 100%)',
-                        color: '#6FCEF0',
-                        boxShadow: 'inset 0 0 0 1px rgba(0,157,219,0.25), 0 0 20px -4px rgba(0,157,219,0.4)',
-                      } : { color: 'rgba(255,255,255,0.85)' }}
+                      aria-current={isActive ? 'page' : undefined}
+                      className={`sidebar-nav-item group flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[13px] transition-colors relative cursor-pointer ${collapsed ? 'justify-center' : ''} ${
+                        isActive
+                          ? 'is-active bg-[var(--primary-soft)] text-[var(--primary)] font-semibold'
+                          : 'text-[var(--text-secondary)] font-medium hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+                      }`}
                     >
-                      {/* Barre latérale active glowing */}
-                      {isActive && (
-                        <div className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r"
-                          style={{
-                            background: 'linear-gradient(180deg, #009DDB 0%, #D96E27 100%)',
-                            boxShadow: '0 0 8px rgba(0,157,219,0.8), 2px 0 4px rgba(0,157,219,0.4)',
-                          }} />
+                      {/* Sprint 39 39-3B — border-left active state désormais géré via CSS .sidebar-nav-item.is-active (3px) */}
+                      {/* Icon inline — pas de chip, juste l'icône en gris-500 (ou primary si actif) */}
+                      <span
+                        aria-hidden
+                        className="inline-flex items-center justify-center shrink-0"
+                        style={{ color: isActive ? 'var(--primary)' : 'var(--text-muted)' }}
+                      >
+                        {item.icon}
+                      </span>
+                      {!collapsed && <span className="truncate flex-1">{item.label}</span>}
+                      {/* Sprint 39 39-3B — Count badge Stripe-PLUS : .sidebar-nav-item-badge gère variants is-active/hover via CSS */}
+                      {/* Sprint 40 40-3A — Live dot variant à droite du badge (pulse subtle color-coded par badgeKey) */}
+                      {!collapsed && item.badgeKey && badgeCounts[item.badgeKey] > 0 ? (
+                        <span className="sidebar-nav-item-badge-wrap shrink-0">
+                          <span className="sidebar-nav-item-badge">
+                            {badgeCounts[item.badgeKey] > 99 ? '99+' : badgeCounts[item.badgeKey]}
+                          </span>
+                          <span
+                            className="sidebar-nav-item-live-dot pulse-dot"
+                            style={{
+                              '--dot-color':
+                                item.badgeKey === 'leadsNew' ? 'var(--primary)' :
+                                item.badgeKey === 'tasksTodo' ? 'var(--warning)' :
+                                item.badgeKey === 'notifsUnread' ? 'var(--success)' :
+                                'var(--info)',
+                            } as CSSProperties}
+                            aria-hidden
+                          />
+                        </span>
+                      ) : null}
+                      {/* Mode collapsed : dot indicateur sober */}
+                      {item.badgeKey && badgeCounts[item.badgeKey] > 0 && collapsed && (
+                        <span
+                          aria-hidden
+                          className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-[var(--primary)] border border-[var(--bg-surface)]"
+                        />
                       )}
-                      <span className="shrink-0">{item.icon}</span>
-                      {!collapsed && <span className="truncate">{item.label}</span>}
                     </Link>
                   );
                 })}
@@ -184,42 +299,36 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 {section.label === 'WORKSPACE' && smartLists.length > 0 && (
                   <>
                     {!collapsed && (
-                      <p className="px-3 pt-3 pb-1 text-[9px] font-semibold uppercase tracking-wider text-[var(--text-inverse-mut)]/70">
-                        Vues sauvegardées
-                      </p>
+                      <div className="px-3 pt-4 pb-1.5">
+                        <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">
+                          Vues sauvegardées
+                        </span>
+                      </div>
                     )}
                     {smartLists.slice(0, 5).map(sl => {
                       const searchStr = typeof location.search === 'string' ? location.search : JSON.stringify(location.search || {});
                       const isActive = location.pathname === '/leads' && searchStr.includes(sl.id);
-                      // Sprint 21 fix : utiliser <a> simple plutôt que TanStack <Link> avec query string
-                      // (Link strict-typed n'accepte pas "/leads?smart=xxx", il faudrait `search={{smart}}`
-                      // mais Leads.tsx ne parse pas encore ce param — pour Sprint 22 ce lien est juste pour
-                      // pré-naviguer, le filtre actuel attend une intégration backend séparée)
                       return (
                         <a
                           key={sl.id}
                           href={`/leads?smart=${sl.id}`}
                           onClick={(e) => {
-                            // Cmd/Ctrl-click → laisser le browser ouvrir un nouvel onglet
                             if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
                             e.preventDefault();
                             onClose();
-                            // Pas de navigation TanStack ici (pas de typage strict des search params) ;
-                            // on utilise window.history pour préserver le SPA
                             window.history.pushState({}, '', `/leads?smart=${sl.id}`);
                             window.dispatchEvent(new PopStateEvent('popstate'));
                           }}
                           title={sl.name}
-                          className={`
-                            flex items-center gap-3 px-3 py-1.5 rounded-lg text-xs font-medium
-                            transition-all duration-[80ms] relative
-                            ${isActive ? 'text-[#6FCEF0]' : 'hover:bg-white/[0.05]'}
-                            ${collapsed ? 'justify-center' : ''}
-                          `}
-                          style={isActive ? { background: 'rgba(0,157,219,0.15)' } : { color: 'rgba(255,255,255,0.7)' }}
+                          aria-current={isActive ? 'page' : undefined}
+                          className={`sidebar-nav-item group flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[12px] transition-colors relative cursor-pointer ${collapsed ? 'justify-center' : ''} ${
+                            isActive
+                              ? 'is-active bg-[var(--primary-soft)] text-[var(--primary)] font-semibold'
+                              : 'text-[var(--text-secondary)] font-medium hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+                          }`}
                         >
-                          <Bookmark size={14} className="shrink-0" />
-                          {!collapsed && <span className="truncate">{sl.name}</span>}
+                          <Icon as={Bookmark} size={14} style={{ color: isActive ? 'var(--primary)' : 'var(--text-muted)' }} />
+                          {!collapsed && <span className="truncate flex-1">{sl.name}</span>}
                         </a>
                       );
                     })}
@@ -230,44 +339,35 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           })}
         </nav>
 
-        {/* Footer profil — Sprint 23 : carte premium avec gradient + glow */}
-        <div className="px-3 py-3 border-t border-white/5 shrink-0 relative z-10">
-          <div className={`flex items-center rounded-xl transition-all ${collapsed ? 'justify-center py-2' : 'gap-2.5 px-2 py-2'}`}
-            style={{
-              background: 'linear-gradient(135deg, rgba(0,157,219,0.12) 0%, rgba(217,110,39,0.08) 100%)',
-              border: '1px solid rgba(0,157,219,0.18)',
-              boxShadow: '0 0 16px -4px rgba(0,157,219,0.2)',
-            }}>
-            <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0 relative"
-              style={{
-                background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
-                color: 'white',
-                boxShadow: '0 4px 12px rgba(217,110,39,0.5), 0 0 8px rgba(0,157,219,0.4)',
-              }}>
+        {/* Sprint 45 M1.4 — Onboarding progress chip (auto-hide quand 5/5) */}
+        <div className={`px-2 ${collapsed ? 'flex justify-center' : ''}`}>
+          <OnboardingProgressChip collapsed={collapsed} />
+        </div>
+
+        {/* Footer profil — Stripe-clean : avatar sober + nom + caret/logout, no gradient */}
+        <div className="px-2 py-2 border-t border-[var(--border)] shrink-0">
+          <div className={`flex items-center rounded-md transition-colors hover:bg-[var(--bg-hover)] ${collapsed ? 'justify-center py-1.5' : 'gap-2 px-2 py-1.5'}`}>
+            <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-semibold shrink-0 relative bg-[var(--bg-subtle)] text-[var(--text-primary)] border border-[var(--border)]">
               {user?.name?.charAt(0)?.toUpperCase() || 'R'}{user?.name?.split(' ')[1]?.charAt(0)?.toUpperCase() || 'B'}
-              {/* Status dot online */}
-              <span aria-hidden className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2"
-                style={{
-                  background: 'var(--success)',
-                  borderColor: 'oklch(0.18 0.022 260)',
-                  boxShadow: '0 0 6px rgba(55,202,55,0.7)',
-                }} />
+              {/* Status dot online — sober */}
+              <span aria-hidden className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-[var(--success,#15803D)] border-2 border-[var(--bg-surface)]" />
             </div>
             {!collapsed && (
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-white truncate">{user?.name || 'Admin'}</p>
-                <p className="text-[10px] truncate" style={{ color: 'rgba(111,206,240,0.7)' }}>
-                  {isAdmin ? '★ Administrateur' : 'Utilisateur'}
+                <p className="text-xs font-medium text-[var(--text-primary)] truncate">{user?.name || 'Admin'}</p>
+                <p className="text-[10px] text-[var(--text-muted)] truncate">
+                  {isAdmin ? 'Administrateur' : 'Utilisateur'}
                 </p>
               </div>
             )}
             {!collapsed && (
               <button
                 onClick={logout}
-                className="p-1.5 rounded-lg text-[var(--text-inverse-mut)] hover:text-[var(--danger)] hover:bg-white/10 transition-colors cursor-pointer shrink-0"
+                className="inline-flex items-center justify-center h-7 w-7 rounded-md text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-[var(--bg-surface)] transition-colors cursor-pointer shrink-0"
                 title="Déconnexion"
+                aria-label="Se déconnecter"
               >
-                <LogOut size={14} />
+                <Icon as={LogOut} size={14} />
               </button>
             )}
           </div>

@@ -113,7 +113,7 @@ export function ForgotPasswordPage() {
         </div>
 
         <p className="text-center text-sm text-[var(--text-muted)] mt-8">
-          <Link to="/login" className="text-[var(--brand-primary)] hover:underline font-medium">
+          <Link to="/login" className="text-[var(--primary)] hover:underline font-medium">
             Retour à la connexion
           </Link>
         </p>

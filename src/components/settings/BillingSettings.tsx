@@ -1,73 +1,115 @@
-import { Card, Button, Badge } from '@/components/ui';
+// ── BillingSettings — Sprint 23 W32 : row-premium + DropdownMenu + KpiStrip
+import {
+  Card,
+  Button,
+  Tag,
+  KpiStrip,
+  DropdownMenu,
+  DropdownMenuItem,
+  Icon,
+} from '@/components/ui';
+import { CreditCard, DollarSign, Calendar, BarChart3, MoreVertical, Download, Mail } from 'lucide-react';
+
+const HISTORY = [
+  { id: 'inv-202605', date: '1 Mai 2026', amount: '99.00 $', status: 'Payé' },
+  { id: 'inv-202604', date: '1 Avril 2026', amount: '99.00 $', status: 'Payé' },
+  { id: 'inv-202603', date: '1 Mars 2026', amount: '99.00 $', status: 'Payé' },
+];
 
 export function BillingSettings() {
   return (
     <div className="space-y-6">
-      <Card className="p-5">
-        <div className="flex justify-between items-start mb-6">
+      <KpiStrip
+        items={[
+          { label: 'Plan actuel', value: 'Pro', color: 'brand', icon: <CreditCard size={12} /> },
+          { label: 'MRR', value: '99 $', color: 'success', icon: <DollarSign size={12} /> },
+          { label: 'Prochaine facture', value: '1 Juin', color: 'info', icon: <Calendar size={12} /> },
+          { label: 'Usage emails', value: '84%', color: 'warning', icon: <BarChart3 size={12} /> },
+        ]}
+      />
+
+      <Card className="settings-card p-6">
+        <header className="settings-section-header settings-section-header--with-action">
           <div>
-            <h3 className="text-base font-semibold">Plan Actuel</h3>
-            <p className="text-sm text-[var(--text-muted)]">Votre abonnement mensuel Intralys</p>
+            <h3 className="t-h3">Plan actuel</h3>
+            <p className="t-caption text-[var(--gray-500)]">Ton abonnement mensuel Intralys.</p>
           </div>
-          <Badge color="var(--brand-primary)">Pro (99$/mois)</Badge>
+          <Tag variant="brand" size="sm">Pro · 99$/mois</Tag>
+        </header>
+
+        <div className="settings-usage-grid">
+          <div className="settings-usage-meter">
+            <p className="settings-usage-meter__label">Contacts</p>
+            <p className="settings-usage-meter__value">
+              1 245 <span className="settings-usage-meter__quota">/ 5 000</span>
+            </p>
+            <div className="settings-usage-meter__bar">
+              <div className="settings-usage-meter__bar-fill settings-usage-meter__bar-fill--primary" style={{ width: '25%' }} />
+            </div>
+          </div>
+          <div className="settings-usage-meter">
+            <p className="settings-usage-meter__label">Courriels envoyés (mois)</p>
+            <p className="settings-usage-meter__value">
+              8 430 <span className="settings-usage-meter__quota">/ 10 000</span>
+            </p>
+            <div className="settings-usage-meter__bar">
+              <div className="settings-usage-meter__bar-fill settings-usage-meter__bar-fill--warning" style={{ width: '84%' }} />
+            </div>
+          </div>
+          <div className="settings-usage-meter">
+            <p className="settings-usage-meter__label">SMS envoyés (mois)</p>
+            <p className="settings-usage-meter__value">
+              142 <span className="settings-usage-meter__quota">/ 500</span>
+            </p>
+            <div className="settings-usage-meter__bar">
+              <div className="settings-usage-meter__bar-fill settings-usage-meter__bar-fill--info" style={{ width: '28%' }} />
+            </div>
+          </div>
         </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="p-4 bg-[var(--bg-subtle)] rounded-lg">
-            <p className="text-xs text-[var(--text-muted)] mb-1">Contacts</p>
-            <p className="text-xl font-bold">1,245 <span className="text-sm font-normal text-[var(--text-muted)]">/ 5,000</span></p>
-            <div className="w-full bg-[var(--border-subtle)] h-1.5 rounded-full mt-2 overflow-hidden">
-              <div className="bg-[var(--brand-primary)] h-full" style={{ width: '25%' }}></div>
-            </div>
-          </div>
-          <div className="p-4 bg-[var(--bg-subtle)] rounded-lg">
-            <p className="text-xs text-[var(--text-muted)] mb-1">Emails envoyés (Mois)</p>
-            <p className="text-xl font-bold">8,430 <span className="text-sm font-normal text-[var(--text-muted)]">/ 10,000</span></p>
-            <div className="w-full bg-[var(--border-subtle)] h-1.5 rounded-full mt-2 overflow-hidden">
-              <div className="bg-[var(--warning)] h-full" style={{ width: '84%' }}></div>
-            </div>
-          </div>
-          <div className="p-4 bg-[var(--bg-subtle)] rounded-lg">
-            <p className="text-xs text-[var(--text-muted)] mb-1">SMS envoyés (Mois)</p>
-            <p className="text-xl font-bold">142 <span className="text-sm font-normal text-[var(--text-muted)]">/ 500</span></p>
-            <div className="w-full bg-[var(--border-subtle)] h-1.5 rounded-full mt-2 overflow-hidden">
-              <div className="bg-[var(--info)] h-full" style={{ width: '28%' }}></div>
-            </div>
-          </div>
-        </div>
-        
-        <div className="flex justify-end gap-3">
+
+        <div className="settings-actions">
           <Button variant="secondary">Gérer via Stripe</Button>
           <Button>Mettre à niveau</Button>
         </div>
       </Card>
 
-      <Card className="p-5">
-        <h3 className="text-base font-semibold mb-4">Historique de facturation</h3>
-        <table className="w-full text-sm text-left">
-          <thead className="text-xs text-[var(--text-muted)] border-b border-[var(--border-subtle)]">
-            <tr>
-              <th className="py-2">Date</th>
-              <th className="py-2">Montant</th>
-              <th className="py-2">Statut</th>
-              <th className="py-2 text-right">Facture</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[var(--border-subtle)]">
-            <tr>
-              <td className="py-3">1 Mai 2026</td>
-              <td className="py-3">99.00 $</td>
-              <td className="py-3"><Badge color="var(--success)">Payé</Badge></td>
-              <td className="py-3 text-right"><Button variant="ghost" className="h-6 px-2 text-xs">PDF</Button></td>
-            </tr>
-            <tr>
-              <td className="py-3">1 Avril 2026</td>
-              <td className="py-3">99.00 $</td>
-              <td className="py-3"><Badge color="var(--success)">Payé</Badge></td>
-              <td className="py-3 text-right"><Button variant="ghost" className="h-6 px-2 text-xs">PDF</Button></td>
-            </tr>
-          </tbody>
-        </table>
+      <Card className="settings-card p-6">
+        <header className="settings-section-header">
+          <h3 className="t-h3">Historique de facturation</h3>
+          <p className="t-caption text-[var(--gray-500)]">Les 12 derniers mois.</p>
+        </header>
+        <div className="space-y-2.5">
+          {HISTORY.map((inv, idx) => (
+            <div
+              key={inv.id}
+              className="row-premium list-item-enter flex items-center gap-3 p-3 rounded-xl"
+              style={{ animationDelay: `${idx * 40}ms`, animationFillMode: 'both' }}
+            >
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-[var(--text-primary)]">{inv.date}</p>
+                <p className="text-[11px] text-[var(--text-muted)] font-mono">#{inv.id}</p>
+              </div>
+              <div className="font-mono text-sm font-bold tabular-nums text-[var(--text-primary)] min-w-[80px] text-right">
+                {inv.amount}
+              </div>
+              <Tag color="var(--success)" size="sm">{inv.status}</Tag>
+              <DropdownMenu
+                trigger={
+                  <button
+                    type="button"
+                    className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--primary)] hover:bg-[var(--bg-subtle)] transition-colors cursor-pointer"
+                    aria-label="Actions"
+                  >
+                    <Icon as={MoreVertical} size={16} />
+                  </button>
+                }
+              >
+                <DropdownMenuItem leftIcon={<Icon as={Download} size={14} />}>Télécharger PDF</DropdownMenuItem>
+                <DropdownMenuItem leftIcon={<Icon as={Mail} size={14} />}>Envoyer par email</DropdownMenuItem>
+              </DropdownMenu>
+            </div>
+          ))}
+        </div>
       </Card>
     </div>
   );

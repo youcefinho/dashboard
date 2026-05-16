@@ -3,7 +3,7 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { useAuth } from '@/lib/auth';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, EmptyState, Skeleton, Badge, PageHero } from '@/components/ui';
+import { Card, Button, EmptyState, Skeleton, PageHero, KpiStrip, Icon, type KpiItem, Tag } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { getClients, createClient } from '@/lib/api';
@@ -65,6 +65,14 @@ export function AgenciesPage() {
   const mrr = clients.length * 297; // Exemple : 297$/mois par sous-compte
   const totalLeads = clients.length * 145; // Mock
 
+  // KPI strip — Sprint 23 wave 27 (migration depuis cards inline + AnimatedNumber)
+  const kpiItems: KpiItem[] = [
+    { label: 'Sous-comptes actifs', value: clients.length, icon: <Building size={11} />, color: 'brand' },
+    { label: 'MRR estimé', value: `${mrr.toLocaleString('fr-CA')} $`, icon: <DollarSign size={11} />, color: 'success' },
+    { label: 'Volume leads', value: totalLeads, icon: <Activity size={11} />, color: 'info' },
+    { label: 'Snapshots', value: 1, icon: <Package size={11} />, color: 'accent' },
+  ];
+
   return (
     <AppLayout title="Vue Agence (Master View)">
       <PageHero
@@ -72,43 +80,52 @@ export function AgenciesPage() {
         title="Vue Agence"
         highlight="Agence"
         description="Gérez tous vos sous-comptes clients depuis un seul endroit."
-        actions={<Button variant="premium" onClick={() => setShowAdd(true)} leftIcon={<Plus size={14} />}>Créer un sous-compte</Button>}
+        actions={<Button variant="premium" onClick={() => setShowAdd(true)} leftIcon={<Icon as={Plus} size="sm" />}>Créer un sous-compte</Button>}
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <Card className="p-5">
-          <div className="flex items-center gap-3 mb-2 text-[var(--text-muted)]">
-            <Building size={16} /> <h3 className="text-sm font-semibold">Sous-comptes Actifs</h3>
-          </div>
-          <p className="text-3xl font-bold text-[var(--text-primary)]">{clients.length}</p>
-        </Card>
-        <Card className="p-5">
-          <div className="flex items-center gap-3 mb-2 text-[var(--success)]">
-            <DollarSign size={16} /> <h3 className="text-sm font-semibold">MRR Estimé</h3>
-          </div>
-          <p className="text-3xl font-bold text-[var(--text-primary)]">{mrr.toLocaleString('fr-CA')} $</p>
-        </Card>
-        <Card className="p-5">
-          <div className="flex items-center gap-3 mb-2 text-[var(--brand-primary)]">
-            <Activity size={16} /> <h3 className="text-sm font-semibold">Volume Global (Leads)</h3>
-          </div>
-          <p className="text-3xl font-bold text-[var(--text-primary)]">{totalLeads.toLocaleString('fr-CA')}</p>
-        </Card>
-      </div>
+      <KpiStrip items={kpiItems} />
 
       {isLoading ? (
-        <Card><Skeleton className="h-40 w-full" /></Card>
+        <Card className="p-0 overflow-hidden">
+          <div className="p-4 border-b border-[var(--border-subtle)] bg-[var(--bg-subtle)] flex items-center justify-between">
+            <Skeleton className="h-4 w-48 rounded" />
+            <Skeleton className="h-8 w-16 rounded" />
+          </div>
+          <div className="px-4 py-3 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] flex items-center gap-6">
+            {[1,2,3,4,5].map(i => (
+              <Skeleton key={i} className="h-3 w-20 rounded" />
+            ))}
+          </div>
+          <div className="divide-y divide-[var(--border-subtle)]">
+            {[1,2,3,4,5].map(i => (
+              <div key={i} className="flex items-center gap-4 px-4 py-3">
+                <div className="flex items-center gap-3 flex-1">
+                  <Skeleton className="h-8 w-8 rounded-md shrink-0" />
+                  <div className="space-y-1.5">
+                    <Skeleton className="h-3.5 w-32 rounded" />
+                    <Skeleton className="h-2.5 w-40 rounded" />
+                  </div>
+                </div>
+                <Skeleton className="h-3 w-20 rounded shrink-0" />
+                <Skeleton className="h-5 w-12 rounded-full shrink-0" />
+                <Skeleton className="h-3 w-20 rounded shrink-0" />
+                <Skeleton className="h-7 w-20 rounded shrink-0" />
+              </div>
+            ))}
+          </div>
+        </Card>
       ) : clients.length === 0 ? (
         <EmptyState
-          title="Aucun sous-compte"
-          description="Créez votre premier sous-compte client pour commencer."
-          action={<Button onClick={() => setShowAdd(true)}>Créer un sous-compte</Button>}
+          variant="first-time"
+          title="Aucun sous-compte encore"
+          description="Crée ton premier sous-compte client pour commencer à gérer ton agence."
+          action={<Button variant="primary" onClick={() => setShowAdd(true)}>Créer mon premier sous-compte</Button>}
         />
       ) : (
         <div className="space-y-6">
           <Card className="p-0 overflow-hidden">
             <div className="p-4 border-b border-[var(--border-subtle)] bg-[var(--bg-subtle)] flex justify-between items-center">
-              <h3 className="font-semibold text-sm flex items-center gap-2"><Building size={16} className="text-[var(--text-muted)]" /> Liste des Sous-comptes</h3>
+              <h3 className="font-semibold text-sm flex items-center gap-2"><Icon as={Building} size="md" className="text-[var(--text-muted)]" /> Liste des Sous-comptes</h3>
               <div className="flex gap-2">
                 <Button variant="secondary" className="text-xs py-1 h-8">Filtrer</Button>
               </div>
@@ -125,11 +142,11 @@ export function AgenciesPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border-subtle)]">
-                  {clients.map(client => (
-                    <tr key={client.id} className="hover:bg-[var(--bg-subtle)] group">
+                  {clients.map((client, idx) => (
+                    <tr key={client.id} className="row-premium list-item-enter group" style={{ animationDelay: `${idx * 30}ms` }}>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-md bg-gradient-to-br from-[var(--brand-primary)] to-[var(--brand-tint)] flex items-center justify-center text-white font-bold text-xs">
+                          <div className="w-8 h-8 rounded-md bg-gradient-to-br from-[var(--primary)] to-[var(--brand-tint)] flex items-center justify-center text-white font-bold text-xs">
                             {client.name.substring(0,2).toUpperCase()}
                           </div>
                           <div>
@@ -142,7 +159,7 @@ export function AgenciesPage() {
                         {client.id.substring(0, 8)}...
                       </td>
                       <td className="px-4 py-3">
-                        <Badge color="var(--success)">Pro</Badge>
+                        <Tag dot variant="success" size="xs">Pro</Tag>
                       </td>
                       <td className="px-4 py-3 text-xs text-[var(--text-secondary)]">
                         {new Date(client.created_at).toLocaleDateString()}
@@ -161,10 +178,10 @@ export function AgenciesPage() {
 
           {/* Section Snapshots */}
           <div className="mt-8">
-            <h2 className="text-lg font-bold mb-4 flex items-center gap-2"><Package size={18} className="text-[var(--brand-primary)]" /> Gestion des Snapshots</h2>
+            <h2 className="text-lg font-bold mb-4 flex items-center gap-2"><Icon as={Package} size={18} className="text-[var(--primary)]" /> Gestion des Snapshots</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Card className="p-5 border-dashed border-2 hover:border-[var(--brand-primary)] cursor-pointer transition-colors flex flex-col items-center justify-center text-center">
-                <div className="w-12 h-12 bg-[var(--brand-tint)] text-[var(--brand-primary)] rounded-full flex items-center justify-center mb-3">
+              <Card className="p-5 border-dashed border-2 hover:border-[var(--primary)] cursor-pointer transition-colors flex flex-col items-center justify-center text-center">
+                <div className="w-12 h-12 bg-[var(--brand-tint)] text-[var(--primary)] rounded-full flex items-center justify-center mb-3">
                   <Copy size={24} />
                 </div>
                 <h3 className="font-semibold mb-1">Créer un nouveau Snapshot</h3>
@@ -174,7 +191,7 @@ export function AgenciesPage() {
               <Card className="p-5">
                 <div className="flex justify-between items-start mb-3">
                   <h3 className="font-semibold flex items-center gap-2"><Package size={16} className="text-[var(--info)]" /> Courtier Immobilier V2</h3>
-                  <Badge color="var(--info)">Standard</Badge>
+                  <Tag dot variant="info" size="xs">Standard</Tag>
                 </div>
                 <p className="text-xs text-[var(--text-muted)] mb-4">Snapshot optimisé pour la génération de leads immobiliers avec 3 workflows inclus.</p>
                 <div className="flex gap-2">

@@ -1,24 +1,50 @@
-﻿import { useState, useEffect, useCallback, useMemo } from 'react';
+// ── Calendar page — Sprint 41 M2 refonte Stripe (2026-05-15) ────────────────
+// Refonte complète paradigme Stripe Dashboard : subtle, monochromatique,
+// shadows noir 5-10 %, AUCUN orb, AUCUN gradient brand massif, AUCUN glow.
+//
+// Préserve 100 % la logique métier + le hook drag-resize Sprint 31 (snap 15min
+// + haptic). API publique inchangée.
+//
+// Architecture des views :
+//   - cal-toolbar (sticky header haut : nav prev/next/today + pill switcher + date range)
+//   - cal-grid (week | day : 7/1 colonnes timeline 7h-21h, today live-line)
+//   - cal-month-grid (6 × 7 cells)
+//   - cal-agenda (liste verticale chronologique)
+//   - cal-minical (sidebar 7×6 grid 28px)
+//   - cal-event-panel (SlidePanel droite — détail event)
+//   - cal-empty-overlay (center overlay si pas d'events visibles)
+
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Badge, Skeleton, EmptyState, useToast, PageHero } from '@/components/ui';
+import { Card, Button, Tag, Skeleton, useToast, SlidePanel, Switch, Icon, EmptyStateIllustration } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { getAppointments, createAppointment, updateAppointment, rescheduleAppointment, getCalendars, getClients, sendAppointmentReminderNow, type Calendar as CalType } from '@/lib/api';
 import type { Appointment, AppointmentType, AppointmentStatus, Client } from '@/lib/types';
-import { APPOINTMENT_TYPE_LABELS, APPOINTMENT_TYPE_ICONS, APPOINTMENT_TYPE_COLORS, APPOINTMENT_STATUS_LABELS, APPOINTMENT_TYPES } from '@/lib/types';
-import { ChevronLeft, ChevronRight, CalendarDays, Clock, MapPin, User, Plus, Check, X, BellRing, ExternalLink } from 'lucide-react';
+import { APPOINTMENT_TYPE_LABELS, APPOINTMENT_STATUS_LABELS, APPOINTMENT_TYPES } from '@/lib/types';
+import { ChevronLeft, ChevronRight, CalendarDays, Clock, MapPin, User, Plus, Check, X, BellRing, ExternalLink, ChevronsUpDown, Copy, Trash2 } from 'lucide-react';
 import { DndContext, useDraggable, useDroppable, DragEndEvent, pointerWithin } from '@dnd-kit/core';
+import { useHaptic } from '@/hooks/useHaptic';
+import { useShortcuts } from '@/hooks/useShortcuts';
+import { announceSR } from '@/lib/announce';
+import { useAppointmentHoverPreview } from '@/components/panels/AppointmentHoverPreview';
+// Sprint 48 M3.2 — Intl date/time formatters
+import { formatDate, formatTime } from '@/lib/i18n/datetime';
+import { formatDateInTimezone, getStoredTimezone } from '@/lib/i18n/timezone';
+import { getLocale } from '@/lib/i18n';
+// Sprint 44 M3.3 — Pull-to-refresh
+import { usePullToRefresh } from '@/hooks/usePullToRefresh';
+import { PullToRefreshIndicator } from '@/components/ui/PullToRefreshIndicator';
 
 type ViewMode = 'day' | 'week' | 'month' | 'agenda';
 
-// --- DnD Components ---
-function DraggableEvent({ appointment, children }: { appointment: Appointment, children: React.ReactNode }) {
+// ── DnD components ────────────────────────────────────────────────────────
+function DraggableEvent({ appointment, children }: { appointment: Appointment; children: React.ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: appointment.id,
-    data: { appointment }
+    data: { appointment },
   });
-  const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: 10, opacity: isDragging ? 0.8 : 1 } : undefined;
-  
+  const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: 10, opacity: isDragging ? 0.5 : 1 } : undefined;
   return (
     <div ref={setNodeRef} style={style} {...listeners} {...attributes} className="cursor-move">
       {children}
@@ -26,37 +52,89 @@ function DraggableEvent({ appointment, children }: { appointment: Appointment, c
   );
 }
 
-function DroppableSlot({ id, date, hour, children, className }: { id: string, date: string, hour?: number, children?: React.ReactNode, className?: string }) {
-  const { setNodeRef, isOver } = useDroppable({
-    id,
-    data: { date, hour }
-  });
+function DroppableSlot({ id, date, hour, children, className }: { id: string; date: string; hour?: number; children?: React.ReactNode; className?: string }) {
+  const { setNodeRef, isOver } = useDroppable({ id, data: { date, hour } });
   return (
-    <div ref={setNodeRef} className={`${className || ''} ${isOver ? 'bg-[var(--brand-tint)]/50 ring-2 ring-[var(--brand-primary)] ring-inset' : ''}`}>
+    <div ref={setNodeRef} className={`${className || ''} ${isOver ? 'cal-slot-over' : ''}`}>
       {children}
     </div>
   );
 }
-// ----------------------
+
+function AppointmentHoverWrap({ appointment, children }: { appointment: Appointment; children: React.ReactNode }) {
+  const hp = useAppointmentHoverPreview({ appointment });
+  return (
+    <span onMouseEnter={hp.onMouseEnter} onMouseLeave={hp.onMouseLeave} className="contents">
+      {hp.preview}
+      {children}
+    </span>
+  );
+}
+
+// ── Resize state (Sprint 31 preserved verbatim) ───────────────────────────
+type ResizeMode = 'top' | 'bottom';
+interface ResizingState {
+  apptId: string;
+  mode: ResizeMode;
+  baseStartMs: number;
+  baseEndMs: number;
+  startY: number;
+  previewStartMs: number;
+  previewEndMs: number;
+}
+
+const HOUR_PX = 64;
+const SNAP_MIN = 15;
+const MIN_DURATION_MIN = 15;
+const MAX_DURATION_MIN = 8 * 60;
+
+// ── Variant mapping Appointment type → Tag variant (Stripe palette) ──────
+function typeToVariant(t: AppointmentType): 'brand' | 'success' | 'warning' | 'danger' | 'info' | 'neutral' | 'accent' {
+  switch (t) {
+    case 'meeting':   return 'brand';
+    case 'call':      return 'info';
+    case 'visit':     return 'success';
+    case 'signing':   return 'accent';
+    case 'followup':  return 'warning';
+    default:          return 'neutral';
+  }
+}
+function statusToVariant(s: AppointmentStatus): 'success' | 'danger' | 'warning' | 'info' {
+  if (s === 'confirmed') return 'success';
+  if (s === 'cancelled') return 'danger';
+  if (s === 'completed') return 'info';
+  return 'warning';
+}
 
 export function CalendarPage() {
-  const { success, error: toastError } = useToast();
+  const { success, error: toastError, info, warning } = useToast();
+  const haptic = useHaptic();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [calendars, setCalendars] = useState<CalType[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  
-  const [viewMode, setViewMode] = useState<ViewMode>(() => typeof window !== 'undefined' && window.innerWidth < 768 ? 'day' : 'month');
-  const [currentDate, setCurrentDate] = useState(new Date());
-  
-  // Sidebar Filters
-  const [selectedCalendars, setSelectedCalendars] = useState<Set<string>>(new Set());
-  
-  // Modals
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [showDetailModal, setShowDetailModal] = useState<Appointment | null>(null);
 
-  // Form State
+  const [resizing, setResizing] = useState<ResizingState | null>(null);
+  const resizingRef = useRef<ResizingState | null>(null);
+  resizingRef.current = resizing;
+  const lastSnapMinRef = useRef<number | null>(null);
+
+  const [viewMode, setViewMode] = useState<ViewMode>(() => typeof window !== 'undefined' && window.innerWidth < 768 ? 'day' : 'week');
+  const [currentDate, setCurrentDate] = useState(new Date());
+
+  const [selectedCalendars, setSelectedCalendars] = useState<Set<string>>(new Set());
+
+  // Live now tick — refresh today live-line position every 60s
+  const [nowTick, setNowTick] = useState<Date>(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNowTick(new Date()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [detailAppt, setDetailAppt] = useState<Appointment | null>(null);
+
+  // Form state
   const [formTitle, setFormTitle] = useState('');
   const [formDescription, setFormDescription] = useState('');
   const [formDate, setFormDate] = useState('');
@@ -96,7 +174,6 @@ export function CalendarPage() {
 
   useEffect(() => { void load(); }, [load]);
 
-  // Derived
   const filteredAppointments = useMemo(() => {
     return appointments.filter(a => !a.calendar_id || selectedCalendars.has(a.calendar_id));
   }, [appointments, selectedCalendars]);
@@ -118,7 +195,8 @@ export function CalendarPage() {
     return z.toISOString().slice(0, 10);
   };
   const apptsFor = (d: Date) => filteredAppointments.filter(a => a.start_time.slice(0, 10) === dayStr(d));
-  const fmtTime = (s: string) => new Date(s + (s.endsWith('Z') ? '' : 'Z')).toLocaleTimeString('fr-CA', { hour: '2-digit', minute: '2-digit', hour12: false });
+  // Sprint 48 M3.2/M3.4 — display dans le TZ user, locale active
+  const fmtTime = (s: string) => formatDateInTimezone(new Date(s + (s.endsWith('Z') ? '' : 'Z')), getStoredTimezone(), getLocale(), { hour: '2-digit', minute: '2-digit', hour12: false });
 
   const getWeekDays = (): Date[] => {
     const s = new Date(currentDate);
@@ -128,7 +206,7 @@ export function CalendarPage() {
 
   const getMonthDays = (): Date[] => {
     const first = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-    const startDay = first.getDay() || 7; 
+    const startDay = first.getDay() || 7;
     const start = new Date(first);
     start.setDate(start.getDate() - (startDay - 1));
     return Array.from({ length: 42 }, (_, i) => { const d = new Date(start); d.setDate(d.getDate() + i); return d; });
@@ -137,8 +215,8 @@ export function CalendarPage() {
   const handleCreate = async () => {
     if (!formTitle || !formDate || !formClientId) return;
     setIsSaving(true);
-    let rrule = formRecurring === 'none' ? null : `FREQ=${formRecurring.toUpperCase()}`;
-    await createAppointment({
+    const rrule = formRecurring === 'none' ? null : `FREQ=${formRecurring.toUpperCase()}`;
+    const res = await createAppointment({
       title: formTitle,
       description: formDescription,
       start_time: `${formDate}T${formTimeStart}:00`,
@@ -153,6 +231,12 @@ export function CalendarPage() {
     setIsSaving(false); setShowAddModal(false);
     setFormTitle(''); setFormDescription(''); setFormDate(''); setFormLocation(''); setFormRecurring('none');
     void load();
+    // Sprint 41 M3.3 — Toast création
+    if (res?.error) {
+      toastError('Échec de la création de l\'événement');
+    } else {
+      success('Événement créé');
+    }
   };
 
   const handleDragEnd = async (event: DragEndEvent) => {
@@ -161,30 +245,139 @@ export function CalendarPage() {
     const appt = active.data.current?.appointment as Appointment;
     const dropDate = over.data.current?.date as string;
     const dropHour = over.data.current?.hour as number | undefined;
-    
     if (!appt || !dropDate) return;
-
     const oldStart = new Date(appt.start_time + (appt.start_time.endsWith('Z') ? '' : 'Z'));
     const oldEnd = new Date(appt.end_time + (appt.end_time.endsWith('Z') ? '' : 'Z'));
     const durationMs = oldEnd.getTime() - oldStart.getTime();
-
-    let newStart = new Date(`${dropDate}T${oldStart.toLocaleTimeString('en-GB', {hour12: false})}`);
+    let newStart = new Date(`${dropDate}T${oldStart.toLocaleTimeString('en-GB', { hour12: false })}`);
     if (dropHour !== undefined) {
       newStart = new Date(`${dropDate}T${String(dropHour).padStart(2, '0')}:00:00`);
     }
     const newEnd = new Date(newStart.getTime() + durationMs);
-
-    // Optimistic UI Update
     setAppointments(prev => prev.map(a => a.id === appt.id ? { ...a, start_time: newStart.toISOString(), end_time: newEnd.toISOString() } : a));
-    
-    await rescheduleAppointment(appt.id, newStart.toISOString(), newEnd.toISOString());
+    const res = await rescheduleAppointment(appt.id, newStart.toISOString(), newEnd.toISOString());
     void load();
+    // Sprint 41 M3.3 — Toast déplacement
+    if (res?.error) {
+      toastError('Échec du déplacement');
+    } else {
+      info('Événement déplacé');
+    }
   };
 
-  const changeStatus = async (id: string, status: AppointmentStatus) => { 
-    await updateAppointment(id, { status }); 
-    if (showDetailModal?.id === id) setShowDetailModal(prev => prev ? { ...prev, status } : null);
-    void load(); 
+  // ── Resize handlers (Sprint 31 31-3B preserved) ──
+  const startResize = useCallback((e: React.MouseEvent, appt: Appointment, mode: ResizeMode) => {
+    if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(pointer: coarse)').matches) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const baseStart = new Date(appt.start_time + (appt.start_time.endsWith('Z') ? '' : 'Z'));
+    const baseEnd = new Date(appt.end_time + (appt.end_time.endsWith('Z') ? '' : 'Z'));
+    setResizing({
+      apptId: appt.id,
+      mode,
+      baseStartMs: baseStart.getTime(),
+      baseEndMs: baseEnd.getTime(),
+      startY: e.clientY,
+      previewStartMs: baseStart.getTime(),
+      previewEndMs: baseEnd.getTime(),
+    });
+    lastSnapMinRef.current = null;
+  }, []);
+
+  useEffect(() => {
+    if (!resizing) return;
+    const onMove = (e: MouseEvent) => {
+      const r = resizingRef.current;
+      if (!r) return;
+      const deltaY = e.clientY - r.startY;
+      const deltaMin = Math.round((deltaY * 60) / HOUR_PX);
+      const snappedDeltaMin = Math.round(deltaMin / SNAP_MIN) * SNAP_MIN;
+      let nextStartMs = r.baseStartMs;
+      let nextEndMs = r.baseEndMs;
+      if (r.mode === 'bottom') {
+        nextEndMs = r.baseEndMs + snappedDeltaMin * 60_000;
+      } else {
+        nextStartMs = r.baseStartMs + snappedDeltaMin * 60_000;
+      }
+      const durMin = (nextEndMs - nextStartMs) / 60_000;
+      if (durMin < MIN_DURATION_MIN) {
+        if (r.mode === 'bottom') nextEndMs = nextStartMs + MIN_DURATION_MIN * 60_000;
+        else nextStartMs = nextEndMs - MIN_DURATION_MIN * 60_000;
+      }
+      if (durMin > MAX_DURATION_MIN) {
+        if (r.mode === 'bottom') nextEndMs = nextStartMs + MAX_DURATION_MIN * 60_000;
+        else nextStartMs = nextEndMs - MAX_DURATION_MIN * 60_000;
+      }
+      if (lastSnapMinRef.current !== snappedDeltaMin) {
+        lastSnapMinRef.current = snappedDeltaMin;
+        haptic.vibrate('medium');
+      }
+      setResizing({ ...r, previewStartMs: nextStartMs, previewEndMs: nextEndMs });
+    };
+    const onUp = async () => {
+      const r = resizingRef.current;
+      if (!r) return;
+      const hasChange = r.previewStartMs !== r.baseStartMs || r.previewEndMs !== r.baseEndMs;
+      setResizing(null);
+      lastSnapMinRef.current = null;
+      if (!hasChange) return;
+      const newStart = new Date(r.previewStartMs).toISOString();
+      const newEnd = new Date(r.previewEndMs).toISOString();
+      setAppointments(prev => prev.map(a => a.id === r.apptId ? { ...a, start_time: newStart, end_time: newEnd } : a));
+      haptic.vibrate('success');
+      try {
+        const res = await rescheduleAppointment(r.apptId, newStart, newEnd);
+        if (res.error) {
+          toastError('Échec de la mise à jour');
+          void load();
+        }
+      } catch {
+        toastError('Échec de la mise à jour');
+        void load();
+      }
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'ns-resize';
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resizing?.apptId]);
+
+  const getResizedTimes = (appt: Appointment): { startMs: number; endMs: number; isResizing: boolean } => {
+    const r = resizing;
+    if (r && r.apptId === appt.id) {
+      return { startMs: r.previewStartMs, endMs: r.previewEndMs, isResizing: true };
+    }
+    const s = new Date(appt.start_time + (appt.start_time.endsWith('Z') ? '' : 'Z'));
+    const e = new Date(appt.end_time + (appt.end_time.endsWith('Z') ? '' : 'Z'));
+    return { startMs: s.getTime(), endMs: e.getTime(), isResizing: false };
+  };
+
+  const changeStatus = async (id: string, status: AppointmentStatus) => {
+    // Capture l'ancien statut pour permettre undo
+    const prevAppt = appointments.find(a => a.id === id);
+    const prevStatus = prevAppt?.status;
+    await updateAppointment(id, { status });
+    if (detailAppt?.id === id) setDetailAppt(prev => prev ? { ...prev, status } : null);
+    void load();
+    // Sprint 41 M3.3 — Toast feedback selon transition
+    if (status === 'cancelled') {
+      warning('Événement annulé', prevStatus && prevStatus !== 'cancelled' ? {
+        action: {
+          label: 'Annuler',
+          onClick: () => { void updateAppointment(id, { status: prevStatus }); void load(); },
+        },
+        duration: 5000,
+      } : undefined);
+    } else if (status === 'confirmed') {
+      success('Événement confirmé');
+    }
   };
 
   const sendReminder = async (id: string) => {
@@ -193,261 +386,634 @@ export function CalendarPage() {
     else success('Rappel envoyé');
   };
 
-  const hours = Array.from({ length: 15 }, (_, i) => i + 7); // 7h-21h
+  const handleDuplicate = async (appt: Appointment) => {
+    const start = new Date(appt.start_time + (appt.start_time.endsWith('Z') ? '' : 'Z'));
+    const end = new Date(appt.end_time + (appt.end_time.endsWith('Z') ? '' : 'Z'));
+    start.setDate(start.getDate() + 1);
+    end.setDate(end.getDate() + 1);
+    await createAppointment({
+      title: `${appt.title} (copie)`,
+      description: appt.description ?? '',
+      start_time: start.toISOString(),
+      end_time: end.toISOString(),
+      location: appt.location ?? '',
+      type: appt.type,
+      calendar_id: appt.calendar_id ?? '',
+      recurring_rule: null,
+      reminder_minutes: 60,
+      client_id: appt.client_id ?? clients[0]?.id ?? '',
+    });
+    // Sprint 41 M3.3 — Toast dupliqué
+    success('Événement dupliqué');
+    setDetailAppt(null);
+    void load();
+  };
+
+  // ── Sprint 41 M3.1 — Keyboard shortcuts (Google Calendar-style) ───────────
+  // t : today · n : new event · w/d/m : switch view · ←/→ : prev/next period
+  // Escape : close detail panel
+  useShortcuts({
+    't': () => goToday(),
+    'n': () => {
+      setFormDate(dayStr(currentDate));
+      setShowAddModal(true);
+    },
+    'w': () => setViewMode('week'),
+    'd': () => setViewMode('day'),
+    'm': () => setViewMode('month'),
+    'ArrowLeft': () => navigate(-1),
+    'ArrowRight': () => navigate(1),
+    'Escape': () => {
+      if (detailAppt) { setDetailAppt(null); return; }
+      if (showAddModal) { setShowAddModal(false); return; }
+    },
+  });
+
+  // Sprint 41 M3.4 — announce SR changement de view
+  useEffect(() => {
+    const label = viewMode === 'day' ? 'jour' : viewMode === 'week' ? 'semaine' : viewMode === 'month' ? 'mois' : 'agenda';
+    announceSR(`Affichage ${label}`, 'polite');
+  }, [viewMode]);
+
+  const hours = Array.from({ length: 15 }, (_, i) => i + 7); // 7h → 21h
   const weekDays = getWeekDays();
   const monthDays = getMonthDays();
   const periodLabel = viewMode === 'month'
-    ? currentDate.toLocaleDateString('fr-CA', { month: 'long', year: 'numeric' })
+    ? formatDate(currentDate, getLocale(), { month: 'long', year: 'numeric' })
     : viewMode === 'day'
-    ? currentDate.toLocaleDateString('fr-CA', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-    : `${weekDays[0]?.toLocaleDateString('fr-CA', { day: 'numeric', month: 'short' })} — ${weekDays[6]?.toLocaleDateString('fr-CA', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+    ? formatDate(currentDate, getLocale(), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+    : `${weekDays[0] ? formatDate(weekDays[0], getLocale(), { day: 'numeric', month: 'short' }) : ''} – ${weekDays[6] ? formatDate(weekDays[6], getLocale(), { day: 'numeric', month: 'short', year: 'numeric' }) : ''}`;
+
+  // Empty state check (week/day)
+  const visibleApptsForRange = useMemo(() => {
+    if (viewMode === 'week') return weekDays.flatMap(d => apptsFor(d));
+    if (viewMode === 'day') return apptsFor(currentDate);
+    return [];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewMode, weekDays, currentDate, filteredAppointments]);
+
+  // Sprint 44 M3.3 — Pull-to-refresh
+  const scrollParentRef = useRef<HTMLElement | null>(null);
+  useEffect(() => { scrollParentRef.current = document.getElementById('main-content'); }, []);
+  const ptr = usePullToRefresh(async () => { await load(); }, { scrollParent: scrollParentRef });
 
   return (
     <AppLayout title="Calendrier">
-      <PageHero
-        compact
-        meta="Workspace"
-        title="Calendrier"
-        highlight="Calendrier"
-        description="Vos rendez-vous, visites et signatures à venir. Glissez-déposez pour replanifier."
-        actions={<Button variant="premium" leftIcon={<Plus size={14} />} onClick={() => { setFormDate(dayStr(new Date())); setShowAddModal(true); }}>Nouveau RDV</Button>}
-      />
-      <div className="flex flex-col lg:flex-row gap-6">
-        
-        {/* ── Sidebar ── */}
-        <div className="w-full lg:w-64 flex-shrink-0 space-y-6">
-          <Button className="w-full" leftIcon={<Plus size={16} />} onClick={() => { setFormDate(dayStr(new Date())); setShowAddModal(true); }}>
-            Nouveau RDV
-          </Button>
+      <div ref={ptr.containerRef}>
+      <PullToRefreshIndicator distance={ptr.pullDistance} progress={ptr.pullProgress} isRefreshing={ptr.isRefreshing} />
+      <div className="cal-page">
+        <div className="cal-shell">
 
-          {/* Mini Calendar Picker */}
-          <Card className="p-3">
-             <div className="flex items-center justify-between mb-3 px-1">
-               <button onClick={() => navigate(-1)} className="p-1 hover:bg-[var(--bg-subtle)] rounded"><ChevronLeft size={14}/></button>
-               <span className="text-xs font-bold capitalize">{currentDate.toLocaleDateString('fr-CA', { month: 'short', year: 'numeric' })}</span>
-               <button onClick={() => navigate(1)} className="p-1 hover:bg-[var(--bg-subtle)] rounded"><ChevronRight size={14}/></button>
-             </div>
-             <div className="grid grid-cols-7 gap-1 text-center mb-1">
-               {['L','M','M','J','V','S','D'].map(d => <div key={d} className="text-[10px] font-semibold text-[var(--text-muted)]">{d}</div>)}
-             </div>
-             <div className="grid grid-cols-7 gap-1 text-center">
-               {monthDays.map((d, i) => (
-                 <button key={i} onClick={() => { setCurrentDate(d); setViewMode('day'); }}
-                   className={`text-[11px] h-6 w-6 mx-auto rounded flex items-center justify-center hover:bg-[var(--brand-tint)]
-                   ${d.getMonth() !== currentDate.getMonth() ? 'text-[var(--text-muted)] opacity-50' : 'text-[var(--text-primary)]'}
-                   ${isToday(d) ? 'bg-[var(--brand-primary)] text-white font-bold' : ''}`}>
-                   {d.getDate()}
-                 </button>
-               ))}
-             </div>
-          </Card>
+          {/* ── Sidebar : Mini-cal + filtres ──────────────────────── */}
+          <aside className="cal-sidebar">
+            <Button className="w-full" leftIcon={<Icon as={Plus} size={16} />} onClick={() => { setFormDate(dayStr(new Date())); setShowAddModal(true); }}>
+              Nouvel événement
+            </Button>
 
-          {/* Calendars Filter */}
-          <div>
-            <h3 className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-3">Mes Calendriers</h3>
-            <div className="space-y-2">
-              {calendars.map(cal => (
-                <label key={cal.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-[var(--bg-subtle)] p-1.5 rounded -ml-1.5">
-                  <input type="checkbox" checked={selectedCalendars.has(cal.id)} onChange={e => {
-                    const newSet = new Set(selectedCalendars);
-                    if (e.target.checked) newSet.add(cal.id); else newSet.delete(cal.id);
-                    setSelectedCalendars(newSet);
-                  }} className="rounded border-[var(--border-default)]" style={{ accentColor: cal.color }} />
-                  <span className="w-3 h-3 rounded-full" style={{ backgroundColor: cal.color }}></span>
-                  <span className="truncate">{cal.name}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* ── Main View ── */}
-        <div className="flex-1 min-w-0 flex flex-col">
-          {/* Header */}
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg font-bold text-[var(--text-primary)] capitalize">{periodLabel}</h2>
-              <div className="flex items-center bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-lg p-0.5 ml-4">
-                {(['day', 'week', 'month', 'agenda'] as const).map(v => (
-                  <button key={v} onClick={() => setViewMode(v)}
-                    className={`px-3 py-1.5 rounded-md text-[11px] font-medium cursor-pointer transition-all
-                      ${viewMode === v ? 'bg-[var(--brand-primary)] text-white shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>
-                    {v === 'day' ? 'Jour' : v === 'week' ? 'Semaine' : v === 'month' ? 'Mois' : 'Agenda'}
-                  </button>
+            {/* Mini calendar Stripe-clean */}
+            <div className="cal-minical">
+              <div className="cal-minical-header">
+                <button type="button" onClick={() => navigate(-1)} aria-label="Mois précédent" className="cal-minical-nav">
+                  <Icon as={ChevronLeft} size={14} />
+                </button>
+                <span className="cal-minical-label">
+                  {currentDate.toLocaleDateString('fr-CA', { month: 'long', year: 'numeric' })}
+                </span>
+                <button type="button" onClick={() => navigate(1)} aria-label="Mois suivant" className="cal-minical-nav">
+                  <Icon as={ChevronRight} size={14} />
+                </button>
+              </div>
+              <div className="cal-minical-grid cal-minical-head">
+                {['L','M','M','J','V','S','D'].map((d, i) => (
+                  <div key={`${d}-${i}`} className="cal-minical-head-cell">{d}</div>
                 ))}
               </div>
-              <button onClick={goToday} className="ml-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--brand-tint)] text-[var(--brand-primary)] hover:bg-[var(--brand-soft)] transition-all">Aujourd'hui</button>
+              <div className="cal-minical-grid">
+                {monthDays.map((d, i) => {
+                  const dayToday = isToday(d);
+                  const otherMonth = d.getMonth() !== currentDate.getMonth();
+                  const dayHasEvents = apptsFor(d).length > 0;
+                  const isSelected = !dayToday && d.toDateString() === currentDate.toDateString();
+                  const ariaLabel = `Aller au ${d.toLocaleDateString('fr-CA', { day: 'numeric', month: 'long', year: 'numeric' })}`;
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => { setCurrentDate(d); setViewMode('day'); }}
+                      aria-label={ariaLabel}
+                      aria-current={dayToday ? 'date' : undefined}
+                      data-today={dayToday || undefined}
+                      data-selected={isSelected || undefined}
+                      data-other-month={otherMonth || undefined}
+                      className="cal-minical-cell"
+                    >
+                      <span className="cal-minical-num">{d.getDate()}</span>
+                      {dayHasEvents && !dayToday && !isSelected && <span className="cal-minical-dot" aria-hidden="true" />}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-               <button onClick={() => navigate(-1)} className="p-1.5 rounded-lg border hover:bg-[var(--bg-subtle)] text-[var(--text-muted)]"><ChevronLeft size={16} /></button>
-               <button onClick={() => navigate(1)} className="p-1.5 rounded-lg border hover:bg-[var(--bg-subtle)] text-[var(--text-muted)]"><ChevronRight size={16} /></button>
-            </div>
-          </div>
 
-          <DndContext onDragEnd={handleDragEnd} collisionDetection={pointerWithin}>
-            {isLoading ? (
-              <div className="space-y-3">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-16" />)}</div>
-            ) : viewMode === 'month' ? (
-              /* ── Vue Mois ── */
-              <Card className="p-0 overflow-hidden flex-1 flex flex-col">
-                <div className="grid grid-cols-7 border-b border-[var(--border-subtle)]">
-                  {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map(d => (
-                    <div key={d} className="text-center text-[11px] font-semibold text-[var(--text-secondary)] uppercase py-2">{d}</div>
-                  ))}
+            {/* Calendars filter */}
+            <div className="cal-filters">
+              <h3 className="cal-filters-title">Calendriers</h3>
+              <div className="cal-filters-list">
+                {calendars.map(cal => {
+                  const isChecked = selectedCalendars.has(cal.id);
+                  const toggle = (next: boolean) => {
+                    const newSet = new Set(selectedCalendars);
+                    if (next) newSet.add(cal.id); else newSet.delete(cal.id);
+                    setSelectedCalendars(newSet);
+                  };
+                  return (
+                    <div
+                      key={cal.id}
+                      onClick={(e) => {
+                        if ((e.target as HTMLElement).closest('[role="switch"]')) return;
+                        toggle(!isChecked);
+                      }}
+                      onKeyDown={(e) => {
+                        if ((e.key === 'Enter' || e.key === ' ') && !(e.target as HTMLElement).closest('[role="switch"]')) {
+                          e.preventDefault();
+                          toggle(!isChecked);
+                        }
+                      }}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`${isChecked ? 'Masquer' : 'Afficher'} ${cal.name}`}
+                      aria-pressed={isChecked}
+                      className="cal-filter-row"
+                    >
+                      <Switch size="sm" variant="brand" checked={isChecked} onCheckedChange={toggle} />
+                      <span className="cal-filter-dot" style={{ background: cal.color }} aria-hidden="true" />
+                      <span className="cal-filter-name">{cal.name}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </aside>
+
+          {/* ── Main panel ───────────────────────────────────────── */}
+          <div className="cal-main">
+            {/* Toolbar Stripe-clean */}
+            <div className="cal-toolbar">
+              <div className="cal-toolbar-left">
+                <div className="cal-toolbar-nav">
+                  <button
+                    type="button"
+                    onClick={() => navigate(-1)}
+                    aria-label={viewMode === 'month' ? 'Mois précédent' : viewMode === 'day' ? 'Jour précédent' : 'Période précédente'}
+                    className="cal-nav-btn"
+                  >
+                    <Icon as={ChevronLeft} size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate(1)}
+                    aria-label={viewMode === 'month' ? 'Mois suivant' : viewMode === 'day' ? 'Jour suivant' : 'Période suivante'}
+                    className="cal-nav-btn"
+                  >
+                    <Icon as={ChevronRight} size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={goToday}
+                    aria-label="Revenir à aujourd'hui"
+                    className="cal-today-btn"
+                  >
+                    <Icon as={CalendarDays} size={14} />
+                    <span>Aujourd'hui</span>
+                  </button>
                 </div>
-                <div className="grid grid-cols-7 flex-1 auto-rows-fr bg-[var(--border-subtle)] gap-px">
-                  {monthDays.map(day => {
-                    const dateKey = dayStr(day);
-                    const dayAppts = apptsFor(day);
-                    const isCurrentMonth = day.getMonth() === currentDate.getMonth();
+                <h2 className="cal-period-label">{periodLabel}</h2>
+              </div>
+
+              <div className="cal-toolbar-right">
+                <div className="cal-view-switcher" role="tablist" aria-label="Mode d'affichage">
+                  {(['day', 'week', 'month', 'agenda'] as const).map(v => {
+                    const label = v === 'day' ? 'Jour' : v === 'week' ? 'Semaine' : v === 'month' ? 'Mois' : 'Agenda';
+                    const selected = viewMode === v;
                     return (
-                      <DroppableSlot key={dateKey} id={`month-${dateKey}`} date={dateKey} className={`min-h-[100px] p-1.5 bg-[var(--bg-surface)] ${!isCurrentMonth ? 'opacity-50' : ''}`}>
-                        <div className="flex justify-between items-start mb-1">
-                          <p className={`text-[11px] font-bold w-6 h-6 flex items-center justify-center rounded-full ${isToday(day) ? 'bg-[var(--brand-primary)] text-white' : 'text-[var(--text-primary)]'}`}>
-                            {day.getDate()}
-                          </p>
-                        </div>
-                        <div className="space-y-1">
-                          {dayAppts.map(a => {
-                            const cal = calendars.find(c => c.id === a.calendar_id);
-                            const color = cal?.color || APPOINTMENT_TYPE_COLORS[a.type];
-                            return (
-                              <DraggableEvent key={a.id} appointment={a}>
-                                <div onClick={() => setShowDetailModal(a)} className="text-[10px] px-1.5 py-0.5 rounded truncate font-medium cursor-pointer hover:opacity-80 transition-opacity"
-                                  style={{ background: `${color}15`, color: color, borderLeft: `2px solid ${color}` }}>
-                                  {fmtTime(a.start_time)} {a.title}
-                                </div>
-                              </DraggableEvent>
-                            );
-                          })}
-                        </div>
-                      </DroppableSlot>
+                      <button
+                        key={v}
+                        type="button"
+                        role="tab"
+                        aria-selected={selected}
+                        aria-label={`Vue ${label.toLowerCase()}`}
+                        onClick={() => setViewMode(v)}
+                        className={`cal-view-pill${selected ? ' is-active' : ''}`}
+                      >
+                        {label}
+                      </button>
                     );
                   })}
                 </div>
-              </Card>
-            ) : viewMode === 'week' ? (
-              /* ── Vue Semaine ── */
-              <Card className="p-0 flex-1 flex flex-col overflow-x-auto min-h-[600px]">
-                <div className="min-w-[700px] flex flex-col flex-1">
-                <div className="flex border-b border-[var(--border-subtle)]">
-                  <div className="w-16 flex-shrink-0" />
-                  <div className="flex-1 grid grid-cols-7">
-                    {weekDays.map(day => (
-                      <div key={day.toISOString()} className="text-center py-2 border-l border-[var(--border-subtle)]">
-                        <div className="text-[11px] font-semibold text-[var(--text-secondary)] uppercase">{day.toLocaleDateString('fr-CA', { weekday: 'short' })}</div>
-                        <div className={`text-lg font-bold mt-0.5 mx-auto w-8 h-8 flex items-center justify-center rounded-full ${isToday(day) ? 'bg-[var(--brand-primary)] text-white' : 'text-[var(--text-primary)]'}`}>{day.getDate()}</div>
-                      </div>
+                <Button variant="primary" size="sm" leftIcon={<Icon as={Plus} size={14} />} onClick={() => { setFormDate(dayStr(new Date())); setShowAddModal(true); }}>
+                  Nouvel événement
+                </Button>
+              </div>
+            </div>
+
+            {/* Views */}
+            <DndContext onDragEnd={handleDragEnd} collisionDetection={pointerWithin}>
+              {isLoading ? (
+                viewMode === 'month' ? (
+                  <Card className="cal-card-shell">
+                    <div className="cal-month-headrow">
+                      {['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'].map(d => (
+                        <div key={d} className="cal-month-head-cell">{d}</div>
+                      ))}
+                    </div>
+                    <div className="cal-month-grid">
+                      {Array.from({ length: 42 }).map((_, i) => (
+                        <div key={i} className="cal-month-cell">
+                          <Skeleton className="h-3 w-5" style={{ animationDelay: `${i * 20}ms` }} />
+                          {i % 3 === 0 && <Skeleton className="h-3 w-full rounded mt-1" style={{ animationDelay: `${i * 20 + 30}ms` }} />}
+                          {i % 4 === 0 && <Skeleton className="h-3 w-3/4 rounded mt-1" style={{ animationDelay: `${i * 20 + 60}ms` }} />}
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+                ) : viewMode === 'agenda' ? (
+                  <div className="space-y-2">
+                    {Array.from({ length: 6 }).map((_, i) => (
+                      <Card key={i} className="cal-agenda-row">
+                        <div className="cal-skeleton-agenda-row" style={{ animationDelay: `${i * 60}ms` }}>
+                          <div className="cal-skeleton-agenda-date">
+                            <Skeleton className="h-5 w-6" style={{ animationDelay: `${i * 60}ms` }} />
+                            <Skeleton className="h-3 w-8 mt-1" style={{ animationDelay: `${i * 60 + 20}ms` }} />
+                          </div>
+                          <div className="cal-skeleton-agenda-main">
+                            <Skeleton className="h-3.5 w-2/3" style={{ animationDelay: `${i * 60 + 40}ms` }} />
+                            <Skeleton className="h-3 w-1/2 mt-2" style={{ animationDelay: `${i * 60 + 60}ms` }} />
+                          </div>
+                        </div>
+                      </Card>
                     ))}
                   </div>
-                </div>
-                <div className="flex flex-1">
-                  <div className="w-16 flex-shrink-0 border-r border-[var(--border-subtle)]">
-                    {hours.map(h => <div key={h} className="h-16 text-[10px] font-medium text-[var(--text-muted)] text-right pr-2 pt-1">{h}:00</div>)}
-                  </div>
-                  <div className="flex-1 grid grid-cols-7">
-                    {weekDays.map(day => {
-                      const dateKey = dayStr(day);
-                      return (
-                        <div key={dateKey} className="border-r border-[var(--border-subtle)] relative">
-                          {hours.map(h => (
-                            <DroppableSlot key={`${dateKey}-${h}`} id={`week-${dateKey}-${h}`} date={dateKey} hour={h} className="h-16 border-b border-[var(--border-subtle)]/50" />
+                ) : (
+                  /* Sprint 41 M3.2 — Week/Day skeleton fidèle au layout (7 cols × hours + 5 events placeholders) */
+                  <Card className="cal-card-shell cal-skeleton-week">
+                    <div className="cal-week-inner">
+                      <div className="cal-week-headrow">
+                        <div className="cal-week-gutter" />
+                        <div className="cal-week-headcols">
+                          {(viewMode === 'day' ? [0] : [0,1,2,3,4,5,6]).map(i => (
+                            <div key={i} className="cal-week-headcol">
+                              <Skeleton className="h-3 w-8 mx-auto" style={{ animationDelay: `${i * 40}ms` }} />
+                              <Skeleton className="h-4 w-6 mx-auto mt-1" style={{ animationDelay: `${i * 40 + 20}ms` }} />
+                            </div>
                           ))}
-                          {apptsFor(day).map(a => {
-                            const start = new Date(a.start_time + (a.start_time.endsWith('Z') ? '' : 'Z'));
-                            const h = start.getHours();
-                            const m = start.getMinutes();
-                            const top = (h - 7) * 64 + (m / 60) * 64;
-                            const cal = calendars.find(c => c.id === a.calendar_id);
-                            const color = cal?.color || APPOINTMENT_TYPE_COLORS[a.type];
+                        </div>
+                      </div>
+                      <div className="cal-week-body">
+                        <div className="cal-week-gutter">
+                          {hours.map(h => (
+                            <div key={h} className="cal-hour-label">
+                              <Skeleton className="h-2.5 w-9" style={{ animationDelay: `${h * 30}ms` }} />
+                            </div>
+                          ))}
+                        </div>
+                        <div className="cal-week-cols">
+                          {(viewMode === 'day' ? [0] : [0,1,2,3,4,5,6]).map(colIdx => {
+                            // 5 placeholders positionnés entre 9h-17h, déterministe par colIdx
+                            const seeds = [
+                              { hour: 9 + (colIdx % 3), duration: 60 },
+                              { hour: 11 + (colIdx % 2), duration: 45 },
+                              { hour: 14 + (colIdx % 3), duration: 90 },
+                              { hour: 16 + (colIdx % 2), duration: 30 },
+                            ];
+                            // Variations : ne pas montrer tous les events sur toutes les colonnes
+                            const visibleSeeds = seeds.filter((_, i) => (colIdx + i) % 2 === 0);
                             return (
-                              <div key={a.id} className="absolute left-1 right-1" style={{ top: `${Math.max(0, top)}px`, minHeight: '40px', zIndex: 5 }}>
-                                <DraggableEvent appointment={a}>
-                                  <div onClick={() => setShowDetailModal(a)} className="p-1.5 rounded-md text-[10px] font-medium border cursor-pointer hover:shadow-md transition-shadow"
-                                    style={{ background: `${color}15`, borderColor: `${color}40`, borderLeft: `3px solid ${color}` }}>
-                                    <div className="font-bold text-[var(--text-primary)]">{a.title}</div>
-                                    <div className="text-[var(--text-muted)]">{fmtTime(a.start_time)}</div>
-                                  </div>
-                                </DraggableEvent>
+                              <div key={colIdx} className="cal-week-col">
+                                {hours.map(h => <div key={h} className="cal-hour-slot" aria-hidden="true" />)}
+                                {visibleSeeds.map((seed, i) => {
+                                  const top = (seed.hour - 7) * HOUR_PX + 4;
+                                  const height = (seed.duration / 60) * HOUR_PX - 8;
+                                  return (
+                                    <div
+                                      key={i}
+                                      className="cal-skeleton-event"
+                                      style={{ top: `${top}px`, height: `${height}px`, animationDelay: `${(colIdx * 80) + (i * 40)}ms` }}
+                                      aria-hidden="true"
+                                    />
+                                  );
+                                })}
                               </div>
                             );
                           })}
                         </div>
+                      </div>
+                    </div>
+                  </Card>
+                )
+              ) : viewMode === 'month' ? (
+                /* ── Vue Mois ── */
+                <Card className="cal-card-shell print-calendar-month">
+                  <div className="cal-month-headrow">
+                    {['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'].map(d => (
+                      <div key={d} className="cal-month-head-cell">{d}</div>
+                    ))}
+                  </div>
+                  <div className="cal-month-grid print-calendar-grid">
+                    {monthDays.map(day => {
+                      const dateKey = dayStr(day);
+                      const dayAppts = apptsFor(day);
+                      const isCurrentMonth = day.getMonth() === currentDate.getMonth();
+                      const dayToday = isToday(day);
+                      const visible = dayAppts.slice(0, 3);
+                      const overflow = dayAppts.length - visible.length;
+                      return (
+                        <DroppableSlot
+                          key={dateKey}
+                          id={`month-${dateKey}`}
+                          date={dateKey}
+                          className={`cal-month-cell${dayToday ? ' is-today' : ''}${!isCurrentMonth ? ' is-other-month' : ''}`}
+                        >
+                          <div className="cal-month-cell-head">
+                            <span className={`cal-month-cell-num${dayToday ? ' is-today' : ''}`}>{day.getDate()}</span>
+                          </div>
+                          <div className="cal-month-cell-events">
+                            {visible.map(a => {
+                              const cal = calendars.find(c => c.id === a.calendar_id);
+                              const color = cal?.color;
+                              const variant = typeToVariant(a.type);
+                              return (
+                                <DraggableEvent key={a.id} appointment={a}>
+                                  <AppointmentHoverWrap appointment={a}>
+                                    <button
+                                      type="button"
+                                      onClick={() => setDetailAppt(a)}
+                                      aria-label={`Rendez-vous ${a.title} à ${fmtTime(a.start_time)}`}
+                                      className="cal-month-event"
+                                      title={`${fmtTime(a.start_time)} · ${a.title}`}
+                                    >
+                                      <Tag dot size="xs" variant={variant} color={color}>
+                                        <span className="cal-month-event-time">{fmtTime(a.start_time)}</span>
+                                        <span className="cal-month-event-title">{a.title}</span>
+                                      </Tag>
+                                    </button>
+                                  </AppointmentHoverWrap>
+                                </DraggableEvent>
+                              );
+                            })}
+                            {overflow > 0 && (
+                              <button
+                                type="button"
+                                className="cal-month-more"
+                                onClick={() => { setCurrentDate(day); setViewMode('day'); }}
+                                aria-label={`Voir ${overflow} autre${overflow > 1 ? 's' : ''} rendez-vous`}
+                              >
+                                +{overflow} autre{overflow > 1 ? 's' : ''}
+                              </button>
+                            )}
+                          </div>
+                        </DroppableSlot>
                       );
                     })}
                   </div>
-                </div>
-                </div>
-              </Card>
-            ) : viewMode === 'day' ? (
-              /* ── Vue Jour ── */
-              <Card className="p-0 flex-1 flex overflow-auto min-h-[600px]">
-                <div className="w-16 flex-shrink-0 border-r border-[var(--border-subtle)]">
-                  {hours.map(h => <div key={h} className="h-16 text-[10px] font-medium text-[var(--text-muted)] text-right pr-2 pt-1">{h}:00</div>)}
-                </div>
-                <div className="flex-1 relative">
-                  {hours.map(h => <div key={h} className="h-16 border-b border-[var(--border-subtle)]/50" />)}
-                  {apptsFor(currentDate).map(a => {
-                    const start = new Date(a.start_time + (a.start_time.endsWith('Z') ? '' : 'Z'));
-                    const end = new Date(a.end_time + (a.end_time.endsWith('Z') ? '' : 'Z'));
-                    const top = (start.getHours() - 7) * 64 + (start.getMinutes() / 60) * 64;
-                    const height = ((end.getTime() - start.getTime()) / 3600000) * 64;
-                    const cal = calendars.find(c => c.id === a.calendar_id);
-                    const color = cal?.color || APPOINTMENT_TYPE_COLORS[a.type];
-                    return (
-                      <div key={a.id} onClick={() => setShowDetailModal(a)} className="absolute left-2 right-2 p-2 rounded-lg text-xs font-medium border cursor-pointer hover:shadow-md transition-shadow"
-                        style={{ top: `${Math.max(0, top)}px`, height: `${Math.max(30, height)}px`, background: `${color}15`, borderColor: `${color}40`, borderLeft: `4px solid ${color}` }}>
-                        <div className="flex justify-between">
-                          <span className="font-bold text-[var(--text-primary)]">{a.title}</span>
-                          <span className="text-[var(--text-muted)]">{fmtTime(a.start_time)} - {fmtTime(a.end_time)}</span>
-                        </div>
-                        {a.lead_name && <div className="mt-1 text-[var(--text-secondary)] flex items-center gap-1"><User size={12}/> {a.lead_name}</div>}
-                        {a.location && <div className="mt-1 text-[var(--text-secondary)] flex items-center gap-1"><MapPin size={12}/> {a.location}</div>}
+                </Card>
+              ) : viewMode === 'week' ? (
+                /* ── Vue Semaine ── */
+                <Card className="cal-card-shell cal-week">
+                  <div className="cal-week-inner">
+                    {/* Days header */}
+                    <div className="cal-week-headrow">
+                      <div className="cal-week-gutter" />
+                      <div className="cal-week-headcols">
+                        {weekDays.map(day => (
+                          <div key={day.toISOString()} className={`cal-week-headcol${isToday(day) ? ' is-today' : ''}`}>
+                            <div className="cal-week-dayname">{day.toLocaleDateString('fr-CA', { weekday: 'short' })}</div>
+                            <div className={`cal-week-daynum${isToday(day) ? ' is-today' : ''}`}>{day.getDate()}</div>
+                          </div>
+                        ))}
                       </div>
-                    );
-                  })}
+                    </div>
+                    {/* Grid */}
+                    <div className="cal-week-body">
+                      <div className="cal-week-gutter">
+                        {hours.map(h => (
+                          <div key={h} className="cal-hour-label">{h.toString().padStart(2, '0')}:00</div>
+                        ))}
+                      </div>
+                      <div className="cal-week-cols">
+                        {weekDays.map(day => {
+                          const dateKey = dayStr(day);
+                          const dayIsToday = isToday(day);
+                          const nowTop = (nowTick.getHours() - 7) * HOUR_PX + (nowTick.getMinutes() / 60) * HOUR_PX;
+                          const showLive = dayIsToday && nowTick.getHours() >= 7 && nowTick.getHours() < 22;
+                          return (
+                            <div key={dateKey} className={`cal-week-col${dayIsToday ? ' is-today' : ''}`}>
+                              {hours.map(h => (
+                                <DroppableSlot key={`${dateKey}-${h}`} id={`week-${dateKey}-${h}`} date={dateKey} hour={h} className="cal-hour-slot" />
+                              ))}
+                              {showLive && (
+                                <div className="cal-live-line" style={{ top: `${Math.max(0, nowTop)}px` }} aria-hidden="true">
+                                  <span className="cal-live-dot" />
+                                </div>
+                              )}
+                              {apptsFor(day).map(a => {
+                                const { startMs, endMs, isResizing } = getResizedTimes(a);
+                                const start = new Date(startMs);
+                                const end = new Date(endMs);
+                                const top = (start.getHours() - 7) * HOUR_PX + (start.getMinutes() / 60) * HOUR_PX;
+                                const durMin = (endMs - startMs) / 60_000;
+                                const height = Math.max(28, (durMin / 60) * HOUR_PX);
+                                const cal = calendars.find(c => c.id === a.calendar_id);
+                                const color = cal?.color;
+                                const variant = typeToVariant(a.type);
+                                const fmtFromDate = (d: Date) => d.toLocaleTimeString('fr-CA', { hour: '2-digit', minute: '2-digit', hour12: false });
+                                return (
+                                  <div
+                                    key={a.id}
+                                    className={`cal-event-wrap${isResizing ? ' is-resizing' : ''}`}
+                                    style={{ top: `${Math.max(0, top)}px`, height: `${height}px`, zIndex: isResizing ? 12 : 6 }}
+                                  >
+                                    <DraggableEvent appointment={a}>
+                                      <AppointmentHoverWrap appointment={a}>
+                                        <div
+                                          onClick={() => setDetailAppt(a)}
+                                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDetailAppt(a); } }}
+                                          tabIndex={0}
+                                          role="button"
+                                          aria-label={`Rendez-vous ${a.title} à ${fmtFromDate(start)}`}
+                                          className={`cal-event cal-event--${variant}`}
+                                          style={color ? ({ ['--event-color' as any]: color }) : undefined}
+                                        >
+                                          <span
+                                            className="cal-event-handle cal-event-handle--top"
+                                            onMouseDown={(e) => startResize(e, a, 'top')}
+                                            onPointerDown={(e) => e.stopPropagation()}
+                                            aria-hidden="true"
+                                          >
+                                            <Icon as={ChevronsUpDown} size={8} />
+                                          </span>
+                                          <div className="cal-event-title">{a.title}</div>
+                                          <div className="cal-event-time">{fmtFromDate(start)}{isResizing ? ` – ${fmtFromDate(end)}` : ''}</div>
+                                          <span
+                                            className="cal-event-handle cal-event-handle--bottom"
+                                            onMouseDown={(e) => startResize(e, a, 'bottom')}
+                                            onPointerDown={(e) => e.stopPropagation()}
+                                            aria-hidden="true"
+                                          >
+                                            <Icon as={ChevronsUpDown} size={8} />
+                                          </span>
+                                        </div>
+                                      </AppointmentHoverWrap>
+                                    </DraggableEvent>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                  {visibleApptsForRange.length === 0 && (
+                    <CalendarEmptyOverlay
+                      title="Aucun événement cette semaine"
+                      onCreate={() => { setFormDate(dayStr(new Date())); setShowAddModal(true); }}
+                    />
+                  )}
+                </Card>
+              ) : viewMode === 'day' ? (
+                /* ── Vue Jour ── */
+                <Card className="cal-card-shell cal-day">
+                  <div className="cal-week-inner">
+                    <div className="cal-week-body">
+                      <div className="cal-week-gutter">
+                        {hours.map(h => (
+                          <div key={h} className="cal-hour-label">{h.toString().padStart(2, '0')}:00</div>
+                        ))}
+                      </div>
+                      <div className="cal-day-col-wrap">
+                        {(() => {
+                          const dayIsToday = isToday(currentDate);
+                          const nowTop = (nowTick.getHours() - 7) * HOUR_PX + (nowTick.getMinutes() / 60) * HOUR_PX;
+                          const showLive = dayIsToday && nowTick.getHours() >= 7 && nowTick.getHours() < 22;
+                          return (
+                            <div className={`cal-day-col${dayIsToday ? ' is-today' : ''}`}>
+                              {hours.map(h => (
+                                <DroppableSlot key={h} id={`day-${dayStr(currentDate)}-${h}`} date={dayStr(currentDate)} hour={h} className="cal-hour-slot" />
+                              ))}
+                              {showLive && (
+                                <div className="cal-live-line" style={{ top: `${Math.max(0, nowTop)}px` }} aria-hidden="true">
+                                  <span className="cal-live-dot" />
+                                </div>
+                              )}
+                              {apptsFor(currentDate).map(a => {
+                                const { startMs, endMs, isResizing } = getResizedTimes(a);
+                                const start = new Date(startMs);
+                                const end = new Date(endMs);
+                                const top = (start.getHours() - 7) * HOUR_PX + (start.getMinutes() / 60) * HOUR_PX;
+                                const durMin = (endMs - startMs) / 60_000;
+                                const height = Math.max(36, (durMin / 60) * HOUR_PX);
+                                const cal = calendars.find(c => c.id === a.calendar_id);
+                                const color = cal?.color;
+                                const variant = typeToVariant(a.type);
+                                const fmtFromDate = (d: Date) => d.toLocaleTimeString('fr-CA', { hour: '2-digit', minute: '2-digit', hour12: false });
+                                return (
+                                  <div
+                                    key={a.id}
+                                    className={`cal-event-wrap cal-event-wrap--day${isResizing ? ' is-resizing' : ''}`}
+                                    style={{ top: `${Math.max(0, top)}px`, height: `${height}px`, zIndex: isResizing ? 12 : 6 }}
+                                  >
+                                    <AppointmentHoverWrap appointment={a}>
+                                      <div
+                                        onClick={() => setDetailAppt(a)}
+                                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDetailAppt(a); } }}
+                                        tabIndex={0}
+                                        role="button"
+                                        aria-label={`Rendez-vous ${a.title} de ${fmtFromDate(start)} à ${fmtFromDate(end)}`}
+                                        className={`cal-event cal-event--${variant} cal-event--day`}
+                                        style={color ? ({ ['--event-color' as any]: color }) : undefined}
+                                      >
+                                        <span className="cal-event-handle cal-event-handle--top" onMouseDown={(e) => startResize(e, a, 'top')} onPointerDown={(e) => e.stopPropagation()} aria-hidden="true">
+                                          <Icon as={ChevronsUpDown} size={8} />
+                                        </span>
+                                        <div className="cal-event-row">
+                                          <span className="cal-event-title">{a.title}</span>
+                                          <span className="cal-event-time">{fmtFromDate(start)} – {fmtFromDate(end)}</span>
+                                        </div>
+                                        {a.lead_name && <div className="cal-event-meta"><Icon as={User} size={11} /> {a.lead_name}</div>}
+                                        {a.location && <div className="cal-event-meta"><Icon as={MapPin} size={11} /> {a.location}</div>}
+                                        <span className="cal-event-handle cal-event-handle--bottom" onMouseDown={(e) => startResize(e, a, 'bottom')} onPointerDown={(e) => e.stopPropagation()} aria-hidden="true">
+                                          <Icon as={ChevronsUpDown} size={8} />
+                                        </span>
+                                      </div>
+                                    </AppointmentHoverWrap>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+                  {visibleApptsForRange.length === 0 && (
+                    <CalendarEmptyOverlay
+                      title="Aucun événement ce jour"
+                      onCreate={() => { setFormDate(dayStr(currentDate)); setShowAddModal(true); }}
+                    />
+                  )}
+                </Card>
+              ) : (
+                /* ── Vue Agenda ── */
+                <div className="cal-agenda">
+                  {filteredAppointments.length === 0 ? (
+                    <Card className="cal-card-shell">
+                      <CalendarEmptyOverlay
+                        title="Aucun événement"
+                        onCreate={() => { setFormDate(dayStr(new Date())); setShowAddModal(true); }}
+                      />
+                    </Card>
+                  ) : (
+                    [...filteredAppointments].sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()).map(appt => {
+                      const isPast = new Date(appt.start_time + 'Z') < new Date();
+                      const cal = calendars.find(c => c.id === appt.calendar_id);
+                      const variant = typeToVariant(appt.type);
+                      return (
+                        <button
+                          key={appt.id}
+                          type="button"
+                          className={`cal-agenda-row${isPast ? ' is-past' : ''}`}
+                          onClick={() => setDetailAppt(appt)}
+                          aria-label={`Rendez-vous ${appt.title}`}
+                        >
+                          <div className="cal-agenda-date">
+                            <span className="cal-agenda-day">{new Date(appt.start_time + 'Z').toLocaleDateString('fr-CA', { day: '2-digit' })}</span>
+                            <span className="cal-agenda-month">{new Date(appt.start_time + 'Z').toLocaleDateString('fr-CA', { month: 'short' })}</span>
+                          </div>
+                          <div className="cal-agenda-main">
+                            <div className="cal-agenda-title-row">
+                              <span className="cal-agenda-title">{appt.title}</span>
+                              <Tag dot size="xs" variant={variant} color={cal?.color}>{APPOINTMENT_TYPE_LABELS[appt.type]}</Tag>
+                              <Tag size="xs" variant={statusToVariant(appt.status)} statusIcon>{APPOINTMENT_STATUS_LABELS[appt.status]}</Tag>
+                            </div>
+                            <div className="cal-agenda-meta">
+                              <span><Icon as={Clock} size={12} /> {fmtTime(appt.start_time)} – {fmtTime(appt.end_time)}</span>
+                              {cal && <span><span className="cal-filter-dot" style={{ background: cal.color }} /> {cal.name}</span>}
+                              {appt.location && <span><Icon as={MapPin} size={12} /> {appt.location}</span>}
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })
+                  )}
                 </div>
-              </Card>
-            ) : (
-              /* ── Vue Agenda ── */
-              <div className="space-y-3">
-                {filteredAppointments.length === 0 ? (
-                  <EmptyState icon={<CalendarDays size={48} />} title="Aucun rendez-vous" description="Planifiez votre premier rendez-vous." />
-                ) : (
-                  [...filteredAppointments].sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()).map(appt => {
-                    const isPast = new Date(appt.start_time + 'Z') < new Date();
-                    const cal = calendars.find(c => c.id === appt.calendar_id);
-                    const color = cal?.color || APPOINTMENT_TYPE_COLORS[appt.type];
-                    return (
-                      <Card key={appt.id} className={`p-4 cursor-pointer hover:shadow-sm transition-shadow ${isPast ? 'opacity-60' : ''}`} onClick={() => setShowDetailModal(appt)}>
-                        <div className="flex items-start gap-4">
-                          <div className="w-12 h-12 rounded-xl flex items-center justify-center text-xl flex-shrink-0" style={{ background: `${color}15`, color }}>
-                            {APPOINTMENT_TYPE_ICONS[appt.type]}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h3 className="text-sm font-bold text-[var(--text-primary)] truncate">{appt.title}</h3>
-                              <Badge color={appt.status === 'confirmed' ? 'var(--success)' : appt.status === 'cancelled' ? 'var(--danger)' : 'var(--info)'}>{APPOINTMENT_STATUS_LABELS[appt.status]}</Badge>
-                            </div>
-                            <div className="flex flex-wrap items-center gap-4 text-xs text-[var(--text-secondary)]">
-                              <span className="flex items-center gap-1.5"><CalendarDays size={13} /> {new Date(appt.start_time+'Z').toLocaleDateString('fr-CA', {weekday:'short', day:'numeric', month:'short'})}</span>
-                              <span className="flex items-center gap-1.5"><Clock size={13} /> {fmtTime(appt.start_time)}–{fmtTime(appt.end_time)}</span>
-                              {cal && <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full" style={{backgroundColor: color}}></div> {cal.name}</span>}
-                            </div>
-                          </div>
-                        </div>
-                      </Card>
-                    );
-                  })
-                )}
-              </div>
-            )}
-          </DndContext>
+              )}
+            </DndContext>
+          </div>
         </div>
       </div>
 
-      {/* ── Modal Creation ── */}
-      <Modal open={showAddModal} onOpenChange={() => setShowAddModal(false)} title="Nouveau rendez-vous">
+      {/* ── Modal création ──────────────────────────────────────── */}
+      <Modal open={showAddModal} onOpenChange={() => setShowAddModal(false)} title="Nouvel événement">
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -467,9 +1033,9 @@ export function CalendarPage() {
 
           <div>
             <label className="text-xs font-medium mb-1 block">Titre <span className="text-[var(--danger)]">*</span></label>
-            <Input value={formTitle} onChange={e => setFormTitle(e.target.value)} placeholder="Ex: Démo SaaS" />
+            <Input value={formTitle} onChange={e => setFormTitle(e.target.value)} placeholder="Ex : Démo SaaS" />
           </div>
-          
+
           <div className="grid grid-cols-3 gap-3">
             <div><label className="text-xs font-medium mb-1 block">Date</label><Input type="date" value={formDate} onChange={e => setFormDate(e.target.value)} /></div>
             <div><label className="text-xs font-medium mb-1 block">Début</label><Input type="time" value={formTimeStart} onChange={e => setFormTimeStart(e.target.value)} /></div>
@@ -479,7 +1045,7 @@ export function CalendarPage() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-medium mb-1 block">Type</label>
-              <select className="w-full px-3 py-2 rounded-lg border text-sm" value={formType} onChange={e => setFormType(e.target.value as any)}>
+              <select className="w-full px-3 py-2 rounded-lg border text-sm" value={formType} onChange={e => setFormType(e.target.value as AppointmentType)}>
                 {APPOINTMENT_TYPES.map(t => <option key={t} value={t}>{APPOINTMENT_TYPE_LABELS[t]}</option>)}
               </select>
             </div>
@@ -510,45 +1076,115 @@ export function CalendarPage() {
           <div className="flex gap-2 justify-end pt-2">
             <Button variant="ghost" onClick={() => setShowAddModal(false)}>Annuler</Button>
             <Button onClick={() => void handleCreate()} disabled={isSaving || !formTitle || !formDate || !formCalendarId || !formClientId}>
-              {isSaving ? 'Création...' : 'Créer le RDV'}
+              {isSaving ? 'Création…' : 'Créer l\'événement'}
             </Button>
           </div>
         </div>
       </Modal>
 
-      {/* ── Modal Detail ── */}
-      {showDetailModal && (
-        <Modal open={!!showDetailModal} onOpenChange={() => setShowDetailModal(null)} title="Détails du rendez-vous">
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-lg font-bold">{showDetailModal.title}</h3>
-              <p className="text-sm text-[var(--text-secondary)]">{new Date(showDetailModal.start_time+'Z').toLocaleString('fr-FR')} - {new Date(showDetailModal.end_time+'Z').toLocaleTimeString('fr-FR')}</p>
-            </div>
-            
-            {showDetailModal.location && (
-              <div className="p-3 bg-[var(--bg-subtle)] rounded-lg flex items-center gap-3 text-sm">
-                <MapPin size={16} className="text-[var(--brand-primary)]" />
-                <a href={showDetailModal.location.startsWith('http') ? showDetailModal.location : `https://maps.google.com/?q=${showDetailModal.location}`} target="_blank" rel="noreferrer" className="text-[var(--brand-primary)] hover:underline flex items-center gap-1">
-                  {showDetailModal.location} <ExternalLink size={12} />
-                </a>
-              </div>
-            )}
-
-            {showDetailModal.description && (
-               <div className="text-sm bg-[var(--bg-surface)] border p-3 rounded-lg whitespace-pre-wrap">
-                 {showDetailModal.description}
-               </div>
-            )}
-
-            <div className="flex flex-wrap gap-2 pt-2">
-              <Button size="sm" variant="secondary" leftIcon={<Check size={14}/>} onClick={() => void changeStatus(showDetailModal.id, 'confirmed')} disabled={showDetailModal.status === 'confirmed'}>Confirmer</Button>
-              <Button size="sm" variant="ghost" leftIcon={<X size={14}/>} className="text-[var(--danger)] border-[var(--danger)] hover:bg-[var(--danger-soft)] border" onClick={() => void changeStatus(showDetailModal.id, 'cancelled')} disabled={showDetailModal.status === 'cancelled'}>Annuler RDV</Button>
-              <Button size="sm" variant="secondary" leftIcon={<BellRing size={14}/>} onClick={() => void sendReminder(showDetailModal.id)}>Envoyer rappel auto</Button>
-            </div>
+      {/* ── SlidePanel détail Stripe ────────────────────────────── */}
+      <SlidePanel
+        open={!!detailAppt}
+        onOpenChange={(o) => { if (!o) setDetailAppt(null); }}
+        title={detailAppt?.title ?? 'Détails'}
+        size="sm"
+        footer={detailAppt ? (
+          <div className="cal-event-panel-footer">
+            <Button variant="ghost" size="sm" leftIcon={<Icon as={Check} size={14} />} onClick={() => void changeStatus(detailAppt.id, 'confirmed')} disabled={detailAppt.status === 'confirmed'}>Confirmer</Button>
+            <Button variant="ghost" size="sm" leftIcon={<Icon as={BellRing} size={14} />} onClick={() => void sendReminder(detailAppt.id)}>Rappel</Button>
+            <Button variant="ghost" size="sm" leftIcon={<Icon as={Copy} size={14} />} onClick={() => void handleDuplicate(detailAppt)}>Dupliquer</Button>
+            <Button variant="ghost" size="sm" leftIcon={<Icon as={Trash2} size={14} />} className="cal-event-panel-danger" onClick={() => void changeStatus(detailAppt.id, 'cancelled')} disabled={detailAppt.status === 'cancelled'}>Annuler</Button>
           </div>
-        </Modal>
-      )}
+        ) : undefined}
+      >
+        {detailAppt && (() => {
+          const cal = calendars.find(c => c.id === detailAppt.calendar_id);
+          const variant = typeToVariant(detailAppt.type);
+          const startD = new Date(detailAppt.start_time + (detailAppt.start_time.endsWith('Z') ? '' : 'Z'));
+          const endD = new Date(detailAppt.end_time + (detailAppt.end_time.endsWith('Z') ? '' : 'Z'));
+          return (
+            <div className="cal-event-panel">
+              <div className="cal-event-panel-tags">
+                <Tag size="xs" variant={variant} dot color={cal?.color}>{APPOINTMENT_TYPE_LABELS[detailAppt.type]}</Tag>
+                <Tag size="xs" variant={statusToVariant(detailAppt.status)} statusIcon>{APPOINTMENT_STATUS_LABELS[detailAppt.status]}</Tag>
+              </div>
 
+              <div className="cal-event-panel-row">
+                <Icon as={Clock} size={14} className="cal-event-panel-icon" />
+                <div>
+                  <div className="cal-event-panel-row-primary">
+                    {startD.toLocaleDateString('fr-CA', { weekday: 'short', day: 'numeric', month: 'long' })}
+                  </div>
+                  <div className="cal-event-panel-row-secondary">
+                    {startD.toLocaleTimeString('fr-CA', { hour: '2-digit', minute: '2-digit', hour12: false })} – {endD.toLocaleTimeString('fr-CA', { hour: '2-digit', minute: '2-digit', hour12: false })}
+                  </div>
+                </div>
+              </div>
+
+              {detailAppt.location && (
+                <div className="cal-event-panel-row">
+                  <Icon as={MapPin} size={14} className="cal-event-panel-icon" />
+                  <a href={detailAppt.location.startsWith('http') ? detailAppt.location : `https://maps.google.com/?q=${detailAppt.location}`} target="_blank" rel="noreferrer" className="cal-event-panel-link">
+                    {detailAppt.location}
+                    <Icon as={ExternalLink} size={12} />
+                  </a>
+                </div>
+              )}
+
+              {detailAppt.lead_name && (
+                <div className="cal-event-panel-row">
+                  <Icon as={User} size={14} className="cal-event-panel-icon" />
+                  <div className="cal-event-panel-row-primary">{detailAppt.lead_name}</div>
+                </div>
+              )}
+
+              {cal && (
+                <div className="cal-event-panel-row">
+                  <span className="cal-filter-dot" style={{ background: cal.color }} aria-hidden="true" />
+                  <div className="cal-event-panel-row-secondary">{cal.name}</div>
+                </div>
+              )}
+
+              {detailAppt.description && (
+                <div className="cal-event-panel-desc">
+                  {detailAppt.description}
+                </div>
+              )}
+
+              <div className="cal-event-panel-row">
+                <Icon as={X} size={14} className="cal-event-panel-icon" />
+                <button
+                  type="button"
+                  className="cal-event-panel-link"
+                  onClick={() => void changeStatus(detailAppt.id, 'cancelled')}
+                  disabled={detailAppt.status === 'cancelled'}
+                >
+                  Marquer comme annulé
+                </button>
+              </div>
+            </div>
+          );
+        })()}
+      </SlidePanel>
+
+      </div>
     </AppLayout>
+  );
+}
+
+// ── Empty state overlay centré ──────────────────────────────────────────────
+// Sprint 45 M2.2 — Illustration Stripe-clean (kind="calendar") + animation float
+function CalendarEmptyOverlay({ title, onCreate }: { title: string; onCreate: () => void }) {
+  return (
+    <div className="cal-empty-overlay empty-state" role="status" aria-live="polite">
+      <div className="cal-empty-icon empty-state-illustration" aria-hidden="true">
+        <EmptyStateIllustration kind="calendar" size={140} />
+      </div>
+      <h3 className="cal-empty-title empty-state-title">{title}</h3>
+      <p className="cal-empty-desc empty-state-description">Calendrier libre — aucun événement cette semaine. Crée-en un pour commencer.</p>
+      <Button variant="primary" size="sm" leftIcon={<Icon as={Plus} size={14} />} onClick={onCreate}>
+        Nouvel événement
+      </Button>
+    </div>
   );
 }

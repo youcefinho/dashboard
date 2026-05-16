@@ -4,9 +4,13 @@
 // Différenciateur : voir TOUT l'historique d'un lead dans un seul scroll.
 
 import { useMemo } from 'react';
-import { Mail, MessageSquare, StickyNote, CalendarCheck, ListTodo, Activity as ActivityIcon, Edit3, UserPlus, Tag, DollarSign } from 'lucide-react';
+import { Mail, MessageSquare, StickyNote, CalendarCheck, ListTodo, Activity as ActivityIcon, Edit3, UserPlus, Tag as TagIcon, DollarSign } from 'lucide-react';
 import type { LeadDetail, ActivityType, LeadNote, Appointment, Task } from '@/lib/types';
 import { ACTIVITY_LABELS, NOTE_CATEGORY_LABELS, NOTE_CATEGORY_ICONS, APPOINTMENT_TYPE_LABELS } from '@/lib/types';
+import { Tag, Avatar, Icon as UIcon } from '@/components/ui';
+// Sprint 48 M3.2 — relative time + locale-aware date
+import { formatRelativeTime, formatDate, formatDateTime } from '@/lib/i18n/datetime';
+import { getLocale } from '@/lib/i18n';
 
 interface TimelineEvent {
   id: string;
@@ -17,6 +21,8 @@ interface TimelineEvent {
   title: string;
   description?: string;
   meta?: string;
+  /** Acteur identifié — affiche un Avatar xs */
+  actorName?: string;
 }
 
 interface LeadTimelineProps {
@@ -44,7 +50,7 @@ function colorForType(type: TimelineEvent['type'], iconType?: TimelineEvent['ico
   // activity
   if (iconType === 'mail' || iconType === 'message') return 'var(--info)';
   if (iconType === 'create') return 'var(--success)';
-  if (iconType === 'deal') return 'var(--brand-primary)';
+  if (iconType === 'deal') return 'var(--primary)';
   if (iconType === 'edit') return 'var(--warning)';
   if (iconType === 'tag') return 'var(--text-secondary)';
   return 'var(--text-muted)';
@@ -53,21 +59,12 @@ function colorForType(type: TimelineEvent['type'], iconType?: TimelineEvent['ico
 const ICON_COMPONENTS = {
   mail: Mail, message: MessageSquare, note: StickyNote,
   appointment: CalendarCheck, task: ListTodo, activity: ActivityIcon,
-  edit: Edit3, create: UserPlus, tag: Tag, deal: DollarSign,
+  edit: Edit3, create: UserPlus, tag: TagIcon, deal: DollarSign,
 } as const;
 
 function formatRelative(dateStr: string): string {
-  const d = new Date(dateStr);
-  const diff = Date.now() - d.getTime();
-  const m = Math.floor(diff / 60_000);
-  if (m < 1) return 'à l\'instant';
-  if (m < 60) return `il y a ${m} min`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `il y a ${h}h`;
-  const days = Math.floor(h / 24);
-  if (days === 1) return 'hier';
-  if (days < 7) return `il y a ${days}j`;
-  return d.toLocaleDateString('fr-CA', { day: 'numeric', month: 'short' });
+  // Sprint 48 M3.2 — délégué à Intl.RelativeTimeFormat (locale-aware)
+  return formatRelativeTime(dateStr, getLocale());
 }
 
 export function LeadTimeline({ lead, notes, appointments, tasks }: LeadTimelineProps) {
@@ -99,6 +96,7 @@ export function LeadTimeline({ lead, notes, appointments, tasks }: LeadTimelineP
         title: `Note ajoutée${n.author_name ? ` par ${n.author_name}` : ''}`,
         description: n.body.slice(0, 200) + (n.body.length > 200 ? '…' : ''),
         meta: `${NOTE_CATEGORY_ICONS[n.category] || '📝'} ${NOTE_CATEGORY_LABELS[n.category] || n.category}`,
+        actorName: n.author_name || undefined,
       });
     }
 
@@ -111,7 +109,7 @@ export function LeadTimeline({ lead, notes, appointments, tasks }: LeadTimelineP
         iconType: 'appointment',
         color: colorForType('appointment'),
         title: ap.title || 'Rendez-vous',
-        description: `${new Date(ap.start_time).toLocaleString('fr-CA', { dateStyle: 'short', timeStyle: 'short' })}`,
+        description: formatDateTime(ap.start_time, getLocale(), { dateStyle: 'short', timeStyle: 'short' }),
         meta: APPOINTMENT_TYPE_LABELS[ap.type] || ap.type,
       });
     }
@@ -126,7 +124,7 @@ export function LeadTimeline({ lead, notes, appointments, tasks }: LeadTimelineP
         color: colorForType('task'),
         title: t.title,
         description: t.description || undefined,
-        meta: t.status === 'done' ? '✓ Terminée' : t.due_date ? `Échéance ${new Date(t.due_date).toLocaleDateString('fr-CA')}` : 'À faire',
+        meta: t.status === 'done' ? '✓ Terminée' : t.due_date ? `Échéance ${formatDate(t.due_date, getLocale(), { day: 'numeric', month: 'short', year: 'numeric' })}` : 'À faire',
       });
     }
 
@@ -138,7 +136,7 @@ export function LeadTimeline({ lead, notes, appointments, tasks }: LeadTimelineP
   const groups = useMemo(() => {
     const map = new Map<string, TimelineEvent[]>();
     for (const e of events) {
-      const key = new Date(e.date).toLocaleDateString('fr-CA', { day: 'numeric', month: 'long', year: 'numeric' });
+      const key = formatDate(e.date, getLocale(), { day: 'numeric', month: 'long', year: 'numeric' });
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(e);
     }
@@ -161,26 +159,46 @@ export function LeadTimeline({ lead, notes, appointments, tasks }: LeadTimelineP
               {day} <span className="ml-1 text-[var(--text-muted)]/70">· {items.length}</span>
             </h4>
             <div className="space-y-3">
-              {items.map(event => {
-                const Icon = ICON_COMPONENTS[event.iconType];
+              {items.map((event, i) => {
+                const EventIconCmp = ICON_COMPONENTS[event.iconType];
                 return (
-                  <div key={event.id} className="flex items-start gap-3">
-                    {/* Pastille avec icône */}
-                    <div className="w-[30px] h-[30px] rounded-full flex items-center justify-center shrink-0 z-[2] border-2 border-[var(--bg-surface)]"
-                      style={{ background: `color-mix(in srgb, ${event.color} 15%, transparent)`, color: event.color }}>
-                      <Icon size={14} />
+                  <div
+                    key={event.id}
+                    className="list-item-enter row-premium flex items-start gap-3 p-1.5 -mx-1.5 rounded-lg"
+                    style={{ animationDelay: `${Math.min(i, 20) * 40}ms` }}
+                  >
+                    {/* Pastille avec icône — glow brand subtil, animation scale-in */}
+                    <div
+                      className="relative w-[30px] h-[30px] rounded-full flex items-center justify-center shrink-0 z-[2] border-2 border-[var(--bg-surface)] shadow-sm animate-in zoom-in-50 fade-in-0 duration-300"
+                      style={{
+                        background: `color-mix(in srgb, ${event.color} 18%, transparent)`,
+                        color: event.color,
+                        boxShadow: `0 0 12px -2px color-mix(in srgb, ${event.color} 35%, transparent)`,
+                      }}
+                    >
+                      <UIcon as={EventIconCmp} size="sm" strokeWidth={2.25} />
+                      {/* Avatar acteur en overlay bottom-right si disponible */}
+                      {event.actorName && (
+                        <span
+                          aria-hidden
+                          className="absolute -bottom-1 -right-1 z-[3] rounded-full ring-2 ring-[var(--bg-surface)]"
+                          title={event.actorName}
+                        >
+                          <Avatar name={event.actorName} size="xs" />
+                        </span>
+                      )}
                     </div>
                     {/* Contenu */}
                     <div className="flex-1 min-w-0 pt-0.5">
                       <div className="flex items-start justify-between gap-2">
-                        <p className="text-xs font-medium text-[var(--text-primary)] leading-tight">{event.title}</p>
-                        <span className="text-[10px] text-[var(--text-muted)] shrink-0">{formatRelative(event.date)}</span>
+                        <p className="text-xs font-semibold text-[var(--text-primary)] leading-tight">{event.title}</p>
+                        <Tag variant="neutral" size="xs">{formatRelative(event.date)}</Tag>
                       </div>
                       {event.meta && (
                         <p className="text-[10px] text-[var(--text-muted)] mt-0.5">{event.meta}</p>
                       )}
                       {event.description && (
-                        <p className="text-xs text-[var(--text-secondary)] mt-1 whitespace-pre-wrap line-clamp-3">{event.description}</p>
+                        <p className="text-xs text-[var(--text-secondary)] mt-1 whitespace-pre-wrap line-clamp-3 leading-relaxed">{event.description}</p>
                       )}
                     </div>
                   </div>

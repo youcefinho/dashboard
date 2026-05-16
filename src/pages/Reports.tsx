@@ -1,8 +1,9 @@
 // ── ReportsPage — Refonte Sprint 8 (Phase B) ──────────
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useRouterState } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Badge, Skeleton, Button, useToast, PageHero } from '@/components/ui';
+import { Card, Tag, Skeleton, Button, useToast, PageHero, KpiStrip, type KpiItem, CellHoverInfo, Icon, EmptyState, EmptyStateIllustration } from '@/components/ui';
 import { getLeads, getClients } from '@/lib/api';
 import type { Lead, Client } from '@/lib/types';
 import { STATUS_LABELS, STATUS_COLORS, SOURCE_LABELS } from '@/lib/types';
@@ -21,10 +22,27 @@ import {
   TrendsReports, ActivityReports, WorkflowReports, EmailReports,
   SmsReports, CalendarReports, FormsReports, ReviewsReports
 } from '@/components/reports/ReportComponents';
+// Sprint 34 vague 34-1A — PDF export helper consolidé
+import { triggerPdfExport } from '@/lib/pdfExport';
+// Sprint 45 M3.2 — Coachmark contextuel (1ère visite Reports → filter period hint)
+import { ContextualCoachmark } from '@/components/onboarding/ContextualCoachmark';
+// Sprint 46 M1 — Dashboards builder (drag-drop widgets) + API
+import { DashboardBuilder, createEmptyDashboard, type DashboardBuilderValue } from '@/components/reports/DashboardBuilder';
+// Sprint 48 M3 — Intl currency + date
+import { formatMoneyCAD, formatNumber } from '@/lib/i18n/number';
+import { formatDate } from '@/lib/i18n/datetime';
+import { getLocale } from '@/lib/i18n';
+import {
+  getDashboards, createDashboard, updateDashboard, deleteDashboard,
+  shareDashboard, type DashboardRecord,
+} from '@/lib/api';
+import { LayoutGrid as LayoutIcon, Share2, Copy as CopyIcon, Trash2 } from 'lucide-react';
 
-type ReportTab = 'sales' | 'funnel' | 'sources' | 'performance' | 'trends' | 'activity' | 'workflow' | 'email' | 'sms' | 'calendar' | 'forms' | 'reviews';
+type ReportTab = 'sales' | 'funnel' | 'sources' | 'performance' | 'trends' | 'activity' | 'workflow' | 'email' | 'sms' | 'calendar' | 'forms' | 'reviews' | 'builder';
 
 const TABS: { id: ReportTab; icon: typeof BarChart3; label: string; group: string }[] = [
+  // Sprint 46 M1 — Dashboards builder en tête (CTA principal nouveau)
+  { id: 'builder', icon: LayoutIcon, label: 'Mes dashboards', group: 'BUILDER' },
   { id: 'sales', icon: DollarSign, label: 'Ventes & ROI', group: 'BUSINESS' },
   { id: 'funnel', icon: BarChart3, label: 'Funnel', group: 'BUSINESS' },
   { id: 'sources', icon: Target, label: 'Sources', group: 'BUSINESS' },
@@ -39,17 +57,77 @@ const TABS: { id: ReportTab; icon: typeof BarChart3; label: string; group: strin
   { id: 'reviews', icon: Star, label: 'Réputation', group: 'MARKETING' },
 ];
 
+const VALID_TABS = new Set<ReportTab>(['sales', 'funnel', 'sources', 'performance', 'trends', 'activity', 'workflow', 'email', 'sms', 'calendar', 'forms', 'reviews', 'builder']);
+const VALID_PERIODS = new Set<'30d' | '90d' | '12m'>(['30d', '90d', '12m']);
+
+// ── Sprint 30 vague 30-1C — Read URL params (?view=funnel&period=90d) ──
+function readUrlState(): { view: ReportTab | null; period: '30d' | '90d' | '12m' | null; filters: string | null } {
+  if (typeof window === 'undefined') return { view: null, period: null, filters: null };
+  const params = new URLSearchParams(window.location.search);
+  const rawView = params.get('view');
+  const rawPeriod = params.get('period');
+  const filters = params.get('filters');
+  return {
+    view: rawView && VALID_TABS.has(rawView as ReportTab) ? (rawView as ReportTab) : null,
+    period: rawPeriod && VALID_PERIODS.has(rawPeriod as '30d' | '90d' | '12m') ? (rawPeriod as '30d' | '90d' | '12m') : null,
+    filters,
+  };
+}
+
 export function ReportsPage() {
   const { success, error: toastError } = useToast();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<ReportTab>('funnel');
-  
+
+  // Sprint 30 vague 30-1C — hydrate depuis URL params au mount
+  const initialUrlState = useMemo(() => readUrlState(), []);
+  const [activeTab, setActiveTab] = useState<ReportTab>(initialUrlState.view ?? 'funnel');
+
   // Customization & Filters
-  const [period, setPeriod] = useState<'30d' | '90d' | '12m'>('30d');
+  const [period, setPeriod] = useState<'30d' | '90d' | '12m'>(initialUrlState.period ?? '30d');
   const [isExporting, setIsExporting] = useState(false);
   const [comparePeriod, setComparePeriod] = useState(false);
+
+  // Sprint 46 M1 — Dashboards builder state
+  const [dashboards, setDashboards] = useState<DashboardRecord[]>([]);
+  const [activeDashboardId, setActiveDashboardId] = useState<number | null>(null);
+  const [builderValue, setBuilderValue] = useState<DashboardBuilderValue>(createEmptyDashboard());
+  const [dashboardsLoading, setDashboardsLoading] = useState(false);
+  const [builderDirty, setBuilderDirty] = useState(false);
+
+  // Sprint 30 vague 30-1C — Persist view/period dans URL pour deep-link partageable
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    params.set('view', activeTab);
+    params.set('period', period);
+    const newUrl = `${window.location.pathname}?${params.toString()}${window.location.hash}`;
+    window.history.replaceState(null, '', newUrl);
+  }, [activeTab, period]);
+
+  // Sprint 30 vague 30-1C — Listen pour popstate (Back/Forward navigateur)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onPop = () => {
+      const next = readUrlState();
+      if (next.view) setActiveTab(next.view);
+      if (next.period) setPeriod(next.period);
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
+  // Sprint 30 vague 30-1C — Sync depuis TanStack Router (CmdPalette re-nav vers
+  // /reports?view=funnel met à jour location.search sans popstate). On observe
+  // routerLocation.search et on resync activeTab/period.
+  const routerLocation = useRouterState({ select: (s) => s.location });
+  useEffect(() => {
+    const next = readUrlState();
+    if (next.view && next.view !== activeTab) setActiveTab(next.view);
+    if (next.period && next.period !== period) setPeriod(next.period);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routerLocation.search]);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -62,12 +140,99 @@ export function ReportsPage() {
   useEffect(() => { void loadData(); }, [loadData]);
 
   // ── Actions Customization ───────────────────────────────
+  // Sprint 34 vague 34-1A — Helper consolidé (body class pdf-mode-report + cover page)
+  // Sprint 46 M1.4 — Mode `dashboard` quand on est dans le builder
   const handleExportPDF = () => {
     setIsExporting(true);
-    setTimeout(() => {
-      window.print();
-      setIsExporting(false);
-    }, 500);
+    if (activeTab === 'builder' && activeDashboardId !== null) {
+      triggerPdfExport('dashboard', { dashboardId: activeDashboardId });
+    } else {
+      triggerPdfExport('report');
+    }
+    window.setTimeout(() => setIsExporting(false), 1600);
+  };
+
+  // Sprint 46 M1.3 — Dashboards CRUD
+  const loadDashboards = useCallback(async () => {
+    setDashboardsLoading(true);
+    const res = await getDashboards();
+    if (res.data) setDashboards(res.data);
+    setDashboardsLoading(false);
+  }, []);
+
+  // Charge la liste dès qu'on entre dans le builder
+  useEffect(() => {
+    if (activeTab === 'builder') void loadDashboards();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
+  const handleCreateDashboard = async () => {
+    const res = await createDashboard({
+      name: `Dashboard ${formatDate(new Date(), getLocale(), { day: 'numeric', month: 'short', year: 'numeric' })}`,
+      config: createEmptyDashboard(),
+    });
+    if (res.data) {
+      success('Dashboard créé');
+      await loadDashboards();
+      setActiveDashboardId(res.data.id);
+      setBuilderValue((res.data.config as DashboardBuilderValue) || createEmptyDashboard());
+      setBuilderDirty(false);
+    } else {
+      toastError('Impossible de créer le dashboard');
+    }
+  };
+
+  const handleOpenDashboard = (d: DashboardRecord) => {
+    setActiveDashboardId(d.id);
+    setBuilderValue((d.config as DashboardBuilderValue) || createEmptyDashboard());
+    setBuilderDirty(false);
+  };
+
+  const handleSaveDashboard = async () => {
+    if (activeDashboardId === null) return;
+    const res = await updateDashboard(activeDashboardId, { config: builderValue });
+    if (res.data?.success) {
+      success('Tableau de bord enregistré');
+      setBuilderDirty(false);
+      void loadDashboards();
+    } else {
+      toastError('L\'enregistrement a échoué. Réessaie.');
+    }
+  };
+
+  const handleDeleteDashboard = async (id: number) => {
+    const res = await deleteDashboard(id);
+    if (res.data?.success) {
+      success('Dashboard supprimé');
+      if (activeDashboardId === id) {
+        setActiveDashboardId(null);
+        setBuilderValue(createEmptyDashboard());
+      }
+      void loadDashboards();
+    } else {
+      toastError('Échec de la suppression');
+    }
+  };
+
+  const handleShareDashboard = async (id: number) => {
+    const res = await shareDashboard(id);
+    if (res.data?.share_token) {
+      const url = `${window.location.origin}/dashboards/shared/${res.data.share_token}`;
+      try {
+        await navigator.clipboard.writeText(url);
+        success('Lien copié dans le presse-papier');
+      } catch {
+        success(`Lien : ${url}`);
+      }
+      void loadDashboards();
+    } else {
+      toastError('Impossible de générer le lien');
+    }
+  };
+
+  const handleBuilderChange = (next: DashboardBuilderValue) => {
+    setBuilderValue(next);
+    setBuilderDirty(true);
   };
 
   const handleSaveReport = async () => {
@@ -77,11 +242,11 @@ export function ReportsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: `Rapport ${activeTab}`, type: activeTab, config_json: { period, comparePeriod } })
       });
-      if (res.ok) success('Rapport sauvegardé');
-      else toastError('Échec de la sauvegarde du rapport');
+      if (res.ok) success('Rapport enregistré');
+      else toastError('L\'enregistrement du rapport a échoué. Réessaie.');
     } catch (e) {
       console.error(e);
-      toastError('Erreur réseau lors de la sauvegarde');
+      toastError('Problème de connexion. Vérifie ton réseau et réessaie.');
     }
   };
 
@@ -92,6 +257,13 @@ export function ReportsPage() {
 
   const sourceCounts: Record<string, number> = {};
   leads.forEach(l => { sourceCounts[l.source || 'direct'] = (sourceCounts[l.source || 'direct'] || 0) + 1; });
+
+  // Sprint 51 M3.3 — répartition par campagne (utm_campaign)
+  const campaignCounts: Record<string, number> = {};
+  leads.forEach(l => {
+    const c = (l.utm_campaign || '').trim();
+    if (c) campaignCounts[c] = (campaignCounts[c] || 0) + 1;
+  });
 
   const typeCounts = { inbound: 0, customer: 0 };
   leads.forEach(l => { if (l.type === 'inbound') typeCounts.inbound++; if (l.type === 'customer') typeCounts.customer++; });
@@ -131,7 +303,7 @@ export function ReportsPage() {
   for (let i = periodDays; i >= 0; i -= 7) {
     const weekStart = new Date(now - i * 86400000);
     const weekEnd = new Date(now - (i - 7) * 86400000);
-    const weekLabel = weekStart.toLocaleDateString('fr-CA', { month: 'short', day: 'numeric' });
+    const weekLabel = formatDate(weekStart, getLocale(), { month: 'short', day: 'numeric' });
     const weekLeads = leads.filter(l => {
       const t = new Date(l.created_at).getTime();
       return t >= weekStart.getTime() && t < weekEnd.getTime();
@@ -147,7 +319,21 @@ export function ReportsPage() {
     return (
       <AppLayout title="Rapports d'Analyse">
         <div className="space-y-4">
-          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-32" />)}
+          {/* Hero placeholder */}
+          <Skeleton className="h-28 w-full rounded-2xl" />
+          {/* KPI strip 4 cards */}
+          <div className="flex gap-3">
+            {[0, 1, 2, 3].map(i => <Skeleton key={i} className="h-20 flex-1 rounded-2xl" />)}
+          </div>
+          {/* Tabs row */}
+          <div className="flex gap-2">
+            {[0, 1, 2, 3].map(i => <Skeleton key={i} className="h-9 w-24 rounded-lg" />)}
+          </div>
+          {/* 2 charts placeholders */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <Skeleton className="h-[280px] w-full rounded-2xl" />
+            <Skeleton className="h-[280px] w-full rounded-2xl" />
+          </div>
         </div>
       </AppLayout>
     );
@@ -155,6 +341,122 @@ export function ReportsPage() {
 
   const renderContent = () => {
     switch (activeTab) {
+      case 'builder': {
+        // Sprint 46 M1 — Vue Dashboards builder
+        if (activeDashboardId === null) {
+          // Liste de dashboards + CTA Nouveau
+          return (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold flex items-center gap-2">
+                  <Icon as={LayoutIcon} size="sm" /> Mes dashboards
+                </h3>
+                <Button variant="primary" onClick={handleCreateDashboard} className="text-xs gap-1.5">
+                  <Icon as={LayoutIcon} size={14} /> Nouveau dashboard
+                </Button>
+              </div>
+              {dashboardsLoading ? (
+                <Skeleton className="h-32 w-full rounded-2xl" />
+              ) : dashboards.length === 0 ? (
+                <Card className="p-0">
+                  <EmptyState
+                    variant="first-time"
+                    illustration={<EmptyStateIllustration kind="reports" size={160} />}
+                    title="Aucun dashboard"
+                    description="Crée ton premier dashboard personnalisé pour assembler tes widgets favoris."
+                  />
+                </Card>
+              ) : (
+                <div className="db-list-grid">
+                  {dashboards.map(d => (
+                    <Card key={d.id} className="db-list-card">
+                      <div className="db-list-card__head">
+                        <h4 className="db-list-card__title" title={d.name}>{d.name}</h4>
+                        <Tag size="sm" variant="brand">
+                          {(d.config as any)?.widgets?.length || 0} widgets
+                        </Tag>
+                      </div>
+                      <div className="db-list-card__meta">
+                        Maj : {formatDate(new Date((d.updated_at || 0) * 1000), getLocale(), { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </div>
+                      <div className="db-list-card__actions">
+                        <Button variant="secondary" onClick={() => handleOpenDashboard(d)} className="text-xs">
+                          Ouvrir
+                        </Button>
+                        <button
+                          type="button"
+                          className="db-list-card__icon-btn"
+                          onClick={() => handleShareDashboard(d.id)}
+                          aria-label="Partager"
+                          title="Partager"
+                        >
+                          <Icon as={Share2} size={14} />
+                        </button>
+                        {d.share_token && (
+                          <button
+                            type="button"
+                            className="db-list-card__icon-btn"
+                            onClick={async () => {
+                              const url = `${window.location.origin}/dashboards/shared/${d.share_token}`;
+                              try { await navigator.clipboard.writeText(url); success('Lien copié'); }
+                              catch { success(`Lien : ${url}`); }
+                            }}
+                            aria-label="Copier lien public"
+                            title="Copier lien public"
+                          >
+                            <Icon as={CopyIcon} size={14} />
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className="db-list-card__icon-btn db-list-card__icon-btn--danger"
+                          onClick={() => handleDeleteDashboard(d.id)}
+                          aria-label="Supprimer"
+                          title="Supprimer"
+                        >
+                          <Icon as={Trash2} size={14} />
+                        </button>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        }
+
+        // Builder ouvert sur un dashboard
+        const current = dashboards.find(d => d.id === activeDashboardId);
+        return (
+          <div className="space-y-3">
+            <div className="db-builder-bar">
+              <button
+                type="button"
+                onClick={() => { setActiveDashboardId(null); setBuilderDirty(false); }}
+                className="db-builder-bar__back"
+              >
+                ← Retour à la liste
+              </button>
+              <div className="db-builder-bar__title">
+                {current?.name || 'Dashboard'}
+                {builderDirty && <Tag size="sm" variant="warning">non enregistré</Tag>}
+              </div>
+              <div className="db-builder-bar__actions">
+                <Button variant="secondary" onClick={() => handleShareDashboard(activeDashboardId!)} className="text-xs gap-1.5">
+                  <Icon as={Share2} size={14} /> Partager
+                </Button>
+                <Button variant="primary" onClick={handleSaveDashboard} disabled={!builderDirty} className="text-xs gap-1.5">
+                  <Icon as={Save} size={14} /> Enregistrer
+                </Button>
+              </div>
+            </div>
+            <DashboardBuilder
+              value={builderValue}
+              onChange={handleBuilderChange}
+            />
+          </div>
+        );
+      }
       case 'sales': {
         const revenueBySource: Record<string, number> = {};
         leads.forEach(l => {
@@ -174,14 +476,20 @@ export function ReportsPage() {
           const spend = mockSpend[source as keyof typeof mockSpend] || 0;
           const wonLeads = leads.filter(l => (l.source || 'direct') === source && l.status === 'won').length;
           const cac = wonLeads > 0 ? Math.round(spend / wonLeads) : spend;
-          return { name: SOURCE_LABELS[source as keyof typeof SOURCE_LABELS] || source, cac, spend, wonLeads };
+          return {
+            name: SOURCE_LABELS[source as keyof typeof SOURCE_LABELS] || source,
+            sourceKey: source,
+            cac,
+            spend,
+            wonLeads,
+          };
         });
 
         return (
           <SalesReports>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <Card className="p-5">
-                <h3 className="text-sm font-semibold mb-4 flex items-center gap-2"><DollarSign size={16} className="text-[var(--success)]" /> Revenus par Source (ROI)</h3>
+                <h3 className="text-sm font-semibold mb-4 flex items-center gap-2"><Icon as={DollarSign} size="md" className="text-[var(--success)]" /> Revenus par Source (ROI)</h3>
                 {revenueData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={250}>
                   <BarChart data={revenueData} layout="vertical" margin={{ left: 20 }}>
@@ -205,26 +513,76 @@ export function ReportsPage() {
               </Card>
               
               <Card className="p-5">
-                <h3 className="text-sm font-semibold mb-4 flex items-center gap-2"><Target size={16} className="text-[var(--brand-primary)]" /> Coût d'Acquisition (CAC) estimé</h3>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm">
+                <h3 className="text-sm font-semibold mb-4 flex items-center gap-2"><Icon as={Target} size={16} className="text-[var(--primary)]" /> Coût d'Acquisition (CAC) estimé</h3>
+                <div className="table-premium-container print-data-table">
+                  <table className="table-premium w-full text-left">
                     <thead>
-                      <tr style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border-subtle)' }}>
-                        <th className="pb-2 font-medium">Source</th>
-                        <th className="pb-2 font-medium text-right">Dépenses</th>
-                        <th className="pb-2 font-medium text-center">Gagnés</th>
-                        <th className="pb-2 font-medium text-right">CAC</th>
+                      <tr>
+                        <th>Source</th>
+                        <th className="text-right">Dépenses</th>
+                        <th className="text-center">Gagnés</th>
+                        <th className="text-right">CAC</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {cacData.map(d => (
-                        <tr key={d.name} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                          <td className="py-3 font-medium">{d.name}</td>
-                          <td className="py-3 text-right" style={{ color: 'var(--danger)' }}>{d.spend} $</td>
-                          <td className="py-3 text-center">{d.wonLeads}</td>
-                          <td className="py-3 text-right font-semibold" style={{ color: 'var(--brand-primary)' }}>{d.cac} $</td>
-                        </tr>
-                      ))}
+                      {cacData.map(d => {
+                        const total = sourceCounts[d.sourceKey] || 0;
+                        const conv = total > 0 ? Math.round((d.wonLeads / total) * 100) : 0;
+                        return (
+                          <tr key={d.name}>
+                            <td className="font-medium">{d.name}</td>
+                            <td className="text-right" style={{ color: 'var(--danger)' }}>
+                              <CellHoverInfo
+                                title={`Dépenses · ${d.name}`}
+                                description={`Total leads source : ${total}`}
+                                breakdown={[
+                                  { label: 'Investi', value: `${d.spend} $`, tone: 'danger' },
+                                  { label: 'Conversion', value: `${conv}%`, tone: 'brand' },
+                                ]}
+                                trend={{
+                                  value: conv >= 15 ? 8.4 : -4.2,
+                                  direction: conv >= 15 ? 'up' : 'down',
+                                  label: 'vs 30 derniers jours',
+                                }}
+                                sparkline={[d.spend * 0.6, d.spend * 0.75, d.spend * 0.7, d.spend * 0.85, d.spend * 0.9, d.spend, d.spend * 1.05].map(Math.round)}
+                              >
+                                <span className="t-mono-num cursor-help">{d.spend} $</span>
+                              </CellHoverInfo>
+                            </td>
+                            <td className="text-center">
+                              <CellHoverInfo
+                                title="Gagnés"
+                                description={`${d.wonLeads} deals fermés sur ${total} leads`}
+                                breakdown={[
+                                  { label: 'Won', value: d.wonLeads, tone: 'success' },
+                                  { label: 'Total', value: total, tone: 'neutral' },
+                                  { label: 'Conv.', value: `${conv}%`, tone: 'brand' },
+                                ]}
+                              >
+                                <span className="t-mono-num cursor-help">{d.wonLeads}</span>
+                              </CellHoverInfo>
+                            </td>
+                            <td className="text-right font-semibold" style={{ color: 'var(--primary)' }}>
+                              <CellHoverInfo
+                                title={`CAC · ${d.name}`}
+                                description={d.wonLeads > 0 ? `Coût moyen pour acquérir un client gagné` : 'Aucun client gagné'}
+                                breakdown={[
+                                  { label: 'CAC', value: `${d.cac} $`, tone: 'brand' },
+                                  { label: 'Dépenses', value: `${d.spend} $`, tone: 'danger' },
+                                  { label: 'Gagnés', value: d.wonLeads, tone: 'success' },
+                                ]}
+                                trend={{
+                                  value: d.cac < 200 ? 12.5 : -6.8,
+                                  direction: d.cac < 200 ? 'up' : 'down',
+                                  label: d.cac < 200 ? 'efficacité en hausse' : 'à surveiller',
+                                }}
+                              >
+                                <span className="t-mono-num cursor-help">{d.cac} $</span>
+                              </CellHoverInfo>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -267,7 +625,7 @@ export function ReportsPage() {
                 <PieChart>
                   <Pie data={[{ name: 'Entrants', value: typeCounts.inbound }, { name: 'Clients', value: typeCounts.customer }]}
                     cx="50%" cy="50%" innerRadius={60} outerRadius={90} dataKey="value" label={({ name, percent }: any) => `${name ?? ''} ${((percent ?? 0) * 100).toFixed(0)}%`}>
-                    <Cell fill="var(--brand-primary)" />
+                    <Cell fill="var(--primary)" />
                     <Cell fill="var(--warning)" />
                   </Pie>
                   <Tooltip />
@@ -312,6 +670,32 @@ export function ReportsPage() {
               </div>
             </Card>
           </div>
+          {/* Sprint 51 M3.3 — Provenance par campagne (utm_campaign) */}
+          <Card className="p-5 mt-4">
+            <h3 className="text-sm font-semibold mb-4">📣 Leads par campagne</h3>
+            {Object.keys(campaignCounts).length === 0 ? (
+              <p className="text-xs text-[var(--text-muted)] italic">
+                Aucune campagne UTM détectée. Les leads entrants via formulaires, Lead Ads ou
+                sources connectées afficheront ici leur campagne d'origine.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {Object.entries(campaignCounts).sort(([, a], [, b]) => b - a).slice(0, 12).map(([campaign, count], i) => {
+                  const pct = totalLeads > 0 ? Math.round((count / totalLeads) * 100) : 0;
+                  return (
+                    <div key={campaign} className="flex items-center gap-3">
+                      <div className="w-3 h-3 rounded-full shrink-0" style={{ background: SOURCE_PIE_COLORS[i % SOURCE_PIE_COLORS.length] }} />
+                      <span className="text-xs font-medium w-40 truncate" title={campaign}>{campaign}</span>
+                      <div className="flex-1 h-6 bg-[var(--bg-subtle)] rounded overflow-hidden">
+                        <div className="h-full rounded transition-all" style={{ width: `${pct}%`, background: SOURCE_PIE_COLORS[i % SOURCE_PIE_COLORS.length], opacity: 0.7 }} />
+                      </div>
+                      <span className="text-xs font-bold w-16 text-right">{count} ({pct}%)</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
         </SourcesReports>
       );
       case 'performance': return (
@@ -333,34 +717,76 @@ export function ReportsPage() {
                     boxShadow: '0 8px 32px -8px rgba(0,157,219,0.25), 0 0 0 1px rgba(0,157,219,0.08)',
                   }}
                   cursor={{ fill: 'rgba(0,157,219,0.08)' }} />
-                  <Bar dataKey="total" name="Total leads" fill="var(--brand-primary)" radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="total" name="Total leads" fill="var(--primary)" radius={[0, 4, 4, 0]} />
                   <Bar dataKey="won" name="Gagnés" fill="var(--success)" radius={[0, 4, 4, 0]} />
                   <Legend />
                 </BarChart>
               </ResponsiveContainer>
             </Card>
             <Card className="p-5">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+              <div className="table-premium-container print-data-table">
+                <table className="table-premium w-full">
                   <thead>
-                    <tr className="border-b border-[var(--border-subtle)]">
-                      <th className="text-left py-2 text-xs text-[var(--text-muted)]">Sous-compte</th>
-                      <th className="text-right py-2 text-xs text-[var(--text-muted)]">Leads</th>
-                      <th className="text-right py-2 text-xs text-[var(--text-muted)]">Gagnés</th>
-                      <th className="text-right py-2 text-xs text-[var(--text-muted)]">Conv.</th>
-                      <th className="text-right py-2 text-xs text-[var(--text-muted)]">Pipeline</th>
+                    <tr>
+                      <th className="text-left">Sous-compte</th>
+                      <th className="text-right">Leads</th>
+                      <th className="text-right">Gagnés</th>
+                      <th className="text-right">Conv.</th>
+                      <th className="text-right">Pipeline</th>
                     </tr>
                   </thead>
                   <tbody>
                     {Object.values(clientCounts).sort((a, b) => b.total - a.total).map((data, i) => {
                         const conv = data.total > 0 ? Math.round((data.won / data.total) * 100) : 0;
+                        const avgValue = data.won > 0 ? Math.round(data.value / data.won) : 0;
                         return (
-                          <tr key={i} className="border-b border-[var(--border-subtle)] hover:bg-[var(--bg-subtle)]">
-                            <td className="py-2 font-medium">{data.name}</td>
-                            <td className="py-2 text-right">{data.total}</td>
-                            <td className="py-2 text-right text-[var(--success)]">{data.won}</td>
-                            <td className="py-2 text-right"><Badge color={conv > 20 ? 'var(--success)' : 'var(--warning)'}>{conv}%</Badge></td>
-                            <td className="py-2 text-right text-[var(--brand-primary)]">{data.value.toLocaleString('fr-CA')} $</td>
+                          <tr key={i}>
+                            <td className="font-medium">{data.name}</td>
+                            <td className="text-right">
+                              <CellHoverInfo
+                                title={`Leads · ${data.name}`}
+                                description={`Total cumulé sur la période`}
+                                breakdown={[
+                                  { label: 'Total', value: data.total, tone: 'neutral' },
+                                  { label: 'Gagnés', value: data.won, tone: 'success' },
+                                  { label: 'Conv.', value: `${conv}%`, tone: 'brand' },
+                                ]}
+                              >
+                                <span className="t-mono-num cursor-help">{data.total}</span>
+                              </CellHoverInfo>
+                            </td>
+                            <td className="text-right text-[var(--success)]">
+                              <CellHoverInfo
+                                title="Gagnés"
+                                description={`${data.won} deals fermés`}
+                                breakdown={[
+                                  { label: 'Won', value: data.won, tone: 'success' },
+                                  { label: 'Pipeline $', value: `${formatMoneyCAD(data.value, getLocale())}`, tone: 'brand' },
+                                  { label: 'Panier moyen', value: avgValue > 0 ? `${formatMoneyCAD(avgValue, getLocale())}` : '—', tone: 'accent' },
+                                ]}
+                                trend={{
+                                  value: conv >= 20 ? 10.4 : -3.6,
+                                  direction: conv >= 20 ? 'up' : 'down',
+                                  label: 'vs période précédente',
+                                }}
+                              >
+                                <span className="t-mono-num cursor-help">{data.won}</span>
+                              </CellHoverInfo>
+                            </td>
+                            <td className="text-right"><Tag dot size="sm" variant={conv > 20 ? 'success' : 'warning'}>{conv}%</Tag></td>
+                            <td className="text-right text-[var(--primary)]">
+                              <CellHoverInfo
+                                title="Pipeline"
+                                description={`Valeur cumulée tous statuts confondus`}
+                                breakdown={[
+                                  { label: 'Pipeline $', value: `${formatMoneyCAD(data.value, getLocale())}`, tone: 'brand' },
+                                  { label: 'Gagnés', value: data.won, tone: 'success' },
+                                  { label: 'Panier moyen', value: avgValue > 0 ? `${formatMoneyCAD(avgValue, getLocale())}` : '—', tone: 'accent' },
+                                ]}
+                              >
+                                <span className="t-mono-num cursor-help">{formatMoneyCAD(data.value, getLocale())}</span>
+                              </CellHoverInfo>
+                            </td>
                           </tr>
                         );
                     })}
@@ -380,8 +806,8 @@ export function ReportsPage() {
                 <AreaChart data={trendData}>
                   <defs>
                     <linearGradient id="gradient-trend" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="var(--brand-primary)" stopOpacity={0.3} />
-                      <stop offset="100%" stopColor="var(--brand-primary)" stopOpacity={0} />
+                      <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.3} />
+                      <stop offset="100%" stopColor="var(--primary)" stopOpacity={0} />
                     </linearGradient>
                     <linearGradient id="gradient-signed" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="var(--success)" stopOpacity={0.3} />
@@ -400,7 +826,7 @@ export function ReportsPage() {
                     boxShadow: '0 8px 32px -8px rgba(0,157,219,0.25), 0 0 0 1px rgba(0,157,219,0.08)',
                   }}
                   cursor={{ fill: 'rgba(0,157,219,0.08)' }} />
-                  <Area type="monotone" dataKey="leads" name="Leads" stroke="var(--brand-primary)" fill="url(#gradient-trend)" strokeWidth={2} />
+                  <Area type="monotone" dataKey="leads" name="Leads" stroke="var(--primary)" fill="url(#gradient-trend)" strokeWidth={2} />
                   <Area type="monotone" dataKey="won" name="Gagnés" stroke="var(--success)" fill="url(#gradient-signed)" strokeWidth={2} />
                   <Legend />
                 </AreaChart>
@@ -420,60 +846,83 @@ export function ReportsPage() {
     }
   };
 
+  const periodLabel = period === '30d' ? '30 derniers jours' : period === '90d' ? '90 derniers jours' : '12 derniers mois';
+  const todayLabel = formatDate(new Date(), getLocale(), { day: 'numeric', month: 'long', year: 'numeric' });
+  const activeTabLabel = TABS.find(t => t.id === activeTab)?.label || activeTab;
+
   return (
     <AppLayout title="Rapports d'Analyse">
+      {/* Sprint 34 wave 34-1A — PDF cover page premium */}
+      <div className="pdf-cover-page" aria-hidden="true">
+        <div className="pdf-cover-accent-bar" />
+        <div className="pdf-cover-logo">Intralys</div>
+        <div className="pdf-cover-tagline">CRM tout-en-un pour PMEs</div>
+        <h1 className="pdf-cover-title">Rapport · {activeTabLabel}</h1>
+        <p className="pdf-cover-subtitle">
+          Synthèse analytique de vos performances commerciales et marketing sur la période sélectionnée.
+        </p>
+        <div className="pdf-cover-meta">
+          <div className="pdf-cover-meta-item">
+            <span className="label">Généré le</span>
+            <span className="value">{todayLabel}</span>
+          </div>
+          <div className="pdf-cover-meta-item">
+            <span className="label">Période</span>
+            <span className="value">{periodLabel}</span>
+          </div>
+          <div className="pdf-cover-meta-item">
+            <span className="label">Total leads</span>
+            <span className="value">{totalLeads}</span>
+          </div>
+          <div className="pdf-cover-meta-item">
+            <span className="label">Conversion</span>
+            <span className="value">{conversionRate}%</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="print-page-header">
+        <h1>Intralys CRM — Rapport</h1>
+        <div className="print-meta">
+          {todayLabel} · intralys.com
+        </div>
+      </div>
       <PageHero
         meta="Insights"
         title="Rapports"
         highlight="Rapports"
         description="Analyse de vos performances : leads, conversion, valeur pipeline, sources."
       />
-      {/* Metrics Overview Sprint 23 — mini hero cards color-coded */}
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-        <div className="flex flex-wrap items-stretch gap-2">
-          {[
-            { icon: Users, v: totalLeads, l: 'Total leads', accent: '#009DDB', dark: '#0086C0', to: '#F0FAFE' },
-            { icon: Activity, v: leadsThisMonth, l: 'Ce mois', accent: '#37CA37', dark: '#2ba62b', to: '#F5FBF5' },
-            { icon: Percent, v: `${conversionRate}%`, l: 'Conversion', accent: '#188BF6', dark: '#0F6FD8', to: '#F0F5FE' },
-            { icon: DollarSign, v: `${totalPipelineValue.toLocaleString('fr-CA')} $`, l: 'Pipeline', accent: '#FF9A00', dark: '#D96E27', to: '#FFFBF5' },
-          ].map(s => (
-            <div key={s.l} className="relative overflow-hidden flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl transition-all hover:scale-[1.02] cursor-default"
-              style={{
-                background: `linear-gradient(135deg, #FFFFFF 0%, ${s.to} 100%)`,
-                border: `1px solid ${s.accent}40`,
-                boxShadow: `0 1px 2px ${s.accent}10, 0 6px 16px -8px ${s.accent}40`,
-              }}>
-              <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                style={{ background: `linear-gradient(135deg, ${s.accent} 0%, ${s.dark} 100%)`, boxShadow: `0 2px 8px ${s.accent}60` }}>
-                <s.icon size={15} className="text-white" />
-              </div>
-              <div>
-                <p className="text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">{s.l}</p>
-                <p className="text-lg font-bold tabular-nums leading-tight" style={{ color: s.accent }}>{s.v}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-        
-        {/* Customization Toolbar */}
+      {/* KPI Strip Sprint 23 wave 16 — unified GHL pattern */}
+      <KpiStrip
+        items={[
+          { label: 'Total leads', value: totalLeads, color: 'brand', icon: <Icon as={Users} size={11} /> },
+          { label: 'Ce mois', value: leadsThisMonth, color: 'success', icon: <Icon as={Activity} size={11} /> },
+          { label: 'Conversion', value: `${conversionRate}%`, color: 'info', icon: <Icon as={Percent} size={11} /> },
+          { label: 'Pipeline $', value: `${(totalPipelineValue / 1000).toFixed(1)}K`, color: 'accent', icon: <Icon as={DollarSign} size={11} /> },
+        ] satisfies KpiItem[]}
+      />
+
+      {/* Customization Toolbar */}
+      <div className="flex flex-wrap items-center justify-end gap-4 mb-6">
         <div className="flex flex-wrap gap-2">
-          <div className="flex gap-1 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-lg p-0.5 mr-2">
+          <div data-coachmark="reports-period" className="flex gap-1 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-lg p-0.5 mr-2">
             {(['30d', '90d', '12m'] as const).map(p => (
               <button key={p} onClick={() => setPeriod(p)}
                 className={`px-3 py-1.5 text-[11px] rounded-md font-medium cursor-pointer transition-all
-                  ${period === p ? 'bg-[var(--brand-primary)] text-white shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>
+                  ${period === p ? 'bg-[var(--primary)] text-white shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>
                 {p === '30d' ? '30j' : p === '90d' ? '90j' : '12 mois'}
               </button>
             ))}
           </div>
-          <Button variant="secondary" onClick={() => setComparePeriod(!comparePeriod)} className={`text-xs gap-1.5 ${comparePeriod ? 'bg-[var(--brand-tint)] text-[var(--brand-primary)]' : ''}`}>
-            <Presentation size={14} /> Comparer
+          <Button variant="secondary" onClick={() => setComparePeriod(!comparePeriod)} className={`text-xs gap-1.5 ${comparePeriod ? 'bg-[var(--brand-tint)] text-[var(--primary)]' : ''}`}>
+            <Icon as={Presentation} size="sm" /> Comparer
           </Button>
           <Button variant="secondary" onClick={handleSaveReport} className="text-xs gap-1.5">
-            <Save size={14} /> Sauvegarder
+            <Icon as={Save} size={14} /> Enregistrer
           </Button>
-          <Button variant="primary" onClick={handleExportPDF} disabled={isExporting} className="text-xs gap-1.5">
-            <Download size={14} /> {isExporting ? 'Export...' : 'Export PDF'}
+          <Button variant="primary" onClick={handleExportPDF} disabled={isExporting} className="text-xs gap-1.5" aria-label={activeTab === 'builder' ? 'Exporter le dashboard en PDF' : 'Exporter le rapport en PDF'}>
+            <Icon as={Download} size={14} /> {isExporting ? 'Export…' : (activeTab === 'builder' ? 'Exporter dashboard PDF' : 'Exporter rapport PDF')}
           </Button>
         </div>
       </div>
@@ -483,7 +932,7 @@ export function ReportsPage() {
         <div className="md:hidden w-full flex gap-1.5 overflow-x-auto pb-3 mb-2 -mx-1 px-1 no-scrollbar">
           {TABS.map(tab => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer border whitespace-nowrap shrink-0 transition-all ${activeTab === tab.id ? 'bg-[var(--brand-primary)] text-white border-[var(--brand-primary)]' : 'border-[var(--border-subtle)] text-[var(--text-muted)] bg-[var(--bg-surface)]'}`}>
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer border whitespace-nowrap shrink-0 transition-all ${activeTab === tab.id ? 'bg-[var(--primary)] text-white border-[var(--primary)]' : 'border-[var(--border-subtle)] text-[var(--text-muted)] bg-[var(--bg-surface)]'}`}>
               <tab.icon size={13} /> {tab.label}
             </button>
           ))}
@@ -499,7 +948,7 @@ export function ReportsPage() {
                 {TABS.filter(t => t.group === group).map(tab => (
                   <button key={tab.id} onClick={() => setActiveTab(tab.id)}
                     className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-left cursor-pointer transition-all mb-0.5
-                      ${activeTab === tab.id ? 'bg-[var(--brand-tint)] text-[var(--brand-primary)] font-medium shadow-sm' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]'}`}>
+                      ${activeTab === tab.id ? 'bg-[var(--brand-tint)] text-[var(--primary)] font-medium shadow-sm' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]'}`}>
                     <tab.icon size={16} /> {tab.label}
                   </button>
                 ))}
@@ -510,9 +959,24 @@ export function ReportsPage() {
 
         {/* Content */}
         <div className="flex-1 min-w-0 h-[calc(100vh-160px)] overflow-y-auto pb-10 pr-2">
-          {renderContent()}
+          {/* Sprint 46 M1 — Le builder reste accessible même sans leads (l'user
+             peut créer un dashboard avant d'avoir de la donnée). */}
+          {leads.length === 0 && activeTab !== 'builder' ? (
+            <Card className="p-0">
+              <EmptyState
+                variant="first-time"
+                illustration={<EmptyStateIllustration kind="reports" size={160} />}
+                title="Aucune donnée encore"
+                description="Tes rapports apparaîtront ici dès tes premières activités (leads, ventes, conversions)."
+              />
+            </Card>
+          ) : (
+            renderContent()
+          )}
         </div>
       </div>
+      {/* Sprint 45 M3.2 — Coachmark contextuel : « Filtre par période, comparer, etc. » */}
+      <ContextualCoachmark page="reports" />
     </AppLayout>
   );
 }

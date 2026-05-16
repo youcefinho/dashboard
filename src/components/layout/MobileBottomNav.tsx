@@ -3,6 +3,7 @@
 
 import { Link, useLocation } from '@tanstack/react-router';
 import { LayoutDashboard, Users, Briefcase, MessageSquare, MoreHorizontal } from 'lucide-react';
+import { Icon } from '@/components/ui';
 
 const NAV_ITEMS = [
   { path: '/dashboard', label: 'Accueil', icon: LayoutDashboard },
@@ -24,7 +25,7 @@ export function MobileBottomNav() {
         boxShadow: '0 -8px 24px -8px rgba(0,157,219,0.1)',
       }}>
       {NAV_ITEMS.map(item => {
-        const Icon = item.icon;
+        const ItemIcon = item.icon;
         const isActive = location.pathname.startsWith(item.path);
         return (
           <Link
@@ -33,7 +34,7 @@ export function MobileBottomNav() {
             className={`relative ${isActive ? 'active' : ''}`}
             aria-current={isActive ? 'page' : undefined}
             style={isActive ? {
-              color: 'var(--brand-primary)',
+              color: 'var(--primary)',
             } : undefined}
           >
             {isActive && (
@@ -43,7 +44,7 @@ export function MobileBottomNav() {
                   boxShadow: '0 2px 8px rgba(0,157,219,0.6), 0 0 12px rgba(217,110,39,0.4)',
                 }} />
             )}
-            <Icon size={20} style={isActive ? { filter: 'drop-shadow(0 0 8px rgba(0,157,219,0.4))' } : undefined} />
+            <Icon as={ItemIcon} size={20} style={isActive ? { filter: 'drop-shadow(0 0 8px rgba(0,157,219,0.4))' } : undefined} />
             <span style={isActive ? { fontWeight: 700 } : undefined}>{item.label}</span>
           </Link>
         );

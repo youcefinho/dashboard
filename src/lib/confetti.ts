@@ -1,24 +1,34 @@
 // ── confetti — Burst confetti DOM-only branded (Sprint 23 wave 8) ────────────
-// Pas de lib externe. Génère 50 particules SVG en absolute, anime avec
-// requestAnimationFrame, cleanup auto après 2.5s.
+// Pas de lib externe. Génère des particules SVG en absolute, anime avec
+// requestAnimationFrame, cleanup auto.
 // Couleurs : signature Intralys cyan/orange/vert.
 //
-// Usage : confettiBurst() — burst au centre de l'écran
-//         confettiBurst({ x, y }) — burst depuis un point précis (clientX/Y)
+// Sprint 24 vague 3B — additions :
+//   - confettiBurstSubtle()  : 15 particules, 1.4s, gravity normale (micro-celebrations).
+//   - confettiBurstHero()    : 80 particules, 3s, gravity 0.6 réduite (Pipeline won, onboarding complete).
+//   - confettiBurst() existant conservé pour back-compat (Pipeline, LeadDetail).
 
 interface BurstOptions {
   x?: number;
   y?: number;
   /** Nombre de particules (defaults 50). Réduit si prefers-reduced-motion. */
   count?: number;
+  /** Durée totale ms (default 2200). */
+  duration?: number;
+  /** Gravité appliquée à vy par frame (default 0.35). Réduit pour hero. */
+  gravity?: number;
 }
 
 const COLORS = ['#009DDB', '#D96E27', '#37CA37', '#FF9A00', '#188BF6'];
+const BRAND_COLORS = ['#009DDB', '#D96E27']; // Subset pour subtle
 
-export function confettiBurst({ x, y, count = 50 }: BurstOptions = {}): void {
+function runBurst(
+  options: BurstOptions & { palette: string[]; sizeMin: number; sizeMax: number; velocityMin: number; velocityMax: number }
+): void {
   if (typeof document === 'undefined') return;
-  // Respect reduced motion : skip animation entirely
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+  const { x, y, count, duration = 2200, gravity = 0.35, palette, sizeMin, sizeMax, velocityMin, velocityMax } = options;
 
   const cx = x ?? window.innerWidth / 2;
   const cy = y ?? window.innerHeight / 2;
@@ -35,11 +45,12 @@ export function confettiBurst({ x, y, count = 50 }: BurstOptions = {}): void {
   document.body.appendChild(container);
 
   const particles: Array<{ el: HTMLElement; vx: number; vy: number; vr: number; x: number; y: number; r: number; opacity: number }> = [];
+  const n = count ?? 50;
 
-  for (let i = 0; i < count; i++) {
+  for (let i = 0; i < n; i++) {
     const el = document.createElement('div');
-    const color = COLORS[Math.floor(Math.random() * COLORS.length)]!;
-    const size = 6 + Math.random() * 8;
+    const color = palette[Math.floor(Math.random() * palette.length)]!;
+    const size = sizeMin + Math.random() * (sizeMax - sizeMin);
     const isCircle = Math.random() > 0.5;
     el.style.cssText = `
       position: absolute;
@@ -56,7 +67,7 @@ export function confettiBurst({ x, y, count = 50 }: BurstOptions = {}): void {
     container.appendChild(el);
 
     const angle = Math.random() * Math.PI * 2;
-    const velocity = 8 + Math.random() * 12;
+    const velocity = velocityMin + Math.random() * (velocityMax - velocityMin);
     particles.push({
       el,
       vx: Math.cos(angle) * velocity,
@@ -70,8 +81,6 @@ export function confettiBurst({ x, y, count = 50 }: BurstOptions = {}): void {
   }
 
   const start = performance.now();
-  const duration = 2200;
-  const gravity = 0.35;
 
   function tick(now: number) {
     const elapsed = now - start;
@@ -94,4 +103,33 @@ export function confettiBurst({ x, y, count = 50 }: BurstOptions = {}): void {
     }
   }
   requestAnimationFrame(tick);
+}
+
+/**
+ * Burst confetti standard (Sprint 23 wave 8 — préservé pour back-compat).
+ * 50 particules, durée 2.2s, gravity 0.35.
+ *
+ * Usage : confettiBurst() — burst au centre de l'écran
+ *         confettiBurst({ x, y }) — burst depuis un point précis (clientX/Y)
+ */
+export function confettiBurst({ x, y, count = 50 }: BurstOptions = {}): void {
+  runBurst({ x, y, count, duration: 2200, gravity: 0.35, palette: COLORS, sizeMin: 6, sizeMax: 14, velocityMin: 8, velocityMax: 20 });
+}
+
+/**
+ * Sprint 24 vague 3B — Burst subtle pour micro-celebrations (toast `celebrate: true`,
+ * smart-list saved, favoris ajouté…).
+ * 15 particules brand cyan/orange seulement, durée 1.4s, gravity normale.
+ */
+export function confettiBurstSubtle({ x, y }: BurstOptions = {}): void {
+  runBurst({ x, y, count: 15, duration: 1400, gravity: 0.35, palette: BRAND_COLORS, sizeMin: 5, sizeMax: 9, velocityMin: 6, velocityMax: 12 });
+}
+
+/**
+ * Sprint 24 vague 3B — Burst hero pour les wins majeurs (Pipeline won,
+ * onboarding complété, milestone atteint).
+ * 80 particules brand, durée 3s, gravity réduite 0.6 → particules planent plus longtemps.
+ */
+export function confettiBurstHero({ x, y }: BurstOptions = {}): void {
+  runBurst({ x, y, count: 80, duration: 3000, gravity: 0.18, palette: COLORS, sizeMin: 7, sizeMax: 16, velocityMin: 10, velocityMax: 24 });
 }

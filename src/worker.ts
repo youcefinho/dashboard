@@ -43,13 +43,26 @@ import { handleGetAppointments, handleCreateAppointment, handleUpdateAppointment
 import { handleGetTasks, handleGetTask, handleCreateTask, handlePatchTask, handleDeleteTask, processOverdueTasks } from './worker/tasks';
 import { handleGetNotifications, handleReadNotification, handleReadAllNotifications } from './worker/notifications';
 import { handleReportsOverview, handleReportsSources, handleReportsConversion, handleGetSavedReports, handleCreateSavedReport, handleDeleteSavedReport } from './worker/reports';
+// Sprint 46 M1.3 — Custom dashboards builder
+import {
+  handleGetDashboards, handleGetDashboard, handleCreateDashboard,
+  handleUpdateDashboard, handleDeleteDashboard, handleShareDashboard,
+  handleGetSharedDashboard,
+} from './worker/dashboards';
 import {
   handleGetBookingPages, handleCreateBookingPage, handleUpdateBookingPage, handleDeleteBookingPage,
   handleGetBookings, handlePublicBookingPage, handlePublicCreateBooking,
 } from './worker/bookings';
 import { handleGetForms, handleGetForm, handleGetFormStats, handleCreateForm, handleUpdateForm, handleDeleteForm, handleGetFormSubmissions, handlePublicFormGet, handlePublicFormSubmit } from './worker/forms';
 import { handleGetTriggerLinks, handleCreateTriggerLink, handleDeleteTriggerLink, handleTriggerLinkClick, handleGetTriggerLinkStats } from './worker/trigger-links';
-import { handleAiGenerate, handleAiSuggestWorkflow, handleAiSummarizeConversation, handleAiSuggestNextAction, handleAiSummarizeLeads } from './worker/ai';
+import { handleAiGenerate, handleAiSuggestWorkflow, handleAiSummarizeConversation, handleAiSuggestNextAction, handleAiSummarizeLeads, handleAiDrafts, handleAiClassifyConversation, handleAiClassifyLead, handleAiNlQuery, handleAiComposeSuggest, handleAiProofread } from './worker/ai';
+// Sprint 43 M3 — Reactions / QuickReplies / LeadScore backend
+import { handleGetReactions, handleAddReaction, handleRemoveReaction } from './worker/reactions';
+import { handleGetQuickReplies, handleAddQuickReply } from './worker/quick-replies';
+import { handleGetLeadScore } from './worker/lead-score';
+// Sprint 49 M2 — Predictive + bottleneck + anomalies
+import { handleGetLeadPredict } from './worker/lead-predict';
+import { handleGetPipelineBottlenecks, handleGetActivityAnomalies } from './worker/pipeline-insights';
 import { handlePublicUnsubscribe, handleGetUnsubscribes, handleLogConsent, handleGetConsent, handleForgetLead, handleExportPii } from './worker/compliance';
 import { handleGetSubAccounts, handleCreateSubAccount, handleUpdateSubAccount, handleCreateSnapshot, handleApplySnapshot, handleGetWhitelabel, handleUpdateWhitelabel, handleWidgetScript } from './worker/sub-accounts';
 // gcal.ts et gbp.ts déplacés en _v2-backlog/ (Sprint Consolidation)
@@ -69,6 +82,8 @@ import {
   handleGetReviews, handleGetReviewStats, handleSuggestReviewReply, handleReplyToReview,
 } from './worker/reviews';
 import { WebchatRoom, handleWebchatConnect, handleWebchatPrechat } from './worker/webchat';
+// Sprint 46 M3.4 — NotificationsRoom Durable Object (broadcast WebSocket par user)
+import { NotificationsRoom } from './worker/notifications-ws';
 import {
   handleGetScoreProfiles, handleCreateScoreProfile, handleUpdateScoreProfile,
   handleGetLeadScores, handleRecomputeLeadScore, seedDefaultScoreProfiles,
@@ -92,11 +107,17 @@ import { handleGetUsers, handleInviteUser, handleUpdateUserRole, handleDeleteUse
 
 import { handleFeedback, handleNps } from './worker/feedback';
 import { handleDemoReset } from './worker/admin';
-import { handleCompleteOnboarding } from './worker/onboarding';
+// Sprint 46 M2 — Admin analytics (overview / heatmap / features-usage)
+import {
+  handleAdminOverview, handleAdminActivityHeatmap, handleAdminFeaturesUsage,
+} from './worker/admin-analytics';
+import { handleCompleteOnboarding, handleWelcomeOnboarding } from './worker/onboarding';
 import { handleRegisterDevice, handleUnregisterDevice, handleSendPush } from './worker/push';
 
-// Export Durable Object pour Cloudflare
+// Export Durable Objects pour Cloudflare
 export { WebchatRoom };
+// Sprint 46 M3.4 — Notifications real-time
+export { NotificationsRoom };
 
 // Injection de dépendance : autoEnroll pour les leads
 setAutoEnroll(autoEnroll);
@@ -109,6 +130,17 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
     const method = request.method;
+
+    // ── Sprint 47 M2.4 — SSR meta snapshot pour crawlers (Google/Twitter/FB/LinkedIn)
+    // Non destructif : ne s'active QUE si UA = crawler ET path = route marketing
+    // connue (cf. src/worker/route-meta-ssr.ts). Sinon, traverse vers le SPA.
+    try {
+      const { maybeServeSsrMeta } = await import('./worker/route-meta-ssr');
+      const ssrResponse = maybeServeSsrMeta(request);
+      if (ssrResponse) return ssrResponse;
+    } catch {
+      // Si le module échoue, on laisse traverser au SPA — pas de blocking
+    }
 
     // CORS preflight
     if (method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders() });
@@ -257,7 +289,38 @@ export default {
           const { handlePublicDeleteWebhook } = await import('./worker/settings');
           return await handlePublicDeleteWebhook(env, authResult.clientId, pubWhMatch[1]!);
         }
-        
+
+        // --- CATALOGUE PUBLIC (storefront futur) — Sprint E2 M1.4 ---
+        // Lecture seule produits ACTIFS du tenant de la clé API. Scope read.
+        // Gated module ecommerce (le clientId de la clé doit avoir le module).
+        if (subPath === '/products' && method === 'GET') {
+          const scopeErr = requireScope(authResult, 'read');
+          if (scopeErr) return scopeErr;
+          const { hasModule } = await import('./worker/modules');
+          const client = await env.DB.prepare(
+            'SELECT modules_json FROM clients WHERE id = ?',
+          ).bind(authResult.clientId).first() as { modules_json: string | null } | null;
+          if (!hasModule(client, 'ecommerce')) {
+            return json({ error: 'Module Boutique non activé pour ce compte' }, 403);
+          }
+          const { handlePublicListProducts } = await import('./worker/ecommerce');
+          return await handlePublicListProducts(env, authResult.clientId, url);
+        }
+        const pubProdMatch = subPath.match(/^\/products\/([^/]+)$/);
+        if (pubProdMatch && method === 'GET') {
+          const scopeErr = requireScope(authResult, 'read');
+          if (scopeErr) return scopeErr;
+          const { hasModule } = await import('./worker/modules');
+          const client = await env.DB.prepare(
+            'SELECT modules_json FROM clients WHERE id = ?',
+          ).bind(authResult.clientId).first() as { modules_json: string | null } | null;
+          if (!hasModule(client, 'ecommerce')) {
+            return json({ error: 'Module Boutique non activé pour ce compte' }, 403);
+          }
+          const { handlePublicGetProduct } = await import('./worker/ecommerce');
+          return await handlePublicGetProduct(env, authResult.clientId, pubProdMatch[1]!);
+        }
+
         return new Response('Not Found in Public API', { status: 404 });
       }
 
@@ -274,6 +337,17 @@ export default {
         return await handleMetaWebhook(request, env);
       }
       if (path === '/api/webhook/lead' && method === 'POST') return await handleWebhookLead(request, env);
+      // Sprint 51 M2 — Connecteur entrant générique par token (+ dry-run via ?dryRun=1)
+      const ingestMatch = path.match(/^\/api\/ingest\/([^/]+)$/);
+      if (ingestMatch && method === 'POST') {
+        const { handleIngestByToken } = await import('./worker/leads');
+        return await handleIngestByToken(request, env, ingestMatch[1]!, url);
+      }
+      // Sprint 51 M1.3 — Receiver Google Lead Form (auth via google_key dans le payload)
+      if (path === '/api/webhook/google-leadform' && method === 'POST') {
+        const { handleGoogleLeadForm } = await import('./worker/meta-leadgen');
+        return await handleGoogleLeadForm(request, env);
+      }
       if (path.startsWith('/api/book/') && method === 'GET') return await handlePublicBookingPage(env, url);
       if (path === '/api/book' && method === 'POST') return await handlePublicCreateBooking(request, env);
       if (path.startsWith('/api/form/') && method === 'GET') return await handlePublicFormGet(env, url);
@@ -289,6 +363,9 @@ export default {
       const signMatch = path.match(/^\/api\/sign\/([^/]+)$/);
       if (signMatch && method === 'GET') return await handlePublicGetDocument(env, signMatch[1]!);
       if (signMatch && method === 'POST') return await handlePublicSignDocument(request, env, signMatch[1]!);
+      // Sprint 46 M1.3 — Dashboards partagés (token public)
+      const sharedDashMatch = path.match(/^\/api\/dashboards\/shared\/([A-Za-z0-9_-]{8,64})$/);
+      if (sharedDashMatch && method === 'GET') return await handleGetSharedDashboard(env, sharedDashMatch[1]!);
       // Voice
       const { handleVoiceTwiml, handleVoiceRecording } = await import('./worker/voice');
       if (path === '/api/voice/twiml' && method === 'POST') return await handleVoiceTwiml(request, env);
@@ -322,6 +399,71 @@ export default {
         return await handleStripeWebhook(request, env);
       }
 
+      // Sprint E4 M1 — Webhook paiement marchand e-commerce (PUBLIC).
+      // ⚠️ ZONE RÉGULÉE. DISTINCT de /api/webhook/stripe (abo SaaS billing.ts,
+      // intouchable). Auth = SIGNATURE provider, VRAIMENT vérifiée et déléguée
+      // à provider.handleWebhook (M2/M3). Anti-rejeu via payment_events UNIQUE.
+      const ecPayWhMatch = path.match(/^\/api\/webhook\/payments\/([^/]+)$/);
+      if (ecPayWhMatch && method === 'POST') {
+        // Sprint E6 M2 — Webhook dispute (chargeback) PUBLIC. ⚠️ ZONE RÉGULÉE :
+        // un litige = ENREGISTREMENT DB seulement, AUCUN mouvement de fonds.
+        // La SIGNATURE est vérifiée DANS le dispatcher M1 (provider.handleWebhook
+        // → verifyStripeSignature, vraie HMAC ≠ mock billing.ts). Le dispatcher
+        // M1 (handlePaymentWebhook) renvoie un outcome discriminé
+        // PaymentWebhookOutcome ; quand outcome.kind==='dispute', le traitement
+        // litige est délégué à handleDisputeWebhook (ecommerce-disputes.ts M2).
+        // handlePaymentWebhook reste le SEUL point d'entrée (signature + dédup
+        // payment_events) — on ne re-vérifie/re-mock RIEN ici, billing.ts
+        // intouché. M1 (ecommerce-payments.ts) n'est PAS modifié.
+        const epMod = await import('./worker/ecommerce-payments');
+        // Accès défensif au dispatcher discriminé : M1 n'expose à ce jour que
+        // handlePaymentWebhook (renvoie une Response, signature+dédup gérées).
+        // Si/quand M1 publie un dispatcher renvoyant PaymentWebhookOutcome, la
+        // voie dispute s'active sans modifier M1. Lookup runtime non typé pour
+        // ne PAS introduire d'import nommé d'un symbole non exporté (TS2305).
+        const dispatch = (epMod as unknown as Record<string, unknown>)
+          .dispatchPaymentWebhook;
+        if (typeof dispatch === 'function') {
+          const outcome = await (
+            dispatch as (
+              r: Request,
+              e: typeof env,
+              p: string,
+            ) => Promise<import('./worker/ecommerce-payments').PaymentWebhookOutcome | null>
+          )(request, env, ecPayWhMatch[1]!);
+          if (outcome && outcome.kind === 'dispute') {
+            const { handleDisputeWebhook } = await import('./worker/ecommerce-disputes');
+            await handleDisputeWebhook(env, outcome);
+            return new Response(JSON.stringify({ ok: true }), {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' },
+            });
+          }
+        }
+        return await epMod.handlePaymentWebhook(request, env, ecPayWhMatch[1]!);
+      }
+
+      // Sprint E8 M2 — Webhooks omnicanal Shopify / Woo (PUBLICS).
+      // Auth = SIGNATURE (HMAC SHA-256 base64, vraie vérif constant-time
+      // via crypto.subtle — adaptée de verifyMetaSignature, ≠ mock
+      // billing.ts). DISTINCT de /api/webhook/stripe (billing SaaS
+      // intouché). Idempotence + anti-echo gérés DANS le moteur M2.3
+      // (channel_product_map / orders.external_id / channel_sync_log).
+      const shopifyWhMatch = path.match(/^\/api\/webhook\/shopify\/([^/]+)$/);
+      if (shopifyWhMatch && method === 'POST') {
+        const { handleShopifyWebhook } = await import(
+          './worker/ecommerce-channel-shopify'
+        );
+        return await handleShopifyWebhook(request, env, shopifyWhMatch[1]!);
+      }
+      const wooWhMatch = path.match(/^\/api\/webhook\/woo\/([^/]+)$/);
+      if (wooWhMatch && method === 'POST') {
+        const { handleWooWebhook } = await import(
+          './worker/ecommerce-channel-woo'
+        );
+        return await handleWooWebhook(request, env, wooWhMatch[1]!);
+      }
+
       // Webchat — routes publiques
       if (path === '/api/webchat/ws') return await handleWebchatConnect(request, env, url);
       if (path === '/api/webchat/prechat' && method === 'POST') return await handleWebchatPrechat(request, env);
@@ -329,12 +471,55 @@ export default {
         const { handleWebchatWidget } = await import('./worker/webchat');
         return handleWebchatWidget(env, url);
       }
+
+      // Sprint 46 M3.4 — Notifications WebSocket (auth via token query param)
+      // WS ne supporte pas headers custom → token Bearer dans `?token=...`.
+      // Auth validation manuelle ici (route publique) avant forward au DO room.
+      if (path === '/api/notifications/ws') {
+        const wsToken = url.searchParams.get('token') || '';
+        if (!wsToken || wsToken.length < 10) {
+          return json({ error: 'Token manquant' }, 401);
+        }
+        const wsSession = await (await import('./worker/helpers')).validateSession(wsToken, env);
+        if (!wsSession.valid || !wsSession.userId) {
+          return json({ error: 'Session expirée' }, 401);
+        }
+        const { handleNotificationsWsConnect } = await import('./worker/notifications-ws');
+        return await handleNotificationsWsConnect(request, env, wsSession.userId);
+      }
       
       // iCal feed
       const icalMatch = path.match(/^\/ical\/([^/]+)\.ics$/);
       if (icalMatch && method === 'GET') {
         const { handleGetICalFeed } = await import('./worker/calendar');
         return await handleGetICalFeed(env, icalMatch[1]!);
+      }
+
+      // ── Sprint 50 M3 — Beta invite flow (routes publiques) ──────
+      if (path === '/api/beta/signup' && method === 'POST') {
+        const { handleBetaSignup } = await import('./worker/beta');
+        return await handleBetaSignup(request, env);
+      }
+      if (path === '/api/beta/count' && method === 'GET') {
+        const { handleBetaCount } = await import('./worker/beta');
+        return await handleBetaCount(env);
+      }
+      if (path === '/api/auth/magic-link' && method === 'POST') {
+        const { handleMagicLinkRequest } = await import('./worker/beta');
+        return await handleMagicLinkRequest(request, env);
+      }
+      if (path === '/api/auth/magic-verify' && method === 'GET') {
+        const { handleMagicVerify } = await import('./worker/beta');
+        return await handleMagicVerify(request, env, url);
+      }
+      if (path === '/api/roadmap' && method === 'GET') {
+        const { handleGetRoadmap } = await import('./worker/beta');
+        return await handleGetRoadmap(env);
+      }
+      const roadmapVoteMatch = path.match(/^\/api\/roadmap\/([A-Za-z0-9_-]{1,64})\/vote$/);
+      if (roadmapVoteMatch && method === 'POST') {
+        const { handleRoadmapVote } = await import('./worker/beta');
+        return await handleRoadmapVote(request, env, roadmapVoteMatch[1]!);
       }
     } catch (err) {
       console.error('Erreur route publique:', err);
@@ -380,6 +565,29 @@ export default {
   async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
     ctx.waitUntil(processWorkflowQueue(env));
     ctx.waitUntil(processOverdueTasks(env));
+
+    // ── Sprint E7 — batch agrégats client / RFM / panier abandonné ────────
+    // BEST-EFFORT, bornés (LIMIT 50, pattern processWorkflowQueue). Chargés
+    // par dynamic import (noms FIGÉS au contrat E7) — un échec isolé ne casse
+    // PAS le cron (waitUntil + try/catch interne aux helpers / .catch ici).
+    ctx.waitUntil(
+      import('./worker/ecommerce-customer-metrics')
+        .then((m) => m.recomputeAllCustomerMetrics(env))
+        .then(() => undefined)
+        .catch(() => undefined),
+    );
+    ctx.waitUntil(
+      import('./worker/ecommerce-rfm')
+        .then((m) => m.recomputeAllRfmSegments(env))
+        .then(() => undefined)
+        .catch(() => undefined),
+    );
+    ctx.waitUntil(
+      import('./worker/ecommerce-cart-recovery')
+        .then((m) => m.detectAbandonedCarts(env))
+        .then(() => undefined)
+        .catch(() => undefined),
+    );
     // Seed des profils de scoring par défaut (idempotent)
     ctx.waitUntil(seedDefaultScoreProfiles(env));
     // Nettoyage automatique de la corbeille (leads supprimés > 30 jours)
@@ -485,6 +693,37 @@ async function routeProtected(
   if (path === '/api/unsubscribes' && method === 'GET') return handleGetUnsubscribes(env, auth, url);
   if (path === '/api/consent' && method === 'GET') return handleGetConsent(env, auth, url);
   if (path === '/api/consent' && method === 'POST') return handleLogConsent(request, env, auth);
+
+  // Sprint 51 M2 — Sources de leads (connecteur entrant)
+  if (path === '/api/lead-sources' && method === 'GET') {
+    const m = await import('./worker/lead-sources');
+    return m.handleGetLeadSources(env, auth);
+  }
+  if (path === '/api/lead-sources' && method === 'POST') {
+    const m = await import('./worker/lead-sources');
+    return m.handleCreateLeadSource(request, env, auth);
+  }
+  {
+    const lsLeads = path.match(/^\/api\/lead-sources\/([^/]+)\/leads$/);
+    if (lsLeads && method === 'GET') {
+      const m = await import('./worker/lead-sources');
+      return m.handleGetLeadSourceLeads(env, auth, lsLeads[1]!, url);
+    }
+    const lsRotate = path.match(/^\/api\/lead-sources\/([^/]+)\/rotate-token$/);
+    if (lsRotate && method === 'POST') {
+      const m = await import('./worker/lead-sources');
+      return m.handleRotateLeadSourceToken(env, auth, lsRotate[1]!);
+    }
+    const lsId = path.match(/^\/api\/lead-sources\/([^/]+)$/);
+    if (lsId && method === 'PATCH') {
+      const m = await import('./worker/lead-sources');
+      return m.handleUpdateLeadSource(request, env, auth, lsId[1]!);
+    }
+    if (lsId && method === 'DELETE') {
+      const m = await import('./worker/lead-sources');
+      return m.handleDeleteLeadSource(env, auth, lsId[1]!);
+    }
+  }
 
 
   // Conversations (Sprint 3)
@@ -597,6 +836,11 @@ async function routeProtected(
   // Notifications
   if (path === '/api/notifications' && method === 'GET') return handleGetNotifications(env, auth, url);
   if (path === '/api/notifications/read-all' && method === 'POST') return handleReadAllNotifications(env, auth);
+  // Sprint 46 M3.3 — Bulk PUT matrix (full replace channels × events)
+  if (path === '/api/notifications/preferences' && method === 'PUT') {
+    const { handleSetNotificationPreferencesMatrix } = await import('./worker/notifications-ws');
+    return await handleSetNotificationPreferencesMatrix(request, env, auth);
+  }
   const notifMatch = path.match(/^\/api\/notifications\/([^/]+)\/read$/);
   if (notifMatch && method === 'PATCH') return handleReadNotification(env, auth, notifMatch[1]!);
 
@@ -636,6 +880,16 @@ async function routeProtected(
   if (path === '/api/reports/saved' && method === 'POST') return handleCreateSavedReport(request, env, auth);
   const savedReportMatch = path.match(/^\/api\/reports\/saved\/([^/]+)$/);
   if (savedReportMatch && method === 'DELETE') return handleDeleteSavedReport(env, auth, savedReportMatch[1]!);
+
+  // Sprint 46 M1.3 — Dashboards builder (CRUD + share)
+  if (path === '/api/dashboards' && method === 'GET') return handleGetDashboards(env, auth);
+  if (path === '/api/dashboards' && method === 'POST') return handleCreateDashboard(request, env, auth);
+  const dashMatch = path.match(/^\/api\/dashboards\/(\d+)$/);
+  if (dashMatch && method === 'GET') return handleGetDashboard(env, auth, dashMatch[1]!);
+  if (dashMatch && method === 'PUT') return handleUpdateDashboard(request, env, auth, dashMatch[1]!);
+  if (dashMatch && method === 'DELETE') return handleDeleteDashboard(env, auth, dashMatch[1]!);
+  const dashShareMatch = path.match(/^\/api\/dashboards\/(\d+)\/share$/);
+  if (dashShareMatch && (method === 'POST' || method === 'GET')) return handleShareDashboard(env, auth, dashShareMatch[1]!);
 
   // Broadcast
   if (path === '/api/broadcast' && method === 'POST') return handleEmailBroadcast(request, env, auth);
@@ -727,6 +981,41 @@ async function routeProtected(
   if (path === '/api/ai/suggest-next-action' && method === 'POST') return handleAiSuggestNextAction(request, env);
   // Sprint 21
   if (path === '/api/ai/summarize-leads' && method === 'POST') return handleAiSummarizeLeads(request, env);
+  // Sprint 43 M3.3 — AI Drafts (3 tones Claude Haiku 4.5)
+  if (path === '/api/ai/drafts' && method === 'POST') return handleAiDrafts(request, env);
+  // Sprint 49 M1 — Smart compose : ghost-text suggest + proofread FR québécois
+  if (path === '/api/ai/compose-suggest' && method === 'POST') return handleAiComposeSuggest(request, env);
+  if (path === '/api/ai/proofread' && method === 'POST') return handleAiProofread(request, env);
+  // Sprint 49 M3 — Auto-tag conversations + leads + NL query (suggestion only, Loi 25 friendly)
+  if (path === '/api/ai/classify-conversation' && method === 'POST') return handleAiClassifyConversation(request, env);
+  if (path === '/api/ai/classify-lead' && method === 'POST') return handleAiClassifyLead(request, env);
+  if (path === '/api/ai/nl-query' && method === 'POST') return handleAiNlQuery(request, env);
+
+  // Sprint 43 M3.1 — Reactions emoji par message
+  const reactionsListMatch = path.match(/^\/api\/messages\/([^/]+)\/reactions$/);
+  if (reactionsListMatch && method === 'GET') return handleGetReactions(env, auth, reactionsListMatch[1]!);
+  if (reactionsListMatch && method === 'POST') return handleAddReaction(request, env, auth, reactionsListMatch[1]!);
+  const reactionItemMatch = path.match(/^\/api\/messages\/([^/]+)\/reactions\/(.+)$/);
+  if (reactionItemMatch && method === 'DELETE') return handleRemoveReaction(env, auth, reactionItemMatch[1]!, reactionItemMatch[2]!);
+
+  // Sprint 43 M3.2 — Quick Replies per-lead × per-user (FIFO 3)
+  const quickRepliesMatch = path.match(/^\/api\/leads\/([^/]+)\/quick-replies$/);
+  if (quickRepliesMatch && method === 'GET') return handleGetQuickReplies(env, auth, quickRepliesMatch[1]!);
+  if (quickRepliesMatch && method === 'POST') return handleAddQuickReply(request, env, auth, quickRepliesMatch[1]!);
+
+  // Sprint 43 M3.4 — Lead score explainable (cache 1h)
+  const leadScoreMatch = path.match(/^\/api\/leads\/([^/]+)\/score$/);
+  if (leadScoreMatch && method === 'GET') return handleGetLeadScore(env, auth, leadScoreMatch[1]!);
+
+  // Sprint 49 M2.1 — Lead score predictive 30 jours (cache D1 6h)
+  const leadPredictMatch = path.match(/^\/api\/leads\/([^/]+)\/score-predict$/);
+  if (leadPredictMatch && method === 'GET') return handleGetLeadPredict(env, auth, leadPredictMatch[1]!);
+
+  // Sprint 49 M2.2 — Pipeline bottleneck detection
+  if (path === '/api/pipeline/bottlenecks' && method === 'GET') return handleGetPipelineBottlenecks(env, auth, url);
+
+  // Sprint 49 M2.3 — Activity anomaly alerts
+  if (path === '/api/analytics/anomalies' && method === 'GET') return handleGetActivityAnomalies(env, auth);
 
   // Sub-accounts
   if (path === '/api/sub-accounts' && method === 'GET') return handleGetSubAccounts(env, auth);
@@ -784,6 +1073,21 @@ async function routeProtected(
     return await handleMetaOauthCallback(request, env, auth);
   }
 
+  // Sprint 51 M1.2 — CRUD connexions Meta Lead Ads / Google Lead Form (admin)
+  if (path === '/api/integrations/meta-lead/connections' && method === 'GET') {
+    const { handleListLeadConnections } = await import('./worker/meta-leadgen');
+    return await handleListLeadConnections(env, auth);
+  }
+  if (path === '/api/integrations/meta-lead/connections' && method === 'POST') {
+    const { handleCreateLeadConnection } = await import('./worker/meta-leadgen');
+    return await handleCreateLeadConnection(request, env, auth);
+  }
+  const leadConnDelMatch = path.match(/^\/api\/integrations\/meta-lead\/connections\/(meta|google)\/([^/]+)$/);
+  if (leadConnDelMatch && method === 'DELETE') {
+    const { handleDeleteLeadConnection } = await import('./worker/meta-leadgen');
+    return await handleDeleteLeadConnection(env, auth, leadConnDelMatch[1]!, leadConnDelMatch[2]!);
+  }
+
   // Reviews
   if (path === '/api/reviews' && method === 'GET') return handleGetReviews(env, auth, url);
   if (path === '/api/reviews/stats' && method === 'GET') return handleGetReviewStats(env, auth, url);
@@ -824,6 +1128,16 @@ async function routeProtected(
   if (path === '/api/score-profiles' && method === 'POST') return handleCreateScoreProfile(request, env, auth);
   const spMatch = path.match(/^\/api\/score-profiles\/([^/]+)$/);
   if (spMatch && method === 'PATCH') return handleUpdateScoreProfile(request, env, auth, spMatch[1]!);
+
+  // Modules (feature-flag par tenant) — Sprint E1 M2.1
+  if (path === '/api/modules' && method === 'GET') {
+    const { handleGetModules } = await import('./worker/modules');
+    return await handleGetModules(env, auth);
+  }
+  if (path === '/api/modules' && method === 'PATCH') {
+    const { handlePatchModules } = await import('./worker/modules');
+    return await handlePatchModules(request, env, auth);
+  }
 
   // Settings & Compliance
   if (path === '/api/settings/preferences' && method === 'GET') return handleGetPreferences(request, env);
@@ -962,9 +1276,20 @@ async function routeProtected(
 
   // Phase 10 - Onboarding, Admin Reset, Feedback, NPS
   if (path === '/api/auth/onboarding' && method === 'POST') return handleCompleteOnboarding(request, env, auth);
+  // Sprint 45 M1.1 — Welcome wizard 4 steps personnalisé
+  if (path === '/api/onboarding' && method === 'POST') return handleWelcomeOnboarding(request, env, auth);
   if (path === '/api/admin/demo-reset' && method === 'POST') return handleDemoReset(request, env, auth);
+  // Sprint 46 M2 — Admin analytics endpoints (admin/owner only)
+  if (path === '/api/admin/overview' && method === 'GET') return handleAdminOverview(request, env, auth);
+  if (path === '/api/admin/activity-heatmap' && method === 'GET') return handleAdminActivityHeatmap(request, env, auth);
+  if (path === '/api/admin/features-usage' && method === 'GET') return handleAdminFeaturesUsage(request, env, auth);
   if (path === '/api/feedback' && method === 'POST') return handleFeedback(request, env, auth);
   if (path === '/api/nps' && method === 'POST') return handleNps(request, env, auth);
+  // Sprint 50 M3.4 — Feedback widget beta (type/message/url, distinct du NPS)
+  if (path === '/api/beta/feedback' && method === 'POST') {
+    const { handleBetaFeedback } = await import('./worker/beta');
+    return handleBetaFeedback(request, env, auth);
+  }
 
   // Phase 11 - Push notifications / Device tokens
   if (path === '/api/devices' && method === 'POST') return handleRegisterDevice(request, env, auth);
@@ -973,6 +1298,448 @@ async function routeProtected(
   if (path === '/api/notifications/push' && method === 'POST') {
     if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
     return handleSendPush(request, env);
+  }
+
+  // ── E-commerce (module Boutique B2) — Sprint E1 M3.1 ─────────────────────
+  // CHAQUE route gated par requireModule('ecommerce') AVANT le handler
+  // (403 JSON FR-QC si module absent — helper M2). Multi-tenant strict.
+  if (path.startsWith('/api/ecommerce/')) {
+    const { requireModule } = await import('./worker/modules');
+    const guard = await requireModule(env, auth.userId, 'ecommerce');
+    if (guard) return guard;
+    const ec = await import('./worker/ecommerce');
+
+    // Products
+    if (path === '/api/ecommerce/products' && method === 'GET') return ec.handleListProducts(env, auth, url);
+    if (path === '/api/ecommerce/products' && method === 'POST') return ec.handleCreateProduct(request, env, auth);
+    const prodMatch = path.match(/^\/api\/ecommerce\/products\/([^/]+)$/);
+    if (prodMatch && method === 'GET') return ec.handleGetProduct(env, auth, prodMatch[1]!);
+    if (prodMatch && method === 'PATCH') return ec.handleUpdateProduct(request, env, auth, prodMatch[1]!);
+    if (prodMatch && method === 'DELETE') return ec.handleDeleteProduct(env, auth, prodMatch[1]!);
+
+    // Variantes (sous un produit) — Sprint E2 M1.2
+    const varListMatch = path.match(/^\/api\/ecommerce\/products\/([^/]+)\/variants$/);
+    if (varListMatch && method === 'GET') return ec.handleListVariants(env, auth, varListMatch[1]!);
+    if (varListMatch && method === 'POST') return ec.handleCreateVariant(request, env, auth, varListMatch[1]!);
+    const varMatch = path.match(/^\/api\/ecommerce\/products\/([^/]+)\/variants\/([^/]+)$/);
+    if (varMatch && method === 'PATCH') return ec.handleUpdateVariant(request, env, auth, varMatch[1]!, varMatch[2]!);
+    if (varMatch && method === 'DELETE') return ec.handleDeleteVariant(env, auth, varMatch[1]!, varMatch[2]!);
+
+    // Catégories / collections — Sprint E2 M1.3
+    if (path === '/api/ecommerce/categories' && method === 'GET') return ec.handleListCategories(env, auth, url);
+    if (path === '/api/ecommerce/categories' && method === 'POST') return ec.handleCreateCategory(request, env, auth);
+    const catMatch = path.match(/^\/api\/ecommerce\/categories\/([^/]+)$/);
+    if (catMatch && method === 'PATCH') return ec.handleUpdateCategory(request, env, auth, catMatch[1]!);
+    if (catMatch && method === 'DELETE') return ec.handleDeleteCategory(env, auth, catMatch[1]!);
+    const prodCatMatch = path.match(/^\/api\/ecommerce\/products\/([^/]+)\/categories$/);
+    if (prodCatMatch && method === 'PUT') return ec.handleSetProductCategories(request, env, auth, prodCatMatch[1]!);
+
+    // Images produit — Sprint E2 M1.4
+    const imgListMatch = path.match(/^\/api\/ecommerce\/products\/([^/]+)\/images$/);
+    if (imgListMatch && method === 'GET') return ec.handleListImages(env, auth, imgListMatch[1]!);
+    if (imgListMatch && method === 'POST') return ec.handleAddImage(request, env, auth, imgListMatch[1]!);
+    const imgPrimaryMatch = path.match(/^\/api\/ecommerce\/products\/([^/]+)\/images\/([^/]+)\/primary$/);
+    if (imgPrimaryMatch && method === 'PUT') return ec.handleSetPrimaryImage(env, auth, imgPrimaryMatch[1]!, imgPrimaryMatch[2]!);
+    const imgMatch = path.match(/^\/api\/ecommerce\/products\/([^/]+)\/images\/([^/]+)$/);
+    if (imgMatch && method === 'PATCH') return ec.handleUpdateImage(request, env, auth, imgMatch[1]!, imgMatch[2]!);
+    if (imgMatch && method === 'DELETE') return ec.handleDeleteImage(env, auth, imgMatch[1]!, imgMatch[2]!);
+
+    // Orders — Sprint E3 M1 : routes SPÉCIFIQUES avant le ordMatch générique
+    // (sinon /orders/manual & /orders/:id/status seraient capturés par
+    // ^/orders/([^/]+)$). requireModule('ecommerce') hérité du bloc.
+    if (path === '/api/ecommerce/orders' && method === 'GET') return ec.handleListOrders(env, auth, url);
+    if (path === '/api/ecommerce/orders' && method === 'POST') return ec.handleCreateOrder(request, env, auth);
+    if (path === '/api/ecommerce/orders/manual' && method === 'POST')
+      return ec.handleCreateManualOrder(request, env, auth);
+    const ordStatusMatch = path.match(/^\/api\/ecommerce\/orders\/([^/]+)\/status$/);
+    if (ordStatusMatch && method === 'PATCH')
+      return ec.handleUpdateOrderStatus(request, env, auth, ordStatusMatch[1]!);
+    // Sprint E4 M1 — init paiement : route SPÉCIFIQUE (/:id/payment) AVANT le
+    // ordMatch générique (^/orders/([^/]+)$). Gated requireModule('ecommerce')
+    // hérité du bloc + multi-tenant strict dans le handler.
+    const ordPayMatch = path.match(/^\/api\/ecommerce\/orders\/([^/]+)\/payment$/);
+    if (ordPayMatch && method === 'POST') {
+      const ep = await import('./worker/ecommerce-payments');
+      return ep.handleInitPayment(request, env, auth, ordPayMatch[1]!);
+    }
+
+    // ── Sprint E5 — Fulfillment region-aware (shipments + zones M2) ────────
+    // Routes SPÉCIFIQUES placées AVANT le ordMatch générique
+    // (^/orders/([^/]+)$) sinon /orders/:id/shipments serait capturé.
+    // requireModule('ecommerce') hérité du bloc. Multi-tenant strict + (zones)
+    // role admin gérés DANS les handlers. Handlers M1/M2 chargés par dynamic
+    // import (pattern ecommerce-region l.1306) — noms figés au contrat E5.
+
+    // M1 shipments — collection par commande + ressource directe
+    const shipColMatch = path.match(/^\/api\/ecommerce\/orders\/([^/]+)\/shipments$/);
+    if (shipColMatch && method === 'POST') {
+      const es = await import('./worker/ecommerce-shipments');
+      return es.handleCreateShipment(request, env, auth, shipColMatch[1]!);
+    }
+    if (shipColMatch && method === 'GET') {
+      const es = await import('./worker/ecommerce-shipments');
+      return es.handleListShipments(env, auth, shipColMatch[1]!);
+    }
+    const shipStatusMatch = path.match(/^\/api\/ecommerce\/shipments\/([^/]+)\/status$/);
+    if (shipStatusMatch && method === 'PATCH') {
+      const es = await import('./worker/ecommerce-shipments');
+      return es.handleUpdateShipmentStatus(request, env, auth, shipStatusMatch[1]!);
+    }
+    const shipMatch = path.match(/^\/api\/ecommerce\/shipments\/([^/]+)$/);
+    if (shipMatch && method === 'GET') {
+      const es = await import('./worker/ecommerce-shipments');
+      return es.handleGetShipment(env, auth, shipMatch[1]!);
+    }
+
+    // M2 zones/tarifs d'expédition (handlers fournis par M2, noms figés au
+    // contrat E5 — câblés ici par M1 pour éviter toute race sur worker.ts).
+    if (path === '/api/ecommerce/shipping/zones' && method === 'GET') {
+      const sz = await import('./worker/ecommerce-shipping-zones');
+      return sz.handleListZones(env, auth);
+    }
+    if (path === '/api/ecommerce/shipping/zones' && method === 'POST') {
+      const sz = await import('./worker/ecommerce-shipping-zones');
+      return sz.handleCreateZone(request, env, auth);
+    }
+    const zoneMatch = path.match(/^\/api\/ecommerce\/shipping\/zones\/([^/]+)$/);
+    if (zoneMatch && method === 'PATCH') {
+      const sz = await import('./worker/ecommerce-shipping-zones');
+      return sz.handleUpdateZone(request, env, auth, zoneMatch[1]!);
+    }
+    if (zoneMatch && method === 'DELETE') {
+      const sz = await import('./worker/ecommerce-shipping-zones');
+      return sz.handleDeleteZone(env, auth, zoneMatch[1]!);
+    }
+    const zoneRatesMatch = path.match(/^\/api\/ecommerce\/shipping\/zones\/([^/]+)\/rates$/);
+    if (zoneRatesMatch && method === 'GET') {
+      const sz = await import('./worker/ecommerce-shipping-zones');
+      return sz.handleListRates(env, auth, zoneRatesMatch[1]!);
+    }
+    if (zoneRatesMatch && method === 'POST') {
+      const sz = await import('./worker/ecommerce-shipping-zones');
+      return sz.handleCreateRate(request, env, auth, zoneRatesMatch[1]!);
+    }
+    const rateMatch = path.match(/^\/api\/ecommerce\/shipping\/rates\/([^/]+)$/);
+    if (rateMatch && method === 'PATCH') {
+      const sz = await import('./worker/ecommerce-shipping-zones');
+      return sz.handleUpdateRate(request, env, auth, rateMatch[1]!);
+    }
+    if (rateMatch && method === 'DELETE') {
+      const sz = await import('./worker/ecommerce-shipping-zones');
+      return sz.handleDeleteRate(env, auth, rateMatch[1]!);
+    }
+    if (path === '/api/ecommerce/shipping/resolve' && method === 'POST') {
+      const sz = await import('./worker/ecommerce-shipping-zones');
+      return sz.handleResolveShippingRate(request, env, auth);
+    }
+
+    // ── Sprint E6 — Remboursements (M1) / Retours-RMA + Litiges (M2) /
+    //    Politique conso (M3) ───────────────────────────────────────────────
+    // Routes SPÉCIFIQUES placées AVANT le ordMatch générique
+    // (^/orders/([^/]+)$) sinon /orders/:id/refund|policy serait capturé.
+    // requireModule('ecommerce') hérité du bloc. Multi-tenant strict dans les
+    // handlers. Mutations admin (RMA approve/receive/reject) : role admin géré
+    // DANS handleUpdateReturn (pattern handleUpdateRegion). Handlers M1/M2/M3
+    // chargés par dynamic import (pattern ecommerce-region) — noms FIGÉS au
+    // contrat E6. ⚠️ ZONE RÉGULÉE — chemins remboursement/litige (revue Rochdi
+    // requise) ; inoffensif tant que payments_live_enabled=0.
+
+    // Refunds M1 (handlers figés ecommerce-refunds.ts — câblés ici par M2,
+    // SEUL câbleur E6, pour éviter toute race sur worker.ts).
+    const ordRefundMatch = path.match(/^\/api\/ecommerce\/orders\/([^/]+)\/refund$/);
+    if (ordRefundMatch && method === 'POST') {
+      const er = await import('./worker/ecommerce-refunds');
+      return er.handleCreateRefund(request, env, auth, ordRefundMatch[1]!);
+    }
+    const ordRefundsMatch = path.match(/^\/api\/ecommerce\/orders\/([^/]+)\/refunds$/);
+    if (ordRefundsMatch && method === 'GET') {
+      const er = await import('./worker/ecommerce-refunds');
+      return er.handleListRefunds(env, auth, ordRefundsMatch[1]!);
+    }
+
+    // Politique conso M3 (handler figé ecommerce-consumer-policy.ts — M3
+    // l'exporte ; M2 câble. Import optionnel défensif si M3 pas encore livré).
+    const ordPolicyMatch = path.match(/^\/api\/ecommerce\/orders\/([^/]+)\/policy$/);
+    if (ordPolicyMatch && method === 'GET') {
+      const cp = await import('./worker/ecommerce-consumer-policy');
+      return cp.handleGetOrderPolicy(env, auth, ordPolicyMatch[1]!);
+    }
+
+    // Returns / RMA M2 (collection + ressource — approve/receive/reject admin).
+    if (path === '/api/ecommerce/returns' && method === 'POST') {
+      const rt = await import('./worker/ecommerce-returns');
+      return rt.handleCreateReturn(request, env, auth);
+    }
+    if (path === '/api/ecommerce/returns' && method === 'GET') {
+      const rt = await import('./worker/ecommerce-returns');
+      return rt.handleListReturns(env, auth, url);
+    }
+    const returnMatch = path.match(/^\/api\/ecommerce\/returns\/([^/]+)$/);
+    if (returnMatch && method === 'PATCH') {
+      const rt = await import('./worker/ecommerce-returns');
+      return rt.handleUpdateReturn(request, env, auth, returnMatch[1]!);
+    }
+
+    // Disputes M2 (liste tenant — l'enregistrement passe par le webhook).
+    if (path === '/api/ecommerce/disputes' && method === 'GET') {
+      const dp = await import('./worker/ecommerce-disputes');
+      return dp.handleListDisputes(env, auth);
+    }
+
+    const ordMatch = path.match(/^\/api\/ecommerce\/orders\/([^/]+)$/);
+    if (ordMatch && method === 'GET') return ec.handleGetOrder(env, auth, ordMatch[1]!);
+    if (ordMatch && method === 'PATCH') return ec.handleUpdateOrder(request, env, auth, ordMatch[1]!);
+    if (ordMatch && method === 'DELETE') return ec.handleDeleteOrder(env, auth, ordMatch[1]!);
+
+    // ── Sprint E7 — Customer 360 / RFM / panier abandonné ────────────────
+    // Routes SPÉCIFIQUES placées AVANT le custMatch générique
+    // (^/customers/([^/]+)$) sinon /customers/:id/360 et /customers/rfm/
+    // recompute seraient capturés par la route ressource. Handlers M1
+    // (customer-metrics) directs ; handlers M2 (rfm / cart-recovery) par
+    // dynamic import — NOMS FIGÉS au contrat E7. requireModule('ecommerce')
+    // hérité du bloc, multi-tenant strict dans les handlers.
+    const cust360Match = path.match(/^\/api\/ecommerce\/customers\/([^/]+)\/360$/);
+    if (cust360Match && method === 'GET') {
+      const cm = await import('./worker/ecommerce-customer-metrics');
+      return cm.handleGetCustomer360(env, auth, cust360Match[1]!);
+    }
+    if (path === '/api/ecommerce/customers/rfm/recompute' && method === 'POST') {
+      const rfm = await import('./worker/ecommerce-rfm');
+      return rfm.handleRecomputeRfm(request, env, auth);
+    }
+    if (path === '/api/ecommerce/carts/abandoned' && method === 'GET') {
+      const cr = await import('./worker/ecommerce-cart-recovery');
+      return cr.handleListAbandonedCarts(env, auth);
+    }
+    const cartRecoverMatch = path.match(/^\/api\/ecommerce\/carts\/([^/]+)\/recover$/);
+    if (cartRecoverMatch && method === 'POST') {
+      const cr = await import('./worker/ecommerce-cart-recovery');
+      return cr.handleRecoverCart(request, env, auth, cartRecoverMatch[1]!);
+    }
+
+    // ── Sprint E9 — Analytics e-commerce + recommandations / churn ───────
+    // DERNIER sprint roadmap e-comm. Routes SPÉCIFIQUES placées AVANT le
+    // custMatch générique (^/customers/([^/]+)$) sinon /reco/churn/:id et
+    // /analytics/* seraient mal capturés. requireModule('ecommerce') hérité
+    // du bloc + multi-tenant strict DANS les handlers M2. Handlers M2
+    // (ecommerce-analytics.ts / ecommerce-reco.ts) chargés par dynamic
+    // import — NOMS FIGÉS au contrat E9 (M3 = SEUL câbleur E9). Dégrade
+    // proprement si M2 pas encore livré runtime : le dynamic import lève,
+    // capturé par le try/catch du bloc /api/ecommerce/* → l'UI gère le
+    // fallback (apiFetch renvoie { error }). Aucune réimplémentation ici.
+    if (path === '/api/ecommerce/analytics/revenue' && method === 'GET') {
+      const an = await import('./worker/ecommerce-analytics');
+      return an.handleEcommerceRevenue(env, auth, url);
+    }
+    if (path === '/api/ecommerce/analytics/cohorts' && method === 'GET') {
+      const an = await import('./worker/ecommerce-analytics');
+      return an.handleEcommerceCohorts(env, auth, url);
+    }
+    if (path === '/api/ecommerce/analytics/ltv' && method === 'GET') {
+      const an = await import('./worker/ecommerce-analytics');
+      return an.handleEcommerceLtv(env, auth, url);
+    }
+    if (path === '/api/ecommerce/analytics/top-products' && method === 'GET') {
+      const an = await import('./worker/ecommerce-analytics');
+      return an.handleEcommerceTopProducts(env, auth, url);
+    }
+    const recoProdMatch = path.match(/^\/api\/ecommerce\/reco\/products\/([^/]+)$/);
+    if (recoProdMatch && method === 'GET') {
+      const re = await import('./worker/ecommerce-reco');
+      return re.handleProductRecommendations(env, auth, recoProdMatch[1]!);
+    }
+    const recoChurnMatch = path.match(/^\/api\/ecommerce\/reco\/churn\/([^/]+)$/);
+    if (recoChurnMatch && method === 'GET') {
+      const re = await import('./worker/ecommerce-reco');
+      return re.handleCustomerChurnPredict(env, auth, recoChurnMatch[1]!);
+    }
+
+    // Customers
+    if (path === '/api/ecommerce/customers' && method === 'GET') return ec.handleListCustomers(env, auth, url);
+    if (path === '/api/ecommerce/customers' && method === 'POST') return ec.handleCreateCustomer(request, env, auth);
+    const custMatch = path.match(/^\/api\/ecommerce\/customers\/([^/]+)$/);
+    if (custMatch && method === 'GET') return ec.handleGetCustomer(env, auth, custMatch[1]!);
+    if (custMatch && method === 'PATCH') return ec.handleUpdateCustomer(request, env, auth, custMatch[1]!);
+    if (custMatch && method === 'DELETE') return ec.handleDeleteCustomer(env, auth, custMatch[1]!);
+
+    // ── E-R M2 region — Config région boutique (tenant courant) ───────────
+    // Route SPÉCIFIQUE /region placée AVANT le ordMatch générique
+    // (^/orders/([^/]+)$) — pas capturée de toute façon (path ≠ orders),
+    // ordering respecté par convention du bloc. requireModule('ecommerce')
+    // hérité du bloc. PUT = admin only (check dans le handler).
+    if (path === '/api/ecommerce/region' && method === 'GET') {
+      const rg = await import('./worker/ecommerce-region');
+      return rg.handleGetRegion(env, auth);
+    }
+    if (path === '/api/ecommerce/region' && method === 'PUT') {
+      const rg = await import('./worker/ecommerce-region');
+      return rg.handleUpdateRegion(request, env, auth);
+    }
+
+    // ── Inventaire / mouvements / alertes / import — Sprint E2 M2 ──────────
+    // (héritent du gating requireModule('ecommerce') du bloc + multi-tenant)
+
+    // M2.4 — Import bulk produits (?dryRun=1 pour aperçu sans écriture)
+    if (path === '/api/ecommerce/products/import' && method === 'POST')
+      return ec.handleImportProducts(request, env, auth, url);
+
+    // M2.3 — Alertes stock faible (liste)
+    if (path === '/api/ecommerce/inventory/low-stock' && method === 'GET')
+      return ec.handleListLowStock(env, auth, url);
+
+    // M2.1 — Inventaire par variante (état / set)
+    const invMatch = path.match(/^\/api\/ecommerce\/variants\/([^/]+)\/inventory$/);
+    if (invMatch && method === 'GET') return ec.handleGetInventory(env, auth, invMatch[1]!);
+    if (invMatch && method === 'PUT') return ec.handleSetInventory(request, env, auth, invMatch[1]!);
+
+    // M2.2 — Ajustement de stock + historique des mouvements
+    const invAdjustMatch = path.match(/^\/api\/ecommerce\/variants\/([^/]+)\/inventory\/adjust$/);
+    if (invAdjustMatch && method === 'POST')
+      return ec.handleAdjustInventory(request, env, auth, invAdjustMatch[1]!);
+    const invMovMatch = path.match(/^\/api\/ecommerce\/variants\/([^/]+)\/inventory\/movements$/);
+    if (invMovMatch && method === 'GET')
+      return ec.handleListMovements(env, auth, invMovMatch[1]!, url);
+
+    // ── E3 M2 cart/invoice ────────────────────────────────────────────────
+    // Panier (CRUD + conversion via createOrderCore), historique commandes
+    // client, données facture PDF. requireModule('ecommerce') hérité du bloc.
+    // Routes SPÉCIFIQUES (/cart/items, /cart/:id/convert) avant les génériques.
+    if (path === '/api/ecommerce/cart' && method === 'GET')
+      return ec.handleGetCart(env, auth, url);
+    if (path === '/api/ecommerce/cart/items' && method === 'POST')
+      return ec.handleAddCartItem(request, env, auth);
+    const cartItemMatch = path.match(/^\/api\/ecommerce\/cart\/items\/([^/]+)$/);
+    if (cartItemMatch && method === 'PATCH')
+      return ec.handleUpdateCartItem(request, env, auth, cartItemMatch[1]!);
+    if (cartItemMatch && method === 'DELETE')
+      return ec.handleDeleteCartItem(env, auth, cartItemMatch[1]!);
+    const cartConvertMatch = path.match(/^\/api\/ecommerce\/cart\/([^/]+)\/convert$/);
+    if (cartConvertMatch && method === 'POST')
+      return ec.handleConvertCart(request, env, auth, cartConvertMatch[1]!);
+    const custOrdersMatch = path.match(/^\/api\/ecommerce\/customers\/([^/]+)\/orders$/);
+    if (custOrdersMatch && method === 'GET')
+      return ec.handleCustomerOrders(env, auth, custOrdersMatch[1]!);
+    const ordInvoiceMatch = path.match(/^\/api\/ecommerce\/orders\/([^/]+)\/invoice$/);
+    if (ordInvoiceMatch && method === 'GET')
+      return ec.handleGetOrderInvoice(env, auth, ordInvoiceMatch[1]!);
+
+    // ── Sprint E8 M2 — Omnicanal : canaux de vente + OAuth + sync ─────────
+    // Handlers CRUD canaux = M1 (façade ecommerce.ts, noms FIGÉS — on CÂBLE,
+    // on ne réimplémente pas). Routes connect/callback/sync/sync-log = M2.
+    // Routes SPÉCIFIQUES (/channels/:id/connect|callback|sync|sync-log|
+    // strategy) placées AVANT le générique /channels/:id (sinon capturé).
+    // requireModule('ecommerce') hérité du bloc. Mutations = role admin
+    // (vérifié dans les handlers M1 + garde explicite ci-dessous pour M2).
+    if (path === '/api/ecommerce/channels' && method === 'GET')
+      return ec.handleListChannels(env, auth);
+    if (path === '/api/ecommerce/channels' && method === 'POST')
+      return ec.handleCreateChannel(request, env, auth);
+    const chStrategyMatch = path.match(/^\/api\/ecommerce\/channels\/([^/]+)\/strategy$/);
+    if (chStrategyMatch && method === 'PATCH')
+      return ec.handleSetInventoryStrategy(request, env, auth, chStrategyMatch[1]!);
+    const chConnectMatch = path.match(/^\/api\/ecommerce\/channels\/([^/]+)\/connect$/);
+    if (chConnectMatch && method === 'POST') {
+      if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
+      const sync = await import('./worker/ecommerce-channel-sync');
+      const { getClientModules } = await import('./worker/modules');
+      const { clientId } = await getClientModules(env, auth.userId);
+      if (!clientId) return json({ error: 'Client introuvable' }, 400);
+      const channel = await sync.loadChannel(env, clientId, chConnectMatch[1]!);
+      if (!channel) return json({ error: 'Canal introuvable' }, 404);
+      const origin = new URL(request.url).origin;
+      if (channel.type === 'shopify') {
+        const sh = await import('./worker/ecommerce-channel-shopify');
+        return sh.shopifyConnect(env, channel, origin);
+      }
+      if (channel.type === 'woo') {
+        const wo = await import('./worker/ecommerce-channel-woo');
+        return wo.wooConnect(env, channel, origin);
+      }
+      return json({ error: 'Canal natif : aucune connexion externe' }, 400);
+    }
+    const chCallbackMatch = path.match(/^\/api\/ecommerce\/channels\/([^/]+)\/callback$/);
+    if (chCallbackMatch && (method === 'GET' || method === 'POST')) {
+      if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
+      const sync = await import('./worker/ecommerce-channel-sync');
+      const { getClientModules } = await import('./worker/modules');
+      const { clientId } = await getClientModules(env, auth.userId);
+      if (!clientId) return json({ error: 'Client introuvable' }, 400);
+      const channel = await sync.loadChannel(env, clientId, chCallbackMatch[1]!);
+      if (!channel) return json({ error: 'Canal introuvable' }, 404);
+      if (channel.type === 'shopify') {
+        const sh = await import('./worker/ecommerce-channel-shopify');
+        return sh.shopifyCallback(env, channel, url);
+      }
+      if (channel.type === 'woo') {
+        const wo = await import('./worker/ecommerce-channel-woo');
+        return wo.wooCallback(env, channel, request, url);
+      }
+      return json({ error: 'Canal natif : pas de callback' }, 400);
+    }
+    const chSyncMatch = path.match(/^\/api\/ecommerce\/channels\/([^/]+)\/sync$/);
+    if (chSyncMatch && method === 'POST') {
+      if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
+      const sync = await import('./worker/ecommerce-channel-sync');
+      const { getClientModules } = await import('./worker/modules');
+      const { clientId } = await getClientModules(env, auth.userId);
+      if (!clientId) return json({ error: 'Client introuvable' }, 400);
+      const channel = await sync.loadChannel(env, clientId, chSyncMatch[1]!);
+      if (!channel) return json({ error: 'Canal introuvable' }, 404);
+      // Trigger manuel : pousse le stock de toutes les variantes mappées de
+      // ce canal (pull entrant = webhooks). Anti-echo géré par syncProductOut.
+      const { results } = await env.DB.prepare(
+        `SELECT internal_variant_id FROM channel_product_map WHERE channel_id = ?`,
+      ).bind(channel.id).all();
+      let products = 0;
+      let pushFn: (e: string, q: number) => Promise<boolean>;
+      if (channel.type === 'shopify') {
+        const sh = await import('./worker/ecommerce-channel-shopify');
+        pushFn = await sh.shopifyPushFn(env, channel);
+      } else if (channel.type === 'woo') {
+        const wo = await import('./worker/ecommerce-channel-woo');
+        pushFn = await wo.wooPushFn(env, channel);
+      } else {
+        return json({ error: 'Canal natif : rien à synchroniser' }, 400);
+      }
+      for (const r of (results || []) as Array<{ internal_variant_id: string }>) {
+        const out = await sync.syncProductOut(
+          env, channel, r.internal_variant_id, pushFn,
+        );
+        if (out.pushed) products++;
+      }
+      return json({ data: { synced: { products, orders: 0 } } });
+    }
+    const chSyncLogMatch = path.match(/^\/api\/ecommerce\/channels\/([^/]+)\/sync-log$/);
+    if (chSyncLogMatch && method === 'GET') {
+      const { getClientModules } = await import('./worker/modules');
+      const { clientId } = await getClientModules(env, auth.userId);
+      if (!clientId) return json({ error: 'Client introuvable' }, 400);
+      const { results } = await env.DB.prepare(
+        `SELECT id, channel_id, direction, entity_type, status, external_id,
+                conflict_json, created_at
+           FROM channel_sync_log
+          WHERE channel_id = ? AND client_id = ?
+          ORDER BY created_at DESC LIMIT 100`,
+      ).bind(chSyncLogMatch[1]!, clientId).all();
+      return json({ data: results || [] });
+    }
+    const chMatch = path.match(/^\/api\/ecommerce\/channels\/([^/]+)$/);
+    if (chMatch && method === 'PATCH')
+      return ec.handleUpdateChannel(request, env, auth, chMatch[1]!);
+    if (chMatch && method === 'DELETE')
+      return ec.handleDeleteChannel(env, auth, chMatch[1]!);
+  }
+
+  // Lien faible lead → customer boutique (encart LeadDetail, M3.4).
+  // Gated ecommerce : si module off, on renvoie data:null (pas d'encart).
+  const leadLinkedCustMatch = path.match(/^\/api\/leads\/([^/]+)\/linked-customer$/);
+  if (leadLinkedCustMatch && method === 'GET') {
+    const { requireModule } = await import('./worker/modules');
+    const guard = await requireModule(env, auth.userId, 'ecommerce');
+    if (guard) return json({ data: null });
+    const { getLinkedCustomerForLead } = await import('./worker/customer-reconcile');
+    const linked = await getLinkedCustomerForLead(env, leadLinkedCustMatch[1]!);
+    return json({ data: linked });
   }
 
   // Debug (à retirer avant prod)

@@ -3,18 +3,32 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useAuth } from '@/lib/auth';
-import { Button, Input } from '@/components/ui';
+import { Button, Input, Icon } from '@/components/ui';
 import { isBiometricAvailable, getBiometricCredentials, saveBiometricCredentials } from '@/lib/biometric';
 import { Capacitor } from '@capacitor/core';
-import { Fingerprint } from 'lucide-react';
+import { Fingerprint, Mail, Lock } from 'lucide-react';
+
+// ── Sprint 26 vague 26-2B — validation regex email premium
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 export function LoginPage() {
   const [email, setEmail] = useState('rochdi@intralys.com');
   const [password, setPassword] = useState('bypass');
+  const [touched, setTouched] = useState<{ email: boolean; password: boolean }>({ email: false, password: false });
   const [error, setError] = useState('');
   const [biometricReady, setBiometricReady] = useState(false);
   const { login, isLoading } = useAuth();
   const navigate = useNavigate();
+
+  // Sprint 26-2B — validation locale par champ (n'apparait qu'après touched)
+  const emailValid = EMAIL_RE.test(email);
+  const emailError = touched.email && email.length > 0 && !emailValid
+    ? 'Format d’email invalide'
+    : '';
+  const emailSuccess = touched.email && emailValid ? 'Email valide' : '';
+  const passwordError = touched.password && password.length > 0 && password.length < 4
+    ? 'Mot de passe trop court'
+    : '';
 
   // Vérifier si la biométrie est disponible au montage
   useEffect(() => {
@@ -113,31 +127,35 @@ export function LoginPage() {
             border: '1px solid rgba(255,255,255,0.6)',
             boxShadow: '0 1px 2px rgba(15,23,42,0.04), 0 24px 64px -12px rgba(0,157,219,0.18), 0 0 60px -8px rgba(217,110,39,0.12)',
           }}>
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="login-email" className="text-sm font-medium text-[var(--text-secondary)]">Adresse email</label>
-            <Input
-              type="email"
-              id="login-email"
-              placeholder="rochdi@intralys.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
-              required
-            />
-          </div>
+          <Input
+            type="email"
+            id="login-email"
+            label="Adresse email"
+            placeholder="rochdi@intralys.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            onBlur={() => setTouched((t) => ({ ...t, email: true }))}
+            autoComplete="email"
+            required
+            leftSlot={<Icon as={Mail} size="sm" />}
+            error={emailError || undefined}
+            success={emailSuccess || undefined}
+            helper={!touched.email ? 'Utilisez votre email professionnel' : undefined}
+          />
 
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="login-password" className="text-sm font-medium text-[var(--text-secondary)]">Mot de passe</label>
-            <Input
-              type="password"
-              id="login-password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-              required
-            />
-          </div>
+          <Input
+            type="password"
+            id="login-password"
+            label="Mot de passe"
+            placeholder="••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            onBlur={() => setTouched((t) => ({ ...t, password: true }))}
+            autoComplete="current-password"
+            required
+            leftSlot={<Icon as={Lock} size="sm" />}
+            error={passwordError || undefined}
+          />
 
           {error && (
             <div className="p-3 rounded-[var(--radius-md)] bg-[color-mix(in_oklch,var(--danger)_10%,transparent)] border border-[color-mix(in_oklch,var(--danger)_30%,transparent)] text-sm text-[var(--danger)] animate-fade-in">
@@ -155,7 +173,7 @@ export function LoginPage() {
               onClick={() => void handleBiometricLogin()}
               className="w-full flex items-center justify-center gap-2 py-3 rounded-[var(--radius-md)] border border-[var(--border-default)] text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] transition-colors text-sm font-medium cursor-pointer"
             >
-              <Fingerprint size={18} />
+              <Icon as={Fingerprint} size={18} />
               Connexion biométrique
             </button>
           )}

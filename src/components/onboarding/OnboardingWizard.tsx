@@ -1,9 +1,40 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
+import { Combobox, type ComboboxOption } from '@/components/ui/Combobox';
+import { Icon } from '@/components/ui/Icon';
 import { useAuth } from '@/lib/auth';
 import { Check, ChevronRight, Upload, Building, Palette, Settings, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
+
+// Sprint 24 vague 5B — lazy load du tour interactif (step 8 = "Commencer le tour")
+const InteractiveTour = lazy(() =>
+  import('@/components/onboarding/InteractiveTour').then((m) => ({ default: m.InteractiveTour }))
+);
+
+// ── Sprint 24 vague 4B — Industries (Combobox, anticipe 20+ futures) ──
+const INDUSTRY_OPTIONS: ComboboxOption[] = [
+  { value: 'real-estate', label: 'Courtage immobilier', icon: '🏘️', description: 'Agents, courtiers, agences immo' },
+  { value: 'local-services', label: 'Services locaux', icon: '🔧', description: 'Plomberie, ménage, électricité…' },
+  { value: 'health', label: 'Santé & Mieux-être', icon: '🩺', description: 'Dentiste, massage, physio, naturo' },
+  { value: 'coaching', label: 'Coaching & Consulting', icon: '💼', description: 'Coach business, vie, consultant' },
+  { value: 'beauty', label: 'Beauté & Esthétique', icon: '💅', description: 'Salon, esthéticienne, spa' },
+  { value: 'fitness', label: 'Fitness & Sport', icon: '🏋️', description: 'Gym, coach sportif, studio yoga' },
+  { value: 'legal', label: 'Services juridiques', icon: '⚖️', description: 'Avocats, notaires, médiateurs' },
+  { value: 'accounting', label: 'Comptabilité & Fiscalité', icon: '📊', description: 'CPA, fiscaliste, paie' },
+  { value: 'restaurant', label: 'Restauration & Bouche', icon: '🍽️', description: 'Resto, traiteur, food truck' },
+  { value: 'education', label: 'Éducation & Formation', icon: '🎓', description: 'École, tuteur, formateur en ligne' },
+  { value: 'automotive', label: 'Automobile', icon: '🚗', description: 'Garage, vente, esthétique auto' },
+  { value: 'construction', label: 'Construction & Rénovation', icon: '🏗️', description: 'Entrepreneur général, rénovateur' },
+  { value: 'agency', label: 'Agence marketing / digital', icon: '📣', description: 'Marketing, SEO, web, design' },
+  { value: 'photo-video', label: 'Photographie & Vidéo', icon: '📸', description: 'Photographe événements, vidéaste' },
+  { value: 'events', label: 'Événementiel', icon: '🎉', description: 'Planificateur mariages, événements' },
+  { value: 'tech', label: 'Tech & SaaS', icon: '💻', description: 'Startup tech, SaaS, dev' },
+  { value: 'finance', label: 'Finance & Assurance', icon: '🏦', description: 'Conseiller financier, assureur' },
+  { value: 'nonprofit', label: 'OBNL / Communautaire', icon: '🤝', description: 'Organisme sans but lucratif' },
+  { value: 'retail', label: 'Commerce de détail', icon: '🛍️', description: 'Boutique, e-commerce, distribution' },
+  { value: 'generic-b2b', label: 'Autre (Générique B2B)', icon: '🏢', description: 'Toute autre activité B2B' },
+];
 
 interface OnboardingWizardProps {
   onComplete: () => void;
@@ -15,10 +46,12 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
   const { user } = useAuth();
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Sprint 24 vague 5B — déclenche le tour interactif après step 8 ("Commencer le tour")
+  const [tourOpen, setTourOpen] = useState(false);
 
   // Form state
   const [businessName, setBusinessName] = useState(user?.name ? `${user.name} Inc.` : '');
-  const [businessType, setBusinessType] = useState('real_estate');
+  const [businessType, setBusinessType] = useState('real-estate');
   const [teamSize, setTeamSize] = useState('1');
   const [primaryColor, setPrimaryColor] = useState('#009DDB');
   
@@ -52,7 +85,8 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
         })
       });
       toast.success("Configuration terminée ! Bienvenue dans Intralys.");
-      onComplete();
+      // Sprint 24 vague 5B — au lieu de juste fermer, déclenche le tour interactif
+      setTourOpen(true);
     } catch (e) {
       toast.error("Erreur lors de la sauvegarde.");
     } finally {
@@ -61,12 +95,14 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
   };
 
   return (
-    <Modal open={true} onOpenChange={() => {}} title="Bienvenue sur Intralys">
+    <>
+      {/* Sprint 24 vague 5B — Modal cachée quand le tour démarre (sinon overlap visuel avec Coachmark) */}
+      <Modal open={!tourOpen} onOpenChange={(open) => { if (!open && !tourOpen) onComplete(); }} title="Bienvenue sur Intralys">
       <div className="w-[600px] max-w-full">
         {/* Progress Bar Sprint 23 — gradient + glow */}
         <div className="mb-8">
           <div className="flex justify-between text-xs mb-2 font-semibold">
-            <span className="text-[var(--brand-primary)]">Étape {step} sur {TOTAL_STEPS}</span>
+            <span className="text-[var(--primary)]">Étape {step} sur {TOTAL_STEPS}</span>
             <span className="text-[var(--text-muted)] tabular-nums">{Math.round((step / TOTAL_STEPS) * 100)}% complété</span>
           </div>
           <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'rgba(0,157,219,0.08)' }}>
@@ -91,7 +127,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
                   boxShadow: '0 8px 32px rgba(0,157,219,0.45), 0 0 40px rgba(217,110,39,0.3)',
                   animation: 'hot-lead-pulse 3s ease-in-out infinite',
                 }}>
-                <Check size={36} className="text-white" strokeWidth={3} />
+                <Icon as={Check} size={36} className="text-white" strokeWidth={3} />
               </div>
               <h2 className="text-3xl font-bold tracking-tight mb-4">
                 <span className="text-gradient-brand">Bienvenue</span>, {user?.name?.split(' ')[0] || 'Rochdi'} 👋
@@ -114,8 +150,8 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
           {step === 2 && (
             <div className="animate-fade-in">
               <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 bg-[var(--brand-tint)] text-[var(--brand-primary)] rounded-lg">
-                  <Building size={20} />
+                <div className="p-2 bg-[var(--brand-tint)] text-[var(--primary)] rounded-lg">
+                  <Icon as={Building} size="lg" />
                 </div>
                 <h2 className="text-xl font-bold text-[var(--text-primary)]">Parlez-nous de votre entreprise</h2>
               </div>
@@ -123,26 +159,27 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
               <div className="space-y-5">
                 <div>
                   <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">Nom de l'entreprise</label>
-                  <input type="text" value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="Ex: Agence Tremblay" className="w-full px-3 py-2 bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-default)] rounded-[var(--radius-sm)] focus:outline-none focus:border-[var(--brand-primary)]" />
+                  <input type="text" value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="Ex: Agence Tremblay" className="w-full px-3 py-2 bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-default)] rounded-[var(--radius-sm)] focus:outline-none focus:border-[var(--primary)]" />
                 </div>
                 
                 <div>
                   <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">Type d'industrie</label>
-                  <select value={businessType} onChange={(e) => setBusinessType(e.target.value)} className="w-full px-3 py-2 bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-default)] rounded-[var(--radius-sm)] focus:outline-none focus:border-[var(--brand-primary)]">
-                    <option value="">Sélectionnez une industrie...</option>
-                    <option value="real-estate">Courtage immobilier</option>
-                    <option value="local-services">Services locaux (Plomberie, Ménage...)</option>
-                    <option value="health">Santé & Mieux-être (Dentiste, Massage...)</option>
-                    <option value="coaching">Coaching & Consulting</option>
-                    <option value="generic-b2b">Autre (Générique B2B)</option>
-                  </select>
+                  {/* Sprint 24 vague 4B — Combobox autocomplete (anticipe 20+ industries) */}
+                  <Combobox
+                    options={INDUSTRY_OPTIONS}
+                    value={businessType}
+                    onChange={setBusinessType}
+                    placeholder="Cherchez votre industrie..."
+                    ariaLabel="Type d'industrie"
+                    emptyLabel="Aucune industrie trouvée"
+                  />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">Taille de l'équipe</label>
                   <div className="flex gap-2">
                     {['1', '2-5', '6-15', '16+'].map(size => (
-                      <button key={size} onClick={() => setTeamSize(size)} className={`flex-1 py-2 text-sm font-medium rounded-[var(--radius-sm)] border transition-colors ${teamSize === size ? 'bg-[var(--brand-tint)] text-[var(--brand-primary)] border-[var(--brand-primary)]' : 'bg-[var(--bg-surface)] text-[var(--text-secondary)] border-[var(--border-default)] hover:border-[var(--border-hover)]'}`}>
+                      <button key={size} onClick={() => setTeamSize(size)} className={`flex-1 py-2 text-sm font-medium rounded-[var(--radius-sm)] border transition-colors ${teamSize === size ? 'bg-[var(--brand-tint)] text-[var(--primary)] border-[var(--primary)]' : 'bg-[var(--bg-surface)] text-[var(--text-secondary)] border-[var(--border-default)] hover:border-[var(--border-hover)]'}`}>
                         {size}
                       </button>
                     ))}
@@ -155,8 +192,8 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
           {step === 3 && (
             <div className="animate-fade-in">
               <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 bg-[var(--brand-tint)] text-[var(--brand-primary)] rounded-lg">
-                  <Palette size={20} />
+                <div className="p-2 bg-[var(--brand-tint)] text-[var(--primary)] rounded-lg">
+                  <Icon as={Palette} size="lg" />
                 </div>
                 <h2 className="text-xl font-bold text-[var(--text-primary)]">Personnalisez votre CRM</h2>
               </div>
@@ -166,8 +203,8 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
                   <label className="block text-sm font-medium text-[var(--text-secondary)] mb-3">Couleur principale</label>
                   <div className="flex flex-wrap gap-3">
                     {['#009DDB', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#64748B', '#0F172A'].map(color => (
-                      <button key={color} onClick={() => setPrimaryColor(color)} className={`w-10 h-10 rounded-full flex items-center justify-center transition-transform hover:scale-110 ${primaryColor === color ? 'ring-2 ring-offset-2 ring-[var(--brand-primary)]' : ''}`} style={{ backgroundColor: color }}>
-                        {primaryColor === color && <Check size={16} className="text-white" />}
+                      <button key={color} onClick={() => setPrimaryColor(color)} className={`w-10 h-10 rounded-full flex items-center justify-center transition-transform hover:scale-110 ${primaryColor === color ? 'ring-2 ring-offset-2 ring-[var(--primary)]' : ''}`} style={{ backgroundColor: color }}>
+                        {primaryColor === color && <Icon as={Check} size="md" className="text-white" />}
                       </button>
                     ))}
                   </div>
@@ -175,9 +212,9 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
 
                 <div>
                   <label className="block text-sm font-medium text-[var(--text-secondary)] mb-3">Logo de l'entreprise</label>
-                  <div className="border-2 border-dashed border-[var(--border-default)] rounded-xl p-6 text-center hover:border-[var(--brand-primary)] hover:bg-[var(--brand-tint)] transition-colors cursor-pointer group">
-                    <div className="w-12 h-12 bg-[var(--bg-muted)] text-[var(--text-muted)] rounded-full flex items-center justify-center mx-auto mb-3 group-hover:bg-white group-hover:text-[var(--brand-primary)] transition-colors">
-                      <Upload size={20} />
+                  <div className="border-2 border-dashed border-[var(--border-default)] rounded-xl p-6 text-center hover:border-[var(--primary)] hover:bg-[var(--brand-tint)] transition-colors cursor-pointer group">
+                    <div className="w-12 h-12 bg-[var(--bg-muted)] text-[var(--text-muted)] rounded-full flex items-center justify-center mx-auto mb-3 group-hover:bg-white group-hover:text-[var(--primary)] transition-colors">
+                      <Icon as={Upload} size="lg" />
                     </div>
                     <p className="text-sm font-medium text-[var(--text-primary)] mb-1">Cliquez pour uploader</p>
                     <p className="text-xs text-[var(--text-muted)]">PNG, JPG ou SVG (max 2MB)</p>
@@ -190,8 +227,8 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
           {step === 4 && (
             <div className="animate-fade-in">
               <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 bg-[var(--brand-tint)] text-[var(--brand-primary)] rounded-lg">
-                  <Settings size={20} />
+                <div className="p-2 bg-[var(--brand-tint)] text-[var(--primary)] rounded-lg">
+                  <Icon as={Settings} size="lg" />
                 </div>
                 <h2 className="text-xl font-bold text-[var(--text-primary)]">Pack Industrie Recommandé</h2>
               </div>
@@ -200,24 +237,24 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
                 Basé sur votre industrie, nous avons préconfiguré un ensemble de champs, pipelines et automatisations adaptés à votre métier.
               </p>
 
-              <div className="bg-[var(--brand-tint)] border border-[var(--brand-primary)]/20 rounded-xl p-5 mb-4">
+              <div className="bg-[var(--brand-tint)] border border-[var(--primary)]/20 rounded-xl p-5 mb-4">
                 <div className="flex justify-between items-start mb-4">
                   <div>
-                    <h3 className="font-bold text-[var(--brand-primary)] text-lg mb-1">Pack Courtage Immobilier</h3>
-                    <p className="text-sm text-[var(--brand-primary)]/80">Optimisé pour le marché québécois (OACIQ)</p>
+                    <h3 className="font-bold text-[var(--primary)] text-lg mb-1">Pack Courtage Immobilier</h3>
+                    <p className="text-sm text-[var(--primary)]/80">Optimisé pour le marché québécois (OACIQ)</p>
                   </div>
-                  <div className="px-2.5 py-1 bg-white/50 rounded-full text-xs font-semibold text-[var(--brand-primary)]">Recommandé</div>
+                  <div className="px-2.5 py-1 bg-white/50 rounded-full text-xs font-semibold text-[var(--primary)]">Recommandé</div>
                 </div>
-                <ul className="space-y-2 text-sm text-[var(--brand-primary)]/90">
-                  <li className="flex items-center gap-2"><Check size={16} /> Pipeline Achat & Vente préconfiguré</li>
-                  <li className="flex items-center gap-2"><Check size={16} /> Champs personnalisés (Budget, Quartier...)</li>
-                  <li className="flex items-center gap-2"><Check size={16} /> 3 automatisations de relance SMS/Email</li>
-                  <li className="flex items-center gap-2"><Check size={16} /> Modèles d'emails conformes Loi 25</li>
+                <ul className="space-y-2 text-sm text-[var(--primary)]/90">
+                  <li className="flex items-center gap-2"><Icon as={Check} size="md" /> Pipeline Achat & Vente préconfiguré</li>
+                  <li className="flex items-center gap-2"><Icon as={Check} size="md" /> Champs personnalisés (Budget, Quartier...)</li>
+                  <li className="flex items-center gap-2"><Icon as={Check} size="md" /> 3 automatisations de relance SMS/Email</li>
+                  <li className="flex items-center gap-2"><Icon as={Check} size="md" /> Modèles d'emails conformes Loi 25</li>
                 </ul>
               </div>
 
-              <button onClick={() => toast.success("Pack installé avec succès !")} className="w-full py-3 bg-white border border-[var(--border-default)] hover:border-[var(--brand-primary)] hover:text-[var(--brand-primary)] text-[var(--text-primary)] font-medium rounded-[var(--radius-sm)] transition-colors flex justify-center items-center gap-2 shadow-sm">
-                <Settings size={18} />
+              <button onClick={() => toast.success("Pack installé avec succès !")} className="w-full py-3 bg-white border border-[var(--border-default)] hover:border-[var(--primary)] hover:text-[var(--primary)] text-[var(--text-primary)] font-medium rounded-[var(--radius-sm)] transition-all flex justify-center items-center gap-2 shadow-[var(--shadow-brand-xs)] hover:shadow-[var(--shadow-brand-md)] hover:-translate-y-0.5">
+                <Icon as={Settings} size={18} />
                 Installer le pack (Optionnel)
               </button>
             </div>
@@ -226,7 +263,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
           {step === 5 && (
             <div className="animate-fade-in text-center py-6">
               <div className="w-16 h-16 bg-[var(--bg-muted)] text-[var(--text-muted)] rounded-full flex items-center justify-center mx-auto mb-6">
-                <UserPlus size={32} />
+                <Icon as={UserPlus} size={32} />
               </div>
               <h2 className="text-xl font-bold text-[var(--text-primary)] mb-4">Créons votre premier prospect (Lead)</h2>
               <p className="text-[var(--text-secondary)] mb-8 max-w-md mx-auto">
@@ -234,8 +271,8 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
               </p>
               
               <div className="max-w-xs mx-auto space-y-4 text-left">
-                <input type="text" placeholder="Nom complet" className="w-full px-3 py-2 bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-default)] rounded-[var(--radius-sm)] focus:outline-none focus:border-[var(--brand-primary)]" />
-                <input type="email" placeholder="Email" className="w-full px-3 py-2 bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-default)] rounded-[var(--radius-sm)] focus:outline-none focus:border-[var(--brand-primary)]" />
+                <input type="text" placeholder="Nom complet" className="w-full px-3 py-2 bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-default)] rounded-[var(--radius-sm)] focus:outline-none focus:border-[var(--primary)]" />
+                <input type="email" placeholder="Email" className="w-full px-3 py-2 bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-default)] rounded-[var(--radius-sm)] focus:outline-none focus:border-[var(--primary)]" />
               </div>
             </div>
           )}
@@ -258,7 +295,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
           {step === 7 && (
             <div className="animate-fade-in text-center py-6">
               <div className="w-16 h-16 bg-[var(--bg-muted)] text-[var(--text-muted)] rounded-full flex items-center justify-center mx-auto mb-6">
-                <UserPlus size={32} />
+                <Icon as={UserPlus} size={32} />
               </div>
               <h2 className="text-xl font-bold text-[var(--text-primary)] mb-4">Invitez votre équipe</h2>
               <p className="text-[var(--text-secondary)] mb-8 max-w-md mx-auto">
@@ -266,7 +303,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
               </p>
               
               <div className="max-w-sm mx-auto flex gap-2">
-                <input type="email" placeholder="adresse@email.com" className="flex-1 px-3 py-2 bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-default)] rounded-[var(--radius-sm)] focus:outline-none focus:border-[var(--brand-primary)]" />
+                <input type="email" placeholder="adresse@email.com" className="flex-1 px-3 py-2 bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-default)] rounded-[var(--radius-sm)] focus:outline-none focus:border-[var(--primary)]" />
                 <Button>Inviter</Button>
               </div>
             </div>
@@ -275,7 +312,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
           {step === 8 && (
             <div className="animate-fade-in text-center py-8">
               <div className="w-20 h-20 bg-[var(--success)]/10 text-[var(--success)] rounded-full flex items-center justify-center mx-auto mb-6">
-                <Check size={40} />
+                <Icon as={Check} size={40} />
               </div>
               <h2 className="text-2xl font-bold text-[var(--text-primary)] mb-4">Tout est prêt !</h2>
               <p className="text-[var(--text-secondary)] mb-8 max-w-md mx-auto">
@@ -301,12 +338,25 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
               {step === TOTAL_STEPS ? (
                 isSubmitting ? 'Finalisation...' : 'Commencer le tour'
               ) : (
-                <span className="flex items-center gap-1">Suivant <ChevronRight size={16} /></span>
+                <span className="flex items-center gap-1">Suivant <Icon as={ChevronRight} size="md" /></span>
               )}
             </Button>
           </div>
         </div>
       </div>
-    </Modal>
+      </Modal>
+      {/* Sprint 24 vague 5B — Tour interactif post-onboarding */}
+      {tourOpen && (
+        <Suspense fallback={null}>
+          <InteractiveTour
+            open={tourOpen}
+            onClose={() => {
+              setTourOpen(false);
+              onComplete();
+            }}
+          />
+        </Suspense>
+      )}
+    </>
   );
 }

@@ -1,9 +1,13 @@
-import { useState, useEffect } from 'react';
+// Sprint 31 vague 31-2A — Table premium (frozen first col + expand row inline)
+import { useState, useEffect, useRef, Fragment } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Badge, Skeleton, EmptyState, useToast, PageHero } from '@/components/ui';
+import { Card, Button, Skeleton, EmptyState, useToast, PageHero, KpiStrip, Icon, type KpiItem, Tag } from '@/components/ui';
+// Sprint 44 M3.3 — Pull-to-refresh
+import { usePullToRefresh } from '@/hooks/usePullToRefresh';
+import { PullToRefreshIndicator } from '@/components/ui/PullToRefreshIndicator';
 import { Input } from '@/components/ui/Input';
 import { getDocuments, createDocument, sendDocument, getDocumentTemplates, sendSigningSms, apiFetch, type Document, type DocumentTemplate, getLeads } from '@/lib/api';
-import { FileSignature, Plus, Mail, Eye, CheckCircle, Clock, MessageSquare } from 'lucide-react';
+import { FileSignature, Plus, Mail, Eye, CheckCircle, Clock, MessageSquare, FileText, FileCheck, Files, Filter, ChevronRight, User } from 'lucide-react';
 
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -12,6 +16,8 @@ function timeAgo(dateStr: string) {
   if (days === 1) return "Hier";
   return `Il y a ${days} jours`;
 }
+
+type StatusFilter = 'all' | 'signed' | 'sent' | 'draft';
 
 export function DocumentsPage() {
   const { success, error: toastError, warning } = useToast();
@@ -23,6 +29,14 @@ export function DocumentsPage() {
   const [selectedTemplate, setSelectedTemplate] = useState('');
   const [selectedLead, setSelectedLead] = useState('');
   const [docTitle, setDocTitle] = useState('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  // Sprint 31 vague 31-2A — expand row inline detail
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const toggleExpand = (id: string) => setExpandedRows(prev => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
 
   const loadData = async () => {
     setIsLoading(true);
@@ -99,30 +113,81 @@ export function DocumentsPage() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'signed': return <Badge color="var(--success)"><span className="flex items-center gap-1"><CheckCircle size={12} /> Signé</span></Badge>;
-      case 'viewed': return <Badge color="var(--warning)"><span className="flex items-center gap-1"><Eye size={12} /> Vu</span></Badge>;
-      case 'sent': return <Badge color="var(--brand-primary)"><span className="flex items-center gap-1"><Mail size={12} /> Envoyé</span></Badge>;
-      case 'expired': return <Badge color="var(--danger)">Expiré</Badge>;
-      default: return <Badge color="var(--text-muted)"><span className="flex items-center gap-1"><Clock size={12} /> Brouillon</span></Badge>;
+      case 'signed': return <Tag dot variant="success" size="xs" leftIcon={<CheckCircle size={10} />}>Signé</Tag>;
+      case 'viewed': return <Tag dot variant="warning" size="xs" leftIcon={<Eye size={10} />}>Vu</Tag>;
+      case 'sent':   return <Tag dot variant="brand" size="xs" leftIcon={<Mail size={10} />}>Envoyé</Tag>;
+      case 'expired': return <Tag dot variant="danger" size="xs">Expiré</Tag>;
+      default: return <Tag dot variant="neutral" size="xs" leftIcon={<Clock size={10} />}>Brouillon</Tag>;
     }
   };
 
+  // KPI stats — Sprint 23 wave 27
+  const signedCount = documents.filter(d => d.status === 'signed').length;
+  const pendingCount = documents.filter(d => d.status === 'sent' || d.status === 'viewed').length;
+  const kpiItems: KpiItem[] = [
+    { label: 'Total docs', value: documents.length, icon: <FileText size={11} />, color: 'brand' },
+    { label: 'Signés', value: signedCount, icon: <FileCheck size={11} />, color: 'success' },
+    { label: 'En attente', value: pendingCount, icon: <Clock size={11} />, color: 'warning' },
+    { label: 'Modèles', value: templates.length, icon: <Files size={11} />, color: 'info' },
+  ];
+
+  const filteredDocs = documents.filter(d => {
+    if (statusFilter === 'all') return true;
+    if (statusFilter === 'sent') return d.status === 'sent' || d.status === 'viewed';
+    return d.status === statusFilter;
+  });
+
+  const filterPills: { key: StatusFilter; label: string; count: number }[] = [
+    { key: 'all', label: 'Tous', count: documents.length },
+    { key: 'signed', label: 'Signés', count: signedCount },
+    { key: 'sent', label: 'En attente', count: pendingCount },
+    { key: 'draft', label: 'Brouillons', count: documents.filter(d => d.status === 'draft').length },
+  ];
+
+  // Sprint 44 M3.3 — Pull-to-refresh
+  const scrollParentRef = useRef<HTMLElement | null>(null);
+  useEffect(() => { scrollParentRef.current = document.getElementById('main-content'); }, []);
+  const ptr = usePullToRefresh(async () => { await loadData(); }, { scrollParent: scrollParentRef });
+
   return (
     <AppLayout title="Documents & E-signature">
+      <div ref={ptr.containerRef}>
+      <PullToRefreshIndicator distance={ptr.pullDistance} progress={ptr.pullProgress} isRefreshing={ptr.isRefreshing} />
       <PageHero
         meta="Insights"
         title="Documents"
         highlight="Documents"
         description="Gérez vos contrats et mandats envoyés pour signature électronique."
         actions={!isCreating && (
-          <Button variant="premium" onClick={() => setIsCreating(true)} leftIcon={<Plus size={14} />}>
+          <Button variant="premium" onClick={() => setIsCreating(true)} leftIcon={<Icon as={Plus} size="sm" />}>
             Envoyer un document
           </Button>
         )}
       />
 
+      <KpiStrip items={kpiItems} />
+
+      {documents.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 mb-5">
+          <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--text-muted)] mr-1 flex items-center gap-1">
+            <Filter size={11} /> Filtrer
+          </span>
+          {/* Sprint 42 M2 — Stripe-clean : action-chip primitive (plus de gradient brand inline) */}
+          {filterPills.map(p => (
+            <button
+              key={p.key}
+              onClick={() => setStatusFilter(p.key)}
+              className={`action-chip ${statusFilter === p.key ? 'action-chip--accent' : ''}`}
+            >
+              <span>{p.label}</span>
+              <span className="text-[10px] font-bold opacity-70">{p.count}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       {isCreating && (
-        <Card className="p-6 mb-6 animate-fade-in border border-[var(--brand-primary)] max-w-2xl">
+        <Card className="p-6 mb-6 animate-fade-in border border-[var(--primary)] max-w-2xl">
           <h3 className="text-lg font-bold mb-4">Envoyer un document pour signature</h3>
           <div className="space-y-4">
             <div>
@@ -161,13 +226,13 @@ export function DocumentsPage() {
             <div className="flex flex-col gap-3 pt-2 border-t border-[var(--border-subtle)] mt-2">
               <div className="flex gap-2 justify-between items-center">
                 <Button variant="secondary" onClick={() => handleGenerateOaciq()} disabled={!selectedLead || isGeneratingOaciq} className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border-indigo-200">
-                  <FileSignature size={16} className="mr-2" /> 
+                  <Icon as={FileSignature} size="md" className="mr-2" />
                   {isGeneratingOaciq ? 'Génération...' : 'Générer Mandat OACIQ'}
                 </Button>
                 <div className="flex gap-2">
                   <Button variant="secondary" onClick={() => setIsCreating(false)}>Annuler</Button>
                   <Button onClick={() => void handleCreateAndSend()} disabled={!selectedTemplate || !selectedLead || !docTitle}>
-                    <Mail size={16} className="mr-2" /> Créer & Envoyer par email
+                    <Icon as={Mail} size="md" className="mr-2" /> Créer & Envoyer par email
                   </Button>
                 </div>
               </div>
@@ -177,69 +242,163 @@ export function DocumentsPage() {
       )}
 
       {isLoading ? (
-        <Card><Skeleton className="h-64 w-full" /></Card>
+        <Card className="p-0 overflow-hidden">
+          <div className="px-4 py-3 border-b border-[var(--border-subtle)] bg-[var(--bg-canvas)] flex items-center gap-6">
+            {[1,2,3,4,5].map(i => (
+              <Skeleton key={i} className="h-3 w-20 rounded" />
+            ))}
+          </div>
+          <div className="divide-y divide-[var(--border-subtle)]">
+            {[1,2,3,4,5,6].map(i => (
+              <div key={i} className="flex items-center gap-4 px-4 py-3">
+                <Skeleton className="h-4 w-4 rounded shrink-0" />
+                <div className="flex-1 space-y-1.5">
+                  <Skeleton className="h-3.5 w-1/2 rounded" />
+                </div>
+                <div className="w-36 space-y-1">
+                  <Skeleton className="h-3 w-full rounded" />
+                  <Skeleton className="h-2.5 w-2/3 rounded" />
+                </div>
+                <Skeleton className="h-5 w-20 rounded-full shrink-0" />
+                <Skeleton className="h-3 w-20 rounded shrink-0" />
+                <Skeleton className="h-7 w-16 rounded shrink-0" />
+              </div>
+            ))}
+          </div>
+        </Card>
       ) : documents.length === 0 && !isCreating ? (
         <EmptyState
+          variant="first-time"
           icon={<FileSignature size={48} />}
-          title="Aucun document pour l'instant"
-          description="Envoyez votre premier document pour signature."
-          action={<Button onClick={() => setIsCreating(true)}>Envoyer un document</Button>}
+          title="Aucun document encore"
+          description="Envoie ton premier document pour signature en quelques clics."
+          action={<Button variant="primary" onClick={() => setIsCreating(true)}>Créer mon premier document</Button>}
         />
       ) : (
-        <div className="card p-0 overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-[var(--border-subtle)] bg-[var(--bg-canvas)] text-[var(--text-muted)]">
-                <th className="py-3 px-4 font-medium">Titre</th>
-                <th className="py-3 px-4 font-medium">Destinataire</th>
-                <th className="py-3 px-4 font-medium">Statut</th>
-                <th className="py-3 px-4 font-medium">Date</th>
-                <th className="py-3 px-4 font-medium text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--border-subtle)]">
-              {documents.map(doc => (
-                <tr key={doc.id} className="hover:bg-[var(--bg-subtle)] transition-colors">
-                  <td className="py-3 px-4 font-medium">
-                    <div className="flex items-center gap-2">
-                      <FileSignature size={16} className="text-[var(--text-muted)]" />
-                      {doc.title}
-                    </div>
-                  </td>
-                  <td className="py-3 px-4">
-                    <p className="text-sm">{doc.lead_name}</p>
-                    <p className="text-xs text-[var(--text-muted)]">{doc.lead_email}</p>
-                  </td>
-                  <td className="py-3 px-4">{getStatusBadge(doc.status)}</td>
-                  <td className="py-3 px-4 text-[var(--text-secondary)]">
-                    {doc.status === 'signed' && doc.signed_at 
-                      ? timeAgo(doc.signed_at) 
-                      : doc.status === 'sent' && doc.sent_at 
-                        ? timeAgo(doc.sent_at) 
-                        : timeAgo(doc.created_at)}
-                  </td>
-                  <td className="py-3 px-4 text-right">
-                    <div className="flex gap-1.5 justify-end">
-                      <Button variant="secondary" size="sm" onClick={() => window.open(`/sign/${doc.token}`, '_blank')}>
-                        Voir
-                      </Button>
-                      {(doc.status === 'draft' || doc.status === 'sent') && (
-                        <Button variant="ghost" size="sm" onClick={async () => {
-                          const res = await sendSigningSms(doc.id);
-                          if (res.data) success(`SMS envoyé à ${res.data.sms_sent_to}`);
-                          else toastError(res.error || 'Échec envoi SMS');
-                        }} title="Envoyer par SMS">
-                          <MessageSquare size={14} /> SMS
-                        </Button>
-                      )}
-                    </div>
-                  </td>
+        /* Sprint 31 vague 31-2A — Table premium (frozen first col + expand inline) */
+        <Card className="p-0 overflow-hidden">
+          <div className="table-premium-container overflow-x-auto">
+            <table className="table-premium print-data-table">
+              <thead>
+                <tr>
+                  <th className="col-frozen" style={{ minWidth: 280 }}>Titre</th>
+                  <th className="text-left">Destinataire</th>
+                  <th className="text-left">Statut</th>
+                  <th className="text-left">Date</th>
+                  <th data-print-hide className="text-right" style={{ width: 160 }}>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {filteredDocs.map((doc, idx) => {
+                  const isExpanded = expandedRows.has(doc.id);
+                  return (
+                    <Fragment key={doc.id}>
+                      <tr className="list-item-enter" style={{ animationDelay: `${idx * 28}ms` }}>
+                        <td className="col-frozen">
+                          <div className="flex items-center gap-2.5">
+                            <button
+                              type="button"
+                              className={`table-expand-trigger ${isExpanded ? 'is-expanded' : ''}`}
+                              onClick={() => toggleExpand(doc.id)}
+                              aria-label={isExpanded ? 'Réduire les détails' : 'Afficher les détails'}
+                            >
+                              <ChevronRight size={14} />
+                            </button>
+                            <Icon as={FileSignature} size="sm" className="text-[var(--text-muted)] shrink-0" />
+                            <span className="font-medium text-[13px] truncate" title={doc.title}>
+                              {doc.title}
+                            </span>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-[12px] font-medium truncate">{doc.lead_name || '—'}</span>
+                            <span className="text-[11px] text-[var(--text-muted)] truncate">{doc.lead_email || ''}</span>
+                          </div>
+                        </td>
+                        <td>{getStatusBadge(doc.status)}</td>
+                        <td className="text-[12px] text-[var(--text-secondary)]">
+                          {doc.status === 'signed' && doc.signed_at
+                            ? timeAgo(doc.signed_at)
+                            : doc.status === 'sent' && doc.sent_at
+                              ? timeAgo(doc.sent_at)
+                              : timeAgo(doc.created_at)}
+                        </td>
+                        <td data-print-hide className="text-right">
+                          <div className="flex gap-1.5 justify-end">
+                            <Button variant="secondary" size="sm" onClick={() => window.open(`/sign/${doc.token}`, '_blank')}>
+                              Voir
+                            </Button>
+                            {(doc.status === 'draft' || doc.status === 'sent') && (
+                              <Button variant="ghost" size="sm" onClick={async () => {
+                                const res = await sendSigningSms(doc.id);
+                                if (res.data) success(`SMS envoyé à ${res.data.sms_sent_to}`);
+                                else toastError(res.error || 'Échec envoi SMS');
+                              }} title="Envoyer par SMS">
+                                <Icon as={MessageSquare} size="sm" /> SMS
+                              </Button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td colSpan={5} style={{ padding: 0, border: 'none' }}>
+                          <div className={`table-expand-content ${isExpanded ? 'is-open' : ''}`}>
+                            <div className="table-expand-inner">
+                              <div className="table-expand-detail">
+                                <div className="table-expand-detail-section" style={{ flex: '1 1 240px' }}>
+                                  <span className="table-expand-detail-label">Signataire</span>
+                                  <div className="flex items-center gap-2 text-[12px]">
+                                    <User size={12} className="text-[var(--text-muted)]" />
+                                    <div className="flex flex-col">
+                                      <span className="font-medium">{doc.lead_name || '—'}</span>
+                                      <span className="text-[11px] text-[var(--text-muted)]">{doc.lead_email || 'Pas d\'email'}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="table-expand-detail-section">
+                                  <span className="table-expand-detail-label">Workflow</span>
+                                  <div className="flex flex-col gap-1 text-[11px]">
+                                    <span className={`inline-flex items-center gap-1.5 ${doc.sent_at ? 'text-[var(--success)]' : 'text-[var(--text-muted)]'}`}>
+                                      <Mail size={11} />
+                                      Envoyé {doc.sent_at ? timeAgo(doc.sent_at) : '— en attente'}
+                                    </span>
+                                    <span className={`inline-flex items-center gap-1.5 ${doc.status === 'viewed' || doc.status === 'signed' ? 'text-[var(--warning)]' : 'text-[var(--text-muted)]'}`}>
+                                      <Eye size={11} />
+                                      Vu {doc.status === 'viewed' || doc.status === 'signed' ? '✓' : '— pas encore'}
+                                    </span>
+                                    <span className={`inline-flex items-center gap-1.5 ${doc.status === 'signed' ? 'text-[var(--success)]' : 'text-[var(--text-muted)]'}`}>
+                                      <CheckCircle size={11} />
+                                      Signé {doc.signed_at ? timeAgo(doc.signed_at) : '— en attente'}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="table-expand-detail-section">
+                                  <span className="table-expand-detail-label">Token de signature</span>
+                                  <span className="table-expand-detail-value text-[11px] font-mono break-all">
+                                    {doc.token || '—'}
+                                  </span>
+                                </div>
+                                <div className="table-expand-detail-section">
+                                  <span className="table-expand-detail-label">Créé</span>
+                                  <span className="table-expand-detail-value text-[12px]">
+                                    {new Date(doc.created_at).toLocaleString('fr-CA', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    </Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </Card>
       )}
+      </div>
     </AppLayout>
   );
 }

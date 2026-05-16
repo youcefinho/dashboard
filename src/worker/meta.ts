@@ -94,17 +94,49 @@ export async function handleMetaWebhook(request: Request, env: Env): Promise<Res
   
   // Réception Webhook (POST)
   if (request.method === 'POST') {
-    // Vérification signature X-Hub-Signature-256 (omis ici pour simplifier le MVP)
-    const body = await request.json() as any;
-    
+    // Sprint 51 M1 — Lecture du body brut (requis pour la vérif HMAC).
+    const rawBody = await request.text();
+
+    // Vérification signature X-Hub-Signature-256 (HMAC SHA-256, timing-safe).
+    // Couvre AUSSI le path messaging existant (sécurité). Si META_APP_SECRET
+    // absent → on log un warn et on continue (pas de blocage prod legacy).
+    const { verifyMetaSignature, processMetaLeadgen } = await import('./meta-leadgen');
+    const sigResult = await verifyMetaSignature(
+      env, rawBody, request.headers.get('X-Hub-Signature-256')
+    );
+    if (sigResult === null) {
+      console.warn('[meta-webhook] META_APP_SECRET absent — signature non vérifiée (legacy)');
+    } else if (sigResult === false) {
+      return new Response('Invalid signature', { status: 401 });
+    }
+
+    let body: any;
+    try { body = JSON.parse(rawBody); } catch { return new Response('Invalid JSON', { status: 400 }); }
+
     if (body.object === 'page') {
-      for (const entry of body.entry) {
+      for (const entry of body.entry || []) {
         const pageId = entry.id;
-        for (const messaging of entry.messaging) {
+
+        // Sprint 51 M1.1 — Branch leadgen (Facebook/Instagram Lead Ads).
+        // NON destructif : ajouté à côté du branch messaging existant.
+        if (Array.isArray(entry.changes)) {
+          for (const change of entry.changes) {
+            if (change.field === 'leadgen' && change.value) {
+              try {
+                await processMetaLeadgen(env, pageId, change.value);
+              } catch (e) {
+                console.error('[meta-webhook] leadgen processing error:', e);
+              }
+            }
+          }
+        }
+
+        // Branch messaging existant (Messenger / Instagram DM) — INCHANGÉ.
+        for (const messaging of entry.messaging || []) {
           if (messaging.message) {
             const senderPsid = messaging.sender.id;
             const messageText = messaging.message.text;
-            
+
             // Trouver la connexion Meta via pageId
             const conn = await env.DB.prepare('SELECT client_id FROM meta_connections WHERE page_id = ?').bind(pageId).first() as { client_id: string } | null;
             if (conn) {

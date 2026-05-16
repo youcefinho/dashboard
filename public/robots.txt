@@ -1,3 +1,8 @@
+# ── Sprint 47 M2.4 — robots.txt ──
+# Marketing pages (/, /pricing, /about, /contact, /help, /blog, /legal/*,
+# /marketing/*, /changelog) sont publiques et indexables.
+# Toutes les routes app authentifiées + admin + API sont disallow.
+
 User-agent: *
 Allow: /
 Disallow: /dashboard
@@ -20,7 +25,13 @@ Disallow: /trash
 Disallow: /trigger-links
 Disallow: /agencies
 Disallow: /change-password
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /admin
+Disallow: /api
 Disallow: /sign/
 Disallow: /f/
+Disallow: /visit/
+Disallow: /dashboards/shared/
 
 Sitemap: https://crm.intralys.com/sitemap.xml

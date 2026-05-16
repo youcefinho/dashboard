@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Badge, Input, EmptyState, Skeleton, useConfirm, PageHero } from '@/components/ui';
+import { Card, Button, Input, EmptyState, Skeleton, useConfirm, PageHero, KpiStrip, Icon, type KpiItem, Tag, useToast } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { getTriggerLinks, createTriggerLink, deleteTriggerLink } from '@/lib/api';
-import { Plus, Trash2, Copy, ExternalLink, MousePointerClick } from 'lucide-react';
+import { Plus, Trash2, Copy, ExternalLink, MousePointerClick, Link as LinkIcon, TrendingUp, Award, Check } from 'lucide-react';
 
 interface TriggerLink {
   id: string; name: string; target_url: string;
@@ -14,6 +14,7 @@ interface TriggerLink {
 
 export function TriggerLinksPage() {
   const confirm = useConfirm();
+  const { success: toastSuccess } = useToast();
   const [links, setLinks] = useState<TriggerLink[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -21,6 +22,7 @@ export function TriggerLinksPage() {
   const [newUrl, setNewUrl] = useState('');
   const [newTag, setNewTag] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const loadLinks = useCallback(async () => {
     setIsLoading(true);
@@ -54,10 +56,27 @@ export function TriggerLinksPage() {
 
   const copyShortUrl = (id: string) => {
     const url = `${window.location.origin}/l/${id}`;
-    navigator.clipboard.writeText(url);
+    void navigator.clipboard.writeText(url);
+    setCopiedId(id);
+    toastSuccess('Lien copié !');
+    setTimeout(() => setCopiedId(c => (c === id ? null : c)), 1800);
   };
 
   const totalClicks = links.reduce((sum, l) => sum + (l.total_clicks || l.click_count || 0), 0);
+  const bestPerformer = links.reduce<TriggerLink | null>((best, l) => {
+    const clicks = l.total_clicks || l.click_count || 0;
+    if (!best) return l;
+    const bestClicks = best.total_clicks || best.click_count || 0;
+    return clicks > bestClicks ? l : best;
+  }, null);
+  const conversions = links.filter(l => (l.total_clicks || l.click_count || 0) > 0).length;
+
+  const kpiItems: KpiItem[] = [
+    { label: 'Total links', value: links.length, icon: <LinkIcon size={11} />, color: 'brand' },
+    { label: 'Clics totaux', value: totalClicks, icon: <MousePointerClick size={11} />, color: 'success' },
+    { label: 'Avec activité', value: conversions, icon: <TrendingUp size={11} />, color: 'info' },
+    { label: 'Top performer', value: bestPerformer ? (bestPerformer.name.length > 14 ? bestPerformer.name.slice(0, 12) + '…' : bestPerformer.name) : '—', icon: <Award size={11} />, color: 'accent' },
+  ];
 
   return (
     <AppLayout title="Trigger Links">
@@ -66,19 +85,45 @@ export function TriggerLinksPage() {
         title="Trigger Links"
         highlight="Trigger Links"
         description="Liens trackés qui déclenchent des workflows automatiquement au clic."
-        actions={<Button variant="premium" onClick={() => setShowCreate(true)} leftIcon={<Plus size={14} />}>Nouveau link</Button>}
+        actions={<Button variant="premium" onClick={() => setShowCreate(true)} leftIcon={<Icon as={Plus} size="sm" />}>Nouveau link</Button>}
       />
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 16, marginBottom: 24 }}>
-        <Card><div style={{ padding: 16, textAlign: 'center' }}><div style={{ fontSize: '28px', fontWeight: 700, color: 'var(--brand-primary)' }}>{links.length}</div><div style={{ fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Links actifs</div></div></Card>
-        <Card><div style={{ padding: 16, textAlign: 'center' }}><div style={{ fontSize: '28px', fontWeight: 700, color: 'var(--success)' }}>{totalClicks}</div><div style={{ fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Clics totaux</div></div></Card>
-        <Card><div style={{ padding: 16, textAlign: 'center' }}><div style={{ fontSize: '28px', fontWeight: 700, color: 'var(--warning)' }}>{links.length > 0 ? (totalClicks / links.length).toFixed(1) : '0'}</div><div style={{ fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Moy. clics/link</div></div></Card>
-      </div>
+      <KpiStrip items={kpiItems} />
 
       {isLoading ? (
-        <Card><Skeleton className="h-48 w-full" /></Card>
+        <Card className="p-0 overflow-hidden">
+          <div className="px-4 py-3 border-b border-[var(--border-subtle)] bg-[var(--bg-subtle)] flex items-center gap-6">
+            {[1,2,3,4].map(i => (
+              <Skeleton key={i} className="h-3 w-20 rounded" />
+            ))}
+          </div>
+          <div className="divide-y divide-[var(--border-subtle)]">
+            {[1,2,3,4,5,6].map(i => (
+              <div key={i} className="flex items-center gap-4 px-4 py-3">
+                <div className="flex-1 space-y-1.5">
+                  <Skeleton className="h-3.5 w-40 rounded" />
+                  <Skeleton className="h-2.5 w-24 rounded" />
+                </div>
+                <div className="flex-1 max-w-sm">
+                  <Skeleton className="h-3 w-full rounded" />
+                </div>
+                <Skeleton className="h-5 w-14 rounded-full shrink-0" />
+                <div className="flex gap-2 shrink-0">
+                  <Skeleton className="h-7 w-20 rounded" />
+                  <Skeleton className="h-7 w-7 rounded" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
       ) : links.length === 0 ? (
-        <EmptyState title="Aucun trigger link pour l'instant" description="Créez un lien tracké pour commencer." action={<Button onClick={() => setShowCreate(true)}>Nouveau Link</Button>} />
+        <EmptyState
+          variant="first-time"
+          icon={<Icon as={LinkIcon} size={48} />}
+          title="Aucun trigger link encore"
+          description="Crée ton premier lien tracké pour mesurer l'engagement de tes campagnes."
+          action={<Button variant="primary" onClick={() => setShowCreate(true)}>Créer mon premier lien</Button>}
+        />
       ) : (
         <Card>
           <div className="overflow-x-auto">
@@ -92,32 +137,48 @@ export function TriggerLinksPage() {
               </tr>
             </thead>
             <tbody>
-              {links.map(link => (
-                <tr key={link.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+              {links.map((link, idx) => {
+                const clicks = link.total_clicks || link.click_count || 0;
+                const isCopied = copiedId === link.id;
+                return (
+                <tr key={link.id} className="row-premium list-item-enter" style={{ borderBottom: '1px solid var(--border-subtle)', animationDelay: `${idx * 30}ms` }}>
                   <td style={{ padding: '12px 16px' }}>
                     <div style={{ fontWeight: 500, fontSize: '14px' }}>{link.name}</div>
                     <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'monospace' }}>/l/{link.id.slice(0, 8)}</div>
                   </td>
                   <td style={{ padding: '12px 16px' }}>
                     <a href={link.target_url} target="_blank" rel="noopener noreferrer"
-                      style={{ fontSize: '13px', color: 'var(--brand-primary)', display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}>
+                      style={{ fontSize: '13px', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}>
                       {link.target_url.length > 50 ? link.target_url.slice(0, 50) + '...' : link.target_url}
                       <ExternalLink size={12} />
                     </a>
                   </td>
                   <td style={{ padding: '12px 16px', textAlign: 'center' }}>
-                    <Badge style={{ background: (link.total_clicks || link.click_count) > 0 ? 'var(--success)' : 'var(--bg-hover)', color: (link.total_clicks || link.click_count) > 0 ? 'white' : 'var(--text-muted)' }}>
-                      <MousePointerClick size={12} /> {link.total_clicks || link.click_count || 0}
-                    </Badge>
+                    <Tag dot variant={clicks > 0 ? 'success' : 'neutral'} size="xs" leftIcon={<MousePointerClick size={10} />}>{clicks}</Tag>
                   </td>
                   <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                    <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                      <Button variant="ghost" size="sm" onClick={() => copyShortUrl(link.id)} title="Copier URL"><Copy size={14} /></Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleDelete(link.id)} title="Supprimer"><Trash2 size={14} style={{ color: 'var(--danger)' }} /></Button>
+                    <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                      <button
+                        type="button"
+                        onClick={() => copyShortUrl(link.id)}
+                        className="action-chip"
+                        title="Copier URL"
+                        style={isCopied ? {
+                          background: 'linear-gradient(135deg, rgba(55,202,55,0.14) 0%, rgba(0,157,219,0.06) 100%)',
+                          borderColor: 'rgba(55,202,55,0.50)',
+                          color: '#1f8f1f',
+                        } : undefined}
+                      >
+                        <span className="action-chip-icon">
+                          {isCopied ? <Icon as={Check} size="xs" /> : <Icon as={Copy} size="xs" />}
+                        </span>
+                        <span>{isCopied ? 'Copié !' : 'Copier'}</span>
+                      </button>
+                      <Button variant="ghost" size="sm" onClick={() => handleDelete(link.id)} title="Supprimer"><Icon as={Trash2} size="sm" style={{ color: 'var(--danger)' }} /></Button>
                     </div>
                   </td>
                 </tr>
-              ))}
+              );})}
             </tbody>
           </table>
           </div>

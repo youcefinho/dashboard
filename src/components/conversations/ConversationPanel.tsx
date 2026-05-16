@@ -2,9 +2,12 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { getLeadMessages, sendMessage, getTemplates } from '@/lib/api';
-import { Button, Badge, Skeleton, AiSparkles } from '@/components/ui';
+import { Button, Tag, Skeleton, AiSparkles, Input, Select, Textarea } from '@/components/ui';
 import type { Message, EmailTemplate } from '@/lib/types';
 import { CHANNEL_ICONS, MESSAGE_STATUS_LABELS } from '@/lib/types';
+// Sprint 48 M3.2 — Intl relative time + locale-aware date
+import { formatRelativeTime } from '@/lib/i18n/datetime';
+import { getLocale } from '@/lib/i18n';
 
 interface ConversationPanelProps {
   leadId: string;
@@ -89,40 +92,31 @@ export function ConversationPanel({ leadId, leadName, leadEmail, leadPhone }: Co
   };
 
   const formatDate = (dateStr: string) => {
-    const d = new Date(dateStr + 'Z');
-    const now = new Date();
-    const diff = now.getTime() - d.getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 1) return 'À l\'instant';
-    if (mins < 60) return `il y a ${mins}min`;
-    const hours = Math.floor(mins / 60);
-    if (hours < 24) return `il y a ${hours}h`;
-    return d.toLocaleDateString('fr-CA', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    // Sprint 48 M3.2 — Intl.RelativeTimeFormat locale-aware
+    return formatRelativeTime(dateStr + (dateStr.endsWith('Z') ? '' : 'Z'), getLocale());
   };
 
   return (
     <div className="space-y-4">
-      {/* Tabs */}
-      <div className="flex gap-1 p-1 bg-[var(--bg-subtle)] rounded-[var(--radius-md)]">
+      {/* Tabs — segmented-control premium */}
+      <div className="segmented-control" role="tablist" aria-label="Conversations">
         <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'history'}
           onClick={() => setActiveTab('history')}
-          className={`flex-1 py-2 px-3 rounded-[var(--radius-sm)] text-xs font-medium transition-all cursor-pointer ${
-            activeTab === 'history'
-              ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-sm'
-              : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
-          }`}
+          className={activeTab === 'history' ? 'is-active' : ''}
         >
-          📜 Historique ({messages.length})
+          Historique ({messages.length})
         </button>
         <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'compose'}
           onClick={() => setActiveTab('compose')}
-          className={`flex-1 py-2 px-3 rounded-[var(--radius-sm)] text-xs font-medium transition-all cursor-pointer ${
-            activeTab === 'compose'
-              ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-sm'
-              : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
-          }`}
+          className={activeTab === 'compose' ? 'is-active' : ''}
         >
-          ✉️ Composer
+          Composer
         </button>
       </div>
 
@@ -147,7 +141,7 @@ export function ConversationPanel({ leadId, leadName, leadEmail, leadPhone }: Co
                 key={msg.id}
                 className={`p-3 rounded-[var(--radius-md)] border text-sm ${
                   msg.direction === 'outbound'
-                    ? 'bg-[var(--brand-primary)]/5 border-[var(--brand-primary)]/20 ml-4'
+                    ? 'bg-[var(--primary)]/12 border-[var(--primary)]/30 ml-4'
                     : 'bg-[var(--bg-subtle)] border-[var(--border-subtle)] mr-4'
                 }`}
               >
@@ -157,9 +151,9 @@ export function ConversationPanel({ leadId, leadName, leadEmail, leadPhone }: Co
                     <span className="font-medium text-xs">
                       {msg.direction === 'outbound' ? 'Vous' : leadName}
                     </span>
-                    <Badge color={msg.status === 'delivered' || msg.status === 'read' ? 'var(--success)' : msg.status === 'failed' ? 'var(--danger)' : undefined}>
+                    <Tag dot size="xs" variant={msg.status === 'delivered' || msg.status === 'read' ? 'success' : msg.status === 'failed' ? 'danger' : 'neutral'}>
                       {MESSAGE_STATUS_LABELS[msg.status]}
-                    </Badge>
+                    </Tag>
                   </div>
                   <span className="text-[10px] text-[var(--text-muted)]">{formatDate(msg.created_at)}</span>
                 </div>
@@ -176,72 +170,81 @@ export function ConversationPanel({ leadId, leadName, leadEmail, leadPhone }: Co
       {/* Composer */}
       {activeTab === 'compose' && (
         <div className="space-y-3">
-          {/* Sélection du canal */}
-          <div className="flex gap-1 p-1 bg-[var(--bg-subtle)] rounded-[var(--radius-md)]">
-            {(['email', 'sms', 'internal_note'] as const).map((ch) => (
-              <button
-                key={ch}
-                onClick={() => setChannel(ch)}
-                className={`flex-1 py-1.5 px-2 rounded-[var(--radius-sm)] text-xs font-medium transition-all cursor-pointer ${
-                  channel === ch
-                    ? 'bg-[var(--brand-primary)] text-white'
-                    : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
-                }`}
-              >
-                {CHANNEL_ICONS[ch]} {ch === 'email' ? 'Email' : ch === 'sms' ? 'SMS' : 'Note'}
-              </button>
-            ))}
+          {/* Sélection du canal — chip-btn group avec gradient sur active */}
+          <div className="flex gap-1.5 flex-wrap">
+            {(['email', 'sms', 'internal_note'] as const).map((ch) => {
+              const isActive = channel === ch;
+              return (
+                <button
+                  key={ch}
+                  type="button"
+                  onClick={() => setChannel(ch)}
+                  className={`chip-btn chip-btn--label flex-1 ${isActive ? 'is-active' : ''}`}
+                  aria-pressed={isActive}
+                  style={
+                    isActive
+                      ? {
+                          background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
+                          color: 'white',
+                          borderColor: 'transparent',
+                          boxShadow: '0 4px 12px -2px rgba(0,157,219,0.45)',
+                          height: 36,
+                        }
+                      : { height: 36 }
+                  }
+                >
+                  <span className="mr-1">{CHANNEL_ICONS[ch]}</span>
+                  {ch === 'email' ? 'Email' : ch === 'sms' ? 'SMS' : 'Note'}
+                </button>
+              );
+            })}
           </div>
 
           {/* Destinataire */}
           <div className="text-xs text-[var(--text-muted)] px-1">
-            {channel === 'email' ? `À : ${leadEmail || 'Pas d\'email'}` : 
-             channel === 'sms' ? `À : ${leadPhone || 'Pas de téléphone'}` : 
-             '📝 Note interne (visible uniquement par l\'équipe)'}
+            {channel === 'email' ? `À : ${leadEmail || 'Pas d\'email'}` :
+             channel === 'sms' ? `À : ${leadPhone || 'Pas de téléphone'}` :
+             'Note interne (visible uniquement par l\'équipe)'}
           </div>
 
           {/* Template (email uniquement) */}
           {channel === 'email' && templates.length > 0 && (
-            <select
+            <Select
               value={selectedTemplate}
               onChange={(e) => applyTemplate(e.target.value)}
-              className="w-full px-3 py-2 bg-[var(--bg-subtle)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-xs text-[var(--text-secondary)] focus:outline-none focus:border-[var(--brand-primary)]"
+              size="sm"
             >
-              <option value="">-- Utiliser un template --</option>
+              <option value="">— Utiliser un template —</option>
               {templates.map(t => (
                 <option key={t.id} value={t.id}>{t.name} ({t.category})</option>
               ))}
-            </select>
+            </Select>
           )}
 
           {/* Sujet (email uniquement) */}
           {channel === 'email' && (
-            <input
+            <Input
               type="text"
               placeholder="Sujet de l'email..."
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              className="w-full px-3 py-2 bg-[var(--bg-subtle)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand-primary)]"
             />
           )}
 
           {/* Corps du message */}
           <div className="relative">
-            <textarea
+            <Textarea
               placeholder={channel === 'email' ? 'Rédigez votre email...' : channel === 'sms' ? 'Rédigez votre SMS...' : 'Ajoutez une note interne...'}
               value={body}
               onChange={(e) => setBody(e.target.value)}
               rows={channel === 'sms' ? 3 : 6}
               maxLength={channel === 'sms' ? 160 : undefined}
-              className="w-full px-3 py-2 pr-10 bg-[var(--bg-subtle)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand-primary)] resize-none"
+              showCounter={channel === 'sms'}
+              resize="none"
+              className="pr-10"
             />
-            <AiSparkles value={body} onChange={setBody} leadId={leadId} className="absolute bottom-2 right-2" />
+            <AiSparkles value={body} onChange={setBody} leadId={leadId} className="absolute bottom-2 right-2 z-10" />
           </div>
-
-          {/* Compteur SMS */}
-          {channel === 'sms' && (
-            <p className="text-[10px] text-[var(--text-muted)] text-right">{body.length}/160 caractères</p>
-          )}
 
           {/* Résultat d'envoi */}
           {sendResult && (

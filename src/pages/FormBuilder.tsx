@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { DesktopOnlyBanner } from '@/components/DesktopOnlyBanner';
-import { Card, Button, Badge, Input, Skeleton } from '@/components/ui';
+import { Card, Button, Tag, Input, Skeleton, Select, Textarea, Switch, KpiStrip, Icon } from '@/components/ui';
+import type { KpiItem } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
@@ -39,7 +40,7 @@ function SortableField({ field, isSelected, onSelect, onDelete }: {
   const ft = FIELD_TYPES.find(f => f.type === field.type);
   return (
     <div ref={setNodeRef} style={style} onClick={onSelect} className={`form-field-item ${isSelected ? 'selected' : ''}`}>
-      <div className="field-drag" {...attributes} {...listeners}><GripVertical size={14} /></div>
+      <div className="field-drag" {...attributes} {...listeners}><Icon as={GripVertical} size="sm" /></div>
       <span className="field-icon">{ft?.icon || '📝'}</span>
       <div className="field-info">
         <span className="field-label-text">{field.label || field.name}</span>
@@ -59,6 +60,14 @@ export function FormBuilderPage() {
   const [formSlug, setFormSlug] = useState('');
   const [formType, setFormType] = useState<'form' | 'survey' | 'quiz'>('form');
   const [successMessage, setSuccessMessage] = useState('Merci !');
+  // Sprint 51 M3.1 — Consentement Loi 25 (back-compat : défaut désactivé)
+  const [requireConsent, setRequireConsent] = useState(false);
+  const [consentText, setConsentText] = useState(
+    "J'accepte d'être recontacté(e) par courriel ou téléphone, conformément à la Loi 25."
+  );
+  const [redirectUrl, setRedirectUrl] = useState('');
+  // Sprint 51 M3.1 — settings_json brut conservé pour merge non destructif (ex: quiz_results)
+  const [rawSettings, setRawSettings] = useState<Record<string, unknown>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showStats, setShowStats] = useState(false);
@@ -77,7 +86,17 @@ export function FormBuilderPage() {
       setFormSlug((d.slug as string) || '');
       setFormType(((d.form_type as string) || 'form') as 'form' | 'survey' | 'quiz');
       setSuccessMessage((d.success_message as string) || 'Merci !');
+      setRedirectUrl((d.redirect_url as string) || '');
       try { setFields(JSON.parse((d.fields as string) || '[]')); } catch { /* ignore */ }
+      // Sprint 51 M3.1 — relire le bloc consentement depuis settings_json
+      try {
+        const s = JSON.parse((d.settings_json as string) || '{}') as Record<string, unknown> & {
+          require_consent?: boolean; consent_text?: string;
+        };
+        setRawSettings(s);
+        if (typeof s.require_consent === 'boolean') setRequireConsent(s.require_consent);
+        if (s.consent_text) setConsentText(s.consent_text as string);
+      } catch { /* ignore */ }
     }
     setIsLoading(false);
   }, [formId]);
@@ -108,7 +127,18 @@ export function FormBuilderPage() {
 
   const handleSave = async () => {
     setIsSaving(true);
-    await updateForm(formId, { name: formName, fields, form_type: formType, success_message: successMessage });
+    // Sprint 51 M3.1 — merge non destructif : conserve quiz_results & autres clés existantes
+    const mergedSettings = {
+      ...rawSettings,
+      require_consent: requireConsent,
+      consent_text: consentText,
+    };
+    await updateForm(formId, {
+      name: formName, fields, form_type: formType,
+      success_message: successMessage, settings_json: mergedSettings,
+      redirect_url: redirectUrl,
+    });
+    setRawSettings(mergedSettings);
     setIsSaving(false);
   };
 
@@ -129,25 +159,25 @@ export function FormBuilderPage() {
       <div className="builder-topbar">
         <div className="builder-topbar-left">
           <Button variant="ghost" size="sm" onClick={() => navigate({ to: '/templates' })}>
-            <ArrowLeft size={16} /> Retour
+            <Icon as={ArrowLeft} size="md" /> Retour
           </Button>
           <Input value={formName} onChange={e => setFormName(e.target.value)} placeholder="Nom du formulaire"
             style={{ fontWeight: 600, fontSize: '15px', background: 'transparent', border: 'none', padding: 0, maxWidth: 300 }} />
-          <Badge style={{ background: formType === 'quiz' ? '#a855f7' : formType === 'survey' ? '#f59e0b' : 'var(--brand-primary)', color: 'white' }}>
+          <Tag solid size="sm" color={formType === 'quiz' ? '#a855f7' : formType === 'survey' ? '#f59e0b' : '#009DDB'}>
             {formType.toUpperCase()}
-          </Badge>
+          </Tag>
         </div>
         <div className="builder-topbar-actions">
-          <select className="prop-select" style={{ width: 'auto' }} value={formType}
+          <Select size="sm" style={{ width: 'auto', minWidth: 140 }} value={formType}
             onChange={e => setFormType(e.target.value as 'form' | 'survey' | 'quiz')}>
             <option value="form">Formulaire</option><option value="survey">Sondage</option><option value="quiz">Quiz</option>
-          </select>
-          <Button variant="ghost" size="sm" onClick={() => setShowPreview(!showPreview)}><Eye size={14} /> Aperçu</Button>
+          </Select>
+          <Button variant="ghost" size="sm" onClick={() => setShowPreview(!showPreview)}><Icon as={Eye} size="sm" /> Aperçu</Button>
           <Button variant="ghost" size="sm" onClick={loadStats}><BarChart3 size={14} /> Stats</Button>
-          <Button variant="ghost" size="sm" onClick={() => setShowEmbed(true)}><Code size={14} /> Embed</Button>
-          <Button variant="ghost" size="sm" onClick={() => setShowSettings(true)}><Settings size={14} /></Button>
+          <Button variant="ghost" size="sm" onClick={() => setShowEmbed(true)}><Icon as={Code} size="sm" /> Embed</Button>
+          <Button variant="ghost" size="sm" onClick={() => setShowSettings(true)} aria-label="Paramètres"><Icon as={Settings} size="sm" /></Button>
           <Button variant="primary" size="sm" onClick={handleSave} disabled={isSaving}>
-            <Save size={14} /> {isSaving ? '...' : 'Sauver'}
+            <Icon as={Save} size="sm" /> {isSaving ? '...' : 'Sauver'}
           </Button>
         </div>
       </div>
@@ -156,8 +186,10 @@ export function FormBuilderPage() {
         <div className="builder-palette">
           <h4 className="palette-title">Champs</h4>
           {FIELD_TYPES.map(ft => (
-            <button key={ft.type} className="palette-item" onClick={() => addField(ft.type)}>
-              <span className="palette-icon">{ft.icon}</span><span>{ft.label}</span><Plus size={14} className="palette-add" />
+            <button key={ft.type} className="action-chip" onClick={() => addField(ft.type)} style={{ width: '100%', justifyContent: 'flex-start', marginBottom: 6 }}>
+              <span className="action-chip-icon">{ft.icon}</span>
+              <span style={{ flex: 1, textAlign: 'left' }}>{ft.label}</span>
+              <Icon as={Plus} size="sm" className="palette-add" />
             </button>
           ))}
         </div>
@@ -165,16 +197,29 @@ export function FormBuilderPage() {
         <div className="builder-canvas-container">
           <div className="builder-canvas-blocks" style={{ flex: 1 }}>
             {isLoading ? (
-              <div className="space-y-2">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <Skeleton key={i} className="h-12 w-full" />
+              /* Skeleton field rows : handle drag + label + input + actions (staggered) */
+              <div className="space-y-3">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center gap-3 p-3 rounded-xl"
+                    style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', animationDelay: `${i * 40}ms` }}
+                  >
+                    <Skeleton className="h-4 w-4 rounded shrink-0" style={{ animationDelay: `${i * 40}ms` }} />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-2.5 w-24" style={{ animationDelay: `${i * 40 + 20}ms` }} />
+                      <Skeleton className="h-9 w-full rounded-md" style={{ animationDelay: `${i * 40 + 40}ms` }} />
+                    </div>
+                    <Skeleton className="h-6 w-6 rounded shrink-0" style={{ animationDelay: `${i * 40 + 60}ms` }} />
+                    <Skeleton className="h-6 w-6 rounded shrink-0" style={{ animationDelay: `${i * 40 + 80}ms` }} />
+                  </div>
                 ))}
               </div>
             ) : (
               <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                 <SortableContext items={fields.map(f => f.id)} strategy={verticalListSortingStrategy}>
                   {fields.length === 0 ? (
-                    <div className="canvas-empty"><Plus size={32} style={{ opacity: 0.3 }} /><p>Ajoutez des champs depuis la palette</p></div>
+                    <div className="canvas-empty"><Icon as={Plus} size={32} style={{ opacity: 0.3 }} /><p>Ajoutez des champs depuis la palette</p></div>
                   ) : fields.map(field => (
                     <SortableField key={field.id} field={field} isSelected={selectedFieldId === field.id}
                       onSelect={() => setSelectedFieldId(field.id)} onDelete={() => deleteField(field.id)} />
@@ -194,16 +239,27 @@ export function FormBuilderPage() {
                       {field.label} {field.required && <span style={{ color: 'var(--danger)' }}>*</span>}
                     </label>
                     {field.type === 'textarea' ? (
-                      <textarea rows={3} placeholder={field.placeholder} disabled style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--border-default)' }} />
+                      <Textarea rows={3} placeholder={field.placeholder} disabled />
                     ) : field.type === 'select' || field.type === 'multiselect' ? (
-                      <select disabled style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--border-default)' }}>
+                      <Select disabled size="sm">
                         {field.options?.map(o => <option key={o}>{o}</option>)}
-                      </select>
+                      </Select>
+                    ) : field.type === 'checkbox' ? (
+                      <Switch checked={false} onCheckedChange={() => {}} disabled size="sm" />
                     ) : (
-                      <input type={field.type} placeholder={field.placeholder} disabled style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--border-default)' }} />
+                      <Input type={field.type === 'phone' ? 'tel' : field.type} placeholder={field.placeholder} disabled />
                     )}
                   </div>
                 ))}
+                {/* Sprint 51 M3.1 — aperçu du consentement obligatoire */}
+                {requireConsent && (
+                  <div style={{ marginTop: 8, display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                    <input type="checkbox" disabled style={{ marginTop: 3 }} aria-hidden="true" />
+                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                      {consentText} <span style={{ color: 'var(--danger)' }}>*</span>
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -221,13 +277,19 @@ export function FormBuilderPage() {
               <Input value={selectedField.name} onChange={e => updateField({ ...selectedField, name: e.target.value })} />
               <label className="prop-label">Placeholder</label>
               <Input value={selectedField.placeholder} onChange={e => updateField({ ...selectedField, placeholder: e.target.value })} />
-              <label className="prop-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <input type="checkbox" checked={selectedField.required} onChange={e => updateField({ ...selectedField, required: e.target.checked })} /> Obligatoire
-              </label>
+              <div style={{ marginTop: 10, marginBottom: 6 }}>
+                <Switch
+                  checked={selectedField.required}
+                  onCheckedChange={(v) => updateField({ ...selectedField, required: v })}
+                  size="sm"
+                  variant="brand"
+                  label="Obligatoire"
+                />
+              </div>
               {selectedField.options && (
                 <>
                   <label className="prop-label">Options (1 par ligne)</label>
-                  <textarea className="prop-textarea" rows={4} value={selectedField.options.join('\n')}
+                  <Textarea rows={4} value={selectedField.options.join('\n')}
                     onChange={e => updateField({ ...selectedField, options: e.target.value.split('\n') })} />
                 </>
               )}
@@ -243,7 +305,7 @@ export function FormBuilderPage() {
                 <Button variant="ghost" size="sm" onClick={() => {
                   const dup = { ...selectedField, id: crypto.randomUUID(), name: `${selectedField.name}_copy` };
                   setFields(prev => [...prev, dup]); setSelectedFieldId(dup.id);
-                }}><Copy size={14} /> Dupliquer</Button>
+                }}><Icon as={Copy} size="sm" /> Dupliquer</Button>
               </div>
             </div>
           ) : (
@@ -254,23 +316,26 @@ export function FormBuilderPage() {
 
       <Modal open={showStats} onOpenChange={() => setShowStats(false)} title="Statistiques">
         {stats ? (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
-            <Card><div style={{ textAlign: 'center', padding: 12 }}><div style={{ fontSize: '28px', fontWeight: 700, color: 'var(--brand-primary)' }}>{stats.total_views}</div><div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Vues</div></div></Card>
-            <Card><div style={{ textAlign: 'center', padding: 12 }}><div style={{ fontSize: '28px', fontWeight: 700, color: 'var(--success)' }}>{stats.total_submissions}</div><div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Soumissions</div></div></Card>
-            <Card><div style={{ textAlign: 'center', padding: 12 }}><div style={{ fontSize: '28px', fontWeight: 700, color: 'var(--warning)' }}>{stats.conversion_rate}%</div><div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Conversion</div></div></Card>
-          </div>
+          (() => {
+            const statsKpis: KpiItem[] = [
+              { label: 'Vues', value: stats.total_views, color: 'brand' },
+              { label: 'Soumissions', value: stats.total_submissions, color: 'success' },
+              { label: 'Conversion', value: `${stats.conversion_rate}%`, color: 'warning' },
+            ];
+            return <KpiStrip items={statsKpis} className="!mb-0" />;
+          })()
         ) : <p style={{ color: 'var(--text-muted)' }}>Chargement...</p>}
       </Modal>
 
       <Modal open={showEmbed} onOpenChange={() => setShowEmbed(false)} title="Intégration">
         <div>
           <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: 12 }}>
-            URL publique : <code style={{ color: 'var(--brand-primary)' }}>https://crm.intralys.com/f/{formSlug}</code>
+            URL publique : <code style={{ color: 'var(--primary)' }}>https://crm.intralys.com/f/{formSlug}</code>
           </p>
           <label className="prop-label">Code d'intégration</label>
-          <textarea className="prop-textarea" rows={3} value={embedCode} readOnly onClick={e => (e.target as HTMLTextAreaElement).select()} />
+          <Textarea rows={3} value={embedCode} readOnly className="font-mono text-xs" onClick={e => (e.target as HTMLTextAreaElement).select()} />
           <Button variant="primary" size="sm" style={{ marginTop: 8 }} onClick={() => { navigator.clipboard.writeText(embedCode); }}>
-            <Copy size={14} /> Copier
+            <Icon as={Copy} size="sm" /> Copier
           </Button>
         </div>
       </Modal>
@@ -278,7 +343,42 @@ export function FormBuilderPage() {
       <Modal open={showSettings} onOpenChange={() => setShowSettings(false)} title="Paramètres">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div><label className="prop-label">Message de succès</label><Input value={successMessage} onChange={e => setSuccessMessage(e.target.value)} /></div>
+          <div>
+            <label className="prop-label">URL de redirection après envoi (optionnel)</label>
+            <Input value={redirectUrl} onChange={e => setRedirectUrl(e.target.value)} placeholder="https://votresite.com/merci" />
+            <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: 4 }}>
+              Si renseignée, le widget redirige le visiteur ici après une soumission réussie.
+            </p>
+          </div>
           <div><label className="prop-label">Slug URL</label><Input value={formSlug} onChange={e => setFormSlug(e.target.value)} /></div>
+
+          {/* Sprint 51 M3.1 — Consentement Loi 25 */}
+          <Card style={{ padding: 12 }}>
+            <Switch
+              checked={requireConsent}
+              onCheckedChange={setRequireConsent}
+              size="sm"
+              variant="brand"
+              label="Champ de consentement obligatoire (Loi 25)"
+            />
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '6px 0 0' }}>
+              Ajoute une case à cocher obligatoire au formulaire publié. La soumission
+              est bloquée tant que le visiteur n'a pas consenti, et le consentement
+              est journalisé avec le lead.
+            </p>
+            {requireConsent && (
+              <div style={{ marginTop: 10 }}>
+                <label className="prop-label">Texte du consentement</label>
+                <Textarea
+                  rows={2}
+                  value={consentText}
+                  onChange={e => setConsentText(e.target.value)}
+                  placeholder="J'accepte d'être recontacté(e) conformément à la Loi 25."
+                />
+              </div>
+            )}
+          </Card>
+
           {formType === 'quiz' && (
             <Card style={{ padding: 12 }}>
               <h5 style={{ margin: '0 0 8px', fontSize: '13px' }}>Scoring Quiz (3 ranges)</h5>
@@ -295,7 +395,7 @@ export function FormBuilderPage() {
 const formBuilderStyles = `
 .form-field-item { display:flex; align-items:center; gap:8px; padding:10px 12px; border:2px solid transparent; border-radius:8px; background:var(--bg-surface); margin-bottom:4px; cursor:pointer; transition:all 0.15s; }
 .form-field-item:hover { border-color:rgba(0,157,219,0.2); }
-.form-field-item.selected { border-color:var(--brand-primary); background:rgba(0,157,219,0.04); }
+.form-field-item.selected { border-color:var(--primary); background:rgba(0,157,219,0.04); }
 .field-drag { cursor:grab; color:var(--text-muted); }
 .field-icon { font-size:16px; }
 .field-info { flex:1; display:flex; flex-direction:column; gap:2px; }

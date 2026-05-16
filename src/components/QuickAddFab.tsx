@@ -9,7 +9,7 @@
 //   - Lead créé → ouvre LeadPanel directement
 //   - Pas visible sur les routes publiques (Login, landing, etc.) — wrapped dans AppLayout
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import * as Popover from '@radix-ui/react-popover';
 import { Plus, UserPlus, CalendarPlus, ListChecks, StickyNote, Loader2 } from 'lucide-react';
 import { createLead, createTask, createAppointment, getClients } from '@/lib/api';
@@ -17,13 +17,14 @@ import type { Client } from '@/lib/types';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
-import { usePanelStack, useToast } from '@/components/ui';
+import { usePanelStack, useToast, BottomSheet } from '@/components/ui';
 import { useNavigate } from '@tanstack/react-router';
+import { triggerHaptic } from '@/lib/sensorial';
 
 type QuickAction = 'lead' | 'appointment' | 'task' | 'note';
 
 const ACTIONS: Array<{ id: QuickAction; label: string; icon: typeof UserPlus; color: string; shortcut: string }> = [
-  { id: 'lead', label: 'Nouveau lead', icon: UserPlus, color: 'var(--brand-primary)', shortcut: 'L' },
+  { id: 'lead', label: 'Nouveau lead', icon: UserPlus, color: 'var(--primary)', shortcut: 'L' },
   { id: 'appointment', label: 'Nouveau RDV', icon: CalendarPlus, color: 'var(--accent-orange)', shortcut: 'R' },
   { id: 'task', label: 'Nouvelle tâche', icon: ListChecks, color: 'var(--success)', shortcut: 'T' },
   { id: 'note', label: 'Note rapide', icon: StickyNote, color: 'var(--warning)', shortcut: 'N' },
@@ -36,9 +37,51 @@ export function QuickAddFab() {
   const [extraField, setExtraField] = useState(''); // ex: date pour RDV
   const [isSaving, setIsSaving] = useState(false);
   const [clients, setClients] = useState<Client[]>([]);
+  const [isMobile, setIsMobile] = useState(false);
+  // Sprint 30 vague 30-3A — scroll-aware shrink + long-press fan-out
+  const [isShrunk, setIsShrunk] = useState(false);
+  const [isFanOut, setIsFanOut] = useState(false);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressFired = useRef(false);
   const { openPanel } = usePanelStack();
   const { success, error: toastError } = useToast();
   const navigate = useNavigate();
+
+  // Détection mobile (pointer coarse ou width < 768) pour switcher Popover → BottomSheet
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(max-width: 767px), (pointer: coarse)');
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener?.('change', update);
+    return () => mq.removeEventListener?.('change', update);
+  }, []);
+
+  // Sprint 30 vague 30-3A — scroll-aware shrink (Y>200px → 40px icon-only)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    let ticking = false;
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      window.requestAnimationFrame(() => {
+        // Scroll détecté soit sur window, soit sur le main scroll container
+        const winY = window.scrollY || 0;
+        const mainEl = document.getElementById('main-content');
+        const mainY = mainEl ? mainEl.scrollTop : 0;
+        const y = Math.max(winY, mainY);
+        setIsShrunk(y > 200);
+        ticking = false;
+      });
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    const mainEl = document.getElementById('main-content');
+    mainEl?.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      mainEl?.removeEventListener('scroll', onScroll);
+    };
+  }, []);
 
   // Charger clients on demand (pour lead default client_id)
   useEffect(() => {
@@ -139,44 +182,181 @@ export function QuickAddFab() {
 
   const meta = activeAction ? ACTIONS.find(a => a.id === activeAction)! : null;
 
+  const actionGrid = (
+    <div className="grid grid-cols-2 gap-2">
+      {ACTIONS.map(({ id, label, icon: Icon, color, shortcut }) => (
+        <button
+          key={id}
+          type="button"
+          onClick={() => openAction(id)}
+          className="action-chip text-left flex flex-col items-start gap-1.5 !py-3 !px-3 group"
+          title={`${label} (${shortcut})`}
+        >
+          <span className="flex items-center justify-between w-full">
+            <span
+              className="action-chip-icon"
+              style={{ color, background: `color-mix(in srgb, ${color} 14%, transparent)`, borderColor: `color-mix(in srgb, ${color} 28%, transparent)` }}
+            >
+              <Icon size={14} strokeWidth={2.25} />
+            </span>
+            <kbd className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-[var(--bg-subtle)] border border-[var(--border-subtle)] text-[var(--text-muted)] group-hover:border-[rgba(0,157,219,0.30)] group-hover:text-[var(--primary)] transition-colors">
+              {shortcut}
+            </kbd>
+          </span>
+          <span className="text-xs font-semibold text-[var(--text-primary)]">{label}</span>
+        </button>
+      ))}
+    </div>
+  );
+
+  // Sprint 30 vague 30-3A — long-press 400ms → fan-out arc 4 actions
+  const startLongPress = () => {
+    longPressFired.current = false;
+    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+    longPressTimer.current = setTimeout(() => {
+      longPressFired.current = true;
+      triggerHaptic('medium');
+      setIsFanOut(true);
+    }, 400);
+  };
+  const cancelLongPress = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+  const handleFabTap = () => {
+    if (longPressFired.current) {
+      longPressFired.current = false;
+      return; // ne pas ouvrir le popover si long-press déjà fired
+    }
+    triggerHaptic('light');
+    if (isMobile) setIsOpen((v) => !v);
+  };
+  const closeFanOut = () => setIsFanOut(false);
+  const handleFanOutAction = (id: QuickAction) => {
+    setIsFanOut(false);
+    openAction(id);
+  };
+
+  const fabClassName = [
+    'quick-add-fab',
+    'fixed bottom-20 right-5 z-40 rounded-full transition-all active:scale-95 cursor-pointer flex items-center justify-center md:bottom-6',
+    isShrunk ? 'fab-shrunk w-10 h-10' : 'w-14 h-14 hover:scale-110',
+  ].join(' ');
+
+  const triggerBtn = (
+    <button
+      type="button"
+      data-tour-id="quick-add-fab"
+      onClick={isMobile ? handleFabTap : undefined}
+      onTouchStart={startLongPress}
+      onTouchEnd={cancelLongPress}
+      onTouchCancel={cancelLongPress}
+      onTouchMove={cancelLongPress}
+      onMouseDown={startLongPress}
+      onMouseUp={cancelLongPress}
+      onMouseLeave={cancelLongPress}
+      className={fabClassName}
+      style={{
+        background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
+        boxShadow: '0 6px 22px -2px rgba(0,157,219,0.55), 0 0 0 4px rgba(0,157,219,0.10), 0 0 28px -4px rgba(217,110,39,0.45)',
+      }}
+      aria-label="Création rapide"
+      title="Création rapide (lead, RDV, tâche, note) — long-press pour fan-out"
+    >
+      <Plus size={isShrunk ? 18 : 24} strokeWidth={2.5} className={`text-white transition-transform duration-200 ${isOpen || isFanOut ? 'rotate-45' : ''}`} />
+    </button>
+  );
+
+  // Fan-out arc — 4 actions disposées sur un arc 80° (de -10° à 90° en sens horaire-anti),
+  // radius 64px depuis centre FAB. Angles (en degrés depuis vertical haut, sens anti-horaire) :
+  //   0° = haut, 80° = gauche. On répartit 4 actions sur 80° → step 26.67°.
+  // Position relative au FAB (right-5 bottom-20) : on calcule (-sin*r, -cos*r).
+  const fanOutOverlay = isFanOut ? (
+    <>
+      <div
+        className="fixed inset-0 z-30"
+        onClick={closeFanOut}
+        onTouchStart={closeFanOut}
+        aria-hidden
+      />
+      <div
+        className="fab-fan-out fixed z-40 pointer-events-none"
+        style={{ right: '20px', bottom: isShrunk ? '80px' : '80px', width: 0, height: 0 }}
+        role="menu"
+        aria-label="Actions de création rapide"
+      >
+        {ACTIONS.map(({ id, label, icon: ActionIcon, color }, idx) => {
+          const step = 80 / (ACTIONS.length - 1 || 1); // 4 actions → step ≈ 26.67°
+          const angleDeg = idx * step; // 0° = direct top, 80° ≈ left
+          const angleRad = (angleDeg * Math.PI) / 180;
+          const r = 64;
+          // FAB center est à (right:20+halfW, bottom:80+halfH). Anchor (0,0) = FAB center.
+          // x va vers la gauche → négatif right; y va vers le haut → négatif bottom.
+          const dx = -Math.sin(angleRad) * r;
+          const dy = -Math.cos(angleRad) * r;
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => handleFanOutAction(id)}
+              className="fab-fan-out-item pointer-events-auto absolute w-11 h-11 rounded-full flex items-center justify-center"
+              style={{
+                transform: `translate(${dx}px, ${dy}px)`,
+                background: `color-mix(in srgb, ${color} 92%, white)`,
+                boxShadow: `0 6px 18px -4px ${color}, 0 0 0 3px color-mix(in srgb, ${color} 18%, transparent)`,
+                animationDelay: `${idx * 40}ms`,
+                color: '#fff',
+              }}
+              aria-label={label}
+              title={label}
+            >
+              <ActionIcon size={18} strokeWidth={2.25} />
+            </button>
+          );
+        })}
+      </div>
+    </>
+  ) : null;
+
   return (
     <>
-      <Popover.Root open={isOpen} onOpenChange={setIsOpen}>
-        <Popover.Trigger asChild>
-          <button
-            type="button"
-            className="fixed bottom-20 right-5 z-40 w-12 h-12 rounded-full shadow-[0_4px_12px_oklch(0.7_0.15_220/0.4)] hover:shadow-[0_6px_20px_oklch(0.7_0.15_220/0.6)] transition-all hover:scale-110 active:scale-95 cursor-pointer flex items-center justify-center md:bottom-6"
-            style={{ background: 'linear-gradient(135deg, var(--brand-primary), var(--accent-orange))' }}
-            aria-label="Création rapide"
-            title="Création rapide (lead, RDV, tâche, note)"
+      {fanOutOverlay}
+      {isMobile ? (
+        <>
+          {triggerBtn}
+          <BottomSheet
+            open={isOpen}
+            onOpenChange={setIsOpen}
+            title="Création rapide"
+            description="Choisissez un type à créer"
+            size="auto"
+            showHandle
           >
-            <Plus size={22} strokeWidth={2.5} className={`text-white transition-transform ${isOpen ? 'rotate-45' : ''}`} />
-          </button>
-        </Popover.Trigger>
-        <Popover.Portal>
-          <Popover.Content
-            side="top"
-            align="end"
-            sideOffset={12}
-            className="z-[60] w-56 p-1 rounded-[var(--radius-md)] bg-[var(--bg-surface)] border border-[var(--border-subtle)] shadow-[var(--shadow-lg)] animate-in fade-in-0 zoom-in-95"
-          >
-            <div className="px-2 py-1.5 text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">
-              Création rapide
-            </div>
-            {ACTIONS.map(({ id, label, icon: Icon, color }) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => openAction(id)}
-                className="w-full flex items-center gap-2.5 px-2 py-2 rounded-[var(--radius-sm)] text-left hover:bg-[var(--bg-subtle)] transition-colors cursor-pointer"
-              >
-                <Icon size={15} style={{ color }} className="shrink-0" />
-                <span className="text-xs font-medium text-[var(--text-primary)] flex-1">{label}</span>
-              </button>
-            ))}
-          </Popover.Content>
-        </Popover.Portal>
-      </Popover.Root>
+            {actionGrid}
+          </BottomSheet>
+        </>
+      ) : (
+        <Popover.Root open={isOpen} onOpenChange={setIsOpen}>
+          <Popover.Trigger asChild>{triggerBtn}</Popover.Trigger>
+          <Popover.Portal>
+            <Popover.Content
+              side="top"
+              align="end"
+              sideOffset={14}
+              className="z-[60] w-[300px] p-3 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] shadow-[var(--shadow-lg)] animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95"
+              style={{ boxShadow: '0 1px 2px rgba(15,23,42,0.04), 0 24px 64px -12px rgba(0,157,219,0.20)' }}
+            >
+              <div className="px-1 pb-2 text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-[0.16em] flex items-center justify-between">
+                <span>Création rapide</span>
+                <span className="text-[9px] normal-case tracking-normal text-[var(--text-muted)]/70">Cliquez ou utilisez le raccourci</span>
+              </div>
+              {actionGrid}
+            </Popover.Content>
+          </Popover.Portal>
+        </Popover.Root>
+      )}
 
       {/* Mini-modale création rapide */}
       <Modal

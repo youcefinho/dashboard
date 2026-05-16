@@ -3,6 +3,9 @@
 // anime de 0 → ce nombre, et re-formatte avec le suffixe/préfixe.
 
 import { useCountUp } from '@/lib/useCountUp';
+// Sprint 48 M3.3 — Intl.NumberFormat locale-aware
+import { formatNumber } from '@/lib/i18n/number';
+import { getLocale } from '@/lib/i18n';
 
 interface AnimatedNumberProps {
   /** Valeur cible. Si string, on extrait les chiffres et garde le reste comme suffixe. */
@@ -15,7 +18,7 @@ interface AnimatedNumberProps {
 }
 
 function defaultFormat(n: number): string {
-  return Math.round(n).toLocaleString('fr-CA');
+  return formatNumber(Math.round(n), getLocale());
 }
 
 export function AnimatedNumber({ value, duration = 1200, format = defaultFormat, className }: AnimatedNumberProps) {

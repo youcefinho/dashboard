@@ -1,10 +1,53 @@
-import { useState, useEffect } from 'react';
-import { Card, Button, Badge, useConfirm } from '@/components/ui';
-import { GripVertical, Plus, Trash2, Save } from 'lucide-react';
+// ── CustomFieldsSettings — Sprint 23 W33 : cards row-premium + Tag + KpiStrip + EmptyState
+import { useState, useEffect, useMemo } from 'react';
+import {
+  Card,
+  Button,
+  Tag,
+  KpiStrip,
+  EmptyState,
+  DropdownMenu,
+  DropdownMenuItem,
+  useConfirm,
+  Icon,
+} from '@/components/ui';
+import { GripVertical, Plus, Trash2, Save, MoreVertical, Sliders, Hash, ListChecks, Type } from 'lucide-react';
 
 import { getCustomFields, createCustomField, deleteCustomField } from '@/lib/api';
 import type { CustomFieldDef } from '@/lib/types';
 import { toast } from 'sonner';
+
+function typeVariant(t: string): 'brand' | 'info' | 'success' | 'warning' | 'accent' | 'neutral' {
+  switch (t) {
+    case 'text':
+      return 'info';
+    case 'number':
+      return 'success';
+    case 'select':
+    case 'multiselect':
+      return 'brand';
+    case 'date':
+      return 'accent';
+    case 'boolean':
+      return 'warning';
+    default:
+      return 'neutral';
+  }
+}
+
+function typeIcon(t: string) {
+  switch (t) {
+    case 'number':
+      return <Hash size={12} />;
+    case 'select':
+    case 'multiselect':
+      return <ListChecks size={12} />;
+    case 'text':
+      return <Type size={12} />;
+    default:
+      return null;
+  }
+}
 
 export function CustomFieldsSettings() {
   const confirm = useConfirm();
@@ -12,7 +55,7 @@ export function CustomFieldsSettings() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    fetchFields();
+    void fetchFields();
   }, []);
 
   const fetchFields = async () => {
@@ -34,83 +77,122 @@ export function CustomFieldsSettings() {
     if (res.error) toast.error(res.error);
     else {
       toast.success('Champ supprimé');
-      fetchFields();
+      void fetchFields();
     }
   };
 
   const handleAddMock = async () => {
     const res = await createCustomField({
-      client_id: 'default', // In a real app, from auth context
+      client_id: 'default',
       name: `Nouveau champ ${fields.length + 1}`,
       field_type: 'text',
       options: [],
       is_required: false,
-      sort_order: fields.length
+      sort_order: fields.length,
     });
     if (res.error) toast.error(res.error);
     else {
       toast.success('Champ ajouté');
-      fetchFields();
+      void fetchFields();
     }
   };
+
+  const kpis = useMemo(() => {
+    const byType: Record<string, number> = {};
+    for (const f of fields) {
+      byType[f.field_type] = (byType[f.field_type] || 0) + 1;
+    }
+    return [
+      { label: 'Total champs', value: fields.length, color: 'brand' as const, icon: <Sliders size={12} /> },
+      { label: 'Texte', value: byType['text'] || 0, color: 'info' as const, icon: <Type size={12} /> },
+      { label: 'Nombre', value: byType['number'] || 0, color: 'success' as const, icon: <Hash size={12} /> },
+      {
+        label: 'Sélection',
+        value: (byType['select'] || 0) + (byType['multiselect'] || 0),
+        color: 'accent' as const,
+        icon: <ListChecks size={12} />,
+      },
+    ];
+  }, [fields]);
 
   if (isLoading) return <div className="p-8 text-center text-[var(--text-muted)]">Chargement...</div>;
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h2 className="text-lg font-bold mb-1">Champs personnalisés</h2>
-        <p className="text-sm text-[var(--text-muted)]">Configurez les champs spécifiques à votre processus de vente pour enrichir vos fiches leads.</p>
-      </div>
+      <header className="settings-page-header">
+        <div>
+          <h2 className="t-h2">Champs personnalisés</h2>
+          <p className="t-caption text-[var(--gray-500)]">
+            Enrichis tes fiches leads avec des champs spécifiques à ton processus de vente.
+          </p>
+        </div>
+      </header>
 
-      <Card className="p-0 overflow-hidden">
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-[var(--border-subtle)] bg-[var(--bg-canvas)] text-[var(--text-muted)]">
-              <th className="py-3 px-4 font-medium w-10"></th>
-              <th className="py-3 px-4 font-medium">Nom du champ</th>
-              <th className="py-3 px-4 font-medium">Clé (slug)</th>
-              <th className="py-3 px-4 font-medium">Type</th>
-              <th className="py-3 px-4 font-medium text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[var(--border-subtle)]">
-            {fields.map(field => (
-              <tr key={field.id} className="hover:bg-[var(--bg-subtle)]">
-                <td className="py-3 px-4 text-[var(--text-muted)] cursor-move">
-                  <GripVertical size={16} />
-                </td>
-                <td className="py-3 px-4 font-medium">{field.name}</td>
-                <td className="py-3 px-4 font-mono text-xs text-[var(--text-muted)]">{field.slug}</td>
-                <td className="py-3 px-4">
-                  <Badge>{field.field_type}</Badge>
-                </td>
-                <td className="py-3 px-4 text-right">
-                  <button onClick={() => handleDelete(field.id)} className="text-[var(--danger)] hover:bg-[var(--danger)]/10 p-1.5 rounded transition-colors">
-                    <Trash2 size={16} />
-                  </button>
-                </td>
-              </tr>
+      <KpiStrip items={kpis} />
+
+      <Card className="settings-card p-6">
+        {fields.length === 0 ? (
+          <EmptyState
+            variant="compact"
+            icon={<Icon as={Sliders} size={32} />}
+            title="Aucun champ personnalisé"
+            description="Créez votre premier champ pour enrichir les fiches leads (texte, nombre, sélection...)."
+            action={
+              <Button onClick={handleAddMock} leftIcon={<Icon as={Plus} size="sm" />}>
+                Ajouter un champ rapide
+              </Button>
+            }
+          />
+        ) : (
+          <div className="space-y-2.5">
+            {fields.map((field, idx) => (
+              <div
+                key={field.id}
+                className="row-premium list-item-enter flex items-center gap-3 p-3 rounded-xl group"
+                style={{ animationDelay: `${idx * 40}ms`, animationFillMode: 'both' }}
+              >
+                <GripVertical size={14} className="text-[var(--text-muted)] cursor-move opacity-40 group-hover:opacity-100 transition-opacity shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-[var(--text-primary)] truncate">{field.name}</p>
+                  <p className="font-mono text-[11px] text-[var(--text-muted)] truncate">{field.slug}</p>
+                </div>
+                <Tag variant={typeVariant(field.field_type)} dot leftIcon={typeIcon(field.field_type)}>
+                  {field.field_type}
+                </Tag>
+                <DropdownMenu
+                  trigger={
+                    <button
+                      type="button"
+                      className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--primary)] hover:bg-[var(--bg-subtle)] transition-colors cursor-pointer"
+                      aria-label="Actions"
+                    >
+                      <MoreVertical size={16} />
+                    </button>
+                  }
+                >
+                  <DropdownMenuItem variant="danger" leftIcon={<Trash2 size={14} />} onSelect={() => handleDelete(field.id)}>
+                    Supprimer
+                  </DropdownMenuItem>
+                </DropdownMenu>
+              </div>
             ))}
-            {fields.length === 0 && (
-              <tr>
-                <td colSpan={5} className="py-8 text-center text-[var(--text-muted)]">
-                  Aucun champ personnalisé configuré.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+          </div>
+        )}
       </Card>
 
-      <Button onClick={handleAddMock} className="w-full justify-center border-dashed border-2 bg-transparent text-[var(--text-primary)] hover:bg-[var(--bg-subtle)]">
-        <Plus size={16} className="mr-2" /> Ajouter un champ rapide
-      </Button>
+      {fields.length > 0 && (
+        <button
+          onClick={handleAddMock}
+          className="action-chip w-full justify-center"
+          style={{ borderStyle: 'dashed' }}
+        >
+          <Plus size={14} />
+          Ajouter un champ rapide
+        </button>
+      )}
 
       <div className="flex justify-end pt-4 border-t border-[var(--border-subtle)]">
-        <Button className="gap-2">
-          <Save size={16} /> Enregistrer l'ordre
-        </Button>
+        <Button leftIcon={<Icon as={Save} size="md" />}>Enregistrer l'ordre</Button>
       </div>
     </div>
   );

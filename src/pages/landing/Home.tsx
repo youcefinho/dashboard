@@ -2,6 +2,7 @@ import { PublicLayout } from './PublicLayout';
 import { Link } from '@tanstack/react-router';
 import { Button } from '@/components/ui/Button';
 import { Shield, Sparkles, Zap, MessageSquare, TrendingUp, Globe } from 'lucide-react';
+import { Icon } from '@/components/ui';
 
 export function HomePage() {
   return (
@@ -24,7 +25,7 @@ export function HomePage() {
           }}>
           <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#37CA37', boxShadow: '0 0 6px rgba(55,202,55,0.6)' }} />
           <span className="text-[var(--text-secondary)]">CRM #1 des PMEs québécoises</span>
-          <span className="text-[var(--brand-primary)]">→</span>
+          <span className="text-[var(--primary)]">→</span>
         </div>
 
         <h1 className="text-4xl md:text-6xl lg:text-7xl font-extrabold tracking-tight mb-6 leading-[1.05]" style={{ letterSpacing: '-0.03em' }}>
@@ -76,32 +77,32 @@ export function HomePage() {
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             <FeatureCard 
-              icon={<Shield className="text-emerald-500" />}
+              icon={<Icon as={Shield} size={24} className="text-emerald-500" />}
               title="Conformité Loi 25 & CASL"
               description="Hébergement local, gestion du consentement et politique de confidentialité intégrée nativement pour les PMEs québécoises."
             />
             <FeatureCard 
-              icon={<Sparkles className="text-amber-500" />}
+              icon={<Icon as={Sparkles} size={24} className="text-amber-500" />}
               title="IA Haiku 4.5"
               description="Assistant IA qui comprend le contexte québécois, qualifie vos leads et rédige vos courriels avec le bon ton."
             />
             <FeatureCard 
-              icon={<Zap className="text-blue-500" />}
+              icon={<Icon as={Zap} size={24} className="text-blue-500" />}
               title="Packs Industrie"
               description="Ne partez pas de zéro. Installez en 1 clic des pipelines, champs et emails préconfigurés pour votre métier."
             />
             <FeatureCard 
-              icon={<MessageSquare className="text-purple-500" />}
+              icon={<Icon as={MessageSquare} size={24} className="text-purple-500" />}
               title="Boîte de réception unifiée"
               description="SMS, Courriels, Webchat, WhatsApp, Facebook, Instagram. Tous vos messages clients au même endroit."
             />
             <FeatureCard 
-              icon={<TrendingUp className="text-rose-500" />}
+              icon={<Icon as={TrendingUp} size={24} className="text-rose-500" />}
               title="Workflows & Automatisations"
               description="Automatisez vos suivis, relances et rappels de rendez-vous avec un constructeur visuel puissant et simple."
             />
             <FeatureCard 
-              icon={<Globe className="text-cyan-500" />}
+              icon={<Icon as={Globe} size={24} className="text-cyan-500" />}
               title="Bilingue FR/EN"
               description="Interface et communications entièrement bilingues. Servez vos clients dans la langue de leur choix sans effort."
             />
@@ -150,7 +151,7 @@ export function HomePage() {
           </h2>
           <p className="text-white/90 text-lg mb-10 leading-relaxed">Rejoignez des centaines de PMEs qui utilisent Intralys pour générer plus de ventes avec moins d'effort.</p>
           <Link to="/demo">
-            <Button size="lg" className="bg-white text-[var(--brand-primary)] hover:bg-[var(--bg-subtle)] px-10 h-14 text-lg font-bold shadow-[0_8px_32px_rgba(0,0,0,0.2)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.25)] transition-all hover:scale-[1.02]">
+            <Button size="lg" className="bg-white text-[var(--primary)] hover:bg-[var(--bg-subtle)] px-10 h-14 text-lg font-bold shadow-[0_8px_32px_rgba(0,0,0,0.2)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.25)] transition-all hover:scale-[1.02]">
               Démarrer gratuitement
             </Button>
           </Link>

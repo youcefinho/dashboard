@@ -6,7 +6,7 @@
 
 import { useState } from 'react';
 import { Sparkles, Loader2, Mail, MessageSquare, Phone, Copy, Check } from 'lucide-react';
-import { Card, Button, useToast } from '@/components/ui';
+import { Card, Button, useToast, Icon as UIcon } from '@/components/ui';
 import { aiSuggestNextAction, type AiNextAction } from '@/lib/api';
 
 interface AiNextActionCardProps {
@@ -46,16 +46,16 @@ export function AiNextActionCard({ leadId }: AiNextActionCardProps) {
 
   if (!suggestion) {
     return (
-      <Card className="p-4 border border-dashed border-[var(--brand-primary)]/40 bg-gradient-to-br from-[var(--brand-primary)]/5 to-[var(--accent-orange)]/5">
+      <Card className="p-4 border border-dashed border-[var(--primary)]/40 bg-gradient-to-br from-[var(--primary)]/12 to-[var(--accent-orange)]/8">
         <div className="flex items-start gap-2 mb-2">
-          <Sparkles size={14} className="text-[var(--brand-primary)] mt-0.5 shrink-0" />
+          <UIcon as={Sparkles} size="sm" className="text-[var(--primary)] mt-0.5 shrink-0" />
           <div className="min-w-0">
             <h3 className="text-xs font-semibold text-[var(--text-primary)]">Prochaine étape suggérée</h3>
             <p className="text-[10px] text-[var(--text-muted)] mt-0.5">Ce lead semble inactif — laissez l'AI proposer une action concrète.</p>
           </div>
         </div>
         <Button size="sm" className="w-full justify-center" onClick={() => void generate()} disabled={isLoading}
-          leftIcon={isLoading ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}>
+          leftIcon={isLoading ? <UIcon as={Loader2} size="xs" className="animate-spin" /> : <UIcon as={Sparkles} size="xs" />}>
           {isLoading ? 'Génération…' : 'Générer une suggestion'}
         </Button>
       </Card>
@@ -63,15 +63,15 @@ export function AiNextActionCard({ leadId }: AiNextActionCardProps) {
   }
 
   const meta = ACTION_META[suggestion.action] || ACTION_META.email;
-  const Icon = meta.icon;
+  const ActionIcon = meta.icon;
 
   return (
-    <Card className="p-4 bg-gradient-to-br from-[var(--brand-primary)]/5 to-[var(--accent-orange)]/5 border border-[var(--brand-primary)]/30">
+    <Card className="p-4 bg-gradient-to-br from-[var(--primary)]/12 to-[var(--accent-orange)]/8 border border-[var(--primary)]/30">
       <div className="flex items-start gap-2 mb-2">
-        <Sparkles size={12} className="text-[var(--brand-primary)] mt-1 shrink-0" />
+        <UIcon as={Sparkles} size="xs" className="text-[var(--primary)] mt-1 shrink-0" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 mb-0.5">
-            <Icon size={12} style={{ color: meta.color }} />
+            <UIcon as={ActionIcon} size="xs" style={{ color: meta.color }} />
             <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: meta.color }}>
               {meta.label} suggéré
             </span>
@@ -86,12 +86,12 @@ export function AiNextActionCard({ leadId }: AiNextActionCardProps) {
 
       <div className="flex items-center gap-1.5 mt-2">
         <Button size="sm" variant="secondary" className="flex-1 justify-center"
-          leftIcon={copied ? <Check size={11} /> : <Copy size={11} />}
+          leftIcon={copied ? <UIcon as={Check} size="xs" /> : <UIcon as={Copy} size="xs" />}
           onClick={copyDraft}>
           {copied ? 'Copié' : 'Copier'}
         </Button>
-        <Button size="sm" variant="ghost" onClick={() => { setSuggestion(null); void generate(); }} title="Régénérer">
-          <Sparkles size={11} />
+        <Button size="sm" variant="ghost" onClick={() => { setSuggestion(null); void generate(); }} title="Régénérer" aria-label="Régénérer la suggestion">
+          <UIcon as={Sparkles} size="xs" />
         </Button>
       </div>
       <p className="text-[9px] text-[var(--text-muted)] mt-1.5 text-center">Généré par Claude Haiku 4.5</p>

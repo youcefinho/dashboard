@@ -24,25 +24,52 @@ export function AboutPage() {
             { icon: Heart, title: 'Local first', desc: 'Conçu au Québec pour les PMEs francophones. Loi 25 native, support FR, hébergement local.', color: '#E93D3D', dark: '#c92424' },
             { icon: Globe, title: '100% francophone', desc: 'Interface, AI, support, contrats : tout est pensé pour le marché québécois sans compromis.', color: '#009DDB', dark: '#0086C0' },
             { icon: Zap, title: 'Sans complexité', desc: 'Onboarding 5 minutes, packs industrie 1-clic. Une PME ne devrait pas avoir besoin d\'une équipe IT.', color: '#FF9A00', dark: '#D96E27' },
-          ].map(v => (
-            <div key={v.title} className="relative p-6 rounded-2xl text-center transition-all hover:-translate-y-1 overflow-hidden"
-              style={{
-                background: 'linear-gradient(135deg, #FFFFFF 0%, #FAFBFC 100%)',
-                border: '1px solid var(--border-subtle)',
-                boxShadow: '0 1px 2px rgba(15,23,42,0.04), 0 4px 12px -4px rgba(15,23,42,0.06)',
-              }}>
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4"
-                style={{ background: `linear-gradient(135deg, ${v.color} 0%, ${v.dark} 100%)`, boxShadow: `0 4px 12px ${v.color}60` }}>
+          ].map((v, i) => (
+            <div
+              key={v.title}
+              className="card-premium list-item-enter p-6 text-center"
+              style={{ animationDelay: `${i * 80}ms` }}
+            >
+              <div
+                aria-hidden
+                className="absolute -top-10 -right-10 w-32 h-32 rounded-full pointer-events-none opacity-40"
+                style={{
+                  background: `radial-gradient(circle, ${v.color}26 0%, ${v.color}10 50%, transparent 75%)`,
+                  filter: 'blur(28px)',
+                }}
+              />
+              <div
+                className="relative w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4"
+                style={{ background: `linear-gradient(135deg, ${v.color} 0%, ${v.dark} 100%)`, boxShadow: `0 4px 12px ${v.color}60` }}
+              >
                 <v.icon size={20} className="text-white" />
               </div>
-              <h3 className="text-base font-bold text-[var(--text-primary)] mb-2 tracking-tight">{v.title}</h3>
-              <p className="text-sm text-[var(--text-secondary)] leading-relaxed">{v.desc}</p>
+              <h3 className="relative text-base font-bold text-[var(--text-primary)] mb-2 tracking-tight">{v.title}</h3>
+              <p className="relative text-sm text-[var(--text-secondary)] leading-relaxed">{v.desc}</p>
             </div>
           ))}
         </div>
 
-        {/* Mission */}
-        <div className="mb-16 max-w-3xl mx-auto">
+        {/* Mission — avec orbs background décoratifs */}
+        <div className="relative mb-16 max-w-3xl mx-auto">
+          <div
+            aria-hidden
+            className="absolute -top-10 -left-20 w-72 h-72 rounded-full pointer-events-none opacity-50 -z-10"
+            style={{
+              background:
+                'radial-gradient(circle, rgba(0,157,219,0.18) 0%, rgba(217,110,39,0.10) 50%, transparent 75%)',
+              filter: 'blur(60px)',
+            }}
+          />
+          <div
+            aria-hidden
+            className="absolute -bottom-10 -right-20 w-64 h-64 rounded-full pointer-events-none opacity-45 -z-10"
+            style={{
+              background:
+                'radial-gradient(circle, rgba(217,110,39,0.22) 0%, rgba(0,157,219,0.10) 50%, transparent 75%)',
+              filter: 'blur(60px)',
+            }}
+          />
           <p className="heading-premium mb-3 text-center">Notre mission</p>
           <h2 className="text-3xl md:text-4xl font-bold text-[var(--text-primary)] mb-6 text-center tracking-tight">
             Démocratiser l'automatisation pour les <span className="text-gradient-brand">PMEs locales</span>
@@ -59,12 +86,13 @@ export function AboutPage() {
             Au cœur du <span className="text-gradient-brand">projet</span>
           </h2>
 
-          <div className="relative rounded-2xl p-8 flex flex-col sm:flex-row gap-6 items-center overflow-hidden"
+          <div
+            className="card-premium p-8 flex flex-col sm:flex-row gap-6 items-center"
             style={{
               background: 'linear-gradient(135deg, #FFFFFF 0%, #F0FAFE 50%, #FFF1DD 100%)',
-              border: '1px solid var(--border-subtle)',
               boxShadow: '0 1px 2px rgba(15,23,42,0.04), 0 16px 48px -12px rgba(0,157,219,0.22)',
-            }}>
+            }}
+          >
             <div aria-hidden className="absolute -top-12 -right-12 w-44 h-44 rounded-full pointer-events-none opacity-60"
               style={{ background: 'radial-gradient(circle, rgba(217,110,39,0.22) 0%, rgba(0,157,219,0.14) 50%, transparent 75%)', filter: 'blur(40px)' }} />
             <div className="relative w-32 h-32 rounded-full shrink-0 flex items-center justify-center text-white font-bold text-4xl"

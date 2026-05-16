@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from '@tanstack/react-router';
-import { Button, Card, useToast } from '@/components/ui';
+import { Button, Card, useToast, Input, Select, Textarea, Switch, Icon } from '@/components/ui';
+import { Mail, Phone, Hash } from 'lucide-react';
 import React from 'react';
 
 type Field = {
@@ -109,7 +110,7 @@ export function PublicFormPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-transparent">
-        <div style={{ width: 36, height: 36, border: '3px solid rgba(0,157,219,0.2)', borderTopColor: 'var(--brand-primary, #009DDB)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+        <div style={{ width: 36, height: 36, border: '3px solid rgba(0,157,219,0.2)', borderTopColor: 'var(--primary, #009DDB)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
       </div>
     );
   }
@@ -135,7 +136,6 @@ export function PublicFormPage() {
     );
   }
 
-  const inputClasses = "w-full rounded-md border border-[var(--border-default)] bg-white px-3 py-2 text-sm placeholder:text-[var(--text-muted)] focus:border-[var(--brand-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--ring)]";
   const labelClasses = "mb-1 block text-sm font-medium text-[var(--text-secondary)]";
 
   return (
@@ -144,61 +144,73 @@ export function PublicFormPage() {
         <div className="p-6">
           <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-2">{config.name}</h1>
           {config.description && <p className="text-[var(--text-muted)] mb-6 text-sm">{config.description}</p>}
-          
+
           <form onSubmit={handleSubmit} className="space-y-5">
             {fields.map(f => {
+              const ariaRequired = f.required || undefined;
               switch (f.type) {
                 case 'text':
                 case 'email':
                 case 'phone':
+                case 'number': {
+                  const inputType = f.type === 'phone' ? 'tel' : f.type === 'number' ? 'number' : f.type;
+                  const leftIcon = f.type === 'email' ? <Icon as={Mail} size="sm" /> : f.type === 'phone' ? <Icon as={Phone} size="sm" /> : f.type === 'number' ? <Icon as={Hash} size="sm" /> : undefined;
                   return (
                     <div key={f.id}>
-                      <label className={labelClasses}>
+                      <label className={labelClasses} htmlFor={f.id}>
                         {f.label} {f.required && <span className="text-red-500">*</span>}
                       </label>
-                      <input
-                        type={f.type === 'phone' ? 'tel' : f.type}
+                      <Input
+                        id={f.id}
+                        type={inputType}
+                        name={f.name}
+                        leftIcon={leftIcon}
                         placeholder={f.placeholder}
                         required={f.required}
+                        aria-required={ariaRequired}
                         value={formData[f.name] || ''}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleFieldChange(f.name, e.target.value)}
-                        className={inputClasses}
                       />
                     </div>
                   );
+                }
                 case 'textarea':
                   return (
                     <div key={f.id}>
-                      <label className={labelClasses}>
+                      <label className={labelClasses} htmlFor={f.id}>
                         {f.label} {f.required && <span className="text-red-500">*</span>}
                       </label>
-                      <textarea
+                      <Textarea
+                        id={f.id}
+                        name={f.name}
                         placeholder={f.placeholder}
                         required={f.required}
+                        aria-required={ariaRequired}
                         value={formData[f.name] || ''}
                         onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleFieldChange(f.name, e.target.value)}
                         rows={4}
-                        className={inputClasses}
                       />
                     </div>
                   );
                 case 'select':
                   return (
                     <div key={f.id}>
-                      <label className={labelClasses}>
+                      <label className={labelClasses} htmlFor={f.id}>
                         {f.label} {f.required && <span className="text-red-500">*</span>}
                       </label>
-                      <select
+                      <Select
+                        id={f.id}
+                        name={f.name}
                         required={f.required}
+                        aria-required={ariaRequired}
                         value={formData[f.name] || ''}
                         onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleFieldChange(f.name, e.target.value)}
-                        className={inputClasses}
                       >
                         <option value="">Sélectionnez...</option>
                         {f.options?.map(opt => (
                           <option key={opt.value} value={opt.value}>{opt.label}</option>
                         ))}
-                      </select>
+                      </Select>
                     </div>
                   );
                 case 'radio':
@@ -207,21 +219,28 @@ export function PublicFormPage() {
                       <label className={labelClasses}>
                         {f.label} {f.required && <span className="text-red-500">*</span>}
                       </label>
-                      <div className="space-y-2">
-                        {f.options?.map((opt, i) => (
-                          <label key={i} className="flex items-center gap-3 cursor-pointer p-3 rounded-lg border border-[var(--border-subtle)] hover:bg-gray-50 transition-colors">
-                            <input
-                              type="radio"
-                              name={f.name}
-                              value={opt.value}
-                              required={f.required}
-                              checked={formData[f.name] === opt.value}
-                              onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleFieldChange(f.name, e.target.value)}
-                              className="text-blue-600 focus:ring-[var(--ring)]"
-                            />
-                            <span className="text-sm font-medium text-[var(--text-primary)]">{opt.label}</span>
-                          </label>
-                        ))}
+                      <input
+                        type="hidden"
+                        name={f.name}
+                        value={formData[f.name] || ''}
+                        aria-required={ariaRequired}
+                      />
+                      <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={f.label} aria-required={ariaRequired}>
+                        {f.options?.map((opt, i) => {
+                          const isSelected = formData[f.name] === opt.value;
+                          return (
+                            <button
+                              key={i}
+                              type="button"
+                              role="radio"
+                              aria-checked={isSelected}
+                              onClick={() => handleFieldChange(f.name, opt.value)}
+                              className={`chip-btn chip-btn--sm ${isSelected ? 'is-active' : ''}`}
+                            >
+                              {opt.label}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   );
@@ -229,16 +248,19 @@ export function PublicFormPage() {
                   return (
                     <div key={f.id} className="pt-2 flex items-center gap-2">
                       <input
-                        type="checkbox"
-                        id={f.id}
-                        required={f.required}
-                        checked={formData[f.name] || false}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleFieldChange(f.name, e.target.checked)}
-                        className="rounded text-blue-600 focus:ring-[var(--ring)] h-4 w-4"
+                        type="hidden"
+                        name={f.name}
+                        value={formData[f.name] ? 'true' : 'false'}
+                        aria-required={ariaRequired}
                       />
-                      <label htmlFor={f.id} className="text-sm font-medium text-[var(--text-secondary)]">
-                        {f.label} {f.required && <span className="text-red-500">*</span>}
-                      </label>
+                      <Switch
+                        id={f.id}
+                        variant="brand"
+                        size="sm"
+                        checked={!!formData[f.name]}
+                        onCheckedChange={(v) => handleFieldChange(f.name, v)}
+                        label={`${f.label}${f.required ? ' *' : ''}`}
+                      />
                     </div>
                   );
                 default:

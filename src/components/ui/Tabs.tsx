@@ -30,7 +30,7 @@ export const TabsTrigger = forwardRef<
       // Sprint 23 — gradient underline avec glow sur active (cohérent avec LeadDetail)
       'relative px-4 py-2.5 text-sm font-semibold transition-all cursor-pointer whitespace-nowrap',
       'text-[var(--text-muted)] hover:text-[var(--text-primary)]',
-      'data-[state=active]:text-[var(--brand-primary)]',
+      'data-[state=active]:text-[var(--primary)]',
       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]',
       'group',
       className

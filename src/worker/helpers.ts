@@ -170,10 +170,12 @@ export async function createNotification(
   clientId = ''
 ): Promise<void> {
   try {
+    const id = crypto.randomUUID();
+    const createdAt = new Date().toISOString();
     await env.DB.prepare(
       `INSERT INTO notifications (id, user_id, client_id, icon, title, description, link)
        VALUES (?, ?, ?, ?, ?, ?, ?)`
-    ).bind(crypto.randomUUID(), userId, clientId, icon, title, description, link).run();
+    ).bind(id, userId, clientId, icon, title, description, link).run();
 
     // Push notification mobile (best-effort, ne bloque jamais)
     if (userId) {
@@ -181,6 +183,22 @@ export async function createNotification(
         const { sendPushToUser } = await import('./push');
         await sendPushToUser(env, userId, `${icon} ${title}`, description, { url: link });
       } catch { /* push non critique */ }
+    }
+
+    // Sprint 46 M3.4 — broadcast WebSocket realtime (best-effort)
+    if (userId && env.NOTIFICATION_ROOMS) {
+      try {
+        const { broadcastNotificationToUser } = await import('./notifications-ws');
+        await broadcastNotificationToUser(env, userId, {
+          id,
+          icon,
+          title,
+          description,
+          link,
+          is_read: 0,
+          created_at: createdAt,
+        });
+      } catch { /* WS broadcast non critique */ }
     }
   } catch { /* best-effort */ }
 }

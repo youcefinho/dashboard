@@ -1,0 +1,399 @@
+openapi: 3.1.0
+info:
+  title: Intralys CRM — API publique
+  description: >
+    API REST publique d'Intralys CRM. Permet de gérer leads, tâches,
+    rendez-vous, messages et webhooks par programmation.
+    Authentification par clé API (`Authorization: ApiKey ILYS_...`).
+    Spec dérivée des routes réelles du worker (src/worker.ts, segment
+    `/api/public/v1/`). Une spec live est aussi exposée sur
+    `GET /api/openapi.json` et une UI Swagger sur `GET /docs/api`.
+  version: 1.0.0-beta
+  contact:
+    name: Support Intralys
+    email: support@intralys.app
+  license:
+    name: Propriétaire — usage soumis aux Conditions d'utilisation
+servers:
+  - url: https://app.intralys.app/api/public/v1
+    description: Production
+security:
+  - ApiKeyAuth: []
+tags:
+  - name: Auth
+    description: Identité de la clé API
+  - name: Leads
+    description: Gestion des prospects
+  - name: Tasks
+    description: Gestion des tâches
+  - name: Appointments
+    description: Gestion des rendez-vous
+  - name: Webhooks
+    description: Webhooks sortants
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: 'Format: `ApiKey ILYS_xxxxxxxxxxxxxxxx`'
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          examples: ['Non autorisé']
+    Lead:
+      type: object
+      properties:
+        id: { type: string }
+        client_id: { type: string }
+        first_name: { type: string }
+        last_name: { type: string }
+        email: { type: string, format: email }
+        phone: { type: string }
+        status: { type: string, examples: ['new', 'active', 'won', 'lost'] }
+        type: { type: string }
+        source: { type: string }
+        notes: { type: string }
+        value: { type: number }
+        score: { type: integer, minimum: 0, maximum: 100 }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    LeadCreate:
+      type: object
+      required: [first_name]
+      properties:
+        first_name: { type: string }
+        last_name: { type: string }
+        email: { type: string, format: email }
+        phone: { type: string }
+        source: { type: string }
+        type: { type: string }
+        notes: { type: string }
+    LeadPatch:
+      type: object
+      properties:
+        first_name: { type: string }
+        last_name: { type: string }
+        email: { type: string, format: email }
+        phone: { type: string }
+        status: { type: string }
+        value: { type: number }
+    Task:
+      type: object
+      properties:
+        id: { type: string }
+        lead_id: { type: string }
+        title: { type: string }
+        description: { type: string }
+        status: { type: string }
+        due_date: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+    TaskCreate:
+      type: object
+      required: [title]
+      properties:
+        lead_id: { type: string }
+        title: { type: string }
+        description: { type: string }
+        due_date: { type: string, format: date-time }
+    Appointment:
+      type: object
+      properties:
+        id: { type: string }
+        lead_id: { type: string }
+        title: { type: string }
+        start_at: { type: string, format: date-time }
+        end_at: { type: string, format: date-time }
+        location: { type: string }
+        created_at: { type: string, format: date-time }
+    AppointmentCreate:
+      type: object
+      required: [title, start_at]
+      properties:
+        lead_id: { type: string }
+        title: { type: string }
+        start_at: { type: string, format: date-time }
+        end_at: { type: string, format: date-time }
+        location: { type: string }
+    Message:
+      type: object
+      properties:
+        id: { type: string }
+        lead_id: { type: string }
+        channel: { type: string, examples: ['email', 'sms', 'whatsapp'] }
+        body: { type: string }
+        direction: { type: string, examples: ['outbound'] }
+    MessageCreate:
+      type: object
+      required: [channel, body]
+      properties:
+        channel: { type: string, examples: ['email', 'sms', 'whatsapp'] }
+        subject: { type: string }
+        body: { type: string }
+    WebhookCreate:
+      type: object
+      required: [url, events]
+      properties:
+        url: { type: string, format: uri }
+        events:
+          type: array
+          items: { type: string }
+          examples: [['lead.created', 'lead.updated']]
+  responses:
+    Unauthorized:
+      description: Clé API absente, invalide ou révoquée
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Forbidden:
+      description: Scope insuffisant pour cette opération
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: Ressource introuvable
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+paths:
+  /me:
+    get:
+      tags: [Auth]
+      summary: Identité de la clé API
+      operationId: getMe
+      responses:
+        '200':
+          description: Contexte de la clé
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      client_id: { type: string }
+                      user_id: { type: string }
+                      scopes:
+                        type: array
+                        items: { type: string }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /leads:
+    get:
+      tags: [Leads]
+      summary: Lister les leads
+      description: Retourne les leads du client. Scope requis - read.
+      operationId: listLeads
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, default: 50, maximum: 100 } }
+        - { name: offset, in: query, schema: { type: integer, default: 0 } }
+        - { name: status, in: query, schema: { type: string } }
+      responses:
+        '200':
+          description: Liste des leads
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Lead' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Leads]
+      summary: Créer un lead
+      description: Scope requis - write.
+      operationId: createLead
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LeadCreate' }
+      responses:
+        '201':
+          description: Lead créé
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id: { type: string }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /leads/{id}:
+    get:
+      tags: [Leads]
+      summary: Obtenir un lead
+      operationId: getLead
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Détails du lead
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Lead' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Leads]
+      summary: Mettre à jour un lead
+      description: Scope requis - write.
+      operationId: updateLead
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LeadPatch' }
+      responses:
+        '200': { description: Lead mis à jour }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /leads/{id}/tags:
+    post:
+      tags: [Leads]
+      summary: Ajouter un tag à un lead
+      description: Scope requis - write.
+      operationId: addLeadTag
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tag]
+              properties:
+                tag: { type: string }
+      responses:
+        '200': { description: Tag ajouté }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /leads/{id}/messages:
+    post:
+      tags: [Leads]
+      summary: Envoyer un message à un lead
+      description: >
+        Envoie un message (email/sms/whatsapp). Scope requis - write.
+        Les désabonnements CASL et préférences Loi 25 sont appliqués
+        automatiquement - un envoi vers un canal refusé est bloqué.
+      operationId: sendLeadMessage
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MessageCreate' }
+      responses:
+        '201':
+          description: Message envoyé
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Message' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /tasks:
+    get:
+      tags: [Tasks]
+      summary: Lister les tâches
+      operationId: listTasks
+      responses:
+        '200':
+          description: Liste des tâches
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Task' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Tasks]
+      summary: Créer une tâche
+      description: Scope requis - write.
+      operationId: createTask
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TaskCreate' }
+      responses:
+        '201': { description: Tâche créée }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /appointments:
+    get:
+      tags: [Appointments]
+      summary: Lister les rendez-vous
+      operationId: listAppointments
+      responses:
+        '200':
+          description: Liste des rendez-vous
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Appointment' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Appointments]
+      summary: Créer un rendez-vous
+      description: Scope requis - write.
+      operationId: createAppointment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AppointmentCreate' }
+      responses:
+        '201': { description: Rendez-vous créé }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /webhooks:
+    post:
+      tags: [Webhooks]
+      summary: Créer un webhook sortant
+      operationId: createWebhook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/WebhookCreate' }
+      responses:
+        '201': { description: Webhook créé }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /webhooks/{id}:
+    delete:
+      tags: [Webhooks]
+      summary: Supprimer un webhook
+      operationId: deleteWebhook
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Webhook supprimé }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }

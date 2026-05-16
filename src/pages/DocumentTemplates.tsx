@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Badge, Skeleton, EmptyState, useConfirm } from '@/components/ui';
+import { Card, Button, Tag, Skeleton, EmptyState, useConfirm, KpiStrip, Textarea, PageHero, Icon } from '@/components/ui';
+import type { KpiItem } from '@/components/ui';
 import { Input } from '@/components/ui/Input';
 import { getDocumentTemplates, createDocumentTemplate, deleteDocumentTemplate, type DocumentTemplate } from '@/lib/api';
-import { FileText, Plus, Trash2, Edit } from 'lucide-react';
+import { FileText, Plus, Trash2, Edit, CheckCircle2 } from 'lucide-react';
 
 export function DocumentTemplatesPage() {
   const confirm = useConfirm();
@@ -62,25 +63,39 @@ export function DocumentTemplatesPage() {
     }
   };
 
+  // ── KPI computed (total templates / utilisés ce mois) ──
+  const kpis: KpiItem[] = useMemo(() => {
+    const total = templates.length;
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const recentCount = templates.filter(t => {
+      const created = new Date(t.created_at);
+      return created >= monthStart;
+    }).length;
+    return [
+      { label: 'Total modèles', value: total, color: 'brand', icon: <Icon as={FileText} size={12} /> },
+      { label: 'Créés ce mois', value: recentCount, color: 'success', icon: <Icon as={CheckCircle2} size={12} /> },
+    ];
+  }, [templates]);
+
   return (
     <AppLayout title="Modèles de Documents">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <FileText className="text-[var(--brand-primary)]" />
-            Modèles de Documents
-          </h1>
-          <p className="text-[var(--text-secondary)] text-sm mt-1">Créez des modèles de contrats et de mandats.</p>
-        </div>
-        {!isCreating && (
-          <Button onClick={() => setIsCreating(true)} className="gap-2">
-            <Plus size={16} /> Nouveau modèle
+      <PageHero
+        meta="Insights"
+        title="Modèles de Documents"
+        highlight="Modèles"
+        description="Créez des modèles de contrats et de mandats réutilisables."
+        actions={!isCreating && (
+          <Button variant="premium" onClick={() => setIsCreating(true)} leftIcon={<Icon as={Plus} size="sm" />}>
+            Nouveau modèle
           </Button>
         )}
-      </div>
+      />
+
+      {!isLoading && templates.length > 0 && <KpiStrip items={kpis} />}
 
       {isCreating && (
-        <Card className="p-6 mb-6 animate-fade-in border border-[var(--brand-primary)]">
+        <Card className="p-6 mb-6 animate-fade-in border border-[var(--primary)]">
           <h3 className="text-lg font-bold mb-4">Créer un nouveau modèle</h3>
           <div className="space-y-4">
             <div>
@@ -93,8 +108,9 @@ export function DocumentTemplatesPage() {
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Contenu (HTML)</label>
-              <textarea 
-                className="w-full h-64 p-3 bg-[var(--bg-canvas)] border border-[var(--border-default)] rounded-[var(--radius-md)] text-sm font-mono text-[var(--text-secondary)]"
+              <Textarea
+                rows={12}
+                className="font-mono text-xs"
                 placeholder="<h1>Mandat de courtage</h1><p>Entre {{client_company}} et {{lead_name}}...</p>"
                 value={newHtml}
                 onChange={e => setNewHtml(e.target.value)}
@@ -105,33 +121,59 @@ export function DocumentTemplatesPage() {
             </div>
             <div className="flex gap-2 justify-end">
               <Button variant="secondary" onClick={() => setIsCreating(false)}>Annuler</Button>
-              <Button onClick={() => void handleCreate()}>Sauvegarder le modèle</Button>
+              <Button onClick={() => void handleCreate()}>Enregistrer le modèle</Button>
             </div>
           </div>
         </Card>
       )}
 
       {isLoading ? (
-        <Card><Skeleton className="h-48 w-full" /></Card>
+        <div className="space-y-4">
+          {/* KPI strip skeleton */}
+          <div className="flex gap-3">
+            {[0, 1, 2].map(i => <Skeleton key={i} className="h-20 flex-1 rounded-2xl" />)}
+          </div>
+          {/* Grid 6 cards */}
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Card key={i} className="p-5">
+                <div className="flex items-start gap-3 mb-3">
+                  <Skeleton className="h-10 w-10 rounded-lg" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-2/3" />
+                    <Skeleton className="h-3 w-1/2" />
+                  </div>
+                </div>
+                <Skeleton className="h-3 w-full mb-1" />
+                <Skeleton className="h-3 w-3/4 mb-4" />
+                <div className="flex gap-2 pt-3 border-t border-[var(--border-subtle)]">
+                  <Skeleton className="h-7 w-20 rounded-md" />
+                  <Skeleton className="h-7 w-7 rounded-md ml-auto" />
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
       ) : templates.length === 0 && !isCreating ? (
         <EmptyState
-          icon={<FileText size={48} />}
-          title="Aucun modèle pour l'instant"
-          description="Créez votre premier modèle de document pour commencer."
-          action={<Button onClick={() => setIsCreating(true)}>Créer un modèle</Button>}
+          variant="first-time"
+          icon={<Icon as={FileText} size={48} />}
+          title="Aucun modèle encore"
+          description="Crée ton premier modèle de document pour gagner du temps sur tes envois."
+          action={<Button variant="primary" onClick={() => setIsCreating(true)}>Créer mon premier modèle</Button>}
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {templates.map(tpl => (
-            <Card key={tpl.id} className="p-5 flex flex-col">
+            <div key={tpl.id} className="card-premium p-5 flex flex-col list-item-enter">
               <div className="flex justify-between items-start mb-3">
-                <Badge color="var(--brand-primary)">Modèle</Badge>
+                <Tag variant="brand" size="sm">Modèle</Tag>
                 <div className="flex gap-1">
-                  <button className="p-1.5 text-[var(--text-muted)] hover:text-[var(--brand-primary)] rounded hover:bg-[var(--bg-subtle)] transition-colors">
-                    <Edit size={14} />
+                  <button className="p-1.5 text-[var(--text-muted)] hover:text-[var(--primary)] rounded hover:bg-[var(--bg-subtle)] transition-colors">
+                    <Icon as={Edit} size="sm" />
                   </button>
                   <button onClick={() => void handleDelete(tpl.id)} className="p-1.5 text-[var(--text-muted)] hover:text-[var(--danger)] rounded hover:bg-[color-mix(in_oklch,var(--danger)_10%,transparent)] transition-colors">
-                    <Trash2 size={14} />
+                    <Icon as={Trash2} size="sm" />
                   </button>
                 </div>
               </div>
@@ -142,7 +184,7 @@ export function DocumentTemplatesPage() {
               <div className="text-[10px] text-[var(--text-muted)] bg-[var(--bg-subtle)] p-2 rounded">
                 Variables: {tpl.body_html.match(/\{\{([^}]+)\}\}/g)?.slice(0, 5).join(', ') || 'Aucune'}...
               </div>
-            </Card>
+            </div>
           ))}
         </div>
       )}

@@ -1,16 +1,19 @@
 ﻿// ── TemplatesPage — Gestion avancée des templates d'emails ──
 
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Badge, Skeleton, EmptyState, Input, useConfirm, PageHero } from '@/components/ui';
+import { Card, Button, Skeleton, EmptyState, Input, useConfirm, PageHero, KpiStrip, Icon, type KpiItem, Tag, EmptyStateIllustration } from '@/components/ui';
+// Sprint 44 M3.3 — Pull-to-refresh
+import { usePullToRefresh } from '@/hooks/usePullToRefresh';
+import { PullToRefreshIndicator } from '@/components/ui/PullToRefreshIndicator';
 import { Modal } from '@/components/ui/Modal';
 import { getTemplates, createTemplate, updateTemplate, deleteTemplate } from '@/lib/api';
-import { Wand2 } from 'lucide-react';
+import { Wand2, FileText, FolderOpen, Tag as TagIcon, Calendar, ChevronRight } from 'lucide-react';
 import type { EmailTemplate, TemplateCategory } from '@/lib/types';
 import { TEMPLATE_CATEGORY_LABELS, TEMPLATE_CATEGORIES } from '@/lib/types';
 
 const CATEGORY_COLORS: Record<TemplateCategory, string> = {
-  welcome: 'var(--brand-primary)',
+  welcome: 'var(--primary)',
   followup: 'var(--warning)',
   reminder: 'var(--info)',
   notification: 'var(--success)',
@@ -39,6 +42,8 @@ export function TemplatesPage() {
   const [categoryFilter, setCategoryFilter] = useState<TemplateCategory | ''>('');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [searchQuery, setSearchQuery] = useState('');
+  // Sprint 32 vague 32-3A — Expand inline (preview body + usage + last_used)
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Formulaire
   const [formName, setFormName] = useState('');
@@ -118,8 +123,30 @@ export function TemplatesPage() {
   const categoryCounts: Record<string, number> = {};
   templates.forEach(t => { categoryCounts[t.category] = (categoryCounts[t.category] || 0) + 1; });
 
+  // KPI stats — Sprint 23 wave 27
+  const totalTemplates = templates.length;
+  const marketingCount = templates.filter(t => t.category === 'marketing').length;
+  const transactionalCount = templates.filter(t => t.category !== 'marketing').length;
+  const lastEdited = templates.reduce<EmailTemplate | null>((latest, t) => {
+    if (!latest) return t;
+    return new Date(t.updated_at).getTime() > new Date(latest.updated_at).getTime() ? t : latest;
+  }, null);
+  const kpiItems: KpiItem[] = [
+    { label: 'Total', value: totalTemplates, icon: <FileText size={11} />, color: 'brand' },
+    { label: 'Marketing', value: marketingCount, icon: <TagIcon size={11} />, color: 'accent' },
+    { label: 'Transactionnels', value: transactionalCount, icon: <FolderOpen size={11} />, color: 'info' },
+    { label: 'Dernier édité', value: lastEdited ? (lastEdited.name.length > 14 ? lastEdited.name.slice(0, 12) + '…' : lastEdited.name) : '—', icon: <Calendar size={11} />, color: 'neutral' },
+  ];
+
+  // Sprint 44 M3.3 — Pull-to-refresh
+  const scrollParentRef = useRef<HTMLElement | null>(null);
+  useEffect(() => { scrollParentRef.current = document.getElementById('main-content'); }, []);
+  const ptr = usePullToRefresh(async () => { await loadTemplates(); }, { scrollParent: scrollParentRef });
+
   return (
     <AppLayout title="Templates">
+      <div ref={ptr.containerRef}>
+      <PullToRefreshIndicator distance={ptr.pullDistance} progress={ptr.pullProgress} isRefreshing={ptr.isRefreshing} />
       <PageHero
         meta="Marketing"
         title="Templates d'emails"
@@ -127,16 +154,17 @@ export function TemplatesPage() {
         description={`${templates.length} modèles disponibles pour vos campagnes et relances automatisées.`}
         actions={<Button variant="premium" onClick={openNewTemplate}>+ Nouveau template</Button>}
       />
+
+      <KpiStrip items={kpiItems} />
+
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div className="flex items-center gap-3">
-          <Badge color="var(--info)">{templates.length} templates</Badge>
+          <Tag dot variant="info" size="md">{templates.length} templates</Tag>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex bg-[var(--bg-subtle)] rounded-[var(--radius-md)] p-0.5">
-            <button onClick={() => setViewMode('grid')}
-              className={`px-2 py-1 text-xs rounded cursor-pointer transition-colors ${viewMode === 'grid' ? 'bg-[var(--brand-primary)] text-white' : 'text-[var(--text-muted)]'}`}>▦</button>
-            <button onClick={() => setViewMode('list')}
-              className={`px-2 py-1 text-xs rounded cursor-pointer transition-colors ${viewMode === 'list' ? 'bg-[var(--brand-primary)] text-white' : 'text-[var(--text-muted)]'}`}>☰</button>
+          <div className="segmented-control segmented-control--icon">
+            <button onClick={() => setViewMode('grid')} className={viewMode === 'grid' ? 'is-active' : ''} aria-label="Vue grille">▦</button>
+            <button onClick={() => setViewMode('list')} className={viewMode === 'list' ? 'is-active' : ''} aria-label="Vue liste">☰</button>
           </div>
         </div>
       </div>
@@ -146,7 +174,7 @@ export function TemplatesPage() {
         <Input placeholder="Rechercher un template..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="flex-1" />
         <div className="flex gap-1.5 flex-wrap">
           <button onClick={() => setCategoryFilter('')}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer border transition-all ${categoryFilter === '' ? 'bg-[var(--brand-primary)] text-white border-[var(--brand-primary)]' : 'border-[var(--border-subtle)] text-[var(--text-secondary)]'}`}>
+            className={`px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer border transition-all ${categoryFilter === '' ? 'bg-[var(--primary)] text-white border-[var(--primary)]' : 'border-[var(--border-subtle)] text-[var(--text-secondary)]'}`}>
             Tous ({templates.length})
           </button>
           {TEMPLATE_CATEGORIES.map(cat => (
@@ -161,15 +189,52 @@ export function TemplatesPage() {
 
       {/* Liste */}
       {isLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-40" />)}</div>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Card key={i} className="p-4">
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Skeleton className="h-8 w-8 rounded-lg" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-3 w-40" />
+                  </div>
+                </div>
+                <Skeleton className="h-5 w-16 rounded-full" />
+              </div>
+              <Skeleton className="h-3 w-full mb-2" />
+              <Skeleton className="h-3 w-3/4 mb-4" />
+              <div className="flex gap-2 pt-3 border-t border-[var(--border-subtle)]">
+                <Skeleton className="h-7 w-16 rounded-md" />
+                <Skeleton className="h-7 w-16 rounded-md" />
+                <Skeleton className="h-7 w-7 rounded-md ml-auto" />
+              </div>
+            </Card>
+          ))}
+        </div>
       ) : filteredTemplates.length === 0 ? (
-        <EmptyState icon="📄" title="Aucun template" description="Créez votre premier template d'email pour accélérer vos communications." />
+        templates.length > 0 ? (
+          <EmptyState
+            variant="filtered"
+            icon={<Icon as={FileText} size={48} />}
+            title="Aucun résultat"
+            description="Aucun template ne correspond à ta recherche."
+            action={<Button variant="secondary" onClick={() => { setSearchQuery(''); setCategoryFilter(''); }}>Effacer les filtres</Button>}
+          />
+        ) : (
+          <EmptyState
+            variant="first-time"
+            illustration={<EmptyStateIllustration kind="inbox" size={160} />}
+            title="Aucun template encore"
+            description="Crée ton premier template d'email pour accélérer tes communications."
+          />
+        )
       ) : viewMode === 'grid' ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {filteredTemplates.map((tpl) => {
+          {filteredTemplates.map((tpl, idx) => {
             const vars = extractVariables(tpl.subject + tpl.body_html);
             return (
-              <Card key={tpl.id} className="hover:border-[var(--brand-primary)]/30 transition-all group">
+              <Card key={tpl.id} className="hover:border-[var(--primary)]/30 transition-all group list-item-enter" style={{ animationDelay: `${idx * 30}ms` }}>
                 <div className="p-4">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-2">
@@ -179,9 +244,9 @@ export function TemplatesPage() {
                         <p className="text-xs text-[var(--text-muted)] mt-0.5">Sujet : {tpl.subject}</p>
                       </div>
                     </div>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full text-white font-medium shrink-0" style={{ backgroundColor: CATEGORY_COLORS[tpl.category] }}>
+                    <Tag dot color={CATEGORY_COLORS[tpl.category]} size="xs" className="shrink-0">
                       {TEMPLATE_CATEGORY_LABELS[tpl.category]}
-                    </span>
+                    </Tag>
                   </div>
 
                   {/* Aperçu mini */}
@@ -193,7 +258,7 @@ export function TemplatesPage() {
                   {vars.length > 0 && (
                     <div className="flex flex-wrap gap-1 mb-3">
                       {vars.map(v => (
-                        <span key={v} className="text-[9px] px-1.5 py-0.5 bg-[var(--bg-subtle)] rounded font-mono text-[var(--brand-primary)]">
+                        <span key={v} className="text-[9px] px-1.5 py-0.5 bg-[var(--bg-subtle)] rounded font-mono text-[var(--primary)]">
                           {`{{${v}}}`}
                         </span>
                       ))}
@@ -203,7 +268,7 @@ export function TemplatesPage() {
                   {/* Actions */}
                   <div className="flex gap-2 opacity-70 group-hover:opacity-100 transition-opacity">
                     <button onClick={() => setPreviewId(tpl.id)} className="text-xs text-[var(--info)] hover:underline cursor-pointer">👁️ Aperçu</button>
-                    <button onClick={() => openEditTemplate(tpl)} className="text-xs text-[var(--brand-primary)] hover:underline cursor-pointer">✏️ Modifier</button>
+                    <button onClick={() => openEditTemplate(tpl)} className="text-xs text-[var(--primary)] hover:underline cursor-pointer">✏️ Modifier</button>
                     <button onClick={() => duplicateTemplate(tpl)} className="text-xs text-[var(--text-muted)] hover:underline cursor-pointer">📋 Dupliquer</button>
                     {!tpl.id.startsWith('tpl-') && (
                       <button onClick={() => void handleDelete(tpl.id)} className="text-xs text-[var(--danger)] hover:underline cursor-pointer ml-auto">🗑️</button>
@@ -215,48 +280,93 @@ export function TemplatesPage() {
           })}
         </div>
       ) : (
-        /* Vue liste */
-        <Card className="overflow-x-auto p-0">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]">
-                <th className="text-left px-4 py-3 text-xs font-semibold text-[var(--text-muted)] uppercase">Template</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-[var(--text-muted)] uppercase">Catégorie</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-[var(--text-muted)] uppercase">Sujet</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-[var(--text-muted)] uppercase">Variables</th>
-                <th className="text-right px-4 py-3 text-xs font-semibold text-[var(--text-muted)] uppercase">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredTemplates.map(tpl => {
-                const vars = extractVariables(tpl.subject + tpl.body_html);
-                return (
-                  <tr key={tpl.id} className="border-b border-[var(--border-subtle)] hover:bg-[var(--bg-subtle)] transition-colors">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <span>{CATEGORY_ICONS[tpl.category]}</span>
-                        <span className="font-medium">{tpl.name}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-[10px] px-2 py-0.5 rounded-full text-white" style={{ backgroundColor: CATEGORY_COLORS[tpl.category] }}>{TEMPLATE_CATEGORY_LABELS[tpl.category]}</span>
-                    </td>
-                    <td className="px-4 py-3 text-xs text-[var(--text-muted)]">{tpl.subject}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-1">{vars.map(v => <span key={v} className="text-[9px] px-1 py-0.5 bg-[var(--bg-subtle)] rounded font-mono">{`{{${v}}}`}</span>)}</div>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex gap-2 justify-end">
-                        <button onClick={() => setPreviewId(tpl.id)} className="text-xs text-[var(--info)] hover:underline cursor-pointer">Aperçu</button>
-                        <button onClick={() => openEditTemplate(tpl)} className="text-xs text-[var(--brand-primary)] hover:underline cursor-pointer">Modifier</button>
-                        <button onClick={() => duplicateTemplate(tpl)} className="text-xs text-[var(--text-muted)] hover:underline cursor-pointer">Dupliquer</button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        /* Vue liste — Sprint 32 vague 32-3A : table-premium-container + frozen col + expand inline */
+        <Card className="p-0 overflow-hidden">
+          <div className="table-premium-container overflow-x-auto">
+            <table className="table-premium w-full text-left border-collapse">
+              <thead>
+                <tr>
+                  <th className="col-frozen" style={{ minWidth: 240 }}>Template</th>
+                  <th style={{ minWidth: 120 }}>Catégorie</th>
+                  <th style={{ minWidth: 200 }}>Sujet</th>
+                  <th style={{ minWidth: 140 }}>Variables</th>
+                  <th className="text-right" style={{ minWidth: 180 }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredTemplates.map((tpl, idx) => {
+                  const vars = extractVariables(tpl.subject + tpl.body_html);
+                  const isExpanded = expandedId === tpl.id;
+                  // usage_count / last_used_at potentiellement absents du type — accès défensif
+                  const usage = (tpl as unknown as { usage_count?: number }).usage_count ?? 0;
+                  const lastUsedRaw = (tpl as unknown as { last_used_at?: string }).last_used_at;
+                  const lastUsedLabel = lastUsedRaw ? new Date(lastUsedRaw).toLocaleDateString('fr-CA', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Jamais utilisé';
+                  const bodyPreview = tpl.body_html.replace(/<[^>]+>/g, '').replace(/&[^;]+;/g, ' ').slice(0, 280);
+                  return (
+                    <React.Fragment key={tpl.id}>
+                      <tr className="row-premium list-item-enter" style={{ animationDelay: `${idx * 30}ms` }}>
+                        <td className="col-frozen">
+                          <div className="flex items-center gap-2.5">
+                            <button
+                              type="button"
+                              className={`table-expand-trigger ${isExpanded ? 'is-expanded' : ''}`}
+                              onClick={() => setExpandedId(isExpanded ? null : tpl.id)}
+                              aria-label={isExpanded ? 'Réduire' : 'Afficher les détails'}
+                              aria-expanded={isExpanded}
+                            >
+                              <ChevronRight size={14} />
+                            </button>
+                            <span className="text-lg leading-none">{CATEGORY_ICONS[tpl.category]}</span>
+                            <span className="font-medium text-[var(--text-primary)]">{tpl.name}</span>
+                          </div>
+                        </td>
+                        <td>
+                          <Tag dot color={CATEGORY_COLORS[tpl.category]} size="xs">{TEMPLATE_CATEGORY_LABELS[tpl.category]}</Tag>
+                        </td>
+                        <td className="text-xs text-[var(--text-muted)] truncate max-w-[260px]">{tpl.subject}</td>
+                        <td>
+                          <div className="flex gap-1 flex-wrap">{vars.slice(0, 4).map(v => <span key={v} className="text-[9px] px-1 py-0.5 bg-[var(--bg-subtle)] rounded font-mono text-[var(--primary)]">{`{{${v}}}`}</span>)}{vars.length > 4 && <span className="text-[9px] text-[var(--text-muted)]">+{vars.length - 4}</span>}</div>
+                        </td>
+                        <td className="text-right">
+                          <div className="flex gap-2 justify-end">
+                            <button onClick={() => setPreviewId(tpl.id)} className="text-xs text-[var(--info)] hover:underline cursor-pointer">Aperçu</button>
+                            <button onClick={() => openEditTemplate(tpl)} className="text-xs text-[var(--primary)] hover:underline cursor-pointer">Modifier</button>
+                            <button onClick={() => duplicateTemplate(tpl)} className="text-xs text-[var(--text-muted)] hover:underline cursor-pointer">Dupliquer</button>
+                          </div>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td colSpan={5} style={{ padding: 0, border: 'none' }}>
+                          <div className={`table-expand-content ${isExpanded ? 'is-open' : ''}`}>
+                            <div className="table-expand-inner">
+                              <div className="table-expand-detail">
+                                <div className="table-expand-detail-section" style={{ flex: '1 1 320px' }}>
+                                  <span className="table-expand-detail-label">Aperçu du contenu</span>
+                                  <span className="table-expand-detail-value text-[12px] leading-relaxed text-[var(--text-secondary)]">{bodyPreview}{tpl.body_html.length > 280 ? '…' : ''}</span>
+                                </div>
+                                <div className="table-expand-detail-section">
+                                  <span className="table-expand-detail-label">Utilisations</span>
+                                  <span className="table-expand-detail-value t-mono-num">{usage}</span>
+                                </div>
+                                <div className="table-expand-detail-section">
+                                  <span className="table-expand-detail-label">Dernière utilisation</span>
+                                  <span className="table-expand-detail-value text-[12px]">{lastUsedLabel}</span>
+                                </div>
+                                <div className="table-expand-detail-section">
+                                  <span className="table-expand-detail-label">Modifié</span>
+                                  <span className="table-expand-detail-value text-[12px]">{new Date(tpl.updated_at).toLocaleDateString('fr-CA', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    </React.Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </Card>
       )}
 
@@ -271,7 +381,7 @@ export function TemplatesPage() {
             <div>
               <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Catégorie</label>
               <select value={formCategory} onChange={(e) => setFormCategory(e.target.value as TemplateCategory)}
-                className="w-full px-3 py-2 bg-[var(--bg-subtle)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-sm focus:outline-none focus:border-[var(--brand-primary)]">
+                className="w-full px-3 py-2 bg-[var(--bg-subtle)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-sm focus:outline-none focus:border-[var(--primary)]">
                 {TEMPLATE_CATEGORIES.map(cat => <option key={cat} value={cat}>{CATEGORY_ICONS[cat]} {TEMPLATE_CATEGORY_LABELS[cat]}</option>)}
               </select>
             </div>
@@ -311,20 +421,20 @@ export function TemplatesPage() {
                       if (data?.data?.content) setFormBody(data.data.content);
                     } catch { /* silencieux */ }
                     setIsGenerating(false);
-                  }} isLoading={isGenerating} leftIcon={<Wand2 size={12} className="text-[#A855F7]" />} className="h-[24px] text-[10px] px-2 py-0 border border-[var(--border-subtle)] bg-white hover:bg-purple-50">
+                  }} isLoading={isGenerating} leftIcon={<Icon as={Wand2} size="xs" className="text-[#A855F7]" />} className="h-[24px] text-[10px] px-2 py-0 border border-[var(--border-subtle)] bg-white hover:bg-purple-50">
                     ✨ Générer avec IA
                   </Button>
                 </div>
                 <div className="flex bg-[var(--bg-subtle)] rounded p-0.5">
-                  <button onClick={() => setEditorTab('code')} className={`px-2 py-0.5 text-[10px] rounded cursor-pointer ${editorTab === 'code' ? 'bg-[var(--brand-primary)] text-white' : 'text-[var(--text-muted)]'}`}>{'</>'}Code</button>
-                  <button onClick={() => setEditorTab('preview')} className={`px-2 py-0.5 text-[10px] rounded cursor-pointer ${editorTab === 'preview' ? 'bg-[var(--brand-primary)] text-white' : 'text-[var(--text-muted)]'}`}>👁️ Aperçu</button>
+                  <button onClick={() => setEditorTab('code')} className={`px-2 py-0.5 text-[10px] rounded cursor-pointer ${editorTab === 'code' ? 'bg-[var(--primary)] text-white' : 'text-[var(--text-muted)]'}`}>{'</>'}Code</button>
+                  <button onClick={() => setEditorTab('preview')} className={`px-2 py-0.5 text-[10px] rounded cursor-pointer ${editorTab === 'preview' ? 'bg-[var(--primary)] text-white' : 'text-[var(--text-muted)]'}`}>👁️ Aperçu</button>
                 </div>
               </div>
             </div>
             {editorTab === 'code' ? (
               <textarea value={formBody} onChange={(e) => setFormBody(e.target.value)} rows={10}
                 placeholder="<h2>Bonjour {{nom}},</h2><p>Merci pour votre intérêt...</p>"
-                className="w-full px-3 py-2 bg-[var(--bg-subtle)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand-primary)] resize-none font-mono text-xs" />
+                className="w-full px-3 py-2 bg-[var(--bg-subtle)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--primary)] resize-none font-mono text-xs" />
             ) : (
               <div className="bg-white text-gray-900 p-4 rounded-[var(--radius-md)] text-sm min-h-[200px] border border-[var(--border-subtle)]"
                 dangerouslySetInnerHTML={{ __html: formBody || '<p style="color:#999">Aperçu du contenu...</p>' }} />
@@ -336,7 +446,7 @@ export function TemplatesPage() {
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-[10px] text-[var(--text-muted)]">Variables :</span>
               {extractVariables(formSubject + formBody).map(v => (
-                <span key={v} className="text-[10px] px-1.5 py-0.5 bg-[var(--brand-primary)]/10 text-[var(--brand-primary)] rounded font-mono">{`{{${v}}}`}</span>
+                <span key={v} className="text-[10px] px-1.5 py-0.5 bg-[var(--primary)]/10 text-[var(--primary)] rounded font-mono">{`{{${v}}}`}</span>
               ))}
             </div>
           )}
@@ -362,7 +472,7 @@ export function TemplatesPage() {
               </div>
               <div className="flex items-center gap-2 text-xs">
                 <span className="text-[var(--text-muted)] w-8">À :</span>
-                <span className="font-medium text-[var(--brand-primary)]">{'{{email}}'}</span>
+                <span className="font-medium text-[var(--primary)]">{'{{email}}'}</span>
               </div>
               <div className="flex items-center gap-2 text-xs">
                 <span className="text-[var(--text-muted)] w-8">Obj :</span>
@@ -379,6 +489,7 @@ export function TemplatesPage() {
           </div>
         )}
       </Modal>
+      </div>
     </AppLayout>
   );
 }

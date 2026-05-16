@@ -1,20 +1,23 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { PublicLayout } from '../landing/PublicLayout';
 import { Search, Book, FileText, Video, ChevronRight } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { Input } from '@/components/ui/Input';
+import { Tag } from '@/components/ui/Tag';
+import { KpiStrip } from '@/components/ui/KpiStrip';
 
 const categories = [
-  { id: 'getting-started', name: 'Premiers pas', icon: <Book size={20} /> },
-  { id: 'leads', name: 'Gestion des Leads', icon: <FileText size={20} /> },
-  { id: 'workflows', name: 'Automatisations', icon: <Video size={20} /> },
-  { id: 'integrations', name: 'Intégrations', icon: <ChevronRight size={20} /> },
-  { id: 'billing', name: 'Facturation', icon: <FileText size={20} /> },
+  { id: 'getting-started', name: 'Premiers pas', icon: <Book size={16} /> },
+  { id: 'leads', name: 'Gestion des Leads', icon: <FileText size={16} /> },
+  { id: 'workflows', name: 'Automatisations', icon: <Video size={16} /> },
+  { id: 'integrations', name: 'Intégrations', icon: <ChevronRight size={16} /> },
+  { id: 'billing', name: 'Facturation', icon: <FileText size={16} /> },
 ];
 
-const articles: Record<string, { title: string, category: string, file: string }> = {
+const articles: Record<string, { title: string; category: string; file: string }> = {
   // Getting started (5)
-  'intro': { title: 'Qu\'est-ce qu\'Intralys ?', category: 'getting-started', file: 'intro.md' },
+  'intro': { title: "Qu'est-ce qu'Intralys ?", category: 'getting-started', file: 'intro.md' },
   'quickstart': { title: 'Démarrage rapide en 5 minutes', category: 'getting-started', file: 'quickstart.md' },
   'first-lead': { title: 'Créer votre premier lead', category: 'getting-started', file: 'first-lead.md' },
   'invite-team': { title: 'Inviter votre équipe', category: 'getting-started', file: 'invite-team.md' },
@@ -49,6 +52,7 @@ const articles: Record<string, { title: string, category: string, file: string }
 export function HelpCenterPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedArticle, setSelectedArticle] = useState<string | null>(null);
+  const [activeCategory, setActiveCategory] = useState<string>('getting-started');
   const [markdownContent, setMarkdownContent] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -56,8 +60,8 @@ export function HelpCenterPage() {
     if (selectedArticle) {
       setIsLoading(true);
       fetch(`/help/${articles[selectedArticle]!.file}`)
-        .then(res => res.text())
-        .then(text => {
+        .then((res) => res.text())
+        .then((text) => {
           setMarkdownContent(text);
           setIsLoading(false);
         })
@@ -68,74 +72,133 @@ export function HelpCenterPage() {
     }
   }, [selectedArticle]);
 
+  // Recherche : filtre tous les articles par titre (case-insensitive)
+  const searchResults = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return null;
+    return Object.entries(articles).filter(([, a]) => a.title.toLowerCase().includes(q));
+  }, [searchQuery]);
+
+  // Articles visibles dans le panneau central : si search => résultats, sinon catégorie active
+  const visibleArticles = useMemo(() => {
+    if (searchResults) return searchResults;
+    return Object.entries(articles).filter(([, a]) => a.category === activeCategory);
+  }, [searchResults, activeCategory]);
+
+  const totalArticles = Object.keys(articles).length;
+  const totalCategories = categories.length;
+
   return (
     <PublicLayout>
-      {/* Sprint 23 hero centre d'aide */}
-      <div className="relative pt-20 pb-20 px-4 sm:px-6 lg:px-8 overflow-hidden"
-        style={{ background: 'linear-gradient(135deg, #009DDB 0%, #0086C0 50%, #D96E27 100%)' }}>
+      {/* Hero */}
+      <div
+        className="relative pt-20 pb-20 px-4 sm:px-6 lg:px-8 overflow-hidden"
+        style={{
+          background:
+            'linear-gradient(135deg, #009DDB 0%, #0086C0 50%, #D96E27 100%)',
+        }}
+      >
         <div aria-hidden className="absolute inset-0 opacity-30 pointer-events-none">
-          <div className="hero-stat-orb absolute w-[700px] h-[700px] rounded-full -top-60 -right-40"
-            style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%)', filter: 'blur(80px)' }} />
-          <div className="hero-stat-orb absolute w-[500px] h-[500px] rounded-full -bottom-32 -left-32"
-            style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.25) 0%, transparent 70%)', filter: 'blur(60px)', animationDelay: '4s' }} />
+          <div
+            className="hero-stat-orb absolute w-[700px] h-[700px] rounded-full -top-60 -right-40"
+            style={{
+              background: 'radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%)',
+              filter: 'blur(80px)',
+            }}
+          />
+          <div
+            className="hero-stat-orb absolute w-[500px] h-[500px] rounded-full -bottom-32 -left-32"
+            style={{
+              background: 'radial-gradient(circle, rgba(255,255,255,0.25) 0%, transparent 70%)',
+              filter: 'blur(60px)',
+              animationDelay: '4s',
+            }}
+          />
         </div>
         <div className="relative max-w-3xl mx-auto text-center z-10">
-          <p className="text-xs font-semibold text-white/80 uppercase tracking-[0.18em] mb-3">Centre d'aide Intralys</p>
-          <h1 className="text-3xl md:text-5xl font-extrabold text-white mb-8 tracking-tight" style={{ letterSpacing: '-0.02em' }}>
+          <p className="text-xs font-semibold text-white/80 uppercase tracking-[0.18em] mb-3">
+            Centre d'aide Intralys
+          </p>
+          <h1
+            className="text-3xl md:text-5xl font-extrabold text-white mb-8 tracking-tight"
+            style={{ letterSpacing: '-0.02em' }}
+          >
             Comment pouvons-nous vous aider ?
           </h1>
-          <div className="relative max-w-xl mx-auto">
-            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={20} />
-            <input
-              type="text"
+          {/* Input premium (wave 41) */}
+          <div className="max-w-xl mx-auto">
+            <Input
+              type="search"
               placeholder="Rechercher des articles, des tutoriels..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-14 pr-4 py-4 rounded-2xl border-none focus:outline-none text-[var(--text-primary)] font-medium"
-              style={{
-                background: 'rgba(255,255,255,0.97)',
-                backdropFilter: 'blur(8px)',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.15), 0 0 0 1px rgba(255,255,255,0.4)',
-              }}
+              leftIcon={<Search size={16} />}
+              className="h-12 text-base bg-white/95"
+              aria-label="Rechercher dans le centre d'aide"
             />
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          {/* Sidebar */}
-          <div className="md:col-span-1 space-y-8">
-            {categories.map(cat => (
-              <div key={cat.id}>
-                <h3 className="font-bold text-[var(--text-primary)] flex items-center gap-2 mb-3">
-                  {cat.icon} {cat.name}
-                </h3>
-                <ul className="space-y-2">
-                  {Object.entries(articles)
-                    .filter(([, article]) => article.category === cat.id)
-                    .map(([id, article]) => (
-                    <li key={id}>
-                      <button 
-                        onClick={() => setSelectedArticle(id)}
-                        className={`text-sm text-left w-full hover:text-[var(--brand-primary)] transition-colors ${selectedArticle === id ? 'text-[var(--brand-primary)] font-medium' : 'text-[var(--text-secondary)]'}`}
+        {/* KpiStrip optionnel (wave 41) */}
+        <KpiStrip
+          items={[
+            { label: 'Articles', value: totalArticles, color: 'brand' },
+            { label: 'Catégories', value: totalCategories, color: 'info' },
+            { label: 'Populaires', value: 8, color: 'accent' },
+          ]}
+          className="mb-8"
+        />
+
+        <div className="grid grid-cols-1 md:grid-cols-[260px_1fr] gap-8">
+          {/* Sidebar categories — style sidebar-nav-item adapté light */}
+          <aside className="md:sticky md:top-24 self-start">
+            <p className="heading-premium mb-3">Catégories</p>
+            <nav>
+              <ul className="space-y-1.5">
+                {categories.map((cat) => {
+                  const isActive = !searchResults && cat.id === activeCategory;
+                  return (
+                    <li key={cat.id}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveCategory(cat.id);
+                          setSelectedArticle(null);
+                          setSearchQuery('');
+                        }}
+                        className={`help-cat-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-left transition-all ${
+                          isActive ? 'is-active' : ''
+                        }`}
                       >
-                        {article.title}
+                        <span className="help-cat-icon shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-lg transition-all">
+                          {cat.icon}
+                        </span>
+                        <span className="truncate">{cat.name}</span>
                       </button>
                     </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
+                  );
+                })}
+              </ul>
+            </nav>
+          </aside>
 
-          {/* Content */}
-          <div className="md:col-span-3">
+          {/* Articles list ou article content */}
+          <div>
             {selectedArticle ? (
-              <div className="bg-white rounded-2xl border border-[var(--border-subtle)] shadow-sm p-8 min-h-[500px]">
-                <button onClick={() => setSelectedArticle(null)} className="text-sm text-[var(--brand-primary)] font-medium flex items-center gap-1 mb-6 hover:underline">
-                  <ChevronRight size={16} className="rotate-180" /> Retour à l'accueil du centre d'aide
+              <div className="card-premium p-8 min-h-[500px]">
+                <button
+                  onClick={() => setSelectedArticle(null)}
+                  className="relative text-sm text-[var(--primary)] font-semibold flex items-center gap-1 mb-6 hover:underline"
+                >
+                  <ChevronRight size={16} className="rotate-180" /> Retour aux articles
                 </button>
+                <div className="relative mb-4">
+                  <Tag size="xs" variant="brand">
+                    {categories.find((c) => c.id === articles[selectedArticle]!.category)?.name ?? 'Article'}
+                  </Tag>
+                </div>
                 {isLoading ? (
                   <div className="animate-pulse space-y-4">
                     <div className="h-8 bg-[var(--bg-muted)] rounded w-1/3"></div>
@@ -144,23 +207,127 @@ export function HelpCenterPage() {
                     <div className="h-4 bg-[var(--bg-muted)] rounded w-4/6"></div>
                   </div>
                 ) : (
-                  <article className="prose prose-neutral max-w-none prose-headings:text-[var(--text-primary)] prose-a:text-[var(--brand-primary)]">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                      {markdownContent}
-                    </ReactMarkdown>
+                  <article className="prose prose-neutral max-w-none prose-headings:text-[var(--text-primary)] prose-a:text-[var(--primary)]">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{markdownContent}</ReactMarkdown>
                   </article>
                 )}
               </div>
             ) : (
-              <div className="bg-[var(--bg-subtle)] rounded-2xl border border-[var(--border-subtle)] p-12 text-center h-full flex flex-col items-center justify-center">
-                <Book className="text-[var(--text-muted)] mb-4" size={48} />
-                <h2 className="text-xl font-bold text-[var(--text-primary)] mb-2">Sélectionnez un article</h2>
-                <p className="text-[var(--text-muted)]">Choisissez un sujet dans le menu de gauche pour commencer votre lecture.</p>
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-bold text-[var(--text-primary)] tracking-tight">
+                    {searchResults
+                      ? `Résultats (${visibleArticles.length})`
+                      : categories.find((c) => c.id === activeCategory)?.name ?? 'Articles'}
+                  </h2>
+                  {searchResults && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      className="text-xs text-[var(--primary)] font-semibold hover:underline"
+                    >
+                      Réinitialiser
+                    </button>
+                  )}
+                </div>
+
+                {visibleArticles.length === 0 ? (
+                  <div className="card-premium p-12 text-center">
+                    <Book className="mx-auto mb-4 text-[var(--text-muted)]" size={40} />
+                    <p className="text-sm text-[var(--text-muted)]">
+                      Aucun article ne correspond à votre recherche.
+                    </p>
+                  </div>
+                ) : (
+                  <ul className="divide-y divide-[var(--border-subtle)] rounded-2xl overflow-hidden border border-[var(--border-subtle)] bg-white">
+                    {visibleArticles.map(([id, a], i) => (
+                      <li
+                        key={id}
+                        className="row-premium list-item-enter"
+                        style={{ animationDelay: `${i * 40}ms` }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => setSelectedArticle(id)}
+                          className="w-full flex items-center gap-3 pl-5 pr-4 py-3.5 text-left"
+                        >
+                          <span
+                            aria-hidden
+                            className="shrink-0 w-2 h-2 rounded-full"
+                            style={{
+                              background:
+                                'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
+                              boxShadow: '0 0 8px rgba(0,157,219,0.45)',
+                            }}
+                          />
+                          <span className="flex-1 text-sm font-medium text-[var(--text-primary)] truncate">
+                            {a.title}
+                          </span>
+                          {searchResults && (
+                            <Tag size="xs" variant="neutral">
+                              {categories.find((c) => c.id === a.category)?.name ?? a.category}
+                            </Tag>
+                          )}
+                          <ChevronRight
+                            size={16}
+                            className="text-[var(--text-muted)] shrink-0"
+                          />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             )}
           </div>
         </div>
       </div>
+
+      <style>{`
+        .help-cat-item {
+          background: linear-gradient(180deg, var(--bg-surface) 0%, var(--bg-subtle) 100%);
+          border: 1px solid var(--border-subtle);
+          color: var(--text-secondary);
+        }
+        .help-cat-item .help-cat-icon {
+          background: rgba(0,157,219,0.08);
+          border: 1px solid rgba(0,157,219,0.18);
+          color: var(--primary);
+        }
+        .help-cat-item:hover {
+          background: linear-gradient(90deg, rgba(0,157,219,0.10) 0%, rgba(217,110,39,0.04) 100%);
+          border-color: rgba(0,157,219,0.40);
+          color: var(--primary);
+          transform: translateX(2px);
+          box-shadow: 0 4px 14px -4px rgba(0,157,219,0.30);
+        }
+        .help-cat-item:hover .help-cat-icon {
+          background: linear-gradient(135deg, rgba(0,157,219,0.20) 0%, rgba(217,110,39,0.12) 100%);
+          border-color: rgba(0,157,219,0.45);
+          box-shadow: 0 0 12px rgba(0,157,219,0.35);
+        }
+        .help-cat-item.is-active {
+          background: linear-gradient(90deg, rgba(0,157,219,0.18) 0%, rgba(217,110,39,0.08) 100%);
+          border-color: rgba(0,157,219,0.55);
+          color: var(--primary);
+          box-shadow:
+            0 4px 16px -4px rgba(0,157,219,0.40),
+            0 0 24px -8px rgba(217,110,39,0.28);
+        }
+        .help-cat-item.is-active .help-cat-icon {
+          background: linear-gradient(135deg, #009DDB 0%, #D96E27 100%);
+          border-color: rgba(0,157,219,0.65);
+          color: #FFFFFF;
+          box-shadow: 0 0 14px rgba(0,157,219,0.55);
+        }
+        .help-cat-item:focus-visible {
+          outline: none;
+          box-shadow: 0 0 0 2px rgba(0,157,219,0.55), 0 0 14px rgba(217,110,39,0.30);
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .help-cat-item:hover { transform: none !important; }
+        }
+      `}</style>
     </PublicLayout>
   );
 }

@@ -11,6 +11,10 @@
 import { useState, useRef, useEffect } from 'react';
 import * as Popover from '@radix-ui/react-popover';
 import { Sparkles, Loader2, Wand2, Scissors, Briefcase, Smile, Check, Undo2 } from 'lucide-react';
+// Sprint 33 vague 33-1A — Icon primitive (stroke 1.75 unifié). Alias UIcon
+// pour éviter la collision avec la variable locale `Icon` (destructurée des
+// actions map plus bas).
+import { Icon as UIcon } from './Icon';
 import { aiGenerate, type AiAction } from '@/lib/api';
 import { useToast } from './Toast';
 import { cn } from '@/lib/cn';
@@ -87,10 +91,10 @@ export function AiSparkles({ value, onChange, leadId, clientId, className, disab
         <button
           type="button"
           onClick={handleUndo}
-          className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-full bg-[var(--bg-subtle)] text-[var(--text-secondary)] hover:bg-[var(--brand-tint)] hover:text-[var(--brand-primary)] transition-colors cursor-pointer animate-in fade-in-0 slide-in-from-right-2"
+          className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-full bg-[var(--bg-subtle)] text-[var(--text-secondary)] hover:bg-[var(--brand-tint)] hover:text-[var(--primary)] transition-colors cursor-pointer animate-in fade-in-0 slide-in-from-right-2"
           title="Annuler la transformation AI"
         >
-          <Undo2 size={11} /> Annuler
+          <UIcon as={Undo2} size={11} /> Annuler
         </button>
       )}
       <Popover.Root open={isOpen} onOpenChange={(o) => !isDisabled && setIsOpen(o)}>
@@ -100,7 +104,7 @@ export function AiSparkles({ value, onChange, leadId, clientId, className, disab
             disabled={isDisabled}
             className={cn(
               'inline-flex items-center justify-center w-7 h-7 rounded-full transition-all cursor-pointer',
-              'bg-gradient-to-br from-[var(--brand-primary)] to-[var(--accent-orange)] text-white',
+              'bg-gradient-to-br from-[var(--primary)] to-[var(--accent-orange)] text-white',
               'shadow-[0_2px_6px_oklch(0.7_0.15_220/0.3)] hover:shadow-[0_3px_10px_oklch(0.7_0.15_220/0.5)] hover:scale-105',
               'disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-[0_2px_6px_oklch(0.7_0.15_220/0.3)]',
               isLoading && 'animate-pulse'
@@ -108,7 +112,7 @@ export function AiSparkles({ value, onChange, leadId, clientId, className, disab
             title={isLoading ? 'L\'AI réfléchit...' : isDisabled && !value.trim() ? 'Écrivez du texte d\'abord' : 'Réécrire avec l\'AI'}
             aria-label="Réécrire avec l'AI"
           >
-            {isLoading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+            {isLoading ? <UIcon as={Loader2} size={14} className="animate-spin" /> : <UIcon as={Sparkles} size={14} />}
           </button>
         </Popover.Trigger>
         <Popover.Portal>
@@ -121,14 +125,14 @@ export function AiSparkles({ value, onChange, leadId, clientId, className, disab
             <div className="px-2 py-1.5 text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">
               Réécrire avec l'AI
             </div>
-            {ACTIONS.map(({ id, label, icon: Icon, description }) => (
+            {ACTIONS.map(({ id, label, icon: ActionIcon, description }) => (
               <button
                 key={id}
                 type="button"
                 onClick={() => void handleAction(id)}
                 className="w-full flex items-start gap-2.5 px-2 py-1.5 rounded-[var(--radius-sm)] text-left hover:bg-[var(--bg-subtle)] transition-colors cursor-pointer group"
               >
-                <Icon size={14} className="mt-0.5 text-[var(--brand-primary)] shrink-0" />
+                <UIcon as={ActionIcon} size={14} className="mt-0.5 text-[var(--primary)] shrink-0" />
                 <div className="flex-1 min-w-0">
                   <div className="text-xs font-medium text-[var(--text-primary)]">{label}</div>
                   <div className="text-[10px] text-[var(--text-muted)] truncate">{description}</div>
@@ -136,7 +140,7 @@ export function AiSparkles({ value, onChange, leadId, clientId, className, disab
               </button>
             ))}
             <div className="border-t border-[var(--border-subtle)] mt-1 px-2 py-1 text-[9px] text-[var(--text-muted)] flex items-center gap-1">
-              <Check size={10} /> Claude Haiku 4.5 — FR québécois
+              <UIcon as={Check} size={10} /> Claude Haiku 4.5 — FR québécois
             </div>
           </Popover.Content>
         </Popover.Portal>

@@ -1,11 +1,18 @@
 <!doctype html>
-<html lang="fr">
+<html lang="fr-CA">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1" />
+    <!-- Sprint 35 vague 35-1A — perf : empêcher iOS d'autodétecter les numéros de tel (re-layout coûteux) -->
+    <meta name="format-detection" content="telephone=no" />
     <title>Intralys CRM — Dashboard</title>
     <meta name="description" content="CRM tout-en-un pour PMEs francophones — Leads, Pipeline, Workflows, Rapports" />
     <meta name="theme-color" content="#009DDB" />
+
+    <!-- Favicon (Sprint 34 vague 34-1B — brand gradient cyan→orange) -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="alternate icon" href="/icons/icon-192.png" />
+    <link rel="mask-icon" href="/favicon.svg" color="#009DDB" />
 
     <!-- PWA -->
     <link rel="manifest" href="/manifest.webmanifest" />
@@ -15,19 +22,85 @@
     <meta name="apple-mobile-web-app-title" content="Intralys" />
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />
 
+    <!-- Open Graph / Facebook / LinkedIn (Sprint 34 vague 34-1B) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Intralys CRM" />
+    <meta property="og:title" content="Intralys CRM — CRM tout-en-un pour PMEs francophones" />
+    <meta property="og:description" content="Leads, Pipeline, Workflows, Rapports. Compliance Loi 25/CASL native, AI FR québécois, packs industrie 1-clic." />
+    <meta property="og:url" content="https://intralys.com/" />
+    <meta property="og:image" content="/og-image.svg" />
+    <meta property="og:image:type" content="image/svg+xml" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Intralys CRM — CRM tout-en-un pour PMEs francophones" />
+    <meta property="og:locale" content="fr_CA" />
+
+    <!-- Twitter Card (Sprint 34 vague 34-1B) -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Intralys CRM — CRM tout-en-un pour PMEs francophones" />
+    <meta name="twitter:description" content="Leads, Pipeline, Workflows, Rapports. Compliance Loi 25/CASL native, AI FR québécois, packs industrie 1-clic." />
+    <meta name="twitter:image" content="/og-image.svg" />
+    <meta name="twitter:image:alt" content="Intralys CRM — CRM tout-en-un pour PMEs francophones" />
+
     <!-- Preconnect -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <!-- Sprint 35 vague 35-1A — DNS prefetch API origin (same-origin via Workers
+         en prod — no-op si déjà connecté, gratuit comme hint). Si l'API passe
+         à un sous-domaine (api.intralys.com), remplacer par dns-prefetch + preconnect. -->
+    <link rel="dns-prefetch" href="https://intralys.com" />
+
+    <!-- Sprint 43 M1.3 — DNS prefetch Mapbox CDN (utilisé sur page Leads en vue map,
+         lazy-injected via script element runtime — le hint évite ~50-100ms latency
+         sur first interaction map view). -->
+    <link rel="dns-prefetch" href="https://api.mapbox.com" />
+
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <!-- Sprint 35 vague 35-1A — fetchpriority=high hint sur l'entry module
+         pour que le navigateur le prioritise vs les autres requests parallèles -->
+    <script type="module" src="/src/main.tsx" fetchpriority="high"></script>
     <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').catch(() => {});
-        });
-      }
+      // Sprint 23 wave 14 — SW kill switch en dev + force reload si SW v1 stale détecté.
+      // Sprint 44 M2.4 — bump v3 + bascule en non-destructif :
+      //   - En dev (localhost) : unregister TOUS les SW (HMR + cache zero)
+      //   - En prod : si SW actif → on laisse vivre (useSwUpdate gère les updates
+      //     proprement via registration.waiting + SKIP_WAITING handler côté SW v3+)
+      //   - En prod : si pas de SW → register `/sw.js`
+      (function () {
+        if (!('serviceWorker' in navigator)) return;
+        var host = window.location.hostname;
+        var isDev = host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.') || host.endsWith('.local');
+
+        if (isDev && navigator.serviceWorker.controller) {
+          // Dev only : tuer tout SW pour éviter cache stale + HMR cassé
+          Promise.all([
+            navigator.serviceWorker.getRegistrations().then(function (regs) {
+              return Promise.all(regs.map(function (r) { return r.unregister(); }));
+            }),
+            ('caches' in window) ? caches.keys().then(function (keys) {
+              return Promise.all(keys.map(function (k) { return caches.delete(k); }));
+            }) : Promise.resolve(),
+          ]).then(function () {
+            if (!sessionStorage.getItem('sw_purged')) {
+              sessionStorage.setItem('sw_purged', '1');
+              window.location.reload();
+            }
+          });
+          return;
+        }
+
+        // Prod : register `/sw.js` (idempotent — le browser détecte les diffs et
+        // installe une nouvelle version automatiquement, qui sera offerte via
+        // useSwUpdate côté React).
+        if (!isDev) {
+          window.addEventListener('load', function () {
+            navigator.serviceWorker.register('/sw.js').catch(function () {});
+          });
+        }
+      })();
     </script>
   </body>
 </html>

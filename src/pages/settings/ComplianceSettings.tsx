@@ -1,7 +1,18 @@
-import { useState, useEffect } from 'react';
+// ── ComplianceSettings — Sprint 23 W33 : KpiStrip + Textarea + useToast + Switch + row-premium
+import { useState, useEffect, useMemo } from 'react';
 import { apiFetch } from '@/lib/api';
-import { Input, Button } from '@/components/ui';
-import { Shield, Ban, Download } from 'lucide-react';
+import {
+  Card,
+  Button,
+  Textarea,
+  Switch,
+  Tag,
+  KpiStrip,
+  EmptyState,
+  useToast,
+  Icon,
+} from '@/components/ui';
+import { Shield, Ban, Download, Mail, Smartphone, FileCheck } from 'lucide-react';
 
 interface Unsubscribe {
   id: string;
@@ -13,6 +24,7 @@ interface Unsubscribe {
 }
 
 export function ComplianceSettings() {
+  const { success, error: toastError } = useToast();
   const [amfCert, setAmfCert] = useState('');
   const [amfRequired, setAmfRequired] = useState(false);
   const [unsubscribes, setUnsubscribes] = useState<Unsubscribe[]>([]);
@@ -23,19 +35,18 @@ export function ComplianceSettings() {
   useEffect(() => {
     // Load unsubscribes
     apiFetch<Unsubscribe[]>('/unsubscribes')
-      .then(res => {
+      .then((res) => {
         setUnsubscribes(res.data || []);
       })
       .finally(() => setIsLoading(false));
-      
+
     // Load compliance settings
-    apiFetch<any>('/settings/compliance')
-      .then(res => {
-        if (res.data) {
-          setAmfCert(res.data.amf_certificate || '');
-          setAmfRequired(res.data.amf_disclaimer_required === 1);
-        }
-      });
+    apiFetch<any>('/settings/compliance').then((res) => {
+      if (res.data) {
+        setAmfCert(res.data.amf_certificate || '');
+        setAmfRequired(res.data.amf_disclaimer_required === 1);
+      }
+    });
   }, []);
 
   const handleSaveAmf = async () => {
@@ -45,28 +56,37 @@ export function ComplianceSettings() {
         method: 'PATCH',
         body: JSON.stringify({
           amf_certificate: amfCert,
-          amf_disclaimer_required: amfRequired ? 1 : 0
-        })
+          amf_disclaimer_required: amfRequired ? 1 : 0,
+        }),
       });
-      // Afficher toast success
-    } catch (err) {
-      console.error(err);
+      success('Mentions légales enregistrées');
+    } catch (err: any) {
+      toastError(err?.message || 'Erreur lors de la sauvegarde');
     }
     setIsSaving(false);
   };
 
   const handleExportUnsubscribes = () => {
-    if (!unsubscribes) return;
-    const csvContent = "data:text/csv;charset=utf-8," 
-      + "Email,Phone,Channel,Date\n"
-      + unsubscribes.map(e => `${e.email},${e.phone},${e.channel},${e.unsubscribed_at}`).join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "unsubscribes.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    if (!unsubscribes || unsubscribes.length === 0) {
+      toastError('Aucune donnée à exporter');
+      return;
+    }
+    try {
+      const csvContent =
+        'data:text/csv;charset=utf-8,' +
+        'Email,Phone,Channel,Date\n' +
+        unsubscribes.map((e) => `${e.email},${e.phone},${e.channel},${e.unsubscribed_at}`).join('\n');
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement('a');
+      link.setAttribute('href', encodedUri);
+      link.setAttribute('download', 'unsubscribes.csv');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      success('Export CSV téléchargé');
+    } catch (err: any) {
+      toastError(err?.message || "Échec de l'export");
+    }
   };
 
   const timeAgo = (dateStr: string): string => {
@@ -80,90 +100,118 @@ export function ComplianceSettings() {
     return `Il y a ${diffD} jours`;
   };
 
+  const kpis = useMemo(() => {
+    const byEmail = unsubscribes.filter((u) => u.channel === 'email').length;
+    const bySms = unsubscribes.filter((u) => u.channel === 'sms').length;
+    return [
+      { label: 'Désabonnés total', value: unsubscribes.length, color: 'danger' as const, icon: <Ban size={12} /> },
+      { label: 'Email', value: byEmail, color: 'brand' as const, icon: <Mail size={12} /> },
+      { label: 'SMS', value: bySms, color: 'warning' as const, icon: <Smartphone size={12} /> },
+      { label: 'RGPD requests', value: 0, color: 'neutral' as const, icon: <FileCheck size={12} /> },
+    ];
+  }, [unsubscribes]);
+
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h2 className="text-xl font-bold flex items-center gap-2">
-          <Shield size={24} className="text-[var(--brand-primary)]" />
-          Conformité & Légal
-        </h2>
-        <p className="text-sm text-[var(--text-secondary)] mt-1">
-          Gérez vos listes de désabonnement (CASL) et vos mentions légales.
-        </p>
-      </div>
-
-      <div className="card p-6">
-        <h3 className="text-sm font-bold mb-4 flex items-center gap-2">
-          <Shield size={16} /> Mentions Légales
-        </h3>
-        <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <input 
-              type="checkbox" 
-              id="amf-req"
-              checked={amfRequired} 
-              onChange={(e: any) => setAmfRequired(e.target.checked)} 
-              className="rounded border-[var(--border-default)]"
-            />
-            <label htmlFor="amf-req" className="text-sm">Activer les mentions légales automatiques dans les emails</label>
-          </div>
-          {amfRequired && (
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-[var(--text-secondary)]">Texte de la mention légale (ex: Numéro de permis, AMF, etc.)</label>
-              <Input 
-                value={amfCert} 
-                onChange={(e: any) => setAmfCert(e.target.value)} 
-                placeholder="ex: 123456" 
-              />
-            </div>
-          )}
-          <Button onClick={handleSaveAmf} disabled={isSaving || (amfRequired && !amfCert)}>
-            {isSaving ? 'Enregistrement...' : 'Sauvegarder'}
-          </Button>
+      <header className="settings-page-header">
+        <div>
+          <h2 className="t-h2 flex items-center gap-2">
+            <Icon as={Shield} size="lg" className="text-[var(--primary)]" />
+            Conformité & légal
+          </h2>
+          <p className="t-caption text-[var(--gray-500)]">
+            Listes de désabonnement (Loi 25 / CASL) et mentions légales.
+          </p>
         </div>
-      </div>
+      </header>
 
-      <div className="card p-0 overflow-hidden">
-        <div className="p-4 border-b border-[var(--border-subtle)] flex items-center justify-between bg-[var(--bg-subtle)]">
-          <h3 className="text-sm font-bold flex items-center gap-2">
-            <Ban size={16} /> Liste de suppression (Opt-outs)
+      <KpiStrip items={kpis} />
+
+      <Card className="settings-card p-6">
+        <header className="settings-section-header">
+          <h3 className="t-h3 flex items-center gap-2">
+            <Shield size={16} className="text-[var(--primary)]" /> Mentions légales
           </h3>
-          <Button size="sm" variant="secondary" onClick={handleExportUnsubscribes} className="gap-2">
-            <Download size={14} /> Exporter
+          <p className="t-caption text-[var(--gray-500)]">
+            Insertion automatique dans les courriels sortants — AMF, RBQ, OACIQ.
+          </p>
+        </header>
+        <div className="settings-toggle-row">
+          <div className="settings-toggle-row__meta">
+            <p className="settings-toggle-row__title">Mentions légales automatiques</p>
+            <p className="settings-toggle-row__desc">
+              Active l'insertion auto dans les courriels sortants.
+            </p>
+          </div>
+          <Switch checked={amfRequired} onCheckedChange={setAmfRequired} variant="brand" />
+        </div>
+        {amfRequired && (
+          <div className="settings-form-row settings-form-row--full">
+            <label className="settings-label">
+              Texte de la mention légale
+            </label>
+            <Textarea
+              value={amfCert}
+              onChange={(e) => setAmfCert(e.target.value)}
+              placeholder="ex: 123456 — Cabinet enregistré auprès de l'AMF"
+              maxLength={500}
+              showCounter
+              className="h-[88px]"
+            />
+            <p className="settings-helper">Numéro de permis, AMF, RBQ, OACIQ, etc.</p>
+          </div>
+        )}
+        <div className="settings-actions">
+          <Button onClick={handleSaveAmf} disabled={isSaving || (amfRequired && !amfCert)} isLoading={isSaving}>
+            Enregistrer
           </Button>
         </div>
-        
+      </Card>
+
+      <Card className="settings-card p-0 overflow-hidden">
+        <header className="settings-section-header settings-section-header--inset settings-section-header--with-action">
+          <div>
+            <h3 className="t-h3 flex items-center gap-2">
+              <Icon as={Ban} size="md" className="text-[var(--danger)]" /> Liste de suppression (opt-outs)
+            </h3>
+            <p className="t-caption text-[var(--gray-500)]">Conformité Loi 25 / CASL.</p>
+          </div>
+          <Button variant="secondary" size="sm" onClick={handleExportUnsubscribes} leftIcon={<Icon as={Download} size="sm" />}>
+            Exporter CSV
+          </Button>
+        </header>
+
         {isLoading ? (
           <div className="p-8 text-center text-sm text-[var(--text-muted)]">Chargement...</div>
-        ) : unsubscribes?.length === 0 ? (
-          <div className="p-8 text-center text-sm text-[var(--text-muted)]">
-            Aucun contact désabonné.
-          </div>
+        ) : unsubscribes.length === 0 ? (
+          <EmptyState
+            variant="compact"
+            icon={<Ban size={28} />}
+            title="Aucun contact désabonné"
+            description="Les opt-outs apparaîtront ici (CASL / RGPD)."
+          />
         ) : (
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-[var(--border-subtle)] text-[var(--text-muted)] bg-[var(--bg-canvas)]">
-                <th className="py-2 px-4 font-medium">Contact</th>
-                <th className="py-2 px-4 font-medium">Canal</th>
-                <th className="py-2 px-4 font-medium">Date</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--border-subtle)]">
-              {unsubscribes?.map((unsub: any) => (
-                <tr key={unsub.id} className="hover:bg-[var(--bg-subtle)] transition-colors">
-                  <td className="py-2 px-4 font-medium">{unsub.email || unsub.phone}</td>
-                  <td className="py-2 px-4">
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[var(--danger-soft)] text-[var(--danger)] uppercase">
-                      {unsub.channel}
-                    </span>
-                  </td>
-                  <td className="py-2 px-4 text-[var(--text-secondary)]">{timeAgo(unsub.unsubscribed_at)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="p-4 space-y-2.5">
+            {unsubscribes.map((unsub, idx) => (
+              <div
+                key={unsub.id}
+                className="row-premium list-item-enter flex items-center gap-3 p-3 rounded-xl"
+                style={{ animationDelay: `${idx * 40}ms`, animationFillMode: 'both' }}
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-[var(--text-primary)] truncate">
+                    {unsub.email || unsub.phone}
+                  </p>
+                  <p className="text-[11px] text-[var(--text-muted)]">{timeAgo(unsub.unsubscribed_at)}</p>
+                </div>
+                <Tag variant={unsub.channel === 'sms' ? 'warning' : 'danger'} dot>
+                  {unsub.channel}
+                </Tag>
+              </div>
+            ))}
+          </div>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

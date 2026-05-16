@@ -1,7 +1,10 @@
 import { PublicLayout } from './PublicLayout';
 import { Link } from '@tanstack/react-router';
 import { Button } from '@/components/ui/Button';
-import { Check, Sparkles } from 'lucide-react';
+import { Tag } from '@/components/ui/Tag';
+import { KpiStrip } from '@/components/ui/KpiStrip';
+import { Check, Sparkles, Users, Zap, ShieldCheck } from 'lucide-react';
+import { Icon } from '@/components/ui';
 
 interface Plan {
   name: string;
@@ -49,7 +52,7 @@ export function PricingPage() {
               border: '1px solid rgba(0,157,219,0.2)',
               boxShadow: '0 4px 16px -4px rgba(0,157,219,0.15)',
             }}>
-            <Sparkles size={12} className="text-[var(--brand-primary)]" />
+            <Icon as={Sparkles} size={12} className="text-[var(--primary)]" />
             <span className="text-[var(--text-secondary)]">14 jours gratuits sur tous les plans</span>
           </div>
           <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight mb-4 leading-[1.05]" style={{ letterSpacing: '-0.03em' }}>
@@ -60,6 +63,17 @@ export function PricingPage() {
           </p>
         </div>
 
+        {/* KpiStrip header — preuve sociale (Sprint 23 wave 41) */}
+        <div className="max-w-5xl mx-auto mb-10">
+          <KpiStrip
+            items={[
+              { label: 'PMEs Québec', value: 220, color: 'brand', icon: <Icon as={Users} size={12} /> },
+              { label: 'Intégrations natives', value: 18, color: 'info', icon: <Icon as={Zap} size={12} /> },
+              { label: 'Conformité Loi 25', value: '100%', color: 'success', icon: <Icon as={ShieldCheck} size={12} /> },
+            ]}
+          />
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
           {PLANS.map(plan => (
             <PricingCard key={plan.name} plan={plan} />
@@ -68,7 +82,7 @@ export function PricingPage() {
 
         <div className="text-center mt-16">
           <p className="text-sm text-[var(--text-muted)]">
-            Besoin d'un plan custom (white-label, multi-marques) ? <Link to="/demo" className="text-[var(--brand-primary)] font-semibold hover:underline">Parlons-en →</Link>
+            Besoin d'un plan custom (white-label, multi-marques) ? <Link to="/demo" className="text-[var(--primary)] font-semibold hover:underline">Parlons-en →</Link>
           </p>
         </div>
       </div>
@@ -79,30 +93,34 @@ export function PricingPage() {
 function PricingCard({ plan }: { plan: Plan }) {
   const isPopular = plan.popular;
   return (
-    <div className="relative rounded-2xl p-8 flex flex-col transition-all duration-300 hover:-translate-y-1 overflow-hidden"
-      style={{
-        background: isPopular
-          ? 'linear-gradient(135deg, #FFFFFF 0%, #F0FAFE 50%, #E0F4FB 100%)'
-          : 'linear-gradient(135deg, #FFFFFF 0%, #FAFBFC 100%)',
-        border: isPopular ? '1.5px solid rgba(0,157,219,0.55)' : '1px solid var(--border-subtle)',
-        boxShadow: isPopular
-          ? '0 1px 2px rgba(0,157,219,0.08), 0 24px 64px -12px rgba(0,157,219,0.32), 0 0 40px -8px rgba(217,110,39,0.18)'
-          : '0 1px 2px rgba(15,23,42,0.04), 0 8px 24px -8px rgba(15,23,42,0.08)',
-      }}>
+    <div
+      className="card-premium p-8 flex flex-col"
+      style={
+        isPopular
+          ? {
+              background: 'linear-gradient(135deg, #FFFFFF 0%, #F0FAFE 50%, #E0F4FB 100%)',
+              borderColor: 'rgba(0,157,219,0.55)',
+              borderWidth: '1.5px',
+              boxShadow:
+                '0 1px 2px rgba(0,157,219,0.08), 0 24px 64px -12px rgba(0,157,219,0.32), 0 0 40px -8px rgba(217,110,39,0.18)',
+              // Permet au badge "LE PLUS POPULAIRE" de dépasser au-dessus de la card
+              overflow: 'visible',
+            }
+          : undefined
+      }
+    >
       {/* Orb décoratif sur plan populaire */}
       {isPopular && (
         <div aria-hidden className="absolute -top-12 -right-12 w-44 h-44 rounded-full pointer-events-none opacity-60"
           style={{ background: 'radial-gradient(circle, rgba(217,110,39,0.25) 0%, rgba(0,157,219,0.15) 50%, transparent 75%)', filter: 'blur(40px)' }} />
       )}
 
-      {/* Badge populaire */}
+      {/* Badge populaire — Tag brand solid (wave 41) */}
       {isPopular && (
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 px-3 py-1 rounded-full text-xs font-bold text-white tracking-wider"
-          style={{
-            background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
-            boxShadow: '0 4px 12px rgba(217,110,39,0.45)',
-          }}>
-          ★ LE PLUS POPULAIRE
+        <div className="absolute top-0 right-4 -translate-y-1/2 z-10">
+          <Tag variant="brand" solid size="sm" className="tracking-wider">
+            ★ LE PLUS POPULAIRE
+          </Tag>
         </div>
       )}
 
@@ -126,15 +144,15 @@ function PricingCard({ plan }: { plan: Plan }) {
         <ul className="space-y-3 text-sm text-[var(--text-secondary)]">
           {plan.features.map((f, i) => (
             <li key={i} className="flex items-start gap-3">
+              {/* Check disk gradient brand (wave 41) */}
               <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5"
                 style={{
-                  background: isPopular
-                    ? 'linear-gradient(135deg, rgba(0,157,219,0.15) 0%, rgba(217,110,39,0.12) 100%)'
-                    : 'rgba(55,202,55,0.12)',
+                  background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
+                  boxShadow: '0 2px 6px -1px rgba(0,157,219,0.40), 0 0 10px -2px rgba(217,110,39,0.28)',
                 }}>
-                <Check size={12} style={{ color: isPopular ? '#009DDB' : '#37CA37' }} strokeWidth={3} />
+                <Icon as={Check} size={12} className="text-white" strokeWidth={3} />
               </div>
-              {f}
+              <span className="leading-relaxed">{f}</span>
             </li>
           ))}
         </ul>

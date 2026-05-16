@@ -39,11 +39,10 @@ export function PageHero({ meta, title, highlight, description, actions, compact
   );
 
   return (
-    <div className="relative overflow-hidden rounded-2xl mb-4"
+    /* Sprint 25 vague 2B — surface-2 + shadow-brand-md */
+    <div className="relative overflow-hidden rounded-2xl mb-4 surface-2 shadow-brand-md"
       style={{
-        background: 'linear-gradient(135deg, #FFFFFF 0%, #FAFBFC 40%, #F0FAFE 100%)',
         border: '1px solid var(--border-subtle)',
-        boxShadow: '0 1px 2px rgba(15,23,42,0.04), 0 12px 40px -12px rgba(0,157,219,0.12)',
         padding: compact ? '1rem 1.25rem' : '1.5rem 1.75rem',
       }}>
       {/* Orb décoratif animé top-right */}
@@ -69,13 +68,14 @@ export function PageHero({ meta, title, highlight, description, actions, compact
       <div className="relative z-10 flex items-start justify-between gap-4 flex-wrap">
         <div className="min-w-0 flex-1">
           {meta && (
-            <p className="heading-premium mb-1.5">{meta}</p>
+            <p className="t-meta mb-2.5">{meta}</p>
           )}
-          <h1 className={compact ? 'text-xl font-bold tracking-tight leading-tight' : 'text-3xl font-bold tracking-tight leading-tight'}>
+          {/* Sprint 25 1B — title sur scale .t-h1 (40px) ou t-h2 compact (28px) */}
+          <h1 className={compact ? 't-h2 tracking-tight leading-tight' : 't-h1 tracking-tight leading-tight'}>
             {titleNode}
           </h1>
           {description && (
-            <p className="text-sm text-[var(--text-secondary)] mt-2 max-w-2xl leading-relaxed">{description}</p>
+            <p className="t-body text-[var(--text-secondary)] mt-2 max-w-2xl">{description}</p>
           )}
         </div>
         {actions && (

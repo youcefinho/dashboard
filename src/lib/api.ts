@@ -1,7 +1,13 @@
 // ── Client API — Helpers pour appeler le worker ─────────────
 
-import type { ApiResponse, Client, Lead, LeadDetail, DashboardStats, ActivityLogEntry, Message, EmailTemplate, Workflow, WorkflowStep, WorkflowEnrollment, Appointment, Task, Subtask, TaskComment, TaskTemplate, LeadNote, LeadScore, CustomFieldValue, Conversation, ConversationStatus, Pipeline, PipelineStage, CustomFieldDef, SmartList, Snippet } from './types';
+import type { ApiResponse, Client, Lead, LeadDetail, DashboardStats, ActivityLogEntry, Message, EmailTemplate, Workflow, WorkflowStep, WorkflowEnrollment, Appointment, Task, Subtask, TaskComment, TaskTemplate, LeadNote, LeadScore, CustomFieldValue, Conversation, ConversationStatus, Pipeline, PipelineStage, CustomFieldDef, SmartList, Snippet, Product, Order, Customer, ProductVariant, ProductCategory, ProductImage, InventoryRecord, PaymentInitResult, PaymentMethod, PaymentStatus, Shipment, ShipmentStatus, ShippingZone, ShippingRate, ShippingRateResult, ConsumerPolicy, ReturnRequest, Customer360, AbandonedCart, EcommerceRevenue, EcommerceCohorts, EcommerceLtv, EcommerceTopProducts, ProductRecoResult, CustomerChurnPrediction } from './types';
 import { Capacitor } from '@capacitor/core';
+import { MOCK_DASHBOARD_STATS, MOCK_CLIENTS, MOCK_LEADS } from './mockData';
+// ── Sprint 35 vague 35-2B — i18n des erreurs réseau critiques ──
+import { t } from './i18n';
+
+// Mode dev bypass — fallback mock data quand le worker n'est pas joignable
+const IS_DEV_BYPASS = import.meta.env.VITE_DEV_BYPASS_AUTH === 'true';
 
 // En natif (iOS/Android), les requêtes partent de capacitor://localhost
 // donc on doit utiliser une URL absolue vers le backend Cloudflare
@@ -40,30 +46,35 @@ export async function apiFetch<T>(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers,
-  });
+  try {
+    const response = await fetch(`${API_BASE}${path}`, {
+      ...options,
+      headers,
+    });
 
-  // Session expirée → nettoyer et rediriger
-  if (response.status === 401) {
-    clearToken();
-    window.location.href = '/login';
-    return { error: 'Session expirée' };
+    // Session expirée → nettoyer et rediriger
+    if (response.status === 401) {
+      clearToken();
+      window.location.href = '/login';
+      return { error: t('api.session_expired') };
+    }
+
+    // Rate limit
+    if (response.status === 429) {
+      return { error: t('api.rate_limit') };
+    }
+
+    const data = await response.json() as ApiResponse<T>;
+
+    if (!response.ok) {
+      return { error: data.error || `Erreur ${response.status}` };
+    }
+
+    return data;
+  } catch {
+    // Réseau indisponible (pas de worker en local) — retourner une erreur propre
+    return { error: t('api.unavailable') };
   }
-
-  // Rate limit
-  if (response.status === 429) {
-    return { error: 'Trop de tentatives. Réessayez dans 1 heure.' };
-  }
-
-  const data = await response.json() as ApiResponse<T>;
-
-  if (!response.ok) {
-    return { error: data.error || `Erreur ${response.status}` };
-  }
-
-  return data;
 }
 
 // ── Auth ────────────────────────────────────────────────────
@@ -157,8 +168,9 @@ export async function updateProfile(data: { name?: string; email_signature?: str
   });
 }
 
+// Sprint 46 M3.3 — extension channels (push + slack ajoutés)
 export interface NotificationPreference {
-  channel: 'email' | 'sms' | 'push' | 'in_app';
+  channel: 'email' | 'sms' | 'push' | 'in_app' | 'slack';
   event_type: string;
   enabled: 0 | 1;
 }
@@ -171,6 +183,26 @@ export async function updateNotificationPreference(channel: string, event_type: 
   return apiFetch<{ success: boolean }>('/auth/notifications', {
     method: 'PATCH',
     body: JSON.stringify({ channel, event_type, enabled })
+  });
+}
+
+// ── Sprint 46 M3.3 — Bulk PUT (matrix complète channels × events) ────────────
+// Endpoint additif : PATCH single par cell reste l'usage par défaut (toggle =
+// save immédiat). Le PUT batch permet reset/import/export presets en 1 RTT.
+export interface NotificationPreferencesMatrix {
+  preferences: Array<{
+    channel: NotificationPreference['channel'];
+    event_type: string;
+    enabled: boolean;
+  }>;
+}
+
+export async function setNotificationPreferences(
+  matrix: NotificationPreferencesMatrix,
+): Promise<ApiResponse<{ success: boolean; count: number }>> {
+  return apiFetch<{ success: boolean; count: number }>('/notifications/preferences', {
+    method: 'PUT',
+    body: JSON.stringify(matrix),
   });
 }
 
@@ -205,13 +237,22 @@ export async function generateBackupCodes(): Promise<ApiResponse<{ codes: string
 // ── Dashboard ───────────────────────────────────────────────
 
 export async function getDashboardStats(): Promise<ApiResponse<DashboardStats>> {
-  return apiFetch<DashboardStats>('/dashboard/stats');
+  const result = await apiFetch<DashboardStats>('/dashboard/stats');
+  // Fallback mock data en dev quand le worker n'est pas joignable
+  if (!result.data && IS_DEV_BYPASS) {
+    return { data: MOCK_DASHBOARD_STATS };
+  }
+  return result;
 }
 
 // ── Clients ─────────────────────────────────────────────────
 
 export async function getClients(): Promise<ApiResponse<Client[]>> {
-  return apiFetch<Client[]>('/clients');
+  const result = await apiFetch<Client[]>('/clients');
+  if (!result.data && IS_DEV_BYPASS) {
+    return { data: MOCK_CLIENTS };
+  }
+  return result;
 }
 
 export async function createClient(client: Partial<Client>): Promise<ApiResponse<{ id: string }>> {
@@ -219,6 +260,417 @@ export async function createClient(client: Partial<Client>): Promise<ApiResponse
     method: 'POST',
     body: JSON.stringify(client),
   });
+}
+
+// ── Modules (feature-flag par tenant) — Sprint E1 M2.1 ───────
+
+export type ModuleId = 'crm' | 'ecommerce';
+
+export interface ModulesState {
+  clientId: string | null;
+  active: ModuleId[];
+  available: ModuleId[];
+  locked: ModuleId[];
+}
+
+export async function getModules(): Promise<ApiResponse<ModulesState>> {
+  const result = await apiFetch<ModulesState>('/modules');
+  // Dev bypass / réseau absent : fallback CRM seul (e-commerce off)
+  if (!result.data && IS_DEV_BYPASS) {
+    return { data: { clientId: null, active: ['crm'], available: ['crm', 'ecommerce'], locked: ['crm'] } };
+  }
+  return result;
+}
+
+// ── E-commerce (module Boutique B2) — Sprint E1 M3 ───────────
+// Skeleton API frontend. Les pages /boutique* consomment ces helpers ;
+// elles affichent des placeholders honnêtes tant que les données sont vides.
+
+interface PagedResponse<T> extends ApiResponse<T[]> {
+  total?: number;
+}
+
+export async function getEcommerceProducts(params?: {
+  status?: string;
+  category_id?: string;
+  search?: string;
+  sort?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<PagedResponse<Product>> {
+  const sp = new URLSearchParams();
+  if (params?.status) sp.set('status', params.status);
+  if (params?.category_id) sp.set('category_id', params.category_id);
+  if (params?.search) sp.set('search', params.search);
+  if (params?.sort) sp.set('sort', params.sort);
+  if (params?.limit != null) sp.set('limit', String(params.limit));
+  if (params?.offset != null) sp.set('offset', String(params.offset));
+  const qs = sp.toString();
+  return apiFetch<Product[]>(`/ecommerce/products${qs ? `?${qs}` : ''}`);
+}
+
+// ── E3 orders — Sprint E3 M1 ──────────────────────────────────────────────
+// Helpers commandes (gated requireModule + multi-tenant côté worker).
+
+export interface CreateOrderPayload {
+  customer_id?: string | null;
+  email: string;
+  items: Array<{ variant_id: string; quantity: number }>;
+  shipping_cents?: number;
+  discount_cents?: number;
+  note?: string;
+  source?: string;
+}
+
+export interface CreateOrderResult {
+  id: string;
+  order_number: string;
+  subtotal_cents: number;
+  tps_cents: number;
+  tvq_cents: number;
+  total_cents: number;
+}
+
+export async function getEcommerceOrders(params?: {
+  status?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<PagedResponse<Order>> {
+  const sp = new URLSearchParams();
+  if (params?.status) sp.set('status', params.status);
+  if (params?.limit != null) sp.set('limit', String(params.limit));
+  if (params?.offset != null) sp.set('offset', String(params.offset));
+  const qs = sp.toString();
+  return apiFetch<Order[]>(`/ecommerce/orders${qs ? `?${qs}` : ''}`);
+}
+
+export async function getEcommerceOrder(id: string): Promise<ApiResponse<Order>> {
+  return apiFetch<Order>(`/ecommerce/orders/${id}`);
+}
+
+export async function createEcommerceOrder(
+  payload: CreateOrderPayload,
+): Promise<ApiResponse<CreateOrderResult>> {
+  return apiFetch<CreateOrderResult>('/ecommerce/orders', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function createManualOrder(
+  payload: CreateOrderPayload,
+): Promise<ApiResponse<CreateOrderResult>> {
+  return apiFetch<CreateOrderResult>('/ecommerce/orders/manual', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateOrderStatus(
+  id: string,
+  status: string,
+): Promise<ApiResponse<{ id: string; status: string }>> {
+  return apiFetch<{ id: string; status: string }>(`/ecommerce/orders/${id}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  });
+}
+
+export async function getEcommerceCustomers(): Promise<PagedResponse<Customer>> {
+  return apiFetch<Customer[]>('/ecommerce/customers');
+}
+
+export async function getEcommerceCustomer(id: string): Promise<ApiResponse<Customer>> {
+  return apiFetch<Customer>(`/ecommerce/customers/${id}`);
+}
+
+// ── E3 cart — Sprint E3 M2 ────────────────────────────────────────────────
+// Helpers panier / conversion / facture (gated requireModule + multi-tenant
+// côté worker). Bloc DISTINCT du bloc « E3 orders » M1 ci-dessus (append-only).
+// createManualOrder est déjà fourni par M1 (bloc E3 orders) — non dupliqué ici.
+
+export interface CartItem {
+  id: string;
+  variant_id: string;
+  quantity: number;
+  product_title: string;
+  variant_title: string | null;
+  sku: string | null;
+  unit_price_cents: number;
+  total_cents: number;
+}
+
+export interface Cart {
+  id: string;
+  token: string;
+  status: string;
+  customer_id: string | null;
+  items: CartItem[];
+  subtotal_cents: number;
+  preview_tps_cents: number;
+  preview_tvq_cents: number;
+  preview_total_cents: number;
+}
+
+export async function getCart(params: {
+  customer_id?: string;
+  token?: string;
+}): Promise<ApiResponse<Cart>> {
+  const sp = new URLSearchParams();
+  if (params.customer_id) sp.set('customer_id', params.customer_id);
+  if (params.token) sp.set('token', params.token);
+  return apiFetch<Cart>(`/ecommerce/cart?${sp.toString()}`);
+}
+
+export async function addCartItem(payload: {
+  variant_id: string;
+  quantity: number;
+  customer_id?: string;
+  token?: string;
+}): Promise<ApiResponse<Cart>> {
+  return apiFetch<Cart>('/ecommerce/cart/items', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateCartItem(
+  itemId: string,
+  quantity: number,
+): Promise<ApiResponse<Cart>> {
+  return apiFetch<Cart>(`/ecommerce/cart/items/${itemId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ quantity }),
+  });
+}
+
+export async function deleteCartItem(itemId: string): Promise<ApiResponse<Cart>> {
+  return apiFetch<Cart>(`/ecommerce/cart/items/${itemId}`, { method: 'DELETE' });
+}
+
+export async function convertCart(
+  cartId: string,
+  payload: {
+    email?: string;
+    customer_id?: string;
+    shipping_cents?: number;
+    discount_cents?: number;
+    note?: string;
+  },
+): Promise<ApiResponse<{ order_id: string; order_number: string; total_cents: number }>> {
+  return apiFetch<{ order_id: string; order_number: string; total_cents: number }>(
+    `/ecommerce/cart/${cartId}/convert`,
+    { method: 'POST', body: JSON.stringify(payload) },
+  );
+}
+
+export async function getCustomerOrders(
+  customerId: string,
+): Promise<PagedResponse<Order>> {
+  return apiFetch<Order[]>(`/ecommerce/customers/${customerId}/orders`);
+}
+
+export interface OrderInvoiceData {
+  order: Record<string, unknown>;
+  items: Array<{
+    product_title: string;
+    variant_title: string;
+    sku: string;
+    unit_price_cents: number;
+    quantity: number;
+    total_cents: number;
+    tax_cents: number;
+  }>;
+  totals: {
+    subtotal_cents: number;
+    tps_cents: number;
+    tvq_cents: number;
+    shipping_cents: number;
+    discount_cents: number;
+    total_cents: number;
+  };
+  client: {
+    name: string | null;
+    email: string | null;
+    gst_number: string | null;
+    qst_number: string | null;
+    tax_note: string;
+  };
+  customer: Record<string, unknown> | null;
+}
+
+export async function getOrderInvoice(
+  orderId: string,
+): Promise<ApiResponse<OrderInvoiceData>> {
+  return apiFetch<OrderInvoiceData>(`/ecommerce/orders/${orderId}/invoice`);
+}
+
+/** Customer boutique réconcilié à un lead (ou null si aucun / module off). */
+export async function getLinkedCustomerForLead(
+  leadId: string,
+): Promise<ApiResponse<{ id: string; email: string; first_name: string; last_name: string } | null>> {
+  return apiFetch<{ id: string; email: string; first_name: string; last_name: string } | null>(
+    `/leads/${leadId}/linked-customer`,
+  );
+}
+
+export async function patchModule(
+  module: ModuleId,
+  enabled: boolean,
+): Promise<ApiResponse<{ clientId: string; active: ModuleId[] }>> {
+  return apiFetch<{ clientId: string; active: ModuleId[] }>('/modules', {
+    method: 'PATCH',
+    body: JSON.stringify({ module, enabled }),
+  });
+}
+
+// ── E-commerce catalogue (produits / variantes / catégories / stock) — Sprint E2 M3 ──
+// Frontend helpers vers les endpoints M1/M2 (gated requireModule + multi-tenant côté worker).
+
+export interface LowStockRow {
+  variant_id: string;
+  quantity: number;
+  reserved: number;
+  available: number;
+  low_stock_threshold: number;
+  location: string | null;
+  sku: string | null;
+  variant_title: string;
+  product_id: string;
+  product_title: string;
+}
+
+export async function getEcommerceProduct(id: string): Promise<ApiResponse<Product>> {
+  return apiFetch<Product>(`/ecommerce/products/${id}`);
+}
+
+export async function createEcommerceProduct(
+  body: Partial<Product>,
+): Promise<ApiResponse<{ id: string; slug?: string }>> {
+  return apiFetch<{ id: string; slug?: string }>('/ecommerce/products', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+export async function updateEcommerceProduct(
+  id: string, body: Partial<Product>,
+): Promise<ApiResponse<{ id: string }>> {
+  return apiFetch<{ id: string }>(`/ecommerce/products/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  });
+}
+
+export async function deleteEcommerceProduct(id: string): Promise<ApiResponse<unknown>> {
+  return apiFetch(`/ecommerce/products/${id}`, { method: 'DELETE' });
+}
+
+export async function getEcommerceVariants(
+  productId: string,
+): Promise<ApiResponse<ProductVariant[]>> {
+  return apiFetch<ProductVariant[]>(`/ecommerce/products/${productId}/variants`);
+}
+
+export async function createEcommerceVariant(
+  productId: string, body: Partial<ProductVariant>,
+): Promise<ApiResponse<{ id: string; success?: boolean }>> {
+  return apiFetch<{ id: string; success?: boolean }>(
+    `/ecommerce/products/${productId}/variants`,
+    { method: 'POST', body: JSON.stringify(body) },
+  );
+}
+
+export async function updateEcommerceVariant(
+  productId: string, variantId: string, body: Partial<ProductVariant>,
+): Promise<ApiResponse<{ id: string }>> {
+  return apiFetch<{ id: string }>(
+    `/ecommerce/products/${productId}/variants/${variantId}`,
+    { method: 'PATCH', body: JSON.stringify(body) },
+  );
+}
+
+export async function deleteEcommerceVariant(
+  productId: string, variantId: string,
+): Promise<ApiResponse<unknown>> {
+  return apiFetch(
+    `/ecommerce/products/${productId}/variants/${variantId}`,
+    { method: 'DELETE' },
+  );
+}
+
+export async function getEcommerceCategories(): Promise<ApiResponse<ProductCategory[]>> {
+  return apiFetch<ProductCategory[]>('/ecommerce/categories');
+}
+
+export async function createEcommerceCategory(
+  body: Partial<ProductCategory>,
+): Promise<ApiResponse<{ id: string }>> {
+  return apiFetch<{ id: string }>('/ecommerce/categories', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+export async function updateEcommerceCategory(
+  id: string, body: Partial<ProductCategory>,
+): Promise<ApiResponse<{ id: string }>> {
+  return apiFetch<{ id: string }>(`/ecommerce/categories/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  });
+}
+
+export async function deleteEcommerceCategory(id: string): Promise<ApiResponse<unknown>> {
+  return apiFetch(`/ecommerce/categories/${id}`, { method: 'DELETE' });
+}
+
+export async function setProductCategories(
+  productId: string, categoryIds: string[],
+): Promise<ApiResponse<unknown>> {
+  return apiFetch(`/ecommerce/products/${productId}/categories`, {
+    method: 'PUT',
+    body: JSON.stringify({ category_ids: categoryIds }),
+  });
+}
+
+export async function addProductImage(
+  productId: string, body: Partial<ProductImage>,
+): Promise<ApiResponse<{ id: string }>> {
+  return apiFetch<{ id: string }>(`/ecommerce/products/${productId}/images`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+export async function setPrimaryProductImage(
+  productId: string, imageId: string,
+): Promise<ApiResponse<unknown>> {
+  return apiFetch(
+    `/ecommerce/products/${productId}/images/${imageId}/primary`,
+    { method: 'PUT' },
+  );
+}
+
+export async function getVariantInventory(
+  variantId: string,
+): Promise<ApiResponse<InventoryRecord>> {
+  return apiFetch<InventoryRecord>(`/ecommerce/variants/${variantId}/inventory`);
+}
+
+export async function setVariantInventory(
+  variantId: string,
+  body: Partial<Pick<InventoryRecord,
+    'quantity' | 'low_stock_threshold' | 'track_inventory' | 'allow_backorder' | 'location'>>,
+): Promise<ApiResponse<InventoryRecord>> {
+  return apiFetch<InventoryRecord>(
+    `/ecommerce/variants/${variantId}/inventory`,
+    { method: 'PUT', body: JSON.stringify(body) },
+  );
+}
+
+export async function getLowStock(): Promise<PagedResponse<LowStockRow>> {
+  return apiFetch<LowStockRow[]>('/ecommerce/inventory/low-stock');
 }
 
 // ── Leads ───────────────────────────────────────────────────
@@ -239,7 +691,20 @@ export async function getLeads(params?: {
   if (params?.tag) searchParams.set('tag', params.tag);
   if (params?.sort) searchParams.set('sort', params.sort);
   const qs = searchParams.toString();
-  return apiFetch<Lead[]>(`/leads${qs ? `?${qs}` : ''}`);
+  const result = await apiFetch<Lead[]>(`/leads${qs ? `?${qs}` : ''}`);
+  // Fallback mock data en dev quand le worker n'est pas joignable
+  if (!result.data && IS_DEV_BYPASS) {
+    let filtered = [...MOCK_LEADS];
+    if (params?.status) filtered = filtered.filter(l => l.status === params.status);
+    if (params?.source) filtered = filtered.filter(l => l.source === params.source);
+    if (params?.client_id) filtered = filtered.filter(l => l.client_id === params.client_id);
+    if (params?.search) {
+      const q = params.search.toLowerCase();
+      filtered = filtered.filter(l => l.name.toLowerCase().includes(q) || l.email.toLowerCase().includes(q));
+    }
+    return { data: filtered };
+  }
+  return result;
 }
 
 export async function getClientLeads(clientId: string, params?: {
@@ -1651,4 +2116,753 @@ export async function aiSuggestWorkflowEnriched(prompt: string, clientId?: strin
     method: 'POST',
     body: JSON.stringify({ prompt, client_id: clientId }),
   });
+}
+
+// ── Sprint 46 M1.3 — Dashboards builder ─────────────────────
+
+export interface DashboardRecord {
+  id: number;
+  user_id: string;
+  name: string;
+  config: { widgets: any[]; cols?: number } | null;
+  share_token: string | null;
+  created_at: number;
+  updated_at: number;
+}
+
+export async function getDashboards(): Promise<ApiResponse<DashboardRecord[]>> {
+  return apiFetch<DashboardRecord[]>('/dashboards');
+}
+
+export async function getDashboard(id: number | string): Promise<ApiResponse<DashboardRecord>> {
+  return apiFetch<DashboardRecord>(`/dashboards/${id}`);
+}
+
+export async function createDashboard(payload: { name: string; config: any }): Promise<ApiResponse<DashboardRecord>> {
+  return apiFetch<DashboardRecord>('/dashboards', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateDashboard(id: number | string, payload: Partial<{ name: string; config: any }>): Promise<ApiResponse<{ success: boolean }>> {
+  return apiFetch<{ success: boolean }>(`/dashboards/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteDashboard(id: number | string): Promise<ApiResponse<{ success: boolean }>> {
+  return apiFetch<{ success: boolean }>(`/dashboards/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function shareDashboard(id: number | string): Promise<ApiResponse<{ share_token: string; url: string }>> {
+  return apiFetch<{ share_token: string; url: string }>(`/dashboards/${id}/share`, {
+    method: 'POST',
+  });
+}
+
+export async function getSharedDashboard(token: string): Promise<ApiResponse<{ id: number; name: string; config: any; updated_at: number }>> {
+  return apiFetch<{ id: number; name: string; config: any; updated_at: number }>(`/dashboards/shared/${token}`);
+}
+
+// ── E-R region — Sprint E-R M3 (config régionale boutique) ──────────────────
+// Bloc DISTINCT des blocs « E3 orders » / « E3 cart » (append-only, jamais
+// mélangé). Le contrat (GET/PUT /api/ecommerce/region) est défini par M2 côté
+// worker ; les types canoniques RegionConfig/TaxRegime/SupportedCurrency sont
+// la propriété de M2 (types.ts). On code contre le contrat partagé : ces
+// alias locaux restent compatibles si/quand M2 réexporte depuis types.ts.
+export type SupportedCurrency = 'CAD' | 'EUR' | 'DZD';
+export type TaxRegime = 'qc' | 'eu' | 'dz' | 'exempt';
+
+export interface RegionConfig {
+  region: string;             // 'QC' | 'EU' | 'DZ'
+  country: string;            // code ISO ('CA', 'FR', 'DZ', …)
+  currency: SupportedCurrency;
+  tax_regime: TaxRegime;
+  legal_flags: {
+    loi25?: boolean;
+    rgpd?: boolean;
+    dz_conso?: boolean;
+  };
+}
+
+export async function getEcommerceRegion(): Promise<ApiResponse<RegionConfig>> {
+  return apiFetch<RegionConfig>('/ecommerce/region');
+}
+
+export async function updateEcommerceRegion(
+  config: RegionConfig,
+): Promise<ApiResponse<RegionConfig>> {
+  return apiFetch<RegionConfig>('/ecommerce/region', {
+    method: 'PUT',
+    body: JSON.stringify(config),
+  });
+}
+
+// ── E4 payments — Sprint E4 M3 (paiement multi-provider e-commerce) ──────────
+// ⚠️ ZONE RÉGULÉE — paiement marchand B2. Bloc DISTINCT des blocs « E3 orders »
+// / « E3 cart » / « E-R region » (append-only, jamais mélangé). Contrat FIGÉ
+// M1 : seul l'endpoint d'INIT est exposé côté worker
+// (POST /api/ecommerce/orders/:id/payment). M1 N'EXPOSE PAS d'endpoint de
+// configuration provider (lecture/écriture de payment_provider_config) : la
+// page Réglages affiche donc l'état documenté du contrat (sandbox, flag live
+// défaut OFF) en attendant cet endpoint (TODO E4+). On ne devine/forge AUCUNE
+// route worker (file-ownership M3 strict).
+
+/**
+ * Initie le paiement d'une commande (contrat figé M1).
+ * POST /api/ecommerce/orders/:id/payment  body { method }
+ *   - Si `redirect_url` présent → l'UI redirige vers le checkout HÉBERGÉ du
+ *     provider (aucune saisie carte dans notre UI — PCI).
+ *   - Si COD → status 'pending_cod' (la commande reste impayée, encaissement
+ *     hors-ligne à la livraison).
+ * Idempotent côté worker (clé déterministe order+method+montant).
+ */
+export async function initOrderPayment(
+  orderId: string,
+  method: PaymentMethod | string,
+): Promise<ApiResponse<PaymentInitResult>> {
+  return apiFetch<PaymentInitResult>(
+    `/ecommerce/orders/${orderId}/payment`,
+    { method: 'POST', body: JSON.stringify({ method }) },
+  );
+}
+
+/**
+ * Configuration provider de paiement exposée à la page Réglages.
+ *
+ * ⚠️ M1 n'expose PAS encore d'endpoint GET/PUT pour `payment_provider_config`.
+ * Pour respecter le file-ownership M3 (interdit de toucher worker/), on NE
+ * forge AUCUNE route. `getPaymentConfig` renvoie donc l'état documenté du
+ * contrat (mode sandbox, live OFF par défaut — flag de sûreté serveur), et
+ * `updatePaymentConfig` est volontairement indisponible côté serveur tant que
+ * l'endpoint n'est pas livré (TODO E4+) : l'UI doit le présenter comme
+ * « configuré côté serveur » (clés = bindings serveur, jamais saisies ici).
+ */
+export interface PaymentProviderState {
+  provider: 'stripe' | 'cod' | 'dz_gateway';
+  /** Activé pour ce tenant (présentation — défaut piloté serveur). */
+  enabled: boolean;
+  /** 'test' = sandbox (défaut sûr) · 'live' = réel (revue conformité requise). */
+  mode: 'test' | 'live';
+}
+
+export interface PaymentConfigState {
+  /** ⚠️ Flag de sûreté serveur : false = sandbox (défaut). Lecture seule UI
+   *  tant que l'endpoint de config M1 n'est pas livré. */
+  payments_live_enabled: boolean;
+  providers: PaymentProviderState[];
+  /** true tant que M1 n'expose pas l'endpoint config (UI = lecture + TODO). */
+  read_only: boolean;
+}
+
+/**
+ * État de config paiement pour la page Réglages. Pas d'appel réseau : reflète
+ * le contrat M1 documenté (sandbox / live OFF par défaut). À remplacer par un
+ * GET réel quand M1 exposera l'endpoint (TODO E4+).
+ */
+export async function getPaymentConfig(): Promise<ApiResponse<PaymentConfigState>> {
+  return Promise.resolve({
+    data: {
+      payments_live_enabled: false, // défaut sûr — aligné worker (défaut 0)
+      read_only: true,
+      providers: [
+        { provider: 'stripe', enabled: true, mode: 'test' },
+        { provider: 'cod', enabled: true, mode: 'test' },
+        { provider: 'dz_gateway', enabled: true, mode: 'test' },
+      ],
+    },
+  });
+}
+
+/**
+ * Mise à jour de la config paiement. ⚠️ Indisponible : M1 n'expose pas
+ * l'endpoint (file-ownership M3 interdit de toucher worker/). On renvoie une
+ * erreur explicite plutôt que de forger une route. TODO E4+.
+ */
+export async function updatePaymentConfig(
+  _next: Partial<PaymentConfigState>,
+): Promise<ApiResponse<PaymentConfigState>> {
+  return Promise.resolve({
+    error:
+      'La configuration des paiements se fait côté serveur (revue conformité requise).',
+  });
+}
+
+/** Statut paiement → libellé i18n (clé). Aligné PaymentStatus figé. */
+export function paymentStatusKey(s?: PaymentStatus | string): string {
+  switch (s) {
+    case 'pending': return 'shop.payment.st_pending';
+    case 'pending_cod': return 'shop.payment.st_pending_cod';
+    case 'authorized': return 'shop.payment.st_authorized';
+    case 'paid': return 'shop.payment.st_paid';
+    case 'failed': return 'shop.payment.st_failed';
+    default: return 'shop.payment.st_unknown';
+  }
+}
+
+// ── E5 M1 shipments ───────────────────────────────────────────────────────
+// Helpers expéditions (gated requireModule + multi-tenant côté worker).
+// Bloc DISTINCT des blocs E3/E-R/E4 ci-dessus (append-only). L'expédition est
+// une trace pure : aucun effet stock client-side, fulfillment_status recalculé
+// par le worker.
+
+export interface CreateShipmentPayload {
+  carrier?: string;
+  tracking_number?: string;
+  tracking_url?: string;
+  items: Array<{ order_item_id: string; quantity: number }>;
+  note?: string;
+}
+
+export async function getOrderShipments(
+  orderId: string,
+): Promise<ApiResponse<Shipment[]>> {
+  return apiFetch<Shipment[]>(`/ecommerce/orders/${orderId}/shipments`);
+}
+
+export async function createShipment(
+  orderId: string,
+  payload: CreateShipmentPayload,
+): Promise<ApiResponse<Shipment>> {
+  return apiFetch<Shipment>(`/ecommerce/orders/${orderId}/shipments`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getShipment(
+  shipmentId: string,
+): Promise<ApiResponse<Shipment>> {
+  return apiFetch<Shipment>(`/ecommerce/shipments/${shipmentId}`);
+}
+
+export async function updateShipmentStatus(
+  shipmentId: string,
+  status: ShipmentStatus,
+): Promise<ApiResponse<{ id: string; status: ShipmentStatus }>> {
+  return apiFetch<{ id: string; status: ShipmentStatus }>(
+    `/ecommerce/shipments/${shipmentId}/status`,
+    { method: 'PATCH', body: JSON.stringify({ status }) },
+  );
+}
+
+/** Statut expédition → libellé i18n (clé). Aligné ShipmentStatus figé. */
+export function shipmentStatusKey(s?: ShipmentStatus | string): string {
+  switch (s) {
+    case 'preparing': return 'shop.shipment.st_preparing';
+    case 'shipped': return 'shop.shipment.st_shipped';
+    case 'in_transit': return 'shop.shipment.st_in_transit';
+    case 'delivered': return 'shop.shipment.st_delivered';
+    case 'failed': return 'shop.shipment.st_failed';
+    default: return 'shop.shipment.st_unknown';
+  }
+}
+
+// ── E5 M2 zones ───────────────────────────────────────────────────────────
+// Helpers client zones/tarifs d'expédition + résolution region-aware. Bloc
+// DISTINCT des blocs E3/E-R/E4/E5-M1 ci-dessus (append-only, jamais mélangé).
+// Mutations gated admin côté worker (ecommerce-shipping-zones). Types
+// canoniques M1 (types.ts) — IMPORTÉS, jamais redéclarés ici.
+
+export interface ShippingZonePayload {
+  name: string;
+  countries: string[];
+}
+
+export interface ShippingRatePayload {
+  name: string;
+  price_cents: number;
+  min_subtotal_cents?: number | null;
+  max_subtotal_cents?: number | null;
+}
+
+export interface ResolveShippingPayload {
+  country?: string | null;
+  weight_grams?: number | null;
+  subtotal_cents?: number | null;
+  currency?: string | null;
+}
+
+export async function listShippingZones(): Promise<ApiResponse<ShippingZone[]>> {
+  return apiFetch<ShippingZone[]>('/ecommerce/shipping/zones');
+}
+
+export async function createShippingZone(
+  payload: ShippingZonePayload,
+): Promise<ApiResponse<ShippingZone>> {
+  return apiFetch<ShippingZone>('/ecommerce/shipping/zones', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateShippingZone(
+  zoneId: string,
+  payload: Partial<ShippingZonePayload>,
+): Promise<ApiResponse<ShippingZone>> {
+  return apiFetch<ShippingZone>(`/ecommerce/shipping/zones/${zoneId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteShippingZone(
+  zoneId: string,
+): Promise<ApiResponse<{ id: string; deleted: boolean }>> {
+  return apiFetch<{ id: string; deleted: boolean }>(
+    `/ecommerce/shipping/zones/${zoneId}`,
+    { method: 'DELETE' },
+  );
+}
+
+export async function listShippingRates(
+  zoneId: string,
+): Promise<ApiResponse<ShippingRate[]>> {
+  return apiFetch<ShippingRate[]>(`/ecommerce/shipping/zones/${zoneId}/rates`);
+}
+
+export async function createShippingRate(
+  zoneId: string,
+  payload: ShippingRatePayload,
+): Promise<ApiResponse<ShippingRate>> {
+  return apiFetch<ShippingRate>(`/ecommerce/shipping/zones/${zoneId}/rates`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateShippingRate(
+  rateId: string,
+  payload: Partial<ShippingRatePayload>,
+): Promise<ApiResponse<ShippingRate>> {
+  return apiFetch<ShippingRate>(`/ecommerce/shipping/rates/${rateId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteShippingRate(
+  rateId: string,
+): Promise<ApiResponse<{ id: string; deleted: boolean }>> {
+  return apiFetch<{ id: string; deleted: boolean }>(
+    `/ecommerce/shipping/rates/${rateId}`,
+    { method: 'DELETE' },
+  );
+}
+
+export async function resolveShippingRateApi(
+  payload: ResolveShippingPayload,
+): Promise<ApiResponse<ShippingRateResult>> {
+  return apiFetch<ShippingRateResult>('/ecommerce/shipping/resolve', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+// ── E5 M3 ui ──────────────────────────────────────────────────────────────
+// Helpers UI-only fulfillment (ShipmentPanel / Commandes). Bloc DISTINCT des
+// blocs E3/E-R/E4/E5-M1/E5-M2 ci-dessus (append-only). Consomme les helpers
+// M1 (shipments) et M2 (zones/tarifs) déjà publiés — n'en redéclare aucun.
+
+/** Statut fulfillment commande → libellé i18n (clé). Aligné E1 (intouché). */
+export function fulfillmentStatusKey(s?: string): string {
+  switch (s) {
+    case 'unfulfilled': return 'shop.order.ful_unfulfilled';
+    case 'partial': return 'shop.order.ful_partial';
+    case 'fulfilled': return 'shop.order.ful_fulfilled';
+    default: return 'shop.order.ful_unfulfilled';
+  }
+}
+
+// ── E6 M1 refunds ──────────────────────────────────────────────────────────
+// ⚠️ ZONE RÉGULÉE — remboursement marchand B2. Bloc DISTINCT des blocs E3/E-R/
+// E4/E5 ci-dessus (append-only, jamais mélangé). Contrat FIGÉ M1 : endpoints
+// worker câblés par M2 (POST /ecommerce/orders/:id/refund + GET .../refunds).
+// Inoffensif tant que payments_live_enabled=0 (Stripe forcé sk_test_ serveur).
+// On ne devine/forge AUCUNE autre route (file-ownership strict).
+
+/** Remboursement (vue client — réfs opaques uniquement, aucune donnée carte). */
+export interface RefundRecord {
+  id: string;
+  order_id: string;
+  payment_id: string;
+  amount_cents: number;
+  currency: string;
+  status: 'pending' | 'succeeded' | 'failed' | string;
+  provider_ref: string | null;
+  reason: string | null;
+  restocked: boolean;
+  created_at: string;
+}
+
+/**
+ * Crée un remboursement (total ou partiel) pour une commande (contrat figé M1).
+ * POST /api/ecommerce/orders/:id/refund
+ *   body { amount_cents?, reason?, restock_items?: string[] }
+ *   - `amount_cents` omis → remboursement TOTAL du solde remboursable restant.
+ *   - `restock_items` → variantes à remettre en stock (idempotent, anti double).
+ * Idempotent côté worker (clé déterministe refund:<order>:<amount>:<seq>).
+ */
+export async function createOrderRefund(
+  orderId: string,
+  payload: { amount_cents?: number; reason?: string; restock_items?: string[] } = {},
+): Promise<ApiResponse<RefundRecord>> {
+  return apiFetch<RefundRecord>(
+    `/ecommerce/orders/${orderId}/refund`,
+    { method: 'POST', body: JSON.stringify(payload) },
+  );
+}
+
+/** Liste les remboursements d'une commande (récents d'abord). */
+export async function listOrderRefunds(
+  orderId: string,
+): Promise<ApiResponse<RefundRecord[]>> {
+  return apiFetch<RefundRecord[]>(`/ecommerce/orders/${orderId}/refunds`);
+}
+
+/** Statut remboursement → libellé i18n (clé). M3 fournira les traductions. */
+export function refundStatusKey(s?: string): string {
+  switch (s) {
+    case 'pending': return 'shop.refund.st_pending';
+    case 'succeeded': return 'shop.refund.st_succeeded';
+    case 'failed': return 'shop.refund.st_failed';
+    default: return 'shop.refund.st_unknown';
+  }
+}
+
+// ── E6 M3 policy ───────────────────────────────────────────────────────────
+// ⚠️ ZONE RÉGULÉE — politique conso INDICATIVE + retours (RMA) + litiges.
+// Bloc DISTINCT du bloc « E6 M1 refunds » ci-dessus (M3 ne le modifie PAS —
+// il RÉUTILISE createOrderRefund/listOrderRefunds/refundStatusKey publiés par
+// M1). Contrats FIGÉS : policy = TU exportes côté worker (handleGetOrderPolicy,
+// câblé par M2) ; returns/disputes = endpoints M2 (GET/POST/PATCH). On code
+// CONTRE le contrat et on DÉGRADE proprement si l'endpoint n'est pas encore
+// câblé (M2 parallèle) : ApiResponse.error renvoyé sans throw. On ne forge
+// AUCUNE autre route (file-ownership strict). Money en cents INTEGER.
+// (Types ConsumerPolicy/ReturnRequest importés en tête de fichier — bloc E6
+// types.ts, M3 seul writer.)
+
+/**
+ * GET /api/ecommerce/orders/:id/policy — politique de rétractation INDICATIVE.
+ * ⚠️ RÉGULÉ : sortie purement informative (l'UI affiche la bannière « revue
+ * légale requise »). Dégrade proprement si l'endpoint n'est pas encore câblé.
+ */
+export async function getOrderPolicy(
+  orderId: string,
+): Promise<ApiResponse<ConsumerPolicy>> {
+  return apiFetch<ConsumerPolicy>(`/ecommerce/orders/${orderId}/policy`);
+}
+
+/** Vue litige (réfs opaques — aucune donnée carte). Endpoint M2 GET. */
+export interface DisputeRecord {
+  id: string;
+  order_id: string;
+  payment_id: string | null;
+  provider: string;
+  provider_dispute_ref: string;
+  status: string;
+  amount_cents: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/** GET /api/ecommerce/disputes — litiges du tenant (récents d'abord, M2). */
+export async function listDisputes(): Promise<ApiResponse<DisputeRecord[]>> {
+  return apiFetch<DisputeRecord[]>('/ecommerce/disputes');
+}
+
+/**
+ * GET /api/ecommerce/returns?order_id= — demandes de retour d'une commande
+ * (M2). Dégrade proprement (liste vide via error) si pas encore câblé.
+ */
+export async function listOrderReturns(
+  orderId: string,
+): Promise<ApiResponse<ReturnRequest[]>> {
+  return apiFetch<ReturnRequest[]>(
+    `/ecommerce/returns?order_id=${encodeURIComponent(orderId)}`,
+  );
+}
+
+/**
+ * POST /api/ecommerce/returns — crée une demande de retour (RMA) (M2).
+ * body { order_id, items:[{order_item_id,quantity}], reason }.
+ */
+export async function createOrderReturn(
+  payload: {
+    order_id: string;
+    items: Array<{ order_item_id: string; quantity: number }>;
+    reason?: string;
+  },
+): Promise<ApiResponse<ReturnRequest>> {
+  return apiFetch<ReturnRequest>('/ecommerce/returns', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+/**
+ * PATCH /api/ecommerce/returns/:id — fait avancer le RMA (M2).
+ * action ∈ 'approve' | 'receive' | 'reject'. Le remboursement n'est
+ * déclenché QU'À la réception (anti-abus) côté worker M2.
+ */
+export async function updateOrderReturn(
+  returnId: string,
+  action: 'approve' | 'receive' | 'reject',
+): Promise<ApiResponse<ReturnRequest>> {
+  return apiFetch<ReturnRequest>(`/ecommerce/returns/${returnId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ action }),
+  });
+}
+
+/** Statut RMA → libellé i18n (clé). Traductions M3 (4 catalogues). */
+export function rmaStatusKey(s?: string): string {
+  switch (s) {
+    case 'pending': return 'shop.rma.st_pending';
+    case 'approved': return 'shop.rma.st_approved';
+    case 'received': return 'shop.rma.st_received';
+    case 'refunded': return 'shop.rma.st_refunded';
+    case 'rejected': return 'shop.rma.st_rejected';
+    default: return 'shop.rma.st_unknown';
+  }
+}
+
+/** Statut litige → libellé i18n (clé). Traductions M3 (4 catalogues). */
+export function disputeStatusKey(s?: string): string {
+  switch (s) {
+    case 'open': return 'shop.dispute.st_open';
+    case 'under_review': return 'shop.dispute.st_under_review';
+    case 'won': return 'shop.dispute.st_won';
+    case 'lost': return 'shop.dispute.st_lost';
+    case 'refunded': return 'shop.dispute.st_refunded';
+    default: return 'shop.dispute.st_unknown';
+  }
+}
+
+// ── E7 M3 ────────────────────────────────────────────────────
+// Customer 360 + RFM recompute + paniers abandonnés. Bloc DISTINCT
+// des blocs E1-E6 ci-dessus (append-only, zéro redéclaration —
+// leçon E6 : coordination par contrat figé M1/M2). Types importés
+// de ./types (M1 = seul writer types E7). Endpoints gated worker
+// (requireModule 'ecommerce' + multi-tenant), dégrade proprement
+// si M2 (rfm/cart-recovery) pas encore branché côté worker.
+
+/** GET /api/ecommerce/customers/:id/360 — agrégat Customer 360 (M1). */
+export async function getCustomer360(
+  customerId: string
+): Promise<ApiResponse<Customer360>> {
+  return apiFetch<Customer360>(`/ecommerce/customers/${customerId}/360`);
+}
+
+/** POST /api/ecommerce/customers/rfm/recompute — recalcul FULL RFM (M2). */
+export async function recomputeRfm(): Promise<ApiResponse<{ updated: number }>> {
+  return apiFetch<{ updated: number }>('/ecommerce/customers/rfm/recompute', {
+    method: 'POST',
+  });
+}
+
+/** GET /api/ecommerce/carts/abandoned — paniers abandonnés (M2). */
+export async function getAbandonedCarts(): Promise<PagedResponse<AbandonedCart>> {
+  return apiFetch<AbandonedCart[]>('/ecommerce/carts/abandoned');
+}
+
+/** POST /api/ecommerce/carts/:id/recover — déclenche la relance (M2). */
+export async function recoverCart(
+  cartId: string
+): Promise<ApiResponse<{ recovered: boolean }>> {
+  return apiFetch<{ recovered: boolean }>(
+    `/ecommerce/carts/${cartId}/recover`,
+    { method: 'POST' }
+  );
+}
+
+// ── E8 channels ──────────────────────────────────────────────
+// Omnicanal concurrent : canaux de vente (natif Intralys + Shopify / Woo) +
+// stratégie d'inventaire par canal + OAuth connect + sync + journal.
+// Bloc DISTINCT des blocs E1-E7 ci-dessus (append-only, jamais mélangé,
+// zéro redéclaration). Contrats FIGÉS M1 (CRUD + strategy via
+// `sales_channels` / handlers façade `ecommerce.ts`) + M2 (connect / sync /
+// sync-log, parallèle). Types channel déclarés LOCALEMENT ici (M3 ne touche
+// pas types.ts — leçon E6/E7 : contrat figé, zéro doublon). Endpoints gated
+// worker (requireModule 'ecommerce' + multi-tenant + admin). Dégrade
+// proprement si M2 (connect/sync) pas encore branché : apiFetch renvoie
+// `{ error }` sur 404 → l'UI désactive le bouton / affiche un état honnête.
+
+/** Stratégie d'inventaire d'un canal (enum figé M1). */
+export type InventoryStrategyKind =
+  | 'intralys_master'
+  | 'partitioned'
+  | 'shared_pool';
+
+/** Ligne `sales_channels` retournée par handleListChannels (M1). */
+export interface SalesChannel {
+  id: string;
+  name: string;
+  type: 'native' | 'shopify' | 'woo';
+  inventory_strategy: InventoryStrategyKind;
+  config_ref: string | null;
+  shop_domain: string | null;
+  external_id: string | null;
+  active: number;            // 0 | 1 (SQLite)
+  created_at: string;
+  updated_at: string;
+}
+
+/** Entrée du journal de synchronisation d'un canal (contrat M2). */
+export interface ChannelSyncLog {
+  id: string;
+  channel_id: string;
+  direction: 'in' | 'out';
+  entity: string;            // 'product' | 'order' | …
+  status: 'ok' | 'conflict' | 'error';
+  message?: string | null;
+  conflict?: string | null;
+  created_at: string;
+}
+
+/** Payload de création d'un canal (POST /api/ecommerce/channels). */
+export interface CreateChannelPayload {
+  name: string;
+  type: 'shopify' | 'woo';
+  shop_domain?: string;
+  inventory_strategy?: InventoryStrategyKind;
+}
+
+/** GET /api/ecommerce/channels — liste des canaux du tenant (M1). */
+export async function getChannels(): Promise<ApiResponse<SalesChannel[]>> {
+  return apiFetch<SalesChannel[]>('/ecommerce/channels');
+}
+
+/** POST /api/ecommerce/channels — crée un canal externe (ADMIN, M1). */
+export async function createChannel(
+  payload: CreateChannelPayload,
+): Promise<ApiResponse<{ id: string; success: boolean }>> {
+  return apiFetch<{ id: string; success: boolean }>('/ecommerce/channels', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+/** PATCH /api/ecommerce/channels/:id — maj partielle d'un canal (ADMIN, M1). */
+export async function updateChannel(
+  id: string,
+  payload: Partial<Pick<SalesChannel, 'name' | 'shop_domain' | 'config_ref' | 'external_id'>> & { active?: boolean },
+): Promise<ApiResponse<{ id: string; success: boolean }>> {
+  return apiFetch<{ id: string; success: boolean }>(`/ecommerce/channels/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
+/** DELETE /api/ecommerce/channels/:id — supprime un canal (ADMIN, M1). */
+export async function deleteChannel(
+  id: string,
+): Promise<ApiResponse<{ success: boolean }>> {
+  return apiFetch<{ success: boolean }>(`/ecommerce/channels/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+/**
+ * PATCH /api/ecommerce/channels/:id/strategy — change la stratégie
+ * d'inventaire d'un canal (ADMIN, M1). Enum validé strictement côté worker.
+ */
+export async function setChannelStrategy(
+  id: string,
+  strategy: InventoryStrategyKind,
+): Promise<ApiResponse<{ id: string; inventory_strategy: InventoryStrategyKind; success: boolean }>> {
+  return apiFetch<{ id: string; inventory_strategy: InventoryStrategyKind; success: boolean }>(
+    `/ecommerce/channels/${id}/strategy`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ inventory_strategy: strategy }),
+    },
+  );
+}
+
+/**
+ * POST /api/ecommerce/channels/:id/connect — démarre l'OAuth Shopify/Woo
+ * (contrat M2, parallèle). Renvoie l'URL de redirection du fournisseur.
+ */
+export async function connectChannel(
+  id: string,
+): Promise<ApiResponse<{ redirect_url: string }>> {
+  return apiFetch<{ redirect_url: string }>(
+    `/ecommerce/channels/${id}/connect`,
+    { method: 'POST' },
+  );
+}
+
+/**
+ * POST /api/ecommerce/channels/:id/sync — déclenche une synchronisation
+ * manuelle (contrat M2, parallèle). Renvoie les compteurs synchronisés.
+ */
+export async function syncChannel(
+  id: string,
+): Promise<ApiResponse<{ synced: { products: number; orders: number } }>> {
+  return apiFetch<{ synced: { products: number; orders: number } }>(
+    `/ecommerce/channels/${id}/sync`,
+    { method: 'POST' },
+  );
+}
+
+/**
+ * GET /api/ecommerce/channels/:id/sync-log — journal de synchronisation
+ * (contrat M2, parallèle). Liste les opérations in/out + conflits.
+ */
+export async function getChannelSyncLog(
+  id: string,
+): Promise<ApiResponse<ChannelSyncLog[]>> {
+  return apiFetch<ChannelSyncLog[]>(`/ecommerce/channels/${id}/sync-log`);
+}
+
+// ── E9 ───────────────────────────────────────────────────────
+// DERNIER bloc de la roadmap e-comm B2. Analytics (revenu ventilé
+// par devise, cohortes, LTV, top produits) + reco produits / churn.
+// Bloc DISTINCT des blocs E1-E8 ci-dessus (append-only, zéro
+// redéclaration — leçon E6/E7/E8 : contrat figé M2, zéro doublon).
+// Types importés de ./types (M3 = seul writer section E9 de types.ts,
+// zéro écriture src/worker/types.ts qui appartient à M2). Endpoints
+// gated worker (requireModule 'ecommerce' + multi-tenant). Dégrade
+// PROPREMENT si M2 (ecommerce-analytics / ecommerce-reco) pas encore
+// branché : apiFetch renvoie `{ error }` → l'UI affiche un état
+// honnête (widget vide, pas de faux chiffre). RÈGLE D'OR multi-devise
+// héritée E7 : jamais de somme cross-devise — tout est ventilé.
+
+/** GET /api/ecommerce/analytics/revenue — revenu net ventilé par devise. */
+export async function getEcommerceRevenue(): Promise<ApiResponse<EcommerceRevenue>> {
+  return apiFetch<EcommerceRevenue>('/ecommerce/analytics/revenue');
+}
+
+/** GET /api/ecommerce/analytics/cohorts — cohortes d'acquisition + rétention. */
+export async function getEcommerceCohorts(): Promise<ApiResponse<EcommerceCohorts>> {
+  return apiFetch<EcommerceCohorts>('/ecommerce/analytics/cohorts');
+}
+
+/** GET /api/ecommerce/analytics/ltv — LTV ventilée par devise + taux de rachat. */
+export async function getEcommerceLtv(): Promise<ApiResponse<EcommerceLtv>> {
+  return apiFetch<EcommerceLtv>('/ecommerce/analytics/ltv');
+}
+
+/** GET /api/ecommerce/analytics/top-products — classement produits par devise. */
+export async function getEcommerceTopProducts(): Promise<ApiResponse<EcommerceTopProducts>> {
+  return apiFetch<EcommerceTopProducts>('/ecommerce/analytics/top-products');
+}
+
+/** GET /api/ecommerce/reco/products/:id — cross/up-sell pour un produit (M2). */
+export async function getProductReco(
+  productId: string,
+): Promise<ApiResponse<ProductRecoResult>> {
+  return apiFetch<ProductRecoResult>(`/ecommerce/reco/products/${productId}`);
+}
+
+/** GET /api/ecommerce/reco/churn/:customerId — prédiction de churn (M2). */
+export async function getCustomerChurn(
+  customerId: string,
+): Promise<ApiResponse<CustomerChurnPrediction>> {
+  return apiFetch<CustomerChurnPrediction>(`/ecommerce/reco/churn/${customerId}`);
 }

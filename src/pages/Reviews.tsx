@@ -1,9 +1,13 @@
 // ── Page Reviews — Avis & Réputation ────────────────────────
 
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Button, Card, Badge, EmptyState, PageHero } from '@/components/ui';
+import { Button, Card, EmptyState, PageHero, KpiStrip, type KpiItem, Tag } from '@/components/ui';
+// Sprint 44 M3.3 — Pull-to-refresh
+import { usePullToRefresh } from '@/hooks/usePullToRefresh';
+import { PullToRefreshIndicator } from '@/components/ui/PullToRefreshIndicator';
 import { apiFetch } from '@/lib/api';
+import { Star, MessageCircle, Inbox, Send, ChevronRight } from 'lucide-react';
 
 interface ReviewStats {
   total_reviews: number;
@@ -50,6 +54,11 @@ export function ReviewsPage() {
   const [replyingId, setReplyingId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
   const [suggestingId, setSuggestingId] = useState<string | null>(null);
+  // Sprint 32 vague 32-3A — Expand inline (texte complet + source + lead linked)
+  const [expandedReviewId, setExpandedReviewId] = useState<string | null>(null);
+  // Sprint 42 M2 — Filtres reviews (rating + source)
+  const [ratingFilter, setRatingFilter] = useState<0 | 5 | 4 | 3 | 2 | 1>(0);
+  const [sourceFilter, setSourceFilter] = useState<'all' | 'google' | 'facebook'>('all');
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -95,10 +104,21 @@ export function ReviewsPage() {
     void loadData();
   };
 
+  // Sprint 42 M2 — Stripe-clean : étoiles warning subtle (plus de gradient brand + drop-shadow)
   const renderStars = (rating: number) => {
-    return Array.from({ length: 5 }, (_, i) => (
-      <span key={i} className={i < rating ? 'text-yellow-400' : 'text-[var(--border-default)]'}>★</span>
-    ));
+    return Array.from({ length: 5 }, (_, i) => {
+      const filled = i < rating;
+      return (
+        <span
+          key={i}
+          aria-hidden
+          className="reviews-star"
+          style={{ color: filled ? 'var(--warning)' : 'var(--border-default)' }}
+        >
+          ★
+        </span>
+      );
+    });
   };
 
   const ratingBar = (count: number, total: number, stars: number) => {
@@ -120,14 +140,33 @@ export function ReviewsPage() {
     { key: 'requests', label: `Demandes (${requests.length})` },
   ];
 
+  // Sprint 44 M3.3 — Pull-to-refresh
+  const scrollParentRef = useRef<HTMLElement | null>(null);
+  useEffect(() => { scrollParentRef.current = document.getElementById('main-content'); }, []);
+  const ptr = usePullToRefresh(async () => { await loadData(); }, { scrollParent: scrollParentRef });
+
   return (
     <AppLayout title="Avis & Réputation">
+      <div ref={ptr.containerRef}>
+      <PullToRefreshIndicator distance={ptr.pullDistance} progress={ptr.pullProgress} isRefreshing={ptr.isRefreshing} />
       <PageHero
         meta="Insights"
         title="Avis & Réputation"
         highlight="Avis"
         description="Suivez vos avis Google et envoyez des demandes ciblées à vos meilleurs clients."
       />
+
+      {stats && (
+        <KpiStrip
+          items={[
+            { label: 'Total avis', value: stats.total_reviews, icon: <MessageCircle size={11} />, color: 'brand' },
+            { label: 'Note moyenne', value: stats.average_rating ? `${Number(stats.average_rating).toFixed(1)} ★` : '—', icon: <Star size={11} />, color: 'accent' },
+            { label: '5 étoiles', value: stats.five_star, icon: <Star size={11} />, color: 'success' },
+            { label: 'À répondre', value: Math.max(0, stats.total_reviews - stats.replied_count), icon: <Inbox size={11} />, color: 'warning' },
+          ] as KpiItem[]}
+        />
+      )}
+
       {/* Onglets */}
       <div className="flex gap-1 bg-[var(--bg-subtle)] p-1 rounded-[var(--radius-lg)] w-fit mb-6">
         {tabs.map(t => (
@@ -154,33 +193,33 @@ export function ReviewsPage() {
           {/* Vue d'ensemble */}
           {tab === 'overview' && stats && (
             <div className="space-y-6">
-              {/* KPIs */}
+              {/* KPIs — Sprint 23 wave 47B2 : migré vers .card-premium (gradient brand + glow) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card>
+                <div className="card-premium p-5">
                   <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider mb-1">Note moyenne</p>
                   <div className="flex items-baseline gap-2">
                     <span className="text-3xl font-bold">{stats.average_rating || '—'}</span>
                     <span className="text-lg">⭐</span>
                   </div>
                   <p className="text-xs text-[var(--text-muted)] mt-1">{stats.total_reviews} avis au total</p>
-                </Card>
-                <Card>
+                </div>
+                <div className="card-premium p-5">
                   <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider mb-1">5 étoiles</p>
                   <span className="text-3xl font-bold text-[var(--success)]">{stats.five_star}</span>
                   <p className="text-xs text-[var(--text-muted)] mt-1">
                     {stats.total_reviews > 0 ? `${((stats.five_star / stats.total_reviews) * 100).toFixed(0)}%` : '—'} du total
                   </p>
-                </Card>
-                <Card>
+                </div>
+                <div className="card-premium p-5">
                   <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider mb-1">Réponses</p>
                   <span className="text-3xl font-bold">{stats.replied_count}</span>
                   <p className="text-xs text-[var(--text-muted)] mt-1">sur {stats.total_reviews} avis</p>
-                </Card>
-                <Card>
+                </div>
+                <div className="card-premium p-5">
                   <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider mb-1">Demandes envoyées</p>
                   <span className="text-3xl font-bold">{stats.total_requests}</span>
                   <p className="text-xs text-[var(--text-muted)] mt-1">{stats.pending_requests} en attente</p>
-                </Card>
+                </div>
               </div>
 
               {/* Distribution des notes */}
@@ -197,102 +236,167 @@ export function ReviewsPage() {
             </div>
           )}
 
-          {/* Liste des avis */}
+          {/* Liste des avis — Sprint 32 vague 32-3A : table-premium + frozen col + expand inline */}
           {tab === 'reviews' && (
             reviews.length === 0 ? (
               <EmptyState
+                variant="first-time"
                 icon={<span className="text-4xl">⭐</span>}
-                title="Aucun avis"
-                description="Les avis Google seront synchronisés automatiquement."
+                title="Aucun avis encore"
+                description="Les avis Google seront synchronisés automatiquement dès qu'ils arriveront."
               />
-            ) : (
-              <div className="space-y-4">
-                {reviews.map(review => (
-                  <Card key={review.id}>
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-sm font-semibold">{review.author_name}</span>
-                          <Badge color={review.source === 'google' ? 'var(--info)' : 'var(--brand-primary)'}>
-                            {review.source === 'google' ? '🔍 Google' : review.source}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center gap-1 text-lg mb-2">
-                          {renderStars(review.rating)}
-                        </div>
-                        {review.comment && (
-                          <p className="text-sm text-[var(--text-secondary)] mb-2">« {review.comment} »</p>
-                        )}
-                        <p className="text-xs text-[var(--text-muted)]">
-                          {review.review_date ? new Date(review.review_date).toLocaleDateString('fr-CA') : ''}
-                        </p>
-
-                        {/* Réponse existante */}
-                        {review.reply && (
-                          <div className="mt-3 pl-4 border-l-2 border-[var(--brand-primary)]">
-                            <p className="text-xs font-medium text-[var(--brand-primary)] mb-1">Votre réponse</p>
-                            <p className="text-sm text-[var(--text-secondary)]">{review.reply}</p>
-                          </div>
-                        )}
-
-                        {/* Zone de réponse */}
-                        {replyingId === review.id && (
-                          <div className="mt-3 space-y-2">
-                            <textarea
-                              value={replyText}
-                              onChange={e => setReplyText(e.target.value)}
-                              rows={3}
-                              className="w-full px-3 py-2 text-sm bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] focus:border-[var(--brand-primary)] focus:outline-none"
-                              placeholder="Écrivez votre réponse..."
-                            />
-                            <div className="flex gap-2">
-                              <Button size="sm" onClick={() => void submitReply(review.id)}>Envoyer</Button>
-                              <Button size="sm" variant="ghost" onClick={() => { setReplyingId(null); setReplyText(''); }}>Annuler</Button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Actions */}
-                      {!review.reply && replyingId !== review.id && (
-                        <div className="flex flex-col gap-1">
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => { setReplyingId(review.id); setReplyText(''); }}
-                          >
-                            💬 Répondre
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => void suggestReply(review.id)}
-                            disabled={suggestingId === review.id}
-                          >
-                            {suggestingId === review.id ? '⏳ IA...' : '🤖 Suggestion IA'}
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  </Card>
+            ) : (() => {
+              const filteredReviews = reviews.filter(r => {
+                if (ratingFilter !== 0 && r.rating !== ratingFilter) return false;
+                if (sourceFilter !== 'all' && r.source !== sourceFilter) return false;
+                return true;
+              });
+              return (<>
+              {/* Sprint 42 M2 — Filtres rating + source (action-chip Stripe-clean) */}
+              <div className="flex flex-wrap items-center gap-2 mb-4">
+                <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--text-muted)] mr-1">Note</span>
+                {([0, 5, 4, 3, 2, 1] as const).map(r => (
+                  <button key={r} type="button" onClick={() => setRatingFilter(r)} className={`action-chip ${ratingFilter === r ? 'action-chip--accent' : ''}`}>
+                    {r === 0 ? 'Toutes' : `${r} ★`}
+                    <span className="text-[10px] font-bold opacity-70">{r === 0 ? reviews.length : reviews.filter(rev => rev.rating === r).length}</span>
+                  </button>
+                ))}
+                <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--text-muted)] ml-3 mr-1">Source</span>
+                {(['all', 'google', 'facebook'] as const).map(s => (
+                  <button key={s} type="button" onClick={() => setSourceFilter(s)} className={`action-chip ${sourceFilter === s ? 'action-chip--accent' : ''}`}>
+                    {s === 'all' ? 'Toutes' : s === 'google' ? 'Google' : 'Facebook'}
+                  </button>
                 ))}
               </div>
-            )
+              <Card className="p-0 overflow-hidden">
+                <div className="table-premium-container overflow-x-auto">
+                  <table className="table-premium w-full text-left border-collapse">
+                    <thead>
+                      <tr>
+                        <th className="col-frozen" style={{ minWidth: 240 }}>Auteur</th>
+                        <th style={{ minWidth: 120 }}>Source</th>
+                        <th style={{ minWidth: 280 }}>Commentaire</th>
+                        <th style={{ minWidth: 120 }}>Date</th>
+                        <th className="text-right" style={{ minWidth: 160 }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredReviews.map((review, idx) => {
+                        const isExpanded = expandedReviewId === review.id;
+                        const leadLinked = (review as unknown as { lead_name?: string; lead_id?: string }).lead_name;
+                        return (
+                          <React.Fragment key={review.id}>
+                            <tr className="row-premium list-item-enter" style={{ animationDelay: `${idx * 30}ms` }}>
+                              <td className="col-frozen">
+                                <div className="flex items-center gap-2.5">
+                                  <button
+                                    type="button"
+                                    className={`table-expand-trigger ${isExpanded ? 'is-expanded' : ''}`}
+                                    onClick={() => setExpandedReviewId(isExpanded ? null : review.id)}
+                                    aria-label={isExpanded ? 'Réduire' : 'Afficher les détails'}
+                                    aria-expanded={isExpanded}
+                                  >
+                                    <ChevronRight size={14} />
+                                  </button>
+                                  <div className="min-w-0">
+                                    <p className="font-medium text-[13px] text-[var(--text-primary)] truncate">{review.author_name}</p>
+                                    <div className="flex items-center gap-0.5 text-[14px] leading-none">{renderStars(review.rating)}</div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td>
+                                <Tag dot variant={review.source === 'google' ? 'info' : 'brand'} size="xs">
+                                  {review.source === 'google' ? 'Google' : review.source}
+                                </Tag>
+                              </td>
+                              <td className="text-xs text-[var(--text-secondary)]">
+                                <p className="truncate max-w-[320px]">{review.comment ? `« ${review.comment} »` : '—'}</p>
+                              </td>
+                              <td className="text-xs text-[var(--text-muted)]">
+                                {review.review_date ? new Date(review.review_date).toLocaleDateString('fr-CA') : '—'}
+                              </td>
+                              <td className="text-right">
+                                {!review.reply && replyingId !== review.id ? (
+                                  <div className="flex gap-1 justify-end">
+                                    <Button size="sm" variant="secondary" onClick={() => { setReplyingId(review.id); setReplyText(''); }}>Répondre</Button>
+                                    <Button size="sm" variant="ghost" onClick={() => void suggestReply(review.id)} disabled={suggestingId === review.id}>
+                                      {suggestingId === review.id ? 'IA...' : 'IA'}
+                                    </Button>
+                                  </div>
+                                ) : review.reply ? (
+                                  <Tag size="xs" variant="success">Répondu</Tag>
+                                ) : null}
+                              </td>
+                            </tr>
+                            <tr>
+                              <td colSpan={5} style={{ padding: 0, border: 'none' }}>
+                                <div className={`table-expand-content ${isExpanded ? 'is-open' : ''}`}>
+                                  <div className="table-expand-inner">
+                                    <div className="table-expand-detail">
+                                      <div className="table-expand-detail-section" style={{ flex: '1 1 360px' }}>
+                                        <span className="table-expand-detail-label">Commentaire complet</span>
+                                        <span className="table-expand-detail-value text-[12px] leading-relaxed text-[var(--text-secondary)]">{review.comment ? `« ${review.comment} »` : 'Pas de commentaire textuel.'}</span>
+                                      </div>
+                                      <div className="table-expand-detail-section">
+                                        <span className="table-expand-detail-label">Source</span>
+                                        <span className="table-expand-detail-value text-[12px]">{review.source === 'google' ? 'Google My Business' : review.source}</span>
+                                      </div>
+                                      <div className="table-expand-detail-section">
+                                        <span className="table-expand-detail-label">Lead lié</span>
+                                        <span className="table-expand-detail-value text-[12px]">{leadLinked || '—'}</span>
+                                      </div>
+                                      {review.reply && (
+                                        <div className="table-expand-detail-section" style={{ flex: '1 1 100%' }}>
+                                          <span className="table-expand-detail-label">Votre réponse</span>
+                                          <span className="table-expand-detail-value text-[12px] leading-relaxed reviews-reply-quote">{review.reply}</span>
+                                        </div>
+                                      )}
+                                      {replyingId === review.id && (
+                                        <div className="table-expand-detail-section" style={{ flex: '1 1 100%' }}>
+                                          <span className="table-expand-detail-label">Rédiger une réponse</span>
+                                          <textarea
+                                            value={replyText}
+                                            onChange={e => setReplyText(e.target.value)}
+                                            rows={3}
+                                            className="w-full px-3 py-2 text-sm bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] focus:border-[var(--primary)] focus:outline-none"
+                                            placeholder="Écrivez votre réponse..."
+                                          />
+                                          <div className="flex gap-2 mt-2">
+                                            <Button size="sm" onClick={() => void submitReply(review.id)}>Envoyer</Button>
+                                            <Button size="sm" variant="ghost" onClick={() => { setReplyingId(null); setReplyText(''); }}>Annuler</Button>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          </React.Fragment>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+              </>);
+            })()
           )}
 
           {/* Demandes d'avis */}
           {tab === 'requests' && (
             requests.length === 0 ? (
               <EmptyState
+                variant="first-time"
                 icon={<span className="text-4xl">📨</span>}
-                title="Aucune demande"
-                description="Envoyez des demandes d'avis à vos clients satisfaits."
+                title="Aucune demande encore"
+                description="Envoie des demandes d'avis à tes clients satisfaits pour booster ta réputation."
               />
             ) : (
-              <div className="overflow-x-auto">
+              <Card className="overflow-x-auto p-0">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-[var(--border-subtle)]">
+                    <tr className="border-b border-[var(--border-subtle)] bg-[var(--bg-subtle)]">
                       <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Lead</th>
                       <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Canal</th>
                       <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Status</th>
@@ -300,29 +404,29 @@ export function ReviewsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {requests.map(req => (
-                      <tr key={req.id} className="border-b border-[var(--border-subtle)] hover:bg-[var(--bg-subtle)] transition-colors">
+                    {requests.map((req, idx) => (
+                      <tr key={req.id} className="row-premium list-item-enter border-b border-[var(--border-subtle)]" style={{ animationDelay: `${idx * 30}ms` }}>
                         <td className="py-3 px-4">
                           <p className="font-medium">{req.lead_name}</p>
                           <p className="text-xs text-[var(--text-muted)]">{req.lead_email}</p>
                         </td>
                         <td className="py-3 px-4">
-                          <Badge color={req.channel === 'email' ? 'var(--info)' : 'var(--success)'}>
-                            {req.channel === 'email' ? '📧 Email' : '📱 SMS'}
-                          </Badge>
+                          <Tag dot variant={req.channel === 'email' ? 'info' : 'success'} size="xs" leftIcon={req.channel === 'email' ? <Send size={10} /> : undefined}>
+                            {req.channel === 'email' ? 'Email' : 'SMS'}
+                          </Tag>
                         </td>
                         <td className="py-3 px-4">
-                          <Badge color={
-                            req.status === 'sent' ? 'var(--info)' :
-                            req.status === 'clicked' ? 'var(--warning)' :
-                            req.status === 'reviewed' ? 'var(--success)' :
-                            'var(--text-muted)'
+                          <Tag dot size="xs" variant={
+                            req.status === 'sent' ? 'info' :
+                            req.status === 'clicked' ? 'warning' :
+                            req.status === 'reviewed' ? 'success' :
+                            'neutral'
                           }>
                             {req.status === 'sent' ? 'Envoyé' :
                              req.status === 'clicked' ? 'Cliqué' :
                              req.status === 'reviewed' ? 'Avis laissé' :
                              req.status}
-                          </Badge>
+                          </Tag>
                         </td>
                         <td className="py-3 px-4 text-[var(--text-muted)]">
                           {req.sent_at ? new Date(req.sent_at).toLocaleDateString('fr-CA') : '—'}
@@ -331,11 +435,12 @@ export function ReviewsPage() {
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </Card>
             )
           )}
         </>
       )}
+      </div>
     </AppLayout>
   );
 }

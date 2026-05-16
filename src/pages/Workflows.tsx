@@ -1,13 +1,16 @@
 // ── Page Workflows — Liste + Builder preview Sprint Design 2 (D2.4) ──
 
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Skeleton, EmptyState, useConfirm, PageHero } from '@/components/ui';
+import { Card, Button, Skeleton, EmptyState, useConfirm, PageHero, KpiStrip, Icon as UIcon, type KpiItem, Tag } from '@/components/ui';
+// Sprint 44 M3.3 — Pull-to-refresh
+import { usePullToRefresh } from '@/hooks/usePullToRefresh';
+import { PullToRefreshIndicator } from '@/components/ui/PullToRefreshIndicator';
 import { getWorkflows, toggleWorkflow, deleteWorkflow } from '@/lib/api';
 import type { Workflow, TriggerType } from '@/lib/types';
 import { TRIGGER_LABELS, TRIGGER_ICONS } from '@/lib/types';
-import { Search, Zap, Play, Trash2, Copy, Eye, Users, Activity, ArrowRight, Plus, FolderOpen, LayoutGrid, LayoutList } from 'lucide-react';
+import { Search, Zap, Play, Trash2, Copy, Eye, Users, Activity, ArrowRight, Plus, FolderOpen, LayoutGrid, LayoutList, ChevronRight } from 'lucide-react';
 
 type FilterMode = 'all' | 'active' | 'inactive';
 type ViewMode = 'grid' | 'list';
@@ -23,6 +26,8 @@ export function WorkflowsPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [searchQuery, setSearchQuery] = useState('');
   const [folderFilter, setFolderFilter] = useState<FolderFilter>('all');
+  // Sprint 32 vague 32-3A — Expand inline (trigger + actions count + last_run_at)
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -47,8 +52,17 @@ export function WorkflowsPage() {
   };
 
   const activeCount = workflows.filter(w => w.is_active).length;
+  const inactiveCount = workflows.length - activeCount;
   const totalExecs = workflows.reduce((s, w) => s + (w.total_executions ?? 0), 0);
   const totalEnrolled = workflows.reduce((s, w) => s + (w.active_enrollments ?? 0), 0);
+
+  // KPI strip — Sprint 23 wave 27
+  const kpiItems: KpiItem[] = [
+    { label: 'Workflows', value: workflows.length, icon: <Zap size={11} />, color: 'brand' },
+    { label: 'Actifs', value: activeCount, icon: <Play size={11} />, color: 'success' },
+    { label: 'Pausés', value: inactiveCount, icon: <Activity size={11} />, color: 'warning' },
+    { label: 'Exécutions', value: totalExecs, icon: <Users size={11} />, color: 'info' },
+  ];
 
   const filtered = workflows.filter(w => {
     if (filterMode === 'active' && !w.is_active) return false;
@@ -57,45 +71,41 @@ export function WorkflowsPage() {
     return true;
   });
 
+  // Sprint 44 M3.3 — Pull-to-refresh
+  const scrollParentRef = useRef<HTMLElement | null>(null);
+  useEffect(() => { scrollParentRef.current = document.getElementById('main-content'); }, []);
+  const ptr = usePullToRefresh(async () => { await load(); }, { scrollParent: scrollParentRef });
+
   return (
     <AppLayout title="Automations">
+      <div ref={ptr.containerRef}>
+      <PullToRefreshIndicator distance={ptr.pullDistance} progress={ptr.pullProgress} isRefreshing={ptr.isRefreshing} />
       <PageHero
         meta="Marketing"
         title="Automations"
         highlight="Automations"
         description="Vos workflows AI : relances automatiques, scoring, attribution, nurturing."
       />
-      {/* ── Header ── */}
+
+      <KpiStrip items={kpiItems} />
+
+      {/* ── Header secondaire — view switch + nouveau ── */}
       <div className="flex flex-wrap items-center gap-3 mb-5">
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-xs font-medium">
-          <Zap size={14} className="text-[var(--warning)]" />
-          <span className="text-[var(--text-secondary)]">{workflows.length} workflows</span>
-        </div>
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-xs font-medium">
-          <Play size={14} className="text-[var(--success)]" />
-          <span className="text-[var(--text-secondary)]">{activeCount} actifs</span>
-        </div>
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-xs font-medium">
-          <Users size={14} className="text-[var(--info)]" />
-          <span className="text-[var(--text-secondary)]">{totalEnrolled} inscrits</span>
-        </div>
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-xs font-medium">
-          <Activity size={14} className="text-[var(--brand-primary)]" />
-          <span className="text-[var(--text-secondary)]">{totalExecs} exécutions</span>
+        <div className="text-[11px] text-[var(--text-muted)]">
+          <span className="font-semibold text-[var(--text-secondary)]">{totalEnrolled}</span> inscrits actifs au total
         </div>
 
         <div className="flex-1" />
 
-        <div className="flex items-center bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-lg p-0.5">
+        <div className="segmented-control segmented-control--icon">
           {([['grid', LayoutGrid], ['list', LayoutList]] as const).map(([m, Icon]) => (
-            <button key={m} onClick={() => setViewMode(m as ViewMode)}
-              className={`p-1.5 rounded-md cursor-pointer transition-all ${viewMode === m ? 'bg-[var(--brand-primary)] text-white shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>
+            <button key={m} onClick={() => setViewMode(m as ViewMode)} className={viewMode === m ? 'is-active' : ''} aria-label={m === 'grid' ? 'Vue grille' : 'Vue liste'}>
               <Icon size={15} />
             </button>
           ))}
         </div>
 
-        <Link to="/workflows/new"><Button size="sm" leftIcon={<Plus size={14} />}>Nouveau</Button></Link>
+        <Link to="/workflows/new"><Button size="sm" leftIcon={<UIcon as={Plus} size="sm" />}>Nouveau</Button></Link>
       </div>
 
       {/* ── Sidebar folders + content ── */}
@@ -107,7 +117,7 @@ export function WorkflowsPage() {
             {(Object.keys(FOLDER_LABELS) as FolderFilter[]).map(f => (
               <button key={f} onClick={() => setFolderFilter(f)}
                 className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium cursor-pointer transition-all flex items-center gap-2
-                  ${folderFilter === f ? 'bg-[var(--brand-tint)] text-[var(--brand-primary)]' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]'}`}>
+                  ${folderFilter === f ? 'bg-[var(--brand-tint)] text-[var(--primary)]' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]'}`}>
                 <FolderOpen size={14} /> {FOLDER_LABELS[f]}
               </button>
             ))}
@@ -121,13 +131,13 @@ export function WorkflowsPage() {
             <div className="relative flex-1 min-w-[200px]">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
               <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Rechercher un workflow..."
-                className="w-full pl-9 pr-3 py-2 text-xs bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-lg text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-[var(--brand-primary)] focus:ring-[3px] focus:ring-[var(--ring)] focus:outline-none" />
+                className="w-full pl-9 pr-3 py-2 text-xs bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-lg text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-[3px] focus:ring-[var(--ring)] focus:outline-none" />
             </div>
             <div className="flex gap-1">
               {(['all', 'active', 'inactive'] as const).map(m => (
                 <button key={m} onClick={() => setFilterMode(m)}
                   className={`px-3 py-1.5 rounded-lg text-[11px] font-medium cursor-pointer transition-all
-                    ${filterMode === m ? 'bg-[var(--brand-primary)] text-white' : 'bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-[var(--text-muted)] hover:border-[var(--brand-primary)]'}`}>
+                    ${filterMode === m ? 'bg-[var(--primary)] text-white' : 'bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-[var(--text-muted)] hover:border-[var(--primary)]'}`}>
                   {m === 'all' ? 'Tous' : m === 'active' ? 'Actifs' : 'Inactifs'}
                 </button>
               ))}
@@ -136,13 +146,49 @@ export function WorkflowsPage() {
 
           {/* Content */}
           {isLoading ? (
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-48" />)}</div>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Card key={i} className="p-5">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-2 flex-1">
+                      <Skeleton className="h-8 w-8 rounded-lg" />
+                      <div className="space-y-2 flex-1">
+                        <Skeleton className="h-4 w-32" />
+                        <Skeleton className="h-3 w-20 rounded-full" />
+                      </div>
+                    </div>
+                    <Skeleton className="h-6 w-12 rounded-full" />
+                  </div>
+                  <Skeleton className="h-3 w-full mb-2" />
+                  <Skeleton className="h-3 w-2/3 mb-4" />
+                  <div className="flex gap-2 pt-3 border-t border-[var(--border-subtle)]">
+                    <Skeleton className="h-3 w-16" />
+                    <Skeleton className="h-3 w-20 ml-auto" />
+                  </div>
+                </Card>
+              ))}
+            </div>
           ) : filtered.length === 0 ? (
-            <EmptyState icon={<Zap size={48} />} title="Aucune automation" description="Créez votre premier workflow pour automatiser vos relances." />
+            workflows.length > 0 ? (
+              <EmptyState
+                variant="filtered"
+                icon={<Zap size={48} />}
+                title="Aucun résultat"
+                description="Aucun workflow ne correspond à tes filtres."
+                action={<Button variant="secondary" onClick={() => { setSearchQuery(''); setFilterMode('all'); setFolderFilter('all'); }}>Effacer les filtres</Button>}
+              />
+            ) : (
+              <EmptyState
+                variant="first-time"
+                icon={<Zap size={48} />}
+                title="Aucune automation encore"
+                description="Crée ton premier workflow pour automatiser tes relances et gagner du temps."
+              />
+            )
           ) : viewMode === 'grid' ? (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {filtered.map(wf => (
-                <Card key={wf.id} className={`group hover:border-[var(--brand-primary)]/30 hover:shadow-md transition-all ${!wf.is_active ? 'opacity-60' : ''}`}>
+              {filtered.map((wf, idx) => (
+                <Card key={wf.id} className={`group hover:border-[var(--primary)]/30 hover:shadow-md transition-all list-item-enter ${!wf.is_active ? 'opacity-60' : ''}`} style={{ animationDelay: `${idx * 30}ms` }}>
                   <div className="p-5">
                     {/* Header */}
                     <div className="flex items-start justify-between mb-3">
@@ -153,7 +199,11 @@ export function WorkflowsPage() {
                           </div>
                           <div className="min-w-0">
                             <h3 className="font-semibold text-[13px] text-[var(--text-primary)] truncate">{wf.name}</h3>
-                            <p className="text-[10px] text-[var(--text-muted)]">{wf.is_active ? '🟢 Actif' : '⏸️ Inactif'}</p>
+                            <div className="mt-0.5">
+                              <Tag dot variant={wf.is_active ? 'success' : 'neutral'} size="xs">
+                                {wf.is_active ? 'Actif' : 'Inactif'}
+                              </Tag>
+                            </div>
                           </div>
                         </div>
                         {wf.description && <p className="text-[11px] text-[var(--text-muted)] line-clamp-2 mt-1">{wf.description}</p>}
@@ -165,8 +215,8 @@ export function WorkflowsPage() {
                     </div>
 
                     {/* Trigger pill */}
-                    <div className="flex items-center gap-2 mb-3 px-3 py-1.5 bg-[var(--bg-subtle)] rounded-lg border-l-[3px] border-l-[var(--brand-primary)]">
-                      <Zap size={11} className="text-[var(--brand-primary)]" />
+                    <div className="flex items-center gap-2 mb-3 px-3 py-1.5 bg-[var(--bg-subtle)] rounded-lg border-l-[3px] border-l-[var(--primary)]">
+                      <Zap size={11} className="text-[var(--primary)]" />
                       <span className="text-[11px] font-medium text-[var(--text-secondary)]">{TRIGGER_LABELS[wf.trigger_type as TriggerType] || wf.trigger_type}</span>
                     </div>
 
@@ -174,7 +224,7 @@ export function WorkflowsPage() {
                     <div className="flex items-center gap-1 mb-3 overflow-hidden">
                       {Array.from({ length: Math.min(wf.steps_count ?? 0, 6) }).map((_, i) => (
                         <div key={i} className="flex items-center gap-0.5">
-                          <div className="w-5 h-5 rounded-full bg-[var(--brand-tint)] text-[var(--brand-primary)] text-[9px] font-bold flex items-center justify-center">{i + 1}</div>
+                          <div className="w-5 h-5 rounded-full bg-[var(--brand-tint)] text-[var(--primary)] text-[9px] font-bold flex items-center justify-center">{i + 1}</div>
                           {i < Math.min((wf.steps_count ?? 0) - 1, 5) && <ArrowRight size={10} className="text-[var(--border-default)]" />}
                         </div>
                       ))}
@@ -185,7 +235,7 @@ export function WorkflowsPage() {
                     {/* Stats */}
                     <div className="grid grid-cols-3 gap-1.5 mb-3">
                       {[
-                        { v: wf.steps_count ?? 0, l: 'Étapes', c: 'var(--brand-primary)' },
+                        { v: wf.steps_count ?? 0, l: 'Étapes', c: 'var(--primary)' },
                         { v: wf.active_enrollments ?? 0, l: 'Inscrits', c: 'var(--success)' },
                         { v: wf.total_executions ?? 0, l: 'Exécutions', c: 'var(--info)' },
                       ].map(s => (
@@ -199,9 +249,9 @@ export function WorkflowsPage() {
                     {/* Actions */}
                     <div className="flex gap-1.5 opacity-60 group-hover:opacity-100 transition-opacity">
                       <Link to={`/workflows/${wf.id}`} className="flex-1">
-                        <Button variant="secondary" size="sm" className="w-full" leftIcon={<Eye size={13} />}>Détails</Button>
+                        <Button variant="secondary" size="sm" className="w-full" leftIcon={<UIcon as={Eye} size="xs" />}>Détails</Button>
                       </Link>
-                      <button className="p-1.5 rounded-lg border border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--brand-primary)] hover:border-[var(--brand-primary)] cursor-pointer transition-all" title="Dupliquer">
+                      <button className="p-1.5 rounded-lg border border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--primary)] hover:border-[var(--primary)] cursor-pointer transition-all" title="Dupliquer">
                         <Copy size={13} />
                       </button>
                       <button onClick={() => void handleDelete(wf.id)}
@@ -214,52 +264,104 @@ export function WorkflowsPage() {
               ))}
             </div>
           ) : (
-            /* Vue list */
-            <Card className="overflow-x-auto p-0">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-[var(--border-subtle)] bg-[var(--bg-subtle)]">
-                    <th className="text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Workflow</th>
-                    <th className="text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Déclencheur</th>
-                    <th className="text-center px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Étapes</th>
-                    <th className="text-center px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Inscrits</th>
-                    <th className="text-center px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Exécutions</th>
-                    <th className="text-center px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Status</th>
-                    <th className="text-right px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map(wf => (
-                    <tr key={wf.id} className={`border-b border-[var(--border-subtle)] hover:bg-[var(--bg-subtle)] transition-colors ${!wf.is_active ? 'opacity-50' : ''}`}>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <span>{TRIGGER_ICONS[wf.trigger_type as TriggerType] || '⚡'}</span>
-                          <div><p className="font-medium text-[13px]">{wf.name}</p>{wf.description && <p className="text-[10px] text-[var(--text-muted)] truncate max-w-[200px]">{wf.description}</p>}</div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-[var(--text-secondary)]">{TRIGGER_LABELS[wf.trigger_type as TriggerType] || wf.trigger_type}</td>
-                      <td className="px-4 py-3 text-center text-xs font-semibold">{wf.steps_count ?? 0}</td>
-                      <td className="px-4 py-3 text-center text-xs font-semibold text-[var(--success)]">{wf.active_enrollments ?? 0}</td>
-                      <td className="px-4 py-3 text-center text-xs font-semibold text-[var(--info)]">{wf.total_executions ?? 0}</td>
-                      <td className="px-4 py-3 text-center">
-                        <button onClick={() => void handleToggle(wf.id, wf.is_active)}
-                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer ${wf.is_active ? 'bg-[var(--success)]' : 'bg-[var(--bg-muted)]'}`}>
-                          <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform shadow-sm ${wf.is_active ? 'translate-x-[18px]' : 'translate-x-[3px]'}`} />
-                        </button>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex gap-1 justify-end">
-                          <Link to={`/workflows/${wf.id}`} className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--brand-primary)] hover:bg-[var(--bg-subtle)] transition-all"><Eye size={14} /></Link>
-                          <button onClick={() => void handleDelete(wf.id)} className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-[var(--bg-subtle)] cursor-pointer transition-all"><Trash2 size={14} /></button>
-                        </div>
-                      </td>
+            /* Vue list — Sprint 32 vague 32-3A : table-premium + frozen col + expand inline */
+            <Card className="p-0 overflow-hidden">
+              <div className="table-premium-container overflow-x-auto">
+                <table className="table-premium w-full text-left border-collapse">
+                  <thead>
+                    <tr>
+                      <th className="col-frozen" style={{ minWidth: 240 }}>Workflow</th>
+                      <th style={{ minWidth: 160 }}>Déclencheur</th>
+                      <th className="text-center" style={{ minWidth: 80 }}>Étapes</th>
+                      <th className="text-center" style={{ minWidth: 90 }}>Inscrits</th>
+                      <th className="text-center" style={{ minWidth: 100 }}>Exécutions</th>
+                      <th className="text-center" style={{ minWidth: 80 }}>Statut</th>
+                      <th className="text-right" style={{ minWidth: 90 }}>Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {filtered.map((wf, idx) => {
+                      const isExpanded = expandedId === wf.id;
+                      const lastRunRaw = (wf as unknown as { last_run_at?: string }).last_run_at;
+                      const lastRunLabel = lastRunRaw ? new Date(lastRunRaw).toLocaleString('fr-CA', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Jamais exécuté';
+                      const actionsCount = (wf as unknown as { actions_count?: number }).actions_count ?? wf.steps_count ?? 0;
+                      return (
+                        <React.Fragment key={wf.id}>
+                          <tr className={`row-premium list-item-enter ${!wf.is_active ? 'opacity-50' : ''}`} style={{ animationDelay: `${idx * 30}ms` }}>
+                            <td className="col-frozen">
+                              <div className="flex items-center gap-2.5">
+                                <button
+                                  type="button"
+                                  className={`table-expand-trigger ${isExpanded ? 'is-expanded' : ''}`}
+                                  onClick={() => setExpandedId(isExpanded ? null : wf.id)}
+                                  aria-label={isExpanded ? 'Réduire' : 'Afficher les détails'}
+                                  aria-expanded={isExpanded}
+                                >
+                                  <ChevronRight size={14} />
+                                </button>
+                                <span className="text-base leading-none">{TRIGGER_ICONS[wf.trigger_type as TriggerType] || '⚡'}</span>
+                                <div className="min-w-0">
+                                  <p className="font-medium text-[13px] text-[var(--text-primary)] truncate">{wf.name}</p>
+                                  <Tag dot variant={wf.is_active ? 'success' : 'neutral'} size="xs">{wf.is_active ? 'Actif' : 'Inactif'}</Tag>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="text-xs text-[var(--text-secondary)]">{TRIGGER_LABELS[wf.trigger_type as TriggerType] || wf.trigger_type}</td>
+                            <td className="text-center text-xs font-semibold">{wf.steps_count ?? 0}</td>
+                            <td className="text-center text-xs font-semibold text-[var(--success)]">{wf.active_enrollments ?? 0}</td>
+                            <td className="text-center text-xs font-semibold text-[var(--info)]">{wf.total_executions ?? 0}</td>
+                            <td className="text-center">
+                              <button onClick={() => void handleToggle(wf.id, wf.is_active)}
+                                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer ${wf.is_active ? 'bg-[var(--success)]' : 'bg-[var(--bg-muted)]'}`}
+                                aria-label={wf.is_active ? 'Désactiver le workflow' : 'Activer le workflow'}>
+                                <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform shadow-sm ${wf.is_active ? 'translate-x-[18px]' : 'translate-x-[3px]'}`} />
+                              </button>
+                            </td>
+                            <td className="text-right">
+                              <div className="flex gap-1 justify-end">
+                                <Link to={`/workflows/${wf.id}`} className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--primary)] hover:bg-[var(--bg-subtle)] transition-all" aria-label="Voir détails"><UIcon as={Eye} size="sm" /></Link>
+                                <button onClick={() => void handleDelete(wf.id)} className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-[var(--bg-subtle)] cursor-pointer transition-all" aria-label="Supprimer"><UIcon as={Trash2} size="sm" /></button>
+                              </div>
+                            </td>
+                          </tr>
+                          <tr>
+                            <td colSpan={7} style={{ padding: 0, border: 'none' }}>
+                              <div className={`table-expand-content ${isExpanded ? 'is-open' : ''}`}>
+                                <div className="table-expand-inner">
+                                  <div className="table-expand-detail">
+                                    <div className="table-expand-detail-section" style={{ flex: '1 1 240px' }}>
+                                      <span className="table-expand-detail-label">Déclencheur</span>
+                                      <span className="table-expand-detail-value text-[12px]">{TRIGGER_LABELS[wf.trigger_type as TriggerType] || wf.trigger_type}</span>
+                                    </div>
+                                    <div className="table-expand-detail-section">
+                                      <span className="table-expand-detail-label">Actions</span>
+                                      <span className="table-expand-detail-value t-mono-num">{actionsCount}</span>
+                                    </div>
+                                    <div className="table-expand-detail-section">
+                                      <span className="table-expand-detail-label">Dernière exécution</span>
+                                      <span className="table-expand-detail-value text-[12px]">{lastRunLabel}</span>
+                                    </div>
+                                    {wf.description && (
+                                      <div className="table-expand-detail-section" style={{ flex: '1 1 320px' }}>
+                                        <span className="table-expand-detail-label">Description</span>
+                                        <span className="table-expand-detail-value text-[12px] text-[var(--text-secondary)] leading-relaxed">{wf.description}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        </React.Fragment>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </Card>
           )}
         </div>
+      </div>
       </div>
     </AppLayout>
   );

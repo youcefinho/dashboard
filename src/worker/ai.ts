@@ -122,6 +122,37 @@ function generateMockContent(systemPrompt: string, userPrompt: string): string {
       }).join('\n');
     }
   }
+  // Sprint 49 M3.1 : mock classify-conversation (JSON tags fermés)
+  if (systemPrompt.includes('Classe cette conversation')) {
+    const t = userPrompt.toLowerCase();
+    const picked: string[] = [];
+    if (/\b(urgent|asap|au plus vite)\b/.test(t)) picked.push('urgent');
+    if (/\b(prix|tarif|combien|budget|devis)\b/.test(t)) picked.push('question-prix');
+    if (/\b(rendez-vous|appel|rencontre|disponib)\b/.test(t)) picked.push('rendez-vous');
+    if (picked.length === 0) picked.push('demande-info');
+    return JSON.stringify({ tags: picked.slice(0, 3), confidence: 0.72 });
+  }
+  // Sprint 49 M3.2 : mock classify-lead (JSON suggestedTags)
+  if (systemPrompt.includes('suggère 2 à 4 tags')) {
+    const t = userPrompt.toLowerCase();
+    const tags: string[] = [];
+    if (/referral|référence/.test(t)) tags.push('source-référence');
+    else if (/meta|facebook|instagram/.test(t)) tags.push('source-social');
+    else tags.push('source-web');
+    tags.push('intent-fort', 'budget-moyen');
+    return JSON.stringify({ suggestedTags: tags.slice(0, 4), confidence: 0.68 });
+  }
+  // Sprint 49 M3.4 : mock nl-query (JSON filters + explanation)
+  if (systemPrompt.includes('parseur de requêtes CRM')) {
+    const q = userPrompt.toLowerCase();
+    const filters: Record<string, unknown> = {};
+    if (/chaud|hot|prioritaire/.test(q)) filters.scoreMin = 70;
+    if (/cette semaine|7 jours|pas contact/.test(q)) filters.lastContactDays = 7;
+    if (/bloqu|stagne|dormant|n[ée]gociation/.test(q)) { filters.stage = 'negotiation'; filters.dormantDays = 5; }
+    if (/perdu|lost/.test(q)) filters.status = 'lost';
+    if (/gagn|won/.test(q)) filters.status = 'won';
+    return JSON.stringify({ filters, explanation: 'Filtres extraits de la requête en langage naturel.' });
+  }
   // Sprint 20 : mock suggest_next_action (JSON valide)
   if (systemPrompt.includes('coach commercial')) {
     return JSON.stringify({
@@ -553,3 +584,481 @@ Réponds UNIQUEMENT avec le JSON valide, sans markdown autour. Maximum 6 étapes
 
 export { AI_ACTIONS };
 export type { AiAction };
+
+// ── Sprint 43 M3.3 : AI Drafts (3 tones — replace src/lib/aiDrafts.ts stub) ─
+
+type DraftTone = 'short' | 'detailed' | 'awaiting';
+
+interface DraftOption {
+  id: string;
+  title: string;
+  body: string;
+  tone: DraftTone;
+}
+
+const DRAFT_TONE_META: Record<DraftTone, { id: string; title: string; instruction: string }> = {
+  short: {
+    id: 'draft-short',
+    title: 'Courte & directe',
+    instruction: 'Rédige une réponse COURTE de 1-2 phrases (max 40 mots). Accuse réception, propose une prochaine étape concrète. Pas de formule de politesse longue.',
+  },
+  detailed: {
+    id: 'draft-detailed',
+    title: 'Détaillée & professionnelle',
+    instruction: 'Rédige une réponse DÉTAILLÉE (3-4 paragraphes, 80-150 mots). Salutation personnalisée, reformulation du sujet, engagement clair sur prochaine étape, clôture cordiale.',
+  },
+  awaiting: {
+    id: 'draft-awaiting',
+    title: 'En attente d\'info — propose call',
+    instruction: 'Rédige une réponse qui DEMANDE CLARIFICATION (60-100 mots). Remercie, demande 1-2 précisions concrètes sur le sujet, propose un court appel 15 min cette semaine, clôture cordiale.',
+  },
+};
+
+function buildDraftSystemPrompt(tone: DraftTone, brandVoice: string, targetLang?: string): string {
+  // Sprint 49 M1.4 — langue cible (multi-lingue : si le client écrit en EN/ES,
+  // on rédige le brouillon dans sa langue plutôt qu'en français.)
+  const lang = (targetLang || '').toLowerCase();
+  let langClause = 'Utilise un français québécois informel mais professionnel (pas parisien, pas trop guindé).';
+  if (lang.startsWith('en')) {
+    langClause = 'Write the reply in natural professional English (the client wrote in English).';
+  } else if (lang.startsWith('es')) {
+    langClause = 'Redacta la respuesta en español profesional y natural (el cliente escribió en español).';
+  } else if (lang === 'fr-fr') {
+    langClause = 'Utilise un français standard professionnel (le client écrit en français de France).';
+  }
+  return `Tu es un assistant CRM pour PME québécoises francophones. \
+Ton du client : ${brandVoice}. \
+${langClause} \
+Évite le tutoiement sauf si le ton brand l'indique. \
+${DRAFT_TONE_META[tone].instruction} \
+Réponds UNIQUEMENT avec le corps du message, sans préambule, sans markdown, sans guillemets.`;
+}
+
+/**
+ * Génère 3 brouillons (short/detailed/awaiting) en parallèle pour un message reçu.
+ * Body : { lead_id?, last_message: string, conversation_context?: string[], tones?: DraftTone[] }
+ * Retour : { data: { drafts: DraftOption[] } }
+ *
+ * Notes :
+ *  - Préserve l'API publique de src/lib/aiDrafts.ts (3 tones, mêmes ids).
+ *  - Pas de streaming SSE pour le moment — réponse JSON unique (les 3 drafts générés
+ *    en parallèle via Promise.all, latence ≈ 1 draft Haiku ≈ 1-2s).
+ *    SSE upgrade trivial plus tard si besoin (cf TODO doc).
+ *  - Fallback heuristique local si LLM échoue (préserve la robustesse du stub original).
+ */
+export async function handleAiDrafts(request: Request, env: Env): Promise<Response> {
+  let body: {
+    lead_id?: string;
+    last_message?: string;
+    conversation_context?: string[];
+    tones?: DraftTone[];
+    brand_voice?: string;
+    /** Sprint 49 M1.4 — langue cible de réponse (locale i18n). */
+    target_lang?: string;
+  };
+  try {
+    body = await request.json() as typeof body;
+  } catch {
+    return json({ error: 'JSON invalide' }, 400);
+  }
+
+  const lastMessage = (body.last_message || '').trim();
+  if (!lastMessage) return json({ error: 'last_message requis' }, 400);
+
+  const allowedTones: DraftTone[] = ['short', 'detailed', 'awaiting'];
+  const tones: DraftTone[] = (body.tones && body.tones.length > 0
+    ? body.tones.filter((t): t is DraftTone => allowedTones.includes(t as DraftTone))
+    : allowedTones);
+  if (tones.length === 0) return json({ error: 'Au moins un tone requis' }, 400);
+
+  // Charger contexte lead si fourni
+  let leadCtxStr = '';
+  let brandVoice = body.brand_voice || 'Professionnel, rassurant, québécois naturel.';
+  if (body.lead_id) {
+    const lead = await env.DB.prepare(
+      'SELECT name, email, status, source, client_id FROM leads WHERE id = ?'
+    ).bind(body.lead_id).first() as { name?: string; email?: string; status?: string; source?: string; client_id?: string } | null;
+    if (lead) {
+      leadCtxStr = `Contexte lead : ${lead.name || 'sans nom'}${lead.status ? ` (étape ${lead.status})` : ''}${lead.source ? `, source ${lead.source}` : ''}.\n`;
+      if (lead.client_id) {
+        const client = await env.DB.prepare('SELECT brand_voice FROM clients WHERE id = ?').bind(lead.client_id).first() as { brand_voice?: string } | null;
+        if (client?.brand_voice) brandVoice = client.brand_voice;
+      }
+    }
+  }
+
+  const recentContext = (body.conversation_context || [])
+    .filter(s => typeof s === 'string' && s.trim().length > 0)
+    .slice(-6) // garder les 6 derniers échanges max
+    .map((s, i) => `Échange ${i + 1}: ${s}`)
+    .join('\n');
+
+  const userPromptBase = `${leadCtxStr}${recentContext ? `Historique récent:\n${recentContext}\n\n` : ''}Dernier message reçu du lead :\n"""${lastMessage}"""`;
+
+  // Génération parallèle des 3 drafts (1 appel LLM par tone)
+  const drafts: DraftOption[] = await Promise.all(
+    tones.map(async (tone): Promise<DraftOption> => {
+      const sys = buildDraftSystemPrompt(tone, brandVoice, body.target_lang);
+      const generated = await callLLM(env, sys, userPromptBase);
+      const cleaned = (generated || '').trim()
+        .replace(/^["«»]+/g, '')
+        .replace(/["«»]+$/g, '');
+      return {
+        id: DRAFT_TONE_META[tone].id,
+        title: DRAFT_TONE_META[tone].title,
+        tone,
+        body: cleaned || `Bonjour,\n\nMerci pour votre message. Je reviens vers vous rapidement.\n\nCordialement,`,
+      };
+    })
+  );
+
+  return json({ data: { drafts } });
+}
+
+// ── Sprint 49 M1.1 : AI Compose Suggest (ghost text inline) ──────────────────
+
+/**
+ * Suggère les prochains mots (max 12) en ghost text — Gmail Smart Compose.
+ * Body : { currentDraft: string, conversationContext?: string, locale?: string }
+ * Retour : { data: { suggestion: string } }
+ *
+ * Low-latency : un seul appel Haiku, suite courte attendue.
+ * Fallback : '' si LLM KO (le client a son propre fallback heuristique local).
+ */
+export async function handleAiComposeSuggest(request: Request, env: Env): Promise<Response> {
+  let body: { currentDraft?: string; conversationContext?: string; locale?: string };
+  try {
+    body = await request.json() as typeof body;
+  } catch {
+    return json({ error: 'JSON invalide' }, 400);
+  }
+
+  const draft = (body.currentDraft || '').trim();
+  if (!draft || draft.split(/\s+/).filter(Boolean).length < 3) {
+    return json({ data: { suggestion: '' } });
+  }
+
+  const locale = body.locale || 'fr-CA';
+  const isEn = locale.toLowerCase().startsWith('en');
+  const isEs = locale.toLowerCase().startsWith('es');
+  const langName = isEn ? 'English' : isEs ? 'Spanish' : 'français québécois naturel';
+
+  const systemPrompt = `Tu es un moteur d'autocomplétion type Gmail Smart Compose pour un CRM PME québécois. \
+Continue le brouillon de l'utilisateur par UNE suite naturelle de MAXIMUM 12 mots, dans la même langue (${langName}). \
+Ne répète pas le texte déjà écrit. Ne reformule pas. Ne commence pas par une majuscule sauf si début de phrase. \
+Si aucune suite évidente, réponds EXACTEMENT par une chaîne vide. \
+Réponds UNIQUEMENT par la suite proposée, sans guillemets, sans préambule, sans retour ligne.`;
+
+  const ctx = (body.conversationContext || '').slice(0, 800);
+  const userPrompt = `${ctx ? `Contexte conversation :\n"""${ctx}"""\n\n` : ''}Brouillon en cours (continue-le) :\n"""${draft}"""`;
+
+  const raw = await callLLM(env, systemPrompt, userPrompt);
+  const cleaned = (raw || '')
+    .replace(/[\r\n]+/g, ' ')
+    .replace(/^["«»']+/, '')
+    .replace(/["«»']+$/, '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 12)
+    .join(' ');
+
+  return json({ data: { suggestion: cleaned } });
+}
+
+// ── Sprint 49 M1.3 : AI Proofread (relecture FR québécois) ───────────────────
+
+interface ProofreadIssueWire {
+  start: number;
+  end: number;
+  type: 'orthographe' | 'grammaire' | 'accord' | 'anglicisme';
+  suggestion: string;
+  message: string;
+  optional?: boolean;
+}
+
+/**
+ * Relecture non-intrusive : retourne une liste d'issues localisées.
+ * Body : { text: string, locale?: string }
+ * Retour : { data: { issues: ProofreadIssueWire[] } }
+ *
+ * Le LLM renvoie des paires (segment fautif, suggestion) qu'on re-mappe
+ * sur des index réels via indexOf (robuste si le LLM décale les offsets).
+ * Fallback : { issues: [] } si LLM KO (le client a son dico local QC).
+ */
+export async function handleAiProofread(request: Request, env: Env): Promise<Response> {
+  let body: { text?: string; locale?: string };
+  try {
+    body = await request.json() as typeof body;
+  } catch {
+    return json({ error: 'JSON invalide' }, 400);
+  }
+
+  const text = (body.text || '').trim();
+  if (!text || text.split(/\s+/).filter(Boolean).length < 3) {
+    return json({ data: { issues: [] } });
+  }
+  const safeText = text.slice(0, 3000);
+
+  const systemPrompt = `Tu es un correcteur de français québécois pour un CRM PME. \
+Repère UNIQUEMENT les vraies erreurs : orthographe, grammaire, accord, anglicisme. \
+Spécial Québec : les anglicismes courants ("céduler", "canceller", "booker") sont signalés mais marqués "optional": true (usage québécois accepté). \
+NE corrige PAS le style, le ton, ni les choix de mots valides. Sois conservateur : en cas de doute, ne signale rien. \
+Réponds UNIQUEMENT en JSON valide, sans markdown : \
+{"issues":[{"segment":"<texte fautif EXACT tel qu'il apparaît>","type":"orthographe|grammaire|accord|anglicisme","suggestion":"<correction>","message":"<explication courte FR>","optional":false}]}. \
+Si aucune erreur : {"issues":[]}.`;
+
+  const result = await callLLM(env, systemPrompt, `Texte à relire :\n"""${safeText}"""`);
+
+  let parsed: { issues?: Array<{ segment?: string; type?: string; suggestion?: string; message?: string; optional?: boolean }> } = {};
+  try {
+    const jsonMatch = result.match(/\{[\s\S]*\}/);
+    if (jsonMatch) parsed = JSON.parse(jsonMatch[0]);
+  } catch { /* fallback ci-dessous */ }
+
+  const validTypes = ['orthographe', 'grammaire', 'accord', 'anglicisme'];
+  const issues: ProofreadIssueWire[] = [];
+  let searchFrom = 0;
+
+  for (const raw of parsed.issues || []) {
+    const segment = (raw.segment || '').trim();
+    const suggestion = (raw.suggestion || '').trim();
+    if (!segment || !suggestion) continue;
+    const idx = safeText.indexOf(segment, searchFrom);
+    if (idx === -1) continue;
+    const type = (validTypes.includes(raw.type || '') ? raw.type : 'orthographe') as ProofreadIssueWire['type'];
+    issues.push({
+      start: idx,
+      end: idx + segment.length,
+      type,
+      suggestion,
+      message: (raw.message || '').slice(0, 160) || 'Suggestion de correction.',
+      optional: Boolean(raw.optional),
+    });
+    searchFrom = idx + segment.length;
+  }
+
+  return json({ data: { issues } });
+}
+
+// ── Sprint 49 M3 — Auto-tag conversations + leads + NL query ─────────
+// Suggestion uniquement (jamais auto-apply — Loi 25 friendly : transparence
+// IA, l'utilisateur garde le contrôle). Fallback déterministe local côté
+// frontend (src/lib/autoTag.ts / autoTagLead.ts / nlQuery.ts) si l'endpoint
+// est down. Ici on enrichit avec Claude Haiku + un fallback keyword serveur.
+
+const CONV_TAG_VOCAB = [
+  'urgent', 'question-prix', 'demande-info', 'plainte',
+  'prêt-à-acheter', 'lead-froid', 'relance-nécessaire', 'rendez-vous',
+] as const;
+
+// Keyword-matching FR québécois — utilisé en fallback serveur si le LLM
+// retourne du JSON invalide (le frontend a aussi son propre fallback).
+const CONV_KEYWORD_RULES: Array<{ tag: string; re: RegExp }> = [
+  { tag: 'urgent', re: /\b(urgent|au plus vite|asap|aujourd'?hui|tout de suite|presse|rapidement|d[èe]s que possible)\b/i },
+  { tag: 'question-prix', re: /\b(prix|co[ûu]te?|tarif|combien|budget|devis|soumission|estim[ée]|cher|paiement|facture)\b/i },
+  { tag: 'demande-info', re: /\b(information|renseignement|en savoir plus|d[ée]tails|comment|est-ce que|pourriez-vous|j'?aimerais savoir)\b/i },
+  { tag: 'plainte', re: /\b(d[ée][çc]u|insatisfait|probl[èe]me|plainte|remboursement|inacceptable|m[ée]content|pas content|nul|arnaque)\b/i },
+  { tag: 'prêt-à-acheter', re: /\b(je veux|on signe|pr[êe]t[e]? [àa] (commencer|acheter|signer)|allons-y|c'?est bon pour moi|je confirme|on y va|quand peut-on (commencer|d[ée]marrer))\b/i },
+  { tag: 'lead-froid', re: /\b(pas int[ée]ress[ée]|plus tard|peut-[êe]tre|on verra|pas pour l'?instant|trop t[ôo]t|je vous recontacte)\b/i },
+  { tag: 'relance-nécessaire', re: /\b(toujours pas|j'?attends|aucune nouvelle|relance|suivi|vous m'?aviez dit|on devait)\b/i },
+  { tag: 'rendez-vous', re: /\b(rendez-vous|rencontre|appel|disponib|c[ée]dule|agenda|quand (?:[êe]tes|seriez)-vous|prendre un moment|planifier)\b/i },
+];
+
+function keywordTagsConversation(text: string): string[] {
+  const out: string[] = [];
+  for (const { tag, re } of CONV_KEYWORD_RULES) {
+    if (re.test(text)) out.push(tag);
+  }
+  return out.slice(0, 4);
+}
+
+/**
+ * POST /api/ai/classify-conversation
+ * Body : { conversationId, lastMessages? } (lastMessages optionnel — sinon
+ *         chargé depuis D1 : 12 derniers messages).
+ * Retour : { data: { tags: string[], confidence: number } }
+ * Suggestion uniquement — aucune écriture en DB.
+ */
+export async function handleAiClassifyConversation(request: Request, env: Env): Promise<Response> {
+  let body: { conversationId?: string; conversation_id?: string; lastMessages?: string[] };
+  try {
+    body = await request.json() as typeof body;
+  } catch {
+    return json({ error: 'JSON invalide' }, 400);
+  }
+  const convId = body.conversationId || body.conversation_id;
+  if (!convId && (!body.lastMessages || body.lastMessages.length === 0)) {
+    return json({ error: 'conversationId ou lastMessages requis' }, 400);
+  }
+
+  let transcript = '';
+  if (body.lastMessages && body.lastMessages.length > 0) {
+    transcript = body.lastMessages.slice(-12).join('\n');
+  } else if (convId) {
+    const rows = await env.DB.prepare(
+      `SELECT direction, sender_name, body FROM messages
+       WHERE conversation_id = ? ORDER BY created_at DESC LIMIT 12`
+    ).bind(convId).all();
+    const msgs = (rows.results || []) as Array<Record<string, unknown>>;
+    transcript = [...msgs].reverse().map(m => {
+      const who = m.direction === 'outbound' ? 'Nous' : (m.sender_name || 'Client');
+      return `${who}: ${m.body}`;
+    }).join('\n');
+  }
+
+  if (!transcript.trim()) {
+    return json({ data: { tags: [], confidence: 0 } });
+  }
+
+  const systemPrompt = `Tu es un assistant CRM pour PME québécoise. \
+Classe cette conversation en sélectionnant les tags pertinents PARMI cette liste fermée : \
+${CONV_TAG_VOCAB.join(', ')}. \
+N'invente AUCUN autre tag. Choisis 1 à 3 tags maximum, les plus pertinents. \
+Réponds UNIQUEMENT en JSON valide (sans markdown) au format : \
+{"tags":["tag1","tag2"],"confidence":0.0-1.0}. \
+confidence = ta certitude globale.`;
+
+  const result = await callLLM(env, systemPrompt, `Conversation :\n${transcript}`);
+
+  let tags: string[] = [];
+  let confidence = 0.5;
+  try {
+    const m = result.match(/\{[\s\S]*\}/);
+    if (m) {
+      const parsed = JSON.parse(m[0]) as { tags?: string[]; confidence?: number };
+      tags = (parsed.tags || []).filter((t): t is string => typeof t === 'string' && (CONV_TAG_VOCAB as readonly string[]).includes(t));
+      if (typeof parsed.confidence === 'number') confidence = Math.max(0, Math.min(1, parsed.confidence));
+    }
+  } catch { /* fallback ci-dessous */ }
+
+  if (tags.length === 0) {
+    tags = keywordTagsConversation(transcript);
+    confidence = tags.length > 0 ? 0.45 : 0;
+  }
+
+  return json({ data: { tags: tags.slice(0, 3), confidence } });
+}
+
+const LEAD_TAG_FALLBACK_SOURCES: Record<string, string> = {
+  meta: 'source-social', facebook: 'source-social', instagram: 'source-social',
+  google: 'source-paid', google_ads: 'source-paid',
+  referral: 'source-référence', website: 'source-web', direct: 'source-web',
+  manual: 'source-manuel',
+};
+
+function deterministicLeadTags(lead: Record<string, unknown>): string[] {
+  const out: string[] = [];
+  const src = String(lead.source || '').toLowerCase();
+  if (LEAD_TAG_FALLBACK_SOURCES[src]) out.push(LEAD_TAG_FALLBACK_SOURCES[src]!);
+  const val = Number(lead.deal_value) || 0;
+  if (val >= 50000) out.push('budget-élevé');
+  else if (val >= 10000) out.push('budget-moyen');
+  else if (val > 0) out.push('budget-modeste');
+  const score = Number(lead.score) || 0;
+  if (score >= 70) out.push('intent-fort');
+  else if (score < 40 && score > 0) out.push('intent-faible');
+  return out.slice(0, 4);
+}
+
+/**
+ * POST /api/ai/classify-lead
+ * Body : { leadId?, leadData? } — leadData optionnel (sinon chargé depuis D1).
+ * Retour : { data: { suggestedTags: string[], confidence: number } }
+ * Suggestion uniquement — aucune écriture lead_tags.
+ */
+export async function handleAiClassifyLead(request: Request, env: Env): Promise<Response> {
+  let body: { leadId?: string; lead_id?: string; leadData?: Record<string, unknown> };
+  try {
+    body = await request.json() as typeof body;
+  } catch {
+    return json({ error: 'JSON invalide' }, 400);
+  }
+  const leadId = body.leadId || body.lead_id;
+  let lead: Record<string, unknown> | null = body.leadData || null;
+  if (!lead && leadId) {
+    lead = await env.DB.prepare(
+      `SELECT name, email, status, score, source, message, notes, deal_value, company, city
+       FROM leads WHERE id = ?`
+    ).bind(leadId).first() as Record<string, unknown> | null;
+  }
+  if (!lead) return json({ error: 'leadId ou leadData requis' }, 400);
+
+  const systemPrompt = `Tu es un expert en qualification de leads pour PME québécoise. \
+Analyse ce lead et suggère 2 à 4 tags courts (kebab-case, sans accents superflus) qui décrivent : \
+son industrie probable, son intention, son tier de budget, et la qualité de sa source. \
+Exemples de format : "industrie-construction", "intent-fort", "budget-élevé", "source-référence". \
+Réponds UNIQUEMENT en JSON valide (sans markdown) au format : \
+{"suggestedTags":["tag1","tag2"],"confidence":0.0-1.0}.`;
+
+  const result = await callLLM(env, systemPrompt, `Lead : ${JSON.stringify(lead)}`);
+
+  let suggestedTags: string[] = [];
+  let confidence = 0.5;
+  try {
+    const m = result.match(/\{[\s\S]*\}/);
+    if (m) {
+      const parsed = JSON.parse(m[0]) as { suggestedTags?: string[]; confidence?: number };
+      suggestedTags = (parsed.suggestedTags || [])
+        .filter((t): t is string => typeof t === 'string' && t.length > 1 && t.length <= 40)
+        .map(t => t.toLowerCase().trim().replace(/\s+/g, '-'))
+        .slice(0, 4);
+      if (typeof parsed.confidence === 'number') confidence = Math.max(0, Math.min(1, parsed.confidence));
+    }
+  } catch { /* fallback */ }
+
+  if (suggestedTags.length === 0) {
+    suggestedTags = deterministicLeadTags(lead);
+    confidence = suggestedTags.length > 0 ? 0.4 : 0;
+  }
+
+  return json({ data: { suggestedTags, confidence } });
+}
+
+/**
+ * POST /api/ai/nl-query
+ * Body : { query, locale? } → parse la requête en langage naturel en filtres
+ * structurés applicables aux pages Leads/Pipeline/Tasks via URL params.
+ * Retour : { data: { filters: {...}, explanation: string } }
+ */
+export async function handleAiNlQuery(request: Request, env: Env): Promise<Response> {
+  let body: { query?: string; locale?: string };
+  try {
+    body = await request.json() as typeof body;
+  } catch {
+    return json({ error: 'JSON invalide' }, 400);
+  }
+  const query = (body.query || '').trim();
+  if (!query) return json({ error: 'query requis' }, 400);
+
+  const systemPrompt = `Tu es un parseur de requêtes CRM pour PME québécoise. \
+L'utilisateur décrit en langage naturel (FR québécois ou EN) les leads/deals qu'il cherche. \
+Extrais des filtres structurés. Champs disponibles (tous optionnels) : \
+status (new|contacted|qualified|won|lost), source (meta|google|website|referral|manual|direct), \
+scoreMin (0-100, leads "chauds" = 70), stage (texte libre nom d'étape pipeline), \
+dormantDays (entier, "bloqué/stagne depuis X jours"), lastContactDays (entier, "pas contacté depuis X jours / cette semaine = 7"), \
+tag (texte libre), target ("leads"|"pipeline"|"tasks", défaut "leads"). \
+Réponds UNIQUEMENT en JSON valide (sans markdown) : \
+{"filters":{...},"explanation":"<reformulation courte FR de ce qui sera filtré>"}. \
+N'inclus QUE les champs détectés. Si rien de clair : {"filters":{},"explanation":"..."}.`;
+
+  const result = await callLLM(env, systemPrompt, `Requête : ${query}\nLangue : ${body.locale || 'fr-CA'}`);
+
+  let filters: Record<string, unknown> = {};
+  let explanation = '';
+  try {
+    const m = result.match(/\{[\s\S]*\}/);
+    if (m) {
+      const parsed = JSON.parse(m[0]) as { filters?: Record<string, unknown>; explanation?: string };
+      const allowed = ['status', 'source', 'scoreMin', 'stage', 'dormantDays', 'lastContactDays', 'tag', 'target'];
+      const f = parsed.filters || {};
+      for (const k of allowed) {
+        if (f[k] !== undefined && f[k] !== null && f[k] !== '') filters[k] = f[k];
+      }
+      explanation = typeof parsed.explanation === 'string' ? parsed.explanation : '';
+    }
+  } catch { /* fallback frontend regex */ }
+
+  return json({ data: { filters, explanation: explanation || `Recherche : « ${query} »` } });
+}
+

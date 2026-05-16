@@ -1,11 +1,12 @@
 // ── Page ClientLeads — Leads d'un client spécifique ─────────
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, Link } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Input, Badge, Skeleton, EmptyState } from '@/components/ui';
+import { Card, Button, Input, Select, Tag, Skeleton, EmptyState, KpiStrip, type KpiItem, Icon } from '@/components/ui';
 import { getClientLeads, updateLead } from '@/lib/api';
 import { STATUS_LABELS, STATUS_COLORS, TYPE_LABELS, LEAD_STATUSES, type Lead, type LeadStatus } from '@/lib/types';
+import { Users, Inbox, UserCheck, Trophy } from 'lucide-react';
 
 export function ClientLeadsPage() {
   const { clientId } = useParams({ strict: false }) as { clientId: string };
@@ -30,6 +31,19 @@ export function ClientLeadsPage() {
 
   useEffect(() => { void loadLeads(); }, [loadLeads]);
 
+  const kpis = useMemo<KpiItem[]>(() => {
+    const total = leads.length;
+    const inbound = leads.filter(l => l.type === 'inbound').length;
+    const customer = leads.filter(l => l.type === 'customer').length;
+    const won = leads.filter(l => l.status === 'won').length;
+    return [
+      { label: 'Total leads', value: total, color: 'brand', icon: <Icon as={Users} size={11} /> },
+      { label: 'Inbound', value: inbound, color: 'info', icon: <Icon as={Inbox} size={11} /> },
+      { label: 'Clients', value: customer, color: 'accent', icon: <Icon as={UserCheck} size={11} /> },
+      { label: 'Gagnés', value: won, color: 'success', icon: <Icon as={Trophy} size={11} /> },
+    ];
+  }, [leads]);
+
   const handleStatusChange = async (leadId: string, newStatus: LeadStatus) => {
     const result = await updateLead(leadId, { status: newStatus });
     if (!result.error) {
@@ -41,10 +55,13 @@ export function ClientLeadsPage() {
     <AppLayout title="Leads du client">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-[var(--text-muted)] mb-4">
-        <Link to="/clients" className="hover:text-[var(--brand-primary)] transition-colors">Clients</Link>
+        <Link to="/clients" className="hover:text-[var(--primary)] transition-colors">Clients</Link>
         <span>/</span>
         <span className="text-[var(--text-primary)]">Leads</span>
       </div>
+
+      {/* KPI Strip — leads du client */}
+      {!isLoading && leads.length > 0 && <KpiStrip items={kpis} />}
 
       {/* Filtres */}
       <Card className="p-4 mb-4">
@@ -62,36 +79,56 @@ export function ClientLeadsPage() {
               }
             />
           </div>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2.5 text-sm bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none"
-          >
-            <option value="">Tous les statuts</option>
-            {LEAD_STATUSES.map(s => (
-              <option key={s} value={s}>{STATUS_LABELS[s]}</option>
-            ))}
-          </select>
-          <select
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value)}
-            className="px-3 py-2.5 text-sm bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none"
-          >
-            <option value="">Tous les types</option>
-            <option value="inbound">Entrant</option>
-            <option value="customer">Client</option>
-          </select>
+          <div className="min-w-[180px]">
+            <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+              <option value="">Tous les statuts</option>
+              {LEAD_STATUSES.map(s => (
+                <option key={s} value={s}>{STATUS_LABELS[s]}</option>
+              ))}
+            </Select>
+          </div>
+          <div className="min-w-[160px]">
+            <Select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
+              <option value="">Tous les types</option>
+              <option value="inbound">Entrant</option>
+              <option value="customer">Client</option>
+            </Select>
+          </div>
         </div>
       </Card>
 
       {/* Tableau */}
       {isLoading ? (
-        <Card><Skeleton className="h-64 w-full" /></Card>
+        <Card className="p-0 overflow-hidden">
+          <div className="px-4 py-3 border-b border-[var(--border-subtle)] bg-[var(--bg-subtle)] flex items-center gap-6">
+            {[1,2,3,4,5].map(i => (
+              <Skeleton key={i} className="h-3 w-20 rounded" />
+            ))}
+          </div>
+          <div className="divide-y divide-[var(--border-subtle)]">
+            {[1,2,3,4,5,6].map(i => (
+              <div key={i} className="flex items-center gap-4 px-4 py-3">
+                <div className="flex-1 space-y-1.5">
+                  <Skeleton className="h-3.5 w-1/3 rounded" />
+                  <Skeleton className="h-2.5 w-1/2 rounded" />
+                </div>
+                <div className="w-40 space-y-1">
+                  <Skeleton className="h-3 w-full rounded" />
+                  <Skeleton className="h-2.5 w-2/3 rounded" />
+                </div>
+                <Skeleton className="h-5 w-16 rounded-full shrink-0" />
+                <Skeleton className="h-7 w-24 rounded shrink-0" />
+                <Skeleton className="h-3 w-16 rounded shrink-0" />
+              </div>
+            ))}
+          </div>
+        </Card>
       ) : leads.length === 0 ? (
         <EmptyState
-          title="Aucun lead trouvé"
-          description="Aucun lead ne correspond à vos filtres."
-          action={<Button variant="secondary" onClick={() => { setSearch(''); setStatusFilter(''); setTypeFilter(''); }}>Réinitialiser les filtres</Button>}
+          variant="filtered"
+          title="Aucun résultat"
+          description="Aucun lead ne correspond à tes filtres."
+          action={<Button variant="secondary" onClick={() => { setSearch(''); setStatusFilter(''); setTypeFilter(''); }}>Effacer les filtres</Button>}
         />
       ) : (
         <Card className="overflow-hidden p-0">
@@ -107,8 +144,12 @@ export function ClientLeadsPage() {
                 </tr>
               </thead>
               <tbody>
-                {leads.map((lead) => (
-                  <tr key={lead.id} className="border-b border-[var(--border-subtle)] hover:bg-[var(--bg-subtle)] transition-colors">
+                {leads.map((lead, idx) => (
+                  <tr
+                    key={lead.id}
+                    className="row-premium list-item-enter border-b border-[var(--border-subtle)]"
+                    style={{ animationDelay: `${Math.min(idx, 20) * 30}ms` }}
+                  >
                     <td className="px-4 py-3">
                       <p className="font-medium">{lead.name}</p>
                       {lead.message && <p className="text-xs text-[var(--text-muted)] mt-0.5 truncate max-w-48">{lead.message}</p>}
@@ -118,21 +159,21 @@ export function ClientLeadsPage() {
                       {lead.phone && <p className="text-xs text-[var(--text-muted)]">{lead.phone}</p>}
                     </td>
                     <td className="px-4 py-3">
-                      <Badge color={lead.type === 'inbound' ? 'var(--brand-primary)' : 'var(--warning)'}>
+                      <Tag color={lead.type === 'inbound' ? 'var(--primary)' : 'var(--warning)'} size="sm">
                         {TYPE_LABELS[lead.type]}
-                      </Badge>
+                      </Tag>
                     </td>
                     <td className="px-4 py-3">
-                      <select
+                      <Select
+                        size="sm"
                         value={lead.status}
                         onChange={(e) => void handleStatusChange(lead.id, e.target.value as LeadStatus)}
-                        className="text-xs px-2 py-1 bg-transparent border border-[var(--border-subtle)] rounded-[var(--radius-sm)] focus:outline-none"
-                        style={{ color: STATUS_COLORS[lead.status] }}
+                        style={{ color: STATUS_COLORS[lead.status], fontWeight: 600 }}
                       >
                         {LEAD_STATUSES.map(s => (
                           <option key={s} value={s}>{STATUS_LABELS[s]}</option>
                         ))}
-                      </select>
+                      </Select>
                     </td>
                     <td className="px-4 py-3 text-xs text-[var(--text-muted)]">
                       {new Date(lead.created_at).toLocaleDateString('fr-CA')}
