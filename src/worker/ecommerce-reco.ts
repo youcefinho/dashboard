@@ -24,7 +24,8 @@ import { getClientModules } from './modules';
 type Auth = { userId: string; role: string };
 
 const RECO_LIMIT = 8;          // nb de recos retournées (borné)
-const CO_PURCHASE_SCAN = 2000; // borne dure de lignes co-achat scannées
+
+
 
 // ── LLM local (pattern recopié d'ai.ts — ai.ts NON importé/modifié) ──────────
 

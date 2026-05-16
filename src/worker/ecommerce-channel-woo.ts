@@ -54,7 +54,7 @@ export async function verifyWooWebhook(
     false,
     ['verify'],
   );
-  return crypto.subtle.verify('HMAC', key, sigBytes, enc.encode(rawBody));
+  return crypto.subtle.verify('HMAC', key, sigBytes as unknown as ArrayBuffer, enc.encode(rawBody));
 }
 
 // ── « Connect » Woo (pas d'OAuth standard) ───────────────────────────────────
@@ -66,7 +66,7 @@ export async function verifyWooWebhook(
  * shop_domain DOIT pointer la base WordPress (ex 'boutique.example.com').
  */
 export async function wooConnect(
-  env: Env,
+  _env: Env,
   channel: ChannelRow,
   origin: string,
 ): Promise<Response> {

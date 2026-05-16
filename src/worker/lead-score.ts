@@ -222,7 +222,7 @@ async function computeSignals(env: Env, lead: LeadRow): Promise<{ score: number;
 
 export async function handleGetLeadScore(
   env: Env,
-  auth: { userId: string; role: string },
+  _auth: { userId: string; role: string },
   leadId: string,
 ): Promise<Response> {
   if (!leadId) return json({ error: 'lead_id requis' }, 400);

@@ -94,13 +94,13 @@ export function RegionSettings() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const activeRegion = REGIONS.find((r) => r.id === config.region) || REGIONS[0];
+  const activeRegion = REGIONS.find((r) => r.id === config.region) ?? REGIONS[0]!;
   const countryOptions = activeRegion.countries;
 
   // Changer de région réaligne devise + régime + pays par défaut (l'admin peut
   // ensuite ajuster manuellement chaque champ).
   const handleRegionChange = (regionId: string) => {
-    const r = REGIONS.find((x) => x.id === regionId) || REGIONS[0];
+    const r = REGIONS.find((x) => x.id === regionId) ?? REGIONS[0]!;
     setConfig((prev) => ({
       ...prev,
       region: r.id,

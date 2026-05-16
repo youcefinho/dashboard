@@ -698,6 +698,7 @@ interface LeadSourceRow {
   name: string;
   source_key: string;
   type: string;
+  token: string;
   mapping_json: string | null;
   dedup_strategy: string;
   consent_default: string;

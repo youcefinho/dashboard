@@ -151,10 +151,8 @@ function noClient(): Response {
   );
 }
 
-interface OrderPolicyRow {
-  id: string;
-  delivered_at: string | null;
-}
+
+
 
 /**
  * GET /api/ecommerce/orders/:id/policy — politique de rétractation INDICATIVE

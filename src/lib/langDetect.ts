@@ -60,8 +60,8 @@ export function detectLang(text: string): DetectedLang {
   ];
   scores.sort((a, b) => b[1] - a[1]);
 
-  const [topLang, topScore] = scores[0];
-  const [, secondScore] = scores[1];
+  const [topLang, topScore] = scores[0]!;
+  const [, secondScore] = scores[1]!;
 
   // Seuils : signal minimal + écart suffisant avec le 2e (anti-ambiguïté)
   if (topScore < 0.06 || topScore - secondScore < 0.02) return 'unknown';

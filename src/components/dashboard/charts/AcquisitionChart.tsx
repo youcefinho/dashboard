@@ -103,18 +103,15 @@ export default function AcquisitionChart({
   const maxCount =
     chartData.length > 0 ? Math.max(...chartData.map((d) => d.count || 0)) : 0;
   const peakThreshold = maxCount * 0.8;
-  const PeakLabel = (props: {
-    x?: number;
-    y?: number;
-    width?: number;
-    value?: number;
-  }) => {
-    const { x = 0, y = 0, width = 0, value = 0 } = props;
+  const PeakLabel = (props: any) => {
+    const { x = 0, y = 0, width = 0, value = 0 } = props as {
+      x?: number; y?: number; width?: number; value?: number;
+    };
     if (!value || value < peakThreshold) return null;
     return (
       <text
-        x={x + width / 2}
-        y={y - 8}
+        x={Number(x) + Number(width) / 2}
+        y={Number(y) - 8}
         textAnchor="middle"
         fill="var(--text-muted)"
         fontSize={11}
@@ -156,7 +153,7 @@ export default function AcquisitionChart({
           animationDuration={600}
           animationEasing="ease-out"
         >
-          <LabelList dataKey="count" content={PeakLabel} />
+          <LabelList dataKey="count" content={PeakLabel as any} />
         </Bar>
         <Line
           type="monotone"

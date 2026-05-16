@@ -50,7 +50,7 @@ function detectNavigatorLocale(): Locale {
     // Match exact (fr-CA / fr-FR / en / es)
     if (norm in DICTIONARIES) return norm as Locale;
     // Match préfixe
-    const prefix = norm.split('-')[0].toLowerCase();
+    const prefix = norm.split('-')[0]!.toLowerCase();
     if (prefix === 'fr') {
       // fr-XX (France etc.) → fr-FR ; fr-CA expressément → fr-CA via exact match au-dessus
       return 'fr-FR';

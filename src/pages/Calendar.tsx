@@ -29,7 +29,7 @@ import { useShortcuts } from '@/hooks/useShortcuts';
 import { announceSR } from '@/lib/announce';
 import { useAppointmentHoverPreview } from '@/components/panels/AppointmentHoverPreview';
 // Sprint 48 M3.2 — Intl date/time formatters
-import { formatDate, formatTime } from '@/lib/i18n/datetime';
+import { formatDate } from '@/lib/i18n/datetime';
 import { formatDateInTimezone, getStoredTimezone } from '@/lib/i18n/timezone';
 import { getLocale } from '@/lib/i18n';
 // Sprint 44 M3.3 — Pull-to-refresh
@@ -95,7 +95,7 @@ function typeToVariant(t: AppointmentType): 'brand' | 'success' | 'warning' | 'd
     case 'call':      return 'info';
     case 'visit':     return 'success';
     case 'signing':   return 'accent';
-    case 'followup':  return 'warning';
+    case 'followup' as AppointmentType:  return 'warning';
     default:          return 'neutral';
   }
 }

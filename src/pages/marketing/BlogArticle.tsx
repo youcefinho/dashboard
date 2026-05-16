@@ -11,9 +11,14 @@ import remarkGfm from 'remark-gfm';
 import { Icon } from '@/components/ui/Icon';
 import {
   Calendar as CalendarIcon, Clock, ArrowLeft, ArrowRight,
-  Twitter, Linkedin, Facebook, Link2, Quote, Info, AlertTriangle, CheckCircle2,
+  Link2, Quote, Info, AlertTriangle, CheckCircle2,
 } from 'lucide-react';
 import { BLOG_POSTS, BLOG_TAGS, getPostBySlug } from '@/content/blog';
+
+// Icônes de marques sociales (retirées de lucide-react 1.x)
+const TwitterSvg = () => <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden><path d="M23 3a10.9 10.9 0 01-3.14 1.53A4.48 4.48 0 0012 7.5v1A10.66 10.66 0 013 4s-4 9 5 13a11.64 11.64 0 01-7 2c9 5 20 0 20-11.5 0-.28-.03-.56-.08-.83A7.72 7.72 0 0023 3z"/></svg>;
+const LinkedinSvg = () => <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-4 0v7h-4v-7a6 6 0 016-6zM2 9h4v12H2zm2-5a2 2 0 110 4 2 2 0 010-4z"/></svg>;
+const FacebookSvg = () => <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg>;
 
 function formatDate(iso: string): string {
   try {
@@ -216,13 +221,13 @@ export function BlogArticlePage() {
             <p className="blog-toc-heading">Partager</p>
             <div className="blog-share-row">
               <a href={shareLinks.twitter} target="_blank" rel="noopener noreferrer" className="blog-share-btn" aria-label="Partager sur Twitter">
-                <Icon as={Twitter} size={14} />
+                <TwitterSvg />
               </a>
               <a href={shareLinks.linkedin} target="_blank" rel="noopener noreferrer" className="blog-share-btn" aria-label="Partager sur LinkedIn">
-                <Icon as={Linkedin} size={14} />
+                <LinkedinSvg />
               </a>
               <a href={shareLinks.facebook} target="_blank" rel="noopener noreferrer" className="blog-share-btn" aria-label="Partager sur Facebook">
-                <Icon as={Facebook} size={14} />
+                <FacebookSvg />
               </a>
               <button type="button" onClick={copyLink} className="blog-share-btn" aria-label="Copier le lien">
                 <Icon as={Link2} size={14} />

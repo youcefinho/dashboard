@@ -18,10 +18,10 @@ import {
   createOrderRefund, listOrderRefunds, refundStatusKey,
   listOrderReturns, createOrderReturn, updateOrderReturn, rmaStatusKey,
   listDisputes, disputeStatusKey, getOrderPolicy,
-  type OrderInvoiceData, type RefundRecord, type ReturnRequest,
+  type OrderInvoiceData, type RefundRecord,
   type DisputeRecord,
 } from '@/lib/api';
-import type { ConsumerPolicy } from '@/lib/types';
+import type { ConsumerPolicy, ReturnRequest } from '@/lib/types';
 // Sprint E4 M3.3 — sélection méthode de paiement (additif, non destructif).
 import { CheckoutMethodSelect } from './CheckoutMethodSelect';
 // Sprint E5 M3.1/M3.3 — section expéditions + bon de livraison (additif).
@@ -1022,7 +1022,7 @@ export function OrderDetailPanel({ orderId, open, onOpenChange, onChanged }: Ord
               Sprint E5 M3.3 : rendu UNIQUEMENT si pdfDoc!=='delivery' pour
               garantir qu'un seul document est en DOM au window.print(). Le
               comportement facture E3 est INCHANGÉ (pdfDoc défaut = 'invoice'). */}
-          {invoice && invoice !== false && pdfDoc === 'invoice' && (
+          {invoice && invoice !== (false as unknown as OrderInvoiceData) && pdfDoc === 'invoice' && (
             <div className="order-invoice-print" aria-hidden="true">
               <div className="pdf-cover-accent-bar" />
               <div className="pdf-cover-logo">Intralys</div>
@@ -1192,7 +1192,7 @@ export function OrderDetailPanel({ orderId, open, onOpenChange, onChanged }: Ord
               </h1>
               <p className="pdf-cover-subtitle">
                 {order.placed_at ? formatDate(order.placed_at, locale) : ''}
-                {invoice && invoice !== false && invoice.client.tax_note
+                {invoice && invoice !== (false as unknown as OrderInvoiceData) && invoice.client.tax_note
                   ? ` · ${invoice.client.tax_note}` : ''}
               </p>
 

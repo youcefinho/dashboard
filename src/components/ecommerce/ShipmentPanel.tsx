@@ -12,7 +12,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Modal, Button, Tag, Select, Input, Textarea, Skeleton, Icon, useToast,
+  Modal, Button, Tag, Input, Textarea, Skeleton, Icon, useToast,
 } from '@/components/ui';
 import {
   getOrderShipments, createShipment, updateShipmentStatus,

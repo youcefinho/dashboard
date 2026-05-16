@@ -10,7 +10,14 @@ import {
   updateNotificationPreference,
   type NotificationPreference,
 } from '@/lib/api';
-import { Bell, Mail, Smartphone, Monitor, BellOff, Volume2, Vibrate, ToggleLeft, CheckCircle2, AlertCircle, BellRing, Send, Sparkles, MousePointer2, MessageSquare, Slack } from 'lucide-react';
+import { Bell, Mail, Smartphone, Monitor, BellOff, Volume2, Vibrate, ToggleLeft, CheckCircle2, AlertCircle, BellRing, Send, Sparkles, MousePointer2, MessageSquare } from 'lucide-react';
+
+// Slack n'est plus exporté par lucide-react 1.x — icône SVG inline
+const SlackIcon = (props: { size?: number }) => (
+  <svg viewBox="0 0 24 24" width={props.size || 16} height={props.size || 16} fill="currentColor" aria-hidden>
+    <path d="M14.5 2a2.5 2.5 0 00-.5 4.95V10h3.05A2.5 2.5 0 1014.5 2zM2 9.5A2.5 2.5 0 006.95 10H10V6.95A2.5 2.5 0 102 9.5zM9.5 22a2.5 2.5 0 00.5-4.95V14H6.95A2.5 2.5 0 109.5 22zM22 14.5a2.5 2.5 0 00-4.95-.5H14v3.05A2.5 2.5 0 1022 14.5z"/>
+  </svg>
+);
 import { useSound, type SoundName } from '@/hooks/useSound';
 import { useHaptic, type HapticIntensity } from '@/hooks/useHaptic';
 
@@ -35,7 +42,7 @@ const CHANNELS: { key: Channel; label: string; icon: any; variant: 'brand' | 'su
   { key: 'email', label: 'Email', icon: Mail, variant: 'brand' },
   { key: 'push', label: 'Push', icon: MessageSquare, variant: 'brand' },
   { key: 'sms', label: 'SMS', icon: Smartphone, variant: 'success' },
-  { key: 'slack', label: 'Slack', icon: Slack, variant: 'brand' },
+  { key: 'slack', label: 'Slack', icon: SlackIcon, variant: 'brand' },
 ];
 
 export function NotificationsSettings() {
@@ -208,7 +215,7 @@ export function NotificationsSettings() {
           { label: 'Email', value: kpis.perChannel.email, color: 'brand', icon: <Mail size={12} /> },
           { label: 'Push', value: kpis.perChannel.push, color: 'brand', icon: <MessageSquare size={12} /> },
           { label: 'SMS', value: kpis.perChannel.sms, color: 'success', icon: <Smartphone size={12} /> },
-          { label: 'Slack', value: kpis.perChannel.slack, color: 'brand', icon: <Slack size={12} /> },
+          { label: 'Slack', value: kpis.perChannel.slack, color: 'brand', icon: <SlackIcon size={12} /> },
         ]}
       />
 

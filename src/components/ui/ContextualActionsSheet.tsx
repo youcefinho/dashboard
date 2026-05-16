@@ -102,7 +102,7 @@ export function ContextualActionsSheet({
                 className={`contextual-actions-row ${variantClass}`}
               >
                 <span className="contextual-actions-row__icon" aria-hidden>
-                  <Icon as={action.icon} size={18} strokeWidth={2} />
+                  <Icon as={action.icon as any} size={18} strokeWidth={2} />
                 </span>
                 <span className="contextual-actions-row__body">
                   <span className="contextual-actions-row__label">{action.label}</span>

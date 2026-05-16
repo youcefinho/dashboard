@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef, Suspense, lazy, type DragEvent, type MouseEvent as ReactMouseEvent } from 'react';
 import { Link, useRouterState, useNavigate } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Tag, Skeleton, Card, Button, EmptyState, KpiStrip, type KpiItem, SmartBanner, AvatarGroup, AppliedFiltersBar, type FilterDescriptor, EmptyStateIllustration, Icon, ContextualActionsSheet, type ContextualAction } from '@/components/ui';
+import { Tag, Skeleton, Button, EmptyState, KpiStrip, type KpiItem, SmartBanner, AvatarGroup, AppliedFiltersBar, type FilterDescriptor, EmptyStateIllustration, Icon, ContextualActionsSheet, type ContextualAction } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { Avatar } from '@/components/ui/Avatar';
 import { getPipeline, getPipelines, updateLead } from '@/lib/api';

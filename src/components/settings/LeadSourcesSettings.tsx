@@ -110,8 +110,8 @@ export function LeadSourcesSettings() {
   const loadSources = useCallback(() => {
     setLoading(true);
     fetch('/api/lead-sources')
-      .then((r) => r.json())
-      .then((d: { data?: LeadSource[] }) => setSources(d.data || []))
+      .then((r) => r.json() as Promise<{ data?: LeadSource[] }>)
+      .then((d) => setSources(d.data || []))
       .catch(() => toastError('Impossible de charger les sources'))
       .finally(() => setLoading(false));
   }, [toastError]);
@@ -119,8 +119,8 @@ export function LeadSourcesSettings() {
   useEffect(() => {
     loadSources();
     fetch('/api/clients')
-      .then((r) => r.json())
-      .then((d: { data?: { id: string; name: string }[] }) => setClients(d.data || []))
+      .then((r) => r.json() as Promise<{ data?: { id: string; name: string }[] }>)
+      .then((d) => setClients(d.data || []))
       .catch(() => { /* silencieux */ });
   }, [loadSources]);
 
@@ -236,8 +236,8 @@ export function LeadSourcesSettings() {
   const openLog = (s: LeadSource) => {
     setLogSource(s); setLogLeads([]); setLogOpen(true);
     fetch(`/api/lead-sources/${s.id}/leads?limit=15`)
-      .then((r) => r.json())
-      .then((d: { data?: IncomingLead[] }) => setLogLeads(d.data || []))
+      .then((r) => r.json() as Promise<{ data?: IncomingLead[] }>)
+      .then((d) => setLogLeads(d.data || []))
       .catch(() => toastError('Impossible de charger les leads'));
   };
 

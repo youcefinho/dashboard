@@ -29,7 +29,7 @@ export function MagicLinkVerifyPage() {
     (async () => {
       try {
         const res = await fetch(`/api/auth/magic-verify?token=${encodeURIComponent(token)}`);
-        const j = await res.json().catch(() => ({}));
+        const j = await res.json().catch(() => ({})) as { data?: { token?: string; user?: unknown; redirect?: string }; error?: string };
         if (res.ok && j?.data?.token) {
           // Même persistance que api.login() — auth context picke au reload.
           localStorage.setItem('intralys_token', j.data.token);

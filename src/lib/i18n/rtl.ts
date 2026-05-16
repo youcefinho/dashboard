@@ -24,7 +24,7 @@ const RTL_LOCALES = new Set<string>([
 export function getDirection(locale: string): 'ltr' | 'rtl' {
   if (RTL_LOCALES.has(locale)) return 'rtl';
   // Fallback : si le préfixe matche (ex. 'ar-XX' → 'ar')
-  const prefix = locale.split('-')[0];
+  const prefix = locale.split('-')[0]!;
   if (RTL_LOCALES.has(prefix)) return 'rtl';
   return 'ltr';
 }

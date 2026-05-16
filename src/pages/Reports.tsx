@@ -29,7 +29,7 @@ import { ContextualCoachmark } from '@/components/onboarding/ContextualCoachmark
 // Sprint 46 M1 — Dashboards builder (drag-drop widgets) + API
 import { DashboardBuilder, createEmptyDashboard, type DashboardBuilderValue } from '@/components/reports/DashboardBuilder';
 // Sprint 48 M3 — Intl currency + date
-import { formatMoneyCAD, formatNumber } from '@/lib/i18n/number';
+import { formatMoneyCAD } from '@/lib/i18n/number';
 import { formatDate } from '@/lib/i18n/datetime';
 import { getLocale } from '@/lib/i18n';
 import {

@@ -44,7 +44,8 @@ export function RoadmapPage() {
     fetch('/api/roadmap')
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => {
-        if (alive && j?.data) setItems(j.data as RoadmapItem[]);
+        const resp = j as { data?: RoadmapItem[] } | null;
+        if (alive && resp?.data) setItems(resp.data);
       })
       .catch(() => { /* best-effort */ })
       .finally(() => { if (alive) setLoading(false); });
@@ -63,10 +64,10 @@ export function RoadmapPage() {
     } catch { /* ignore */ }
     try {
       const res = await fetch(`/api/roadmap/${id}/vote`, { method: 'POST' });
-      const j = await res.json().catch(() => ({}));
+      const j = await res.json().catch(() => ({})) as { data?: { votes?: number; already?: boolean } };
       if (res.ok && typeof j?.data?.votes === 'number') {
-        setItems((prev) => prev.map((it) => (it.id === id ? { ...it, votes: j.data.votes } : it)));
-        if (!j.data.already) toast.success('Merci pour ton vote !');
+        setItems((prev) => prev.map((it) => (it.id === id ? { ...it, votes: j.data!.votes! } : it)));
+        if (!j.data!.already) toast.success('Merci pour ton vote !');
       }
     } catch {
       toast.error('Vote non enregistré, réessaye plus tard.');

@@ -146,8 +146,8 @@ export function analyzeTone(text: string): ToneResult {
   ];
   scores.sort((a, b) => b[1] - a[1]);
 
-  const [topKey, topScore] = scores[0];
-  const [, secondScore] = scores[1];
+  const [topKey, topScore] = scores[0]!;
+  const [, secondScore] = scores[1]!;
 
   // Seuil : signal dominant requis, sinon neutre (évite faux positifs Stripe)
   if (topScore < 1 || topScore - secondScore < 0.5) {

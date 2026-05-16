@@ -60,7 +60,7 @@ export async function verifyShopifyWebhook(
     ['verify'],
   );
   // crypto.subtle.verify est constant-time → safe contre timing attacks.
-  return crypto.subtle.verify('HMAC', key, sigBytes, enc.encode(rawBody));
+  return crypto.subtle.verify('HMAC', key, sigBytes as unknown as ArrayBuffer, enc.encode(rawBody));
 }
 
 // ── OAuth : démarrage (connect) ──────────────────────────────────────────────

@@ -18,7 +18,7 @@ interface Props {
   /** Issues détectées (déjà bornées/validées par lib/proofread). */
   issues: ProofreadIssue[];
   /** Ref du textarea cible (pour copier métriques de scroll/typo). */
-  textareaRef: React.RefObject<HTMLTextAreaElement>;
+  textareaRef: React.RefObject<HTMLTextAreaElement | null>;
   /** Applique une suggestion : remplace [start,end) par suggestion. */
   onApply: (issue: ProofreadIssue) => void;
   /** Ignore une issue (dismiss local, jamais ré-affichée pour ce texte). */

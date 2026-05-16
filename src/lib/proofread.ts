@@ -153,10 +153,10 @@ export function localProofreadFallback(text: string): ProofreadIssue[] {
     const re = new RegExp(`(^|[^\\p{L}])(${esc})(?=$|[^\\p{L}])`, 'giu');
     let m: RegExpExecArray | null;
     while ((m = re.exec(src)) !== null) {
-      const matchStart = m.index + m[1].length;
+      const matchStart = m.index + m[1]!.length;
       issues.push({
         start: matchStart,
-        end: matchStart + m[2].length,
+        end: matchStart + m[2]!.length,
         type: 'anglicisme',
         suggestion: entry.suggestion,
         message: entry.message,

@@ -20,15 +20,17 @@ import {
   BarChart3,
   Smartphone,
   ShieldCheck,
-  Facebook,
-  Linkedin,
-  Instagram,
   ChevronLeft,
   ChevronRight,
   Play,
   X,
   Mail,
 } from 'lucide-react';
+
+// Icônes de marques sociales (retirées de lucide-react 1.x)
+const FacebookIcon = () => <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg>;
+const LinkedinIcon = () => <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-4 0v7h-4v-7a6 6 0 016-6zM2 9h4v12H2zm2-5a2 2 0 110 4 2 2 0 010-4z"/></svg>;
+const InstagramIcon = () => <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/><circle cx="17.5" cy="6.5" r="1.5"/></svg>;
 import { Button } from '@/components/ui/Button';
 import { Icon, EmptyStateIllustration } from '@/components/ui';
 import type { LucideIcon } from 'lucide-react';
@@ -400,28 +402,33 @@ function TestimonialsSection() {
           >
             <Icon as={ChevronLeft} size={16} />
           </button>
+          {(() => {
+            const t = TESTIMONIALS[active]!;
+            return (
           <article
-            key={TESTIMONIALS[active].name}
+            key={t.name}
             className="mkt-testi-card mkt-testi-card--feature"
             aria-live="polite"
           >
-            <p className="mkt-testi-card__quote">« {TESTIMONIALS[active].quote} »</p>
+            <p className="mkt-testi-card__quote">« {t.quote} »</p>
             <footer className="mkt-testi-card__footer">
               <span
                 className="mkt-testi-card__avatar"
                 aria-hidden
-                style={{ background: TESTIMONIALS[active].color }}
+                style={{ background: t.color }}
               >
-                {TESTIMONIALS[active].initials}
+                {t.initials}
               </span>
               <div className="mkt-testi-card__person">
-                <span className="mkt-testi-card__name">{TESTIMONIALS[active].name}</span>
+                <span className="mkt-testi-card__name">{t.name}</span>
                 <span className="mkt-testi-card__role">
-                  {TESTIMONIALS[active].role} · {TESTIMONIALS[active].city}
+                  {t.role} · {t.city}
                 </span>
               </div>
             </footer>
           </article>
+            );
+          })()}
           <button
             type="button"
             className="mkt-testi__nav mkt-testi__nav--next"
@@ -498,13 +505,13 @@ function FooterSection() {
             </p>
             <div className="mkt-footer__social" aria-label="Réseaux sociaux">
               <a href="#" className="mkt-footer__social-link" aria-label="Facebook">
-                <Icon as={Facebook} size={14} />
+                <FacebookIcon />
               </a>
               <a href="#" className="mkt-footer__social-link" aria-label="LinkedIn">
-                <Icon as={Linkedin} size={14} />
+                <LinkedinIcon />
               </a>
               <a href="#" className="mkt-footer__social-link" aria-label="Instagram">
-                <Icon as={Instagram} size={14} />
+                <InstagramIcon />
               </a>
             </div>
           </div>

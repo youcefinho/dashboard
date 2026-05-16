@@ -96,7 +96,7 @@ async function loadShipment(
   const { results } = await env.DB.prepare(
     'SELECT * FROM shipment_items WHERE shipment_id = ? ORDER BY created_at ASC',
   ).bind(shipmentId).all();
-  return { ...s, items: (results || []) as Shipment['items'] };
+  return { ...s, items: ((results || []) as unknown as Shipment['items']) };
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -168,7 +168,7 @@ export async function handleCreateShipment(
   const { results: oiResults } = await env.DB.prepare(
     'SELECT id, quantity FROM order_items WHERE order_id = ?',
   ).bind(orderId).all();
-  const orderItems = (oiResults || []) as OrderItemRow[];
+  const orderItems = ((oiResults || []) as unknown as OrderItemRow[]);
   const byId = new Map(orderItems.map((oi) => [oi.id, oi.quantity]));
 
   // Quantités déjà expédiées par order_item (hors expéditions 'failed') pour
@@ -280,14 +280,14 @@ export async function handleListShipments(
       WHERE order_id = ? AND client_id = ?
       ORDER BY created_at ASC`,
   ).bind(orderId, clientId).all();
-  const shipments = (results || []) as Shipment[];
+  const shipments = ((results || []) as unknown as Shipment[]);
 
   // Hydrate les lignes par expédition (peu de shipments par commande).
   for (const s of shipments) {
     const { results: items } = await env.DB.prepare(
       'SELECT * FROM shipment_items WHERE shipment_id = ? ORDER BY created_at ASC',
     ).bind(s.id).all();
-    s.items = (items || []) as Shipment['items'];
+    s.items = ((items || []) as unknown as Shipment['items']);
   }
 
   return json({ data: shipments });

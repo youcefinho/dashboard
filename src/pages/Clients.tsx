@@ -8,9 +8,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { getClients, createClient, getLeads } from '@/lib/api';
 import type { Client, Lead } from '@/lib/types';
-// Sprint 48 M3.3 — Intl currency formatter
-import { formatMoneyCAD } from '@/lib/i18n/number';
-import { getLocale } from '@/lib/i18n';
+
 
 // Type étendu pour les clients avec compteurs
 interface ClientWithCounts extends Client {

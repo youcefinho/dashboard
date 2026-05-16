@@ -242,8 +242,8 @@ export async function handleEcommerceCohorts(
     };
     // Index mois absolu (depuis epoch) pour calcul offset M+i sans dérive.
     const monthIdx = (ym: string): number => {
-      const [y, m] = ym.split('-').map((n) => parseInt(n, 10));
-      return y * 12 + (m - 1);
+      const parts = ym.split('-').map((n) => parseInt(n, 10));
+      return (parts[0] ?? 0) * 12 + ((parts[1] ?? 1) - 1);
     };
 
     // 1er mois d'achat compté par client = mois d'acquisition (cohorte).

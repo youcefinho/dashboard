@@ -32,6 +32,7 @@ interface BroadcastPayload {
 
 export class NotificationsRoom {
   private state: DurableObjectState;
+  // @ts-expect-error — env est un binding Durable Object stocké par convention (utilisé indirectement)
   private env: Env;
   private sessions: Set<WebSocket> = new Set();
   private userId: string | null = null;

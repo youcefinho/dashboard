@@ -31,7 +31,7 @@ export function MagicLinkRequestPage() {
         // toujours l'écran "Vérifie ta boîte courriel".
         setSent(true);
       } else {
-        const j = await res.json().catch(() => ({}));
+        const j = await res.json().catch(() => ({})) as { error?: string };
         setError(j?.error || 'Une erreur est survenue. Réessaye.');
       }
     } catch {

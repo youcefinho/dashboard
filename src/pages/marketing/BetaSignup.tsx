@@ -43,7 +43,7 @@ export function BetaSignupPage() {
     let alive = true;
     fetch('/api/beta/count')
       .then((r) => (r.ok ? r.json() : null))
-      .then((j) => { if (alive && j?.data?.count) setCount(j.data.count); })
+      .then((j) => { if (alive && (j as { data?: { count?: number } })?.data?.count) setCount((j as { data: { count: number } }).data.count); })
       .catch(() => { /* social proof best-effort */ });
     return () => { alive = false; };
   }, []);
@@ -67,7 +67,7 @@ export function BetaSignupPage() {
         toast.success('Merci ! On te contacte sous 48h.', { title: 'Inscription reçue' });
         setCount((c) => (c === null ? c : c + 1));
       } else {
-        const j = await res.json().catch(() => ({}));
+        const j = await res.json().catch(() => ({})) as { error?: string };
         toast.error(j?.error || "L'inscription n'a pas pu être enregistrée.", { title: 'Erreur' });
       }
     } catch {

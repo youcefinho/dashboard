@@ -120,13 +120,13 @@ export function CategoriesPanel({ open, onOpenChange, onChanged }: CategoriesPan
               return (
                 <div key={c.id}
                   className="p-3 rounded-lg border border-[var(--border-subtle)] flex items-center gap-3">
-                  {editing ? (
+                  {editing && e ? (
                     <>
                       <Input className="flex-1" value={e.name}
-                        onChange={(ev: any) => setEdit((p) => ({ ...p, [c.id]: { ...e, name: ev.target.value } }))} />
+                        onChange={(ev: any) => setEdit((p) => ({ ...p, [c.id]: { name: ev.target.value, sort_order: e.sort_order, parent_id: e.parent_id } }))} />
                       <Input className="w-16" value={e.sort_order} inputMode="numeric"
                         aria-label={t('shop.sort_order')}
-                        onChange={(ev: any) => setEdit((p) => ({ ...p, [c.id]: { ...e, sort_order: ev.target.value } }))} />
+                        onChange={(ev: any) => setEdit((p) => ({ ...p, [c.id]: { name: e.name, sort_order: ev.target.value, parent_id: e.parent_id } }))} />
                       <button type="button" aria-label="Enregistrer"
                         className="p-1.5 rounded text-[var(--success)] hover:bg-[var(--success)]/10"
                         onClick={() => handleSave(c)}>

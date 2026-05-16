@@ -17,7 +17,7 @@ import {
 import {
   listShippingZones, createShippingZone, updateShippingZone,
   deleteShippingZone, listShippingRates, createShippingRate,
-  updateShippingRate, deleteShippingRate,
+  deleteShippingRate,
   type ShippingZonePayload, type ShippingRatePayload,
 } from '@/lib/api';
 import type { ShippingZone, ShippingRate } from '@/lib/types';
