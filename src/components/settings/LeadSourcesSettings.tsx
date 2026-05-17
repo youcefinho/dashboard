@@ -14,6 +14,7 @@ import {
   useToast,
   Icon,
 } from '@/components/ui';
+import { t } from '@/lib/i18n';
 import {
   Plug,
   Plus,
@@ -112,7 +113,7 @@ export function LeadSourcesSettings() {
     fetch('/api/lead-sources')
       .then((r) => r.json() as Promise<{ data?: LeadSource[] }>)
       .then((d) => setSources(d.data || []))
-      .catch(() => toastError('Impossible de charger les sources'))
+      .catch(() => toastError(t('set.src.loading')))
       .finally(() => setLoading(false));
   }, [toastError]);
 
@@ -150,13 +151,13 @@ export function LeadSourcesSettings() {
   const validateMapping = (raw: string): boolean => {
     if (!raw.trim()) { setMappingError(null); return true; }
     try { JSON.parse(raw); setMappingError(null); return true; }
-    catch { setMappingError('JSON invalide — vérifiez la syntaxe'); return false; }
+    catch { setMappingError(t('set.src.error_json')); return false; }
   };
 
   const save = async () => {
-    if (!fName.trim()) { toastError('Le nom est requis'); return; }
-    if (!fClient) { toastError('Choisissez un client'); return; }
-    if (!validateMapping(fMapping)) { toastError('Le mapping JSON est invalide'); return; }
+    if (!fName.trim()) { toastError(t('set.src.name_label')); return; }
+    if (!fClient) { toastError(t('set.src.choose_client')); return; }
+    if (!validateMapping(fMapping)) { toastError(t('set.src.error_mapping')); return; }
     setSaving(true);
     try {
       const payload = {
@@ -174,22 +175,22 @@ export function LeadSourcesSettings() {
             body: JSON.stringify(payload),
           });
       const d = await res.json() as { error?: string };
-      if (!res.ok) { toastError(d.error || 'Échec de l\'enregistrement'); return; }
-      success(editId ? 'Source mise à jour' : 'Source créée — token généré');
+      if (!res.ok) { toastError(d.error || t('set.src.error_save')); return; }
+      success(editId ? t('set.src.save') + ' ✓' : t('set.src.create') + ' ✓');
       setPanelOpen(false);
       loadSources();
     } catch {
-      toastError('Erreur réseau');
+      toastError(t('set.src.error_network'));
     } finally {
       setSaving(false);
     }
   };
 
   const rotateToken = async (s: LeadSource) => {
-    if (!confirm(`Régénérer le token de "${s.name}" ? L'ancien cessera de fonctionner.`)) return;
+    if (!confirm(t('set.src.confirm_rotate'))) return;
     const res = await fetch(`/api/lead-sources/${s.id}/rotate-token`, { method: 'POST' });
-    if (res.ok) { success('Nouveau token généré'); loadSources(); }
-    else toastError('Échec de la rotation');
+    if (res.ok) { success(t('set.src.success_rotate')); loadSources(); }
+    else toastError(t('set.src.error_rotate'));
   };
 
   const toggleActive = async (s: LeadSource) => {
@@ -197,14 +198,14 @@ export function LeadSourcesSettings() {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ active: s.active ? 0 : 1 }),
     });
-    if (res.ok) { success(s.active ? 'Source désactivée' : 'Source activée'); loadSources(); }
+    if (res.ok) { success(s.active ? t('set.src.deactivated') : t('set.src.activated')); loadSources(); }
   };
 
   const remove = async (s: LeadSource) => {
-    if (!confirm(`Supprimer la source "${s.name}" ? Les leads déjà reçus sont conservés.`)) return;
+    if (!confirm(t('set.src.confirm_delete'))) return;
     const res = await fetch(`/api/lead-sources/${s.id}`, { method: 'DELETE' });
-    if (res.ok) { success('Source supprimée'); loadSources(); }
-    else toastError('Échec de la suppression');
+    if (res.ok) { success(t('set.src.success_delete')); loadSources(); }
+    else toastError(t('set.src.error_delete'));
   };
 
   const openTest = (s: LeadSource) => {
@@ -216,7 +217,7 @@ export function LeadSourcesSettings() {
     if (!testSource) return;
     let parsed: unknown;
     try { parsed = JSON.parse(testPayload); }
-    catch { toastError('Payload JSON invalide'); return; }
+    catch { toastError(t('set.src.error_payload')); return; }
     setTesting(true);
     try {
       const res = await fetch(`/api/ingest/${testSource.token}?dryRun=1`, {
@@ -225,9 +226,9 @@ export function LeadSourcesSettings() {
       });
       const d = await res.json();
       setTestResult(d);
-      if (!res.ok) toastError((d as { error?: string }).error || 'Test échoué');
+      if (!res.ok) toastError((d as { error?: string }).error || t('set.src.error_test'));
     } catch {
-      toastError('Erreur réseau pendant le test');
+      toastError(t('set.src.error_network'));
     } finally {
       setTesting(false);
     }
@@ -238,7 +239,7 @@ export function LeadSourcesSettings() {
     fetch(`/api/lead-sources/${s.id}/leads?limit=15`)
       .then((r) => r.json() as Promise<{ data?: IncomingLead[] }>)
       .then((d) => setLogLeads(d.data || []))
-      .catch(() => toastError('Impossible de charger les leads'));
+      .catch(() => toastError(t('set.src.error_leads')));
   };
 
   return (
@@ -246,26 +247,25 @@ export function LeadSourcesSettings() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold flex items-center gap-2">
-            <Icon as={Plug} size={18} /> Sources de leads
+            <Icon as={Plug} size={18} /> {t('set.src.title')}
           </h2>
           <p className="text-sm text-[var(--text-muted)] mt-0.5">
-            Connecte n'importe quel outil (Zapier, Facebook, formulaire externe) avec un
-            token unique. Le consentement est capturé à la source — conforme Loi&nbsp;25 / CASL.
+            {t('set.src.desc')}
           </p>
         </div>
         <Button onClick={openCreate} className="shrink-0">
-          <Icon as={Plus} size={15} /> Nouvelle source
+          <Icon as={Plus} size={15} /> {t('set.src.new')}
         </Button>
       </div>
 
       {loading ? (
-        <Card className="p-8 text-center text-sm text-[var(--text-muted)]">Chargement…</Card>
+        <Card className="p-8 text-center text-sm text-[var(--text-muted)]">{t('set.src.loading')}</Card>
       ) : sources.length === 0 ? (
         <EmptyState
           icon={<Icon as={Plug} size={48} />}
-          title="Aucune source configurée"
-          description="Crée ta première source pour recevoir des leads depuis un outil externe via un endpoint sécurisé."
-          action={<Button onClick={openCreate}><Icon as={Plus} size={15} /> Nouvelle source</Button>}
+          title={t('set.src.empty_title')}
+          description={t('set.src.empty_desc')}
+          action={<Button onClick={openCreate}><Icon as={Plus} size={15} /> {t('set.src.new')}</Button>}
         />
       ) : (
         <div className="space-y-3">
@@ -277,8 +277,8 @@ export function LeadSourcesSettings() {
                     <span className="font-medium">{s.name}</span>
                     <Tag>{TYPE_LABELS[s.type] || s.type}</Tag>
                     {s.active
-                      ? <Tag variant="success">Active</Tag>
-                      : <Tag variant="neutral">Inactive</Tag>}
+                      ? <Tag variant="success">{t('set.src.active')}</Tag>
+                      : <Tag variant="neutral">{t('set.src.inactive')}</Tag>}
                     {s.client_name && (
                       <span className="text-xs text-[var(--text-muted)]">· {s.client_name}</span>
                     )}
@@ -290,49 +290,49 @@ export function LeadSourcesSettings() {
                     <button
                       className="lead-src-copy"
                       onClick={() => copy(ingestUrl(s.token), s.id)}
-                      aria-label="Copier l'URL d'ingestion"
+                      aria-label={t('set.src.copy_url')}
                     >
                       <Icon as={copied === s.id ? CheckCircle2 : Copy} size={14} />
                     </button>
                   </div>
                   <div className="mt-2 flex items-center gap-3 text-xs text-[var(--text-muted)] flex-wrap">
-                    <span>Dédoublonnage&nbsp;: {DEDUP_LABELS[s.dedup_strategy] || s.dedup_strategy}</span>
+                    <span>{t('set.src.dedup')} : {DEDUP_LABELS[s.dedup_strategy] || s.dedup_strategy}</span>
                     <span>·</span>
                     <span>{s.lead_count} lead{s.lead_count > 1 ? 's' : ''} reçu{s.lead_count > 1 ? 's' : ''}</span>
                     <span>·</span>
                     <span>
                       {s.last_received_at
-                        ? `Dernier reçu : ${new Date(s.last_received_at).toLocaleString('fr-CA')}`
-                        : 'Jamais reçu'}
+                        ? `${t('set.src.last_received')} : ${new Date(s.last_received_at).toLocaleString('fr-CA')}`
+                        : t('set.src.never')}
                     </span>
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <Button variant="ghost" size="sm" onClick={() => openTest(s)}>
-                    <Icon as={FlaskConical} size={14} /> Tester
+                    <Icon as={FlaskConical} size={14} /> {t('set.src.test')}
                   </Button>
                   <Button variant="ghost" size="sm" onClick={() => openLog(s)}>
                     <Icon as={Inbox} size={14} /> Leads
                   </Button>
                   <Button variant="ghost" size="sm" onClick={() => openEdit(s)}>
-                    Modifier
+                    {t('set.src.modify')}
                   </Button>
                   <Button variant="ghost" size="sm" onClick={() => toggleActive(s)}>
-                    {s.active ? 'Désactiver' : 'Activer'}
+                    {s.active ? t('set.src.deactivate') : t('set.src.activate')}
                   </Button>
                   <button
                     className="lead-src-icon-btn"
                     onClick={() => rotateToken(s)}
-                    aria-label="Régénérer le token"
-                    title="Régénérer le token"
+                    aria-label={t('set.src.regen_token')}
+                    title={t('set.src.regen_token')}
                   >
                     <Icon as={RefreshCw} size={14} />
                   </button>
                   <button
                     className="lead-src-icon-btn lead-src-icon-btn--danger"
                     onClick={() => remove(s)}
-                    aria-label="Supprimer la source"
-                    title="Supprimer"
+                    aria-label={t('set.src.delete')}
+                    title={t('set.src.delete')}
                   >
                     <Icon as={Trash2} size={14} />
                   </button>
@@ -347,54 +347,54 @@ export function LeadSourcesSettings() {
       <SlidePanel
         open={panelOpen}
         onOpenChange={setPanelOpen}
-        title={editId ? 'Modifier la source' : 'Nouvelle source de leads'}
+        title={editId ? t('set.src.edit_panel') : t('set.src.new_panel')}
       >
         <div className="space-y-4 p-1">
           <Input
-            label="Nom de la source"
+            label={t('set.src.name_label')}
             value={fName}
             onChange={(e) => setFName(e.target.value)}
-            placeholder="Ex : Campagne Facebook printemps"
+            placeholder={t('set.src.name_ph')}
           />
           <Select
-            label="Client"
+            label={t('set.src.client')}
             value={fClient}
             onChange={(e) => setFClient(e.target.value)}
           >
-            <option value="">— Choisir un client —</option>
+            <option value="">{t('set.src.choose_client')}</option>
             {clients.map((c) => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </Select>
-          <Select label="Type" value={fType} onChange={(e) => setFType(e.target.value)}>
+          <Select label={t('set.src.type')} value={fType} onChange={(e) => setFType(e.target.value)}>
             <option value="webhook">Webhook</option>
             <option value="zapier">Zapier</option>
-            <option value="custom">Personnalisé</option>
+            <option value="custom">{t('set.src.custom')}</option>
           </Select>
           <Select
-            label="Stratégie de dédoublonnage"
+            label={t('set.src.dedup_label')}
             value={fDedup}
             onChange={(e) => setFDedup(e.target.value)}
-            helper="Évite les doublons quand un lead arrive plusieurs fois."
+            helper={t('set.src.dedup_helper')}
           >
-            <option value="email_phone">Courriel ou téléphone (recommandé)</option>
-            <option value="email">Courriel + client</option>
-            <option value="phone">Téléphone + client</option>
-            <option value="none">Aucun (toujours créer)</option>
+            <option value="email_phone">{t('set.src.dedup_email_phone')}</option>
+            <option value="email">{t('set.src.dedup_email')}</option>
+            <option value="phone">{t('set.src.dedup_phone')}</option>
+            <option value="none">{t('set.src.dedup_none')}</option>
           </Select>
           <Select
-            label="Consentement par défaut"
+            label={t('set.src.consent_label')}
             value={fConsent}
             onChange={(e) => setFConsent(e.target.value)}
             helper="Si la source marketing externe n'envoie pas de champ consentement explicite. Loi 25 / CASL : « inconnu » par défaut, à confirmer ensuite."
           >
-            <option value="unknown">Inconnu (à confirmer)</option>
-            <option value="granted">Accordé (la source garantit l'opt-in)</option>
-            <option value="denied">Refusé</option>
+            <option value="unknown">{t('set.src.consent_unknown')}</option>
+            <option value="granted">{t('set.src.consent_granted')}</option>
+            <option value="denied">{t('set.src.consent_denied')}</option>
           </Select>
           <div>
             <label className="block text-sm font-medium mb-1">
-              Mapping JSON <span className="text-[var(--text-muted)] font-normal">(optionnel)</span>
+              {t('set.src.mapping_label')} <span className="text-[var(--text-muted)] font-normal">({t('set.src.optional')})</span>
             </label>
             <Textarea
               value={fMapping}
@@ -413,9 +413,9 @@ export function LeadSourcesSettings() {
             )}
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="ghost" onClick={() => setPanelOpen(false)}>Annuler</Button>
+            <Button variant="ghost" onClick={() => setPanelOpen(false)}>{t('set.src.cancel')}</Button>
             <Button onClick={save} disabled={saving || !!mappingError}>
-              {saving ? 'Enregistrement…' : editId ? 'Enregistrer' : 'Créer la source'}
+              {saving ? t('set.src.saving') : editId ? t('set.src.save') : t('set.src.create')}
             </Button>
           </div>
         </div>
@@ -429,8 +429,7 @@ export function LeadSourcesSettings() {
       >
         <div className="space-y-4 p-1">
           <p className="text-sm text-[var(--text-muted)]">
-            Envoie un payload exemple. <strong>Aucun lead n'est créé</strong> — tu vois
-            seulement le lead qui <em>serait</em> créé (mode dry-run).
+            {t('set.src.test_desc')}
           </p>
           <Textarea
             value={testPayload}
@@ -440,11 +439,11 @@ export function LeadSourcesSettings() {
             aria-label="Payload de test JSON"
           />
           <Button onClick={runTest} disabled={testing}>
-            <Icon as={FlaskConical} size={15} /> {testing ? 'Test en cours…' : 'Lancer le test'}
+            <Icon as={FlaskConical} size={15} /> {testing ? t('set.src.testing') : t('set.src.run_test')}
           </Button>
           {testResult != null && (
             <Card className="p-3">
-              <div className="text-xs font-medium mb-1.5 text-[var(--text-muted)]">Résultat (dry-run)</div>
+              <div className="text-xs font-medium mb-1.5 text-[var(--text-muted)]">{t('set.src.result')}</div>
               <pre className="text-xs overflow-auto max-h-72 whitespace-pre-wrap">
                 {JSON.stringify(testResult, null, 2)}
               </pre>
@@ -462,7 +461,7 @@ export function LeadSourcesSettings() {
         <div className="space-y-2 p-1">
           {logLeads.length === 0 ? (
             <p className="text-sm text-[var(--text-muted)] py-6 text-center">
-              Aucun lead reçu via cette source pour l'instant.
+              {t('set.src.no_leads')}
             </p>
           ) : (
             logLeads.map((l) => (
@@ -470,8 +469,8 @@ export function LeadSourcesSettings() {
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-medium text-sm truncate">{l.name || l.email}</span>
                   <Tag variant={l.consent_status === 'granted' ? 'success' : l.consent_status === 'denied' ? 'danger' : 'neutral'}>
-                    {l.consent_status === 'granted' ? 'Consentement OK'
-                      : l.consent_status === 'denied' ? 'Refusé' : 'Consentement inconnu'}
+                    {l.consent_status === 'granted' ? t('set.src.consent_ok')
+                      : l.consent_status === 'denied' ? t('set.src.consent_denied') : t('set.src.consent_unknown_tag')}
                   </Tag>
                 </div>
                 <div className="text-xs text-[var(--text-muted)] mt-1 flex flex-wrap gap-x-3 gap-y-0.5">

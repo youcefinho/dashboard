@@ -3124,4 +3124,21 @@ export const en: Record<string, string> = {
   'set.src.consent_unknown_tag': 'Unknown consent',
   'set.src.active': 'Active',
   'set.src.inactive': 'Inactive',
+
+  // ── Lot E : LeadSources erreurs ──
+  'set.src.error_json': 'Invalid JSON — check syntax',
+  'set.src.error_mapping': 'JSON mapping is invalid',
+  'set.src.error_save': 'Save failed',
+  'set.src.error_network': 'Network error',
+  'set.src.error_test': 'Test failed',
+  'set.src.error_payload': 'Invalid JSON payload',
+  'set.src.error_leads': 'Unable to load leads',
+  'set.src.error_rotate': 'Rotation failed',
+  'set.src.error_delete': 'Deletion failed',
+  'set.src.confirm_rotate': 'Regenerate token? The old one will stop working.',
+  'set.src.confirm_delete': 'Delete source? Already received leads are kept.',
+  'set.src.success_rotate': 'New token generated',
+  'set.src.success_delete': 'Source deleted',
+  'set.src.deactivated': 'Source deactivated',
+  'set.src.activated': 'Source activated',
 };
