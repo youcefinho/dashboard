@@ -106,7 +106,7 @@ export function ApiWebhooksSettings() {
       setKeys([...keys, data.data]);
       setCreatedKey(data.data.key);
     } else {
-      toastError('Échec de création de la clé');
+      toastError(t('set.api.key_fail'));
     }
   };
 
@@ -120,10 +120,10 @@ export function ApiWebhooksSettings() {
     const data: any = await res.json();
     if (data.data) {
       setWebhooks([...webhooks, data.data]);
-      success('Webhook créé');
+      success(t('set.api.wh_created'));
       resetWhWizard();
     } else {
-      toastError('Échec de création du webhook');
+      toastError(t('set.api.wh_fail'));
     }
   };
 
@@ -151,8 +151,8 @@ export function ApiWebhooksSettings() {
 
   const testWebhook = async (webhookId: string) => {
     const res = await fetch(`/api/settings/webhooks/${webhookId}/test`, { method: 'POST' });
-    if (res.ok) success('Webhook test envoyé');
-    else toastError('Échec du test webhook');
+    if (res.ok) success(t('set.api.test_sent'));
+    else toastError(t('set.api.test_fail'));
   };
 
   const copyCreatedKey = async () => {
@@ -160,9 +160,9 @@ export function ApiWebhooksSettings() {
     try {
       await navigator.clipboard.writeText(createdKey);
       setKeyCopied(true);
-      success('Clé copiée');
+      success(t('set.api.key_copy_ok'));
     } catch {
-      toastError('Copie impossible');
+      toastError(t('set.api.copy_fail'));
     }
   };
 
@@ -173,12 +173,12 @@ export function ApiWebhooksSettings() {
     () => [
       {
         id: 'name',
-        label: 'Nom & usage',
+        label: t('set.api.name_usage'),
         isValid: () => newKeyName.trim().length >= 2,
         content: (
           <div className="space-y-4">
             <div>
-              <label className="t-label-form mb-1.5 block">Nom de la clé</label>
+              <label className="t-label-form mb-1.5 block">{t('set.api.key_name')}</label>
               <Input
                 placeholder="Ex: Zapier — Production"
                 value={newKeyName}
@@ -186,7 +186,7 @@ export function ApiWebhooksSettings() {
                 autoFocus
               />
               <p className="text-[11px] text-[var(--text-muted)] mt-1.5">
-                Utilisez un nom descriptif pour identifier facilement où la clé est utilisée.
+                {t('set.api.key_name_hint')}
               </p>
             </div>
           </div>
@@ -194,13 +194,13 @@ export function ApiWebhooksSettings() {
       },
       {
         id: 'scopes',
-        label: 'Permissions',
+        label: t('set.api.permissions'),
         isValid: () => newKeyScopes.length >= 1,
         content: (
           <div className="space-y-3">
             <p className="text-xs text-[var(--text-muted)]">
-              Choisissez les permissions accordées à cette clé. Restreindre au strict nécessaire pour limiter
-              l'impact d'une fuite.
+              {t('set.api.permissions_hint')}
+              
             </p>
             <ScopePicker
               mode="scope"
@@ -220,12 +220,12 @@ export function ApiWebhooksSettings() {
     () => [
       {
         id: 'url',
-        label: 'URL cible',
+        label: t('set.api.target_url'),
         isValid: () => /^https?:\/\/.{4,}/i.test(newWhUrl.trim()),
         content: (
           <div className="space-y-4">
             <div>
-              <label className="t-label-form mb-1.5 block">URL du webhook</label>
+              <label className="t-label-form mb-1.5 block">{t('set.api.wh_url')}</label>
               <Input
                 placeholder="https://votre-serveur.com/webhook"
                 value={newWhUrl}
@@ -233,8 +233,8 @@ export function ApiWebhooksSettings() {
                 autoFocus
               />
               <p className="text-[11px] text-[var(--text-muted)] mt-1.5">
-                Cette URL recevra une requête POST JSON pour chaque évènement sélectionné.
-                HTTPS recommandé pour la production.
+                {t('set.api.wh_url_hint')}
+                
               </p>
             </div>
           </div>
@@ -242,13 +242,13 @@ export function ApiWebhooksSettings() {
       },
       {
         id: 'events',
-        label: 'Évènements',
+        label: t('set.api.events'),
         isValid: () => newWhEvents.length >= 1,
         content: (
           <div className="space-y-3">
             <p className="text-xs text-[var(--text-muted)]">
-              Sélectionnez les évènements qui déclencheront ce webhook. Choisir "Tous" garantit qu'aucun
-              futur évènement ne sera manqué.
+              {t('set.api.events_hint')}
+              
             </p>
             <ScopePicker
               mode="event"
@@ -269,10 +269,10 @@ export function ApiWebhooksSettings() {
         <SmartBanner
           variant="warning"
           icon={<AlertTriangle size={16} />}
-          title="Webhook qui échoue souvent"
+          title={t('set.api.failing_wh')}
           description={`${failingWebhook.url} a échoué ${failingWebhook.fail_count} fois. Vérifiez la cible.`}
           action={{
-            label: 'Voir logs',
+            label: t('set.api.see_logs'),
             onClick: () => void fetchDeliveries(failingWebhook.id),
           }}
         />
@@ -282,9 +282,9 @@ export function ApiWebhooksSettings() {
         <header className="settings-section-header settings-section-header--with-action">
           <div>
             <h3 className="t-h3 flex items-center gap-2">
-              <Icon as={KeyRound} size="md" className="text-[var(--primary)]" /> Clés API
+              <Icon as={KeyRound} size="md" className="text-[var(--primary)]" /> {t('set.api.keys_title')}
             </h3>
-            <p className="t-caption text-[var(--gray-500)]">Authentifie tes intégrations externes.</p>
+            <p className="t-caption text-[var(--gray-500)]">{t('set.api.keys_desc')}</p>
           </div>
           <Button onClick={openKeyWizard} size="sm" leftIcon={<Icon as={Plus} size="sm" />}>
             Créer une clé
@@ -294,11 +294,11 @@ export function ApiWebhooksSettings() {
           <EmptyState
             variant="compact"
             icon={<Icon as={KeyRound} size={28} />}
-            title="Aucune clé API"
-            description="Créez une clé pour intégrer Intralys avec vos outils externes (Zapier, Make...)."
+            title={t('set.api.no_key')}
+            description={t('set.api.no_key_desc')}
             action={
               <Button onClick={openKeyWizard} leftIcon={<Plus size={14} />}>
-                Créer une clé
+                {t('set.api.create_key')}
               </Button>
             }
           />
@@ -313,7 +313,7 @@ export function ApiWebhooksSettings() {
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-[var(--text-primary)] truncate">{k.name}</p>
                   <p className="text-xs text-[var(--text-muted)]">
-                    Créée le {new Date(k.created_at).toLocaleDateString()} • {k.scopes || 'aucun scope'}
+                    {t('set.api.created_on')} {new Date(k.created_at).toLocaleDateString()} • {k.scopes || t('set.api.no_scopes')}
                   </p>
                 </div>
                 <DropdownMenu
@@ -328,7 +328,7 @@ export function ApiWebhooksSettings() {
                   }
                 >
                   <DropdownMenuItem variant="danger" leftIcon={<Trash2 size={14} />} onSelect={() => deleteKey(k.id)}>
-                    Révoquer
+                    {t('set.api.revoke')}
                   </DropdownMenuItem>
                 </DropdownMenu>
               </div>
@@ -341,23 +341,23 @@ export function ApiWebhooksSettings() {
         <header className="settings-section-header settings-section-header--with-action">
           <div>
             <h3 className="t-h3 flex items-center gap-2">
-              <Icon as={Webhook} size="md" className="text-[var(--primary)]" /> Webhooks sortants
+              <Icon as={Webhook} size="md" className="text-[var(--primary)]" /> {t('set.api.webhooks_title')}
             </h3>
-            <p className="t-caption text-[var(--gray-500)]">Push événements vers tes systèmes externes.</p>
+            <p className="t-caption text-[var(--gray-500)]">{t('set.api.webhooks_desc')}</p>
           </div>
           <Button onClick={openWhWizard} size="sm" leftIcon={<Icon as={Plus} size="sm" />}>
-            Ajouter
+            {t('set.api.add')}
           </Button>
         </header>
         {webhooks.length === 0 ? (
           <EmptyState
             variant="compact"
             icon={<Webhook size={28} />}
-            title="Aucun webhook configuré"
-            description="Connectez vos systèmes externes pour recevoir des notifications en temps réel."
+            title={t('set.api.no_webhook')}
+            description={t('set.api.no_webhook_desc')}
             action={
               <Button onClick={openWhWizard} leftIcon={<Plus size={14} />}>
-                Ajouter un webhook
+                {t('set.api.add_webhook')}
               </Button>
             }
           />
@@ -377,7 +377,7 @@ export function ApiWebhooksSettings() {
                       <Tag variant="neutral" size="sm">{w.events}</Tag>
                       {w.fail_count > 0 && (
                         <Tag color={isFailing ? 'var(--danger)' : 'var(--warning)'} size="sm">
-                          {w.fail_count} échecs
+                          {w.fail_count} {t('set.api.failures')}
                         </Tag>
                       )}
                     </div>
@@ -394,14 +394,14 @@ export function ApiWebhooksSettings() {
                     }
                   >
                     <DropdownMenuItem leftIcon={<Send size={14} />} onSelect={() => testWebhook(w.id)}>
-                      Tester
+                      {t('set.api.test')}
                     </DropdownMenuItem>
                     <DropdownMenuItem leftIcon={<FileText size={14} />} onSelect={() => fetchDeliveries(w.id)}>
-                      Logs
+                      {t('set.api.logs')}
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem variant="danger" leftIcon={<Trash2 size={14} />} onSelect={() => deleteWebhook(w.id)}>
-                      Supprimer
+                      {t('set.api.delete')}
                     </DropdownMenuItem>
                   </DropdownMenu>
                 </div>
@@ -425,9 +425,9 @@ export function ApiWebhooksSettings() {
         onCancel={() => {
           if (!createdKey) resetKeyWizard();
         }}
-        title="Créer une clé API"
-        description="Définissez un nom puis sélectionnez les permissions accordées."
-        completeLabel="Générer la clé"
+        title={t('set.api.key_wizard_title')}
+        description={t('set.api.key_wizard_desc')}
+        completeLabel={t('set.api.gen_key')}
       />
 
       {/* ── Modal one-time : clé créée (non-mergée dans wizard pour highlight sécurité) ── */}
@@ -439,15 +439,15 @@ export function ApiWebhooksSettings() {
             resetKeyWizard();
           }
         }}
-        title="Clé API générée"
+        title={t('set.api.key_generated')}
       >
         {createdKey && (
           <div>
             <div className="settings-info-banner settings-info-banner--warning">
               <AlertTriangle size={16} className="settings-info-banner__icon" />
               <p className="settings-info-banner__body">
-                Copie cette clé maintenant — elle ne sera plus jamais affichée. Stocke-la dans un gestionnaire
-                de secrets sécurisé.
+                {t('set.api.key_warn')}
+                
               </p>
             </div>
             <div className="flex gap-2 mt-3">
@@ -457,7 +457,7 @@ export function ApiWebhooksSettings() {
                 onClick={() => void copyCreatedKey()}
                 leftIcon={keyCopied ? <CheckCircle2 size={14} /> : <Copy size={14} />}
               >
-                {keyCopied ? 'Copié' : 'Copier'}
+                {keyCopied ? t('set.api.copied') : t('set.api.copy')}
               </Button>
             </div>
             <Button
@@ -468,7 +468,7 @@ export function ApiWebhooksSettings() {
                 resetKeyWizard();
               }}
             >
-              J'ai copié ma clé
+              {t('set.api.key_copied')}
             </Button>
           </div>
         )}
@@ -486,15 +486,15 @@ export function ApiWebhooksSettings() {
         onStepChange={setWhWizardStep}
         onComplete={() => void createWebhook()}
         onCancel={resetWhWizard}
-        title="Ajouter un webhook"
-        description="Configurez l'URL cible et les évènements à écouter."
-        completeLabel="Créer le webhook"
+        title={t('set.api.wh_wizard_title')}
+        description={t('set.api.wh_wizard_desc')}
+        completeLabel={t('set.api.create_wh')}
       />
 
-      <Modal open={showLogsModal} onOpenChange={() => setShowLogsModal(false)} title="Logs de livraison Webhook">
+      <Modal open={showLogsModal} onOpenChange={() => setShowLogsModal(false)} title={t('set.api.wh_logs')}>
         <div className="max-h-[60vh] overflow-y-auto space-y-3">
           {deliveries.length === 0 ? (
-            <p className="text-sm text-[var(--text-muted)] text-center py-4">Aucune livraison enregistrée.</p>
+            <p className="text-sm text-[var(--text-muted)] text-center py-4">{t('set.api.no_delivery')}</p>
           ) : (
             deliveries.map((d) => (
               <div key={d.id} className="p-3 border border-[var(--border-subtle)] rounded text-xs space-y-1">

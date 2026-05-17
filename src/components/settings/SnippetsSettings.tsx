@@ -110,13 +110,13 @@ export function SnippetsSettings() {
     <div className="space-y-6">
       <header className="settings-page-header">
         <div>
-          <h2 className="t-h2">Réponses rapides</h2>
+          <h2 className="t-h2">{t('set.snippets.title')}</h2>
           <p className="t-caption text-[var(--gray-500)]">
             Tape "/" dans le chat pour insérer un snippet pré-enregistré.
           </p>
         </div>
         <Button onClick={handleOpenNew} size="sm" leftIcon={<Icon as={Plus} size="md" />}>
-          Nouveau snippet
+          {t('set.snippets.new')}
         </Button>
       </header>
 

@@ -19,12 +19,12 @@ export function RolesPermissionsSettings() {
         <header className="settings-section-header settings-section-header--with-action">
           <div>
             <h3 className="t-h3 flex items-center gap-2">
-              <Icon as={ShieldCheck} size={16} className="text-[var(--primary)]" /> Rôles & permissions
+              <Icon as={ShieldCheck} size={16} className="text-[var(--primary)]" /> {t('set.roles.title2')}
             </h3>
-            <p className="t-caption text-[var(--gray-500)]">Matrice rôles × actions autorisées.</p>
+            <p className="t-caption text-[var(--gray-500)]">{t('set.roles.subtitle2')}</p>
           </div>
           <Button variant="secondary" size="sm" leftIcon={<Icon as={Plus} size={14} />}>
-            Créer un rôle (V2)
+            {t('set.roles.create_v2')}
           </Button>
         </header>
 
@@ -34,11 +34,11 @@ export function RolesPermissionsSettings() {
             (CRM) est intégralement préservée, on étend juste lignes/colonne. */}
         <div className="settings-perm-matrix" role="table" aria-label="Matrice de permissions">
           <div className="settings-perm-matrix__head settings-perm-matrix__head--e1m2" role="row">
-            <span role="columnheader">Permission</span>
-            <span role="columnheader">Admin</span>
-            <span role="columnheader">Courtier</span>
-            <span role="columnheader">Agent</span>
-            <span role="columnheader" title="Gérant de boutique">Gérant boutique</span>
+            <span role="columnheader">{t('set.roles.permission')}</span>
+            <span role="columnheader">{t('set.roles.admin')}</span>
+            <span role="columnheader">{t('set.roles.broker')}</span>
+            <span role="columnheader">{t('set.roles.agent')}</span>
+            <span role="columnheader" title={t('set.roles.store_mgr_full')}>{t('set.roles.store_mgr')}</span>
           </div>
           {[
             // ── CRM (Sprint 42, préservé) ──
@@ -63,23 +63,23 @@ export function RolesPermissionsSettings() {
               role="row"
             >
               <span role="cell" className="settings-perm-matrix__label">{row.label}</span>
-              <span role="cell" className={`settings-perm-cell ${row.a ? 'is-on' : 'is-off'}`}>{row.a ? 'Oui' : '—'}</span>
-              <span role="cell" className={`settings-perm-cell ${row.b ? 'is-on' : 'is-off'}`}>{row.b ? 'Oui' : '—'}</span>
-              <span role="cell" className={`settings-perm-cell ${row.c ? 'is-on' : 'is-off'}`}>{row.c ? 'Oui' : '—'}</span>
-              <span role="cell" className={`settings-perm-cell ${row.d ? 'is-on' : 'is-off'}`}>{row.d ? 'Oui' : '—'}</span>
+              <span role="cell" className={`settings-perm-cell ${row.a ? 'is-on' : 'is-off'}`}>{row.a ? t('set.roles.yes') : '—'}</span>
+              <span role="cell" className={`settings-perm-cell ${row.b ? 'is-on' : 'is-off'}`}>{row.b ? t('set.roles.yes') : '—'}</span>
+              <span role="cell" className={`settings-perm-cell ${row.c ? 'is-on' : 'is-off'}`}>{row.c ? t('set.roles.yes') : '—'}</span>
+              <span role="cell" className={`settings-perm-cell ${row.d ? 'is-on' : 'is-off'}`}>{row.d ? t('set.roles.yes') : '—'}</span>
             </div>
           ))}
         </div>
         <p className="t-caption text-[var(--gray-500)] mt-2">
-          Le rôle <strong>Gérant de boutique</strong> gère le module Boutique sans accès au CRM (leads, pipeline).
+          Le rôle <strong>{t('set.roles.store_mgr_full')}</strong> {t('set.roles.store_mgr_note')}
         </p>
 
         {roles.length === 0 ? (
           <EmptyState
             variant="compact"
             icon={<ShieldCheck size={28} />}
-            title="Aucun rôle défini"
-            description="Les rôles système apparaîtront automatiquement ici. Vous pourrez créer des rôles personnalisés dans la V2."
+            title={t('set.roles.no_role2')}
+            description={t('set.roles.no_role_desc2')}
           />
         ) : (
           <div className="space-y-3">
@@ -96,16 +96,16 @@ export function RolesPermissionsSettings() {
                   </div>
                   {r.is_system ? (
                     <Tag variant="brand" dot>
-                      Système
+                      {t('set.roles.system_tag')}
                     </Tag>
                   ) : (
                     <Tag variant="neutral" dot>
-                      Personnalisé
+                      {t('set.roles.custom_tag')}
                     </Tag>
                   )}
                 </div>
                 <div className="mt-3 text-[10px] uppercase text-[var(--text-secondary)] font-bold tracking-wider">
-                  Permissions : lecture globale, écriture restreinte (Mock)
+                  {t('set.roles.perms_mock')}
                 </div>
               </div>
             ))}

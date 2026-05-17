@@ -27,14 +27,14 @@ const MODULE_CATALOG: ModuleMeta[] = [
     id: 'crm',
     label: 'CRM',
     description:
-      'Leads, pipeline, conversations, tâches, automatisations. Le socle Intralys — toujours actif.',
+      t('set.modules.crm_desc'),
     icon: UsersIcon,
   },
   {
     id: 'ecommerce',
-    label: 'Boutique en ligne',
+    label: t('set.modules.ecom_label'),
     description:
-      'Catalogue produits, commandes, panier, clients boutique. Active la section Boutique dans la navigation.',
+      t('set.modules.ecom_desc'),
     icon: ShoppingBag,
   },
 ];
@@ -80,8 +80,8 @@ export function ModulesSettings() {
       setLastSaved(new Date());
       success(
         enabled
-          ? `Module « ${mod.label} » activé`
-          : `Module « ${mod.label} » désactivé`,
+          ? `Module « ${mod.label} » ${t('set.modules.activated')}`
+          : `Module « ${mod.label} » ${t('set.modules.deactivated')}`,
       );
     } catch {
       // Rollback
@@ -89,7 +89,7 @@ export function ModulesSettings() {
         enabled ? prev.filter((m) => m !== mod.id) : [...new Set([...prev, mod.id])],
       );
       setAutosave('error');
-      toastError(`Impossible de mettre à jour le module « ${mod.label} »`);
+      toastError(`${t('set.modules.update_fail')} « ${mod.label} »`);
     } finally {
       setBusyId(null);
     }
@@ -101,10 +101,10 @@ export function ModulesSettings() {
         <header className="settings-section-header settings-section-header--with-action">
           <div>
             <h3 className="t-h3 flex items-center gap-2">
-              <Icon as={ShoppingBag} size={16} className="text-[var(--primary)]" /> Modules
+              <Icon as={ShoppingBag} size={16} className="text-[var(--primary)]" /> {t('set.modules.title_label')}
             </h3>
             <p className="t-caption text-[var(--gray-500)]">
-              Active les fonctionnalités selon ton type d’activité. Le CRM est toujours inclus.
+              {t('set.modules.subtitle2')}
             </p>
           </div>
           <AutosaveIndicator state={autosave} lastSaved={lastSaved} />
@@ -128,9 +128,9 @@ export function ModulesSettings() {
                     {isLocked && (
                       <span
                         className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--text-muted)]"
-                        title="Module socle — toujours actif"
+                        title={t('set.modules.core_label')}
                       >
-                        <Icon as={Lock} size={11} /> Inclus
+                        <Icon as={Lock} size={11} /> {t('set.modules.included')}
                       </span>
                     )}
                   </p>
@@ -139,7 +139,7 @@ export function ModulesSettings() {
                 <div className="module-card__aside">
                   <label
                     className="module-toggle"
-                    aria-label={`${isActive ? 'Désactiver' : 'Activer'} le module ${mod.label}`}
+                    aria-label={`${isActive ? t('set.modules.toggle_off') : t('set.modules.toggle_on')} le module ${mod.label}`}
                   >
                     <input
                       type="checkbox"

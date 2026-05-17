@@ -22,7 +22,7 @@ export function BillingSettings() {
     <div className="space-y-6">
       <KpiStrip
         items={[
-          { label: 'Plan actuel', value: 'Pro', color: 'brand', icon: <CreditCard size={12} /> },
+          { label: t('set.billing.plan'), value: 'Pro', color: 'brand', icon: <CreditCard size={12} /> },
           { label: 'MRR', value: '99 $', color: 'success', icon: <DollarSign size={12} /> },
           { label: 'Prochaine facture', value: '1 Juin', color: 'info', icon: <Calendar size={12} /> },
           { label: 'Usage emails', value: '84%', color: 'warning', icon: <BarChart3 size={12} /> },
@@ -105,7 +105,7 @@ export function BillingSettings() {
                   </button>
                 }
               >
-                <DropdownMenuItem leftIcon={<Icon as={Download} size={14} />}>Télécharger PDF</DropdownMenuItem>
+                <DropdownMenuItem leftIcon={<Icon as={Download} size={14} />}>{t('set.billing.download')} PDF</DropdownMenuItem>
                 <DropdownMenuItem leftIcon={<Icon as={Mail} size={14} />}>Envoyer par email</DropdownMenuItem>
               </DropdownMenu>
             </div>

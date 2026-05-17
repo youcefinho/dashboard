@@ -66,14 +66,14 @@ export function SystemSettings() {
       setAutosaveState('saved');
       setLastSaved(new Date());
       // Sprint 42 M3.4 — toast feedback non-invasif
-      success(biometricEnabled ? 'Biométrie désactivée' : 'Biométrie activée');
+      success(biometricEnabled ? t('set.sys.bio_disabled') : t('set.sys.bio_enabled'));
       if (decayTimerRef.current) window.clearTimeout(decayTimerRef.current);
       decayTimerRef.current = window.setTimeout(() => {
         setAutosaveState((s) => (s === 'saved' ? 'idle' : s));
       }, 5000);
     } catch {
       setAutosaveState('error');
-      toastError('Échec de la mise à jour biométrie');
+      toastError(t('set.sys.bio_fail'));
     }
   };
 
@@ -82,13 +82,13 @@ export function SystemSettings() {
     try { localStorage.removeItem('intralys_tour_completed'); } catch { /* ignore */ }
     setTourOpen(true);
     // Sprint 42 M3.4 — toast info feedback
-    success('Tour interactif redémarré');
+    success(t('set.sys.tour_restarted'));
   };
 
   // ── Sprint 45 M3.3 — Reset tous les coachmarks contextuels ────────────
   const handleResetCoachmarks = () => {
     resetAllCoachmarks();
-    success('Guides interactifs réinitialisés — ils réapparaîtront au fil de tes prochaines visites.');
+    success(t('set.sys.coachmarks_reset'));
   };
 
   // ── Sprint 45 M1.2 — Effacer données démo ──────────────────────────────
@@ -99,9 +99,9 @@ export function SystemSettings() {
     try {
       await clearDemoData();
       setDemoLoaded(false);
-      success('Données démo effacées. Tu repars d\'une page blanche.');
+      success(t('set.sys.demo_cleared'));
     } catch {
-      toastError('Échec de l\'effacement des données démo.');
+      toastError(t('set.sys.demo_clear_fail'));
     } finally {
       setDemoClearing(false);
     }
@@ -110,20 +110,20 @@ export function SystemSettings() {
   const kpiItems = useMemo(
     () => [
       {
-        label: 'Mutations en attente',
+        label: t('set.sys.mutations'),
         value: pendingCount,
         color: (pendingCount > 0 ? 'warning' : 'success') as 'warning' | 'success',
         icon: <CloudOff size={12} />,
       },
       {
-        label: 'Plateforme native',
-        value: isNative ? 'Oui' : 'Non',
+        label: t('set.sys.native'),
+        value: isNative ? t('set.roles.yes') : 'Non',
         color: (isNative ? 'brand' : 'neutral') as 'brand' | 'neutral',
         icon: <Smartphone size={12} />,
       },
       {
-        label: 'Biométrie',
-        value: biometricEnabled ? 'Activée' : 'Désactivée',
+        label: t('set.sys.bio_kpi'),
+        value: biometricEnabled ? t('set.sys.activated') : t('set.sys.deactivated'),
         color: (biometricEnabled ? 'success' : 'neutral') as 'success' | 'neutral',
         icon: <Fingerprint size={12} />,
       },
@@ -149,18 +149,18 @@ export function SystemSettings() {
         <Card className="settings-card p-6">
           <header className="settings-section-header">
             <h3 className="t-h3 flex items-center gap-2">
-              <Icon as={Fingerprint} size={16} className="text-[var(--primary)]" /> Authentification biométrique
+              <Icon as={Fingerprint} size={16} className="text-[var(--primary)]" /> {t('set.sys.biometric_title')}
             </h3>
-            <p className="t-caption text-[var(--gray-500)]">Déverrouille l'app par FaceID ou TouchID.</p>
+            <p className="t-caption text-[var(--gray-500)]">{t('set.sys.biometric_desc')}</p>
           </header>
           {biometricAvailable ? (
             <div className="settings-toggle-row">
               <div className="settings-toggle-row__meta">
-                <p className="settings-toggle-row__title">Connexion par FaceID / TouchID</p>
+                <p className="settings-toggle-row__title">{t('set.sys.biometric_toggle')}</p>
                 <p className="settings-toggle-row__desc">
                   {biometricEnabled
-                    ? 'Activé — déverrouillage rapide au prochain login.'
-                    : 'Désactivé — connecte-toi avec tes identifiants.'}
+                    ? t('set.sys.bio_on')
+                    : t('set.sys.bio_off')}
                 </p>
               </div>
               <Switch
@@ -171,7 +171,7 @@ export function SystemSettings() {
             </div>
           ) : (
             <p className="t-body text-[var(--gray-500)]">
-              La biométrie n'est pas disponible sur cet appareil.
+              {t('set.sys.bio_unavail')}
             </p>
           )}
         </Card>
@@ -180,14 +180,14 @@ export function SystemSettings() {
       <Card className="settings-card p-6">
         <header className="settings-section-header">
           <h3 className="t-h3 flex items-center gap-2">
-            <Icon as={Smartphone} size={16} className="text-[var(--primary)]" /> Mode hors ligne
+              <Icon as={Smartphone} size={16} className="text-[var(--primary)]" /> {t('set.sys.offline_title')}
           </h3>
           <p className="t-caption text-[var(--gray-500)]">
-            L'app met en cache leads, conversations et tâches pour un accès même sans connexion. Sync automatique au retour online.
+            {t('set.sys.offline_desc')}
           </p>
         </header>
         <div className="settings-toggle-row">
-          <span className="settings-toggle-row__title">Actions en attente de sync</span>
+          <span className="settings-toggle-row__title">{t('set.sys.pending_sync')}</span>
           <Tag color={pendingCount > 0 ? 'var(--warning)' : 'var(--success)'} size="sm">{pendingCount}</Tag>
         </div>
       </Card>
@@ -195,28 +195,28 @@ export function SystemSettings() {
       <Card className="settings-card p-6">
         <header className="settings-section-header">
           <h3 className="t-h3 flex items-center gap-2">
-            <Icon as={Compass} size={16} className="text-[var(--primary)]" /> Onboarding & guides interactifs
+              <Icon as={Compass} size={16} className="text-[var(--primary)]" /> {t('set.sys.onboarding_title')}
           </h3>
           <p className="t-caption text-[var(--gray-500)]">
-            Relance le tour complet de l'application ou réaffiche les guides contextuels (drag-drop pipeline, variables composer, sélection multiple, etc.).
+            {t('set.sys.onboarding_desc')}
           </p>
         </header>
         <div className="settings-actions settings-actions--start" style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          <Button onClick={handleRestartTour} leftIcon={<Icon as={Compass} size={14} />} aria-label="Relancer le tour complet de l'application">
-            Recommencer le tour complet
+          <Button onClick={handleRestartTour} leftIcon={<Icon as={Compass} size={14} />} aria-label={t('set.sys.restart_tour_label')}>
+            {t('set.sys.restart_tour')}
           </Button>
           <Button
             variant="secondary"
             onClick={handleResetCoachmarks}
             leftIcon={<Icon as={RotateCcw} size={14} />}
-            aria-label="Réafficher les guides interactifs contextuels"
+            aria-label={t('set.sys.show_guides_label')}
           >
-            Réafficher les guides interactifs
+            {t('set.sys.show_guides')}
           </Button>
         </div>
         <p className="t-caption text-[var(--text-muted)]" style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
           <Icon as={Sparkles} size={12} />
-          5 guides contextuels : Pipeline, Conversations, Tâches, Rapports, Dashboard.
+          {t('set.sys.guides_count')}
         </p>
       </Card>
 
@@ -225,11 +225,10 @@ export function SystemSettings() {
         <Card className="settings-card p-6">
           <header className="settings-section-header">
             <h3 className="t-h3 flex items-center gap-2">
-              <Icon as={Sparkles} size={16} className="text-[var(--primary)]" /> Données démo
+              <Icon as={Sparkles} size={16} className="text-[var(--primary)]" /> {t('set.sys.demo_title')}
             </h3>
             <p className="t-caption text-[var(--gray-500)]">
-              Tu utilises actuellement les données démo importées à l'onboarding (20 leads, 10 tâches, 5 conversations, 3 pipelines).
-              Efface-les quand tu es prêt à travailler avec tes vraies données.
+              {t('set.sys.demo_desc')}
             </p>
           </header>
           <div className="settings-actions settings-actions--start" style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -238,9 +237,9 @@ export function SystemSettings() {
               onClick={() => void handleClearDemoData()}
               disabled={demoClearing}
               leftIcon={<Icon as={Trash2} size={14} />}
-              aria-label="Effacer les données démo importées à l'onboarding"
+              aria-label={t('set.sys.demo_clear_label')}
             >
-              {demoClearing ? 'Effacement…' : 'Effacer données démo'}
+              {demoClearing ? t('set.sys.demo_clearing') : t('set.sys.demo_clear')}
             </Button>
           </div>
         </Card>
