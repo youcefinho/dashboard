@@ -33,6 +33,7 @@ import {
   Copy,
   CheckCircle2,
 } from 'lucide-react';
+import { t } from '@/lib/i18n';
 
 export function ApiWebhooksSettings() {
   const { success, error: toastError } = useToast();

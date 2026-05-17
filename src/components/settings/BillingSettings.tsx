@@ -9,6 +9,7 @@ import {
   Icon,
 } from '@/components/ui';
 import { CreditCard, DollarSign, Calendar, BarChart3, MoreVertical, Download, Mail } from 'lucide-react';
+import { t } from '@/lib/i18n';
 
 const HISTORY = [
   { id: 'inv-202605', date: '1 Mai 2026', amount: '99.00 $', status: 'Payé' },

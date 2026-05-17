@@ -26,6 +26,7 @@ import {
   Check,
 } from 'lucide-react';
 import { useAutosave } from '@/hooks/useAutosave';
+import { t } from '@/lib/i18n';
 
 const BRAND_PRESETS = ['#009DDB', '#D96E27', '#37CA37', '#FF9A00', '#E93D3D', '#188BF6', '#8B5CF6'];
 
@@ -56,7 +57,7 @@ export function BrandingSettings() {
   const [publicSlug, setPublicSlug] = useState('');
 
   const handleSave = () => {
-    success('Branding mis à jour');
+    success(t('set.brand.success'));
   };
 
   // Sprint 24 vague 6A — autosave (stub : endpoint branding pas dispo encore)
@@ -123,7 +124,7 @@ export function BrandingSettings() {
   const completeWizard = () => {
     setWizardOpen(false);
     setWizardStep(0);
-    success('Marque configurée avec succès !');
+    success(t('set.brand.wizard_success'));
   };
 
   // ── Sprint 26 vague 26-3B — steps definition
@@ -131,7 +132,7 @@ export function BrandingSettings() {
     () => [
       {
         id: 'logo',
-        label: 'Logo',
+        label: 'Logo',  // universal
         icon: <ImagePlus size={14} />,
         isOptional: true,
         isValid: () => true,
@@ -142,9 +143,9 @@ export function BrandingSettings() {
                 <ImagePlus size={16} />
               </div>
               <div className="min-w-0">
-                <h4 className="text-sm font-semibold text-[var(--text-primary)]">Logo de votre entreprise</h4>
+                <h4 className="text-sm font-semibold text-[var(--text-primary)]">{t('set.brand.logo_title')}</h4>
                 <p className="text-xs text-[var(--text-muted)] mt-0.5 leading-relaxed">
-                  PNG ou SVG transparent recommandé. Affiché en haut de votre dashboard et sur les courriels.
+                  {t('set.brand.logo_desc')}
                 </p>
               </div>
             </div>
@@ -174,7 +175,7 @@ export function BrandingSettings() {
                   <>
                     <ImagePlus size={32} className={`mb-2 transition-colors ${isDragOver ? 'text-[var(--primary)]' : 'text-[var(--text-muted)]'}`} />
                     <span className="text-xs font-semibold text-[var(--text-secondary)]">
-                      {isDragOver ? 'Déposez ici' : 'Glissez ou cliquez'}
+                      {isDragOver ? t('set.brand.drop_here') : t('set.brand.drag_click')}
                     </span>
                     <span className="text-[10px] text-[var(--text-muted)] mt-0.5">PNG, JPG ou SVG</span>
                   </>
@@ -183,7 +184,7 @@ export function BrandingSettings() {
 
               {/* Preview circular crop */}
               <div className="flex flex-col items-center gap-2">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Aperçu rond</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">{t('set.brand.preview_round')}</p>
                 <div
                   className="w-24 h-24 rounded-full flex items-center justify-center overflow-hidden"
                   style={{
@@ -209,21 +210,21 @@ export function BrandingSettings() {
                     className="text-[11px] font-semibold text-[var(--text-muted)] hover:text-[var(--danger)] inline-flex items-center gap-1 cursor-pointer transition-colors"
                   >
                     <X size={12} />
-                    Retirer
+                    {t('set.brand.remove')}
                   </button>
                 )}
               </div>
             </div>
 
             <p className="text-[11px] text-center text-[var(--text-muted)] italic">
-              Étape facultative — vous pouvez l'ajouter plus tard.
+              {t('set.brand.optional_step')}
             </p>
           </div>
         ),
       },
       {
         id: 'colors',
-        label: 'Couleurs',
+        label: t('set.brand.colors_step'),
         icon: <Palette size={14} />,
         isValid: () => /^#[0-9A-Fa-f]{6}$/.test(primary) && /^#[0-9A-Fa-f]{6}$/.test(accent),
         content: (
@@ -233,9 +234,9 @@ export function BrandingSettings() {
                 <Palette size={16} />
               </div>
               <div className="min-w-0">
-                <h4 className="text-sm font-semibold text-[var(--text-primary)]">Palette de votre marque</h4>
+                <h4 className="text-sm font-semibold text-[var(--text-primary)]">{t('set.brand.colors_title')}</h4>
                 <p className="text-xs text-[var(--text-muted)] mt-0.5 leading-relaxed">
-                  Choisissez une palette suggérée ou personnalisez chaque couleur.
+                  {t('set.brand.colors_desc')}
                 </p>
               </div>
             </div>
@@ -243,7 +244,7 @@ export function BrandingSettings() {
             {/* Palettes prédéfinies */}
             <div>
               <label className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2 block">
-                Palettes suggérées
+                {t('set.brand.suggested')}
               </label>
               <div className="flex gap-2 flex-wrap">
                 {COLOR_PALETTES.map((palette) => {
@@ -289,14 +290,14 @@ export function BrandingSettings() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <ColorSwatch
-                label="Couleur principale"
+                label={t('set.brand.primary')}
                 value={primary}
                 onChange={setPrimary}
                 presets={BRAND_PRESETS}
                 size="md"
               />
               <ColorSwatch
-                label="Couleur d'accent"
+                label={t('set.brand.accent')}
                 value={accent}
                 onChange={setAccent}
                 presets={BRAND_PRESETS}
@@ -307,7 +308,7 @@ export function BrandingSettings() {
             {/* Preview gradient brand */}
             <div className="p-4 rounded-xl border border-[var(--border-subtle)]">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2">
-                Aperçu gradient
+                {t('set.brand.gradient_preview')}
               </p>
               <div
                 className="h-14 rounded-lg flex items-center justify-center text-white font-bold text-sm"
@@ -324,7 +325,7 @@ export function BrandingSettings() {
       },
       {
         id: 'company',
-        label: 'Société',
+        label: t('set.brand.company_step'),
         icon: <Building2 size={14} />,
         isValid: () => companyName.trim().length > 0,
         content: (
@@ -334,9 +335,9 @@ export function BrandingSettings() {
                 <Building2 size={16} />
               </div>
               <div className="min-w-0">
-                <h4 className="text-sm font-semibold text-[var(--text-primary)]">Informations société</h4>
+                <h4 className="text-sm font-semibold text-[var(--text-primary)]">{t('set.brand.company_title')}</h4>
                 <p className="text-xs text-[var(--text-muted)] mt-0.5 leading-relaxed">
-                  Ces informations apparaissent sur vos pages publiques et signatures.
+                  {t('set.brand.company_desc')}
                 </p>
               </div>
             </div>
@@ -344,7 +345,7 @@ export function BrandingSettings() {
             <div className="space-y-4">
               <div>
                 <label className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1.5 block">
-                  Nom de l'entreprise <span className="text-[var(--danger)]">*</span>
+                  {t('set.brand.company_name')} <span className="text-[var(--danger)]">*</span>
                 </label>
                 <Input
                   value={companyName}
@@ -355,7 +356,7 @@ export function BrandingSettings() {
 
               <div>
                 <label className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1.5 block">
-                  URL du site web
+                  {t('set.brand.website')}
                 </label>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-[var(--text-muted)] px-2.5 py-2 rounded-md bg-[var(--bg-subtle)] border border-[var(--border-subtle)] shrink-0">
@@ -372,7 +373,7 @@ export function BrandingSettings() {
 
               <div>
                 <label className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1.5 block">
-                  Description courte
+                  {t('set.brand.short_desc')}
                 </label>
                 <Textarea
                   value={shortDescription}
@@ -386,7 +387,7 @@ export function BrandingSettings() {
 
               <div>
                 <label className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1.5 block">
-                  Adresse
+                  {t('set.brand.address')}
                 </label>
                 <Textarea
                   value={address}
@@ -402,7 +403,7 @@ export function BrandingSettings() {
       },
       {
         id: 'public',
-        label: 'Pages publiques',
+        label: t('set.brand.public_step'),
         icon: <Globe size={14} />,
         isOptional: true,
         isValid: () => !publicPagesEnabled || publicSlug.trim().length > 2,
@@ -413,9 +414,9 @@ export function BrandingSettings() {
                 <Globe size={16} />
               </div>
               <div className="min-w-0">
-                <h4 className="text-sm font-semibold text-[var(--text-primary)]">Page de capture publique</h4>
+                <h4 className="text-sm font-semibold text-[var(--text-primary)]">{t('set.brand.public_title')}</h4>
                 <p className="text-xs text-[var(--text-muted)] mt-0.5 leading-relaxed">
-                  Activez une landing page hébergée avec votre branding pour collecter des leads en ligne.
+                  {t('set.brand.public_desc')}
                 </p>
               </div>
             </div>
@@ -423,15 +424,15 @@ export function BrandingSettings() {
             <Switch
               checked={publicPagesEnabled}
               onCheckedChange={setPublicPagesEnabled}
-              label="Activer la page publique"
-              description="Vous obtenez une URL unique à partager."
+              label={t('set.brand.public_toggle')}
+              description={t('set.brand.public_toggle_desc')}
             />
 
             {publicPagesEnabled && (
               <>
                 <div>
                   <label className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1.5 block">
-                    URL publique
+                    {t('set.brand.public_url')}
                   </label>
                   <div className="flex items-center gap-0">
                     <span className="text-xs text-[var(--text-muted)] px-2.5 py-2 rounded-l-md bg-[var(--bg-subtle)] border border-r-0 border-[var(--border-subtle)] shrink-0">
@@ -447,7 +448,7 @@ export function BrandingSettings() {
                     />
                   </div>
                   {publicSlug.trim().length > 0 && publicSlug.trim().length <= 2 && (
-                    <p className="text-[11px] text-[var(--danger)] mt-1">Le slug doit faire au moins 3 caractères.</p>
+                    <p className="text-[11px] text-[var(--danger)] mt-1">{t('set.brand.slug_min')}</p>
                   )}
                 </div>
 
@@ -455,7 +456,7 @@ export function BrandingSettings() {
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <label className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
-                      Aperçu landing
+                      {t('set.brand.preview_landing')}
                     </label>
                     {publicSlug.trim().length > 2 && (
                       <a
@@ -465,7 +466,7 @@ export function BrandingSettings() {
                         className="text-[11px] font-semibold text-[var(--primary)] hover:underline inline-flex items-center gap-1"
                       >
                         <ExternalLink size={11} />
-                        Ouvrir
+                        {t('set.brand.open')}
                       </a>
                     )}
                   </div>
@@ -502,10 +503,10 @@ export function BrandingSettings() {
                           backgroundClip: 'text',
                         }}
                       >
-                        {companyName || 'Votre marque'}
+                        {companyName || t('set.brand.your_brand')}
                       </h3>
                       <p className="text-xs text-[var(--text-secondary)] mb-4 leading-relaxed">
-                        {shortDescription || 'Votre description courte apparaîtra ici.'}
+                        {shortDescription || t('set.brand.desc_placeholder')}
                       </p>
                       <span
                         className="inline-flex items-center gap-1.5 px-4 py-2 rounded-md text-white text-xs font-semibold"
@@ -514,7 +515,7 @@ export function BrandingSettings() {
                           boxShadow: `0 4px 14px -2px ${primary}66`,
                         }}
                       >
-                        Prendre rendez-vous
+                        {t('set.brand.cta')}
                       </span>
                     </div>
                   </div>
@@ -523,7 +524,7 @@ export function BrandingSettings() {
             )}
 
             <p className="text-[11px] text-center text-[var(--text-muted)] italic">
-              Étape facultative — vous pourrez activer la page publique plus tard.
+              {t('set.brand.optional_public')}
             </p>
           </div>
         ),
@@ -557,12 +558,12 @@ export function BrandingSettings() {
         <header className="settings-section-header settings-section-header--with-action">
           <div>
             <h3 className="t-h3 flex items-center gap-2">
-              <Icon as={Palette} size="md" className="text-[var(--primary)]" /> Branding
+               <Icon as={Palette} size="md" className="text-[var(--primary)]" /> {t('set.brand.title')}
             </h3>
-            <p className="t-caption text-[var(--gray-500)]">Logo, couleurs et infos société.</p>
+            <p className="t-caption text-[var(--gray-500)]">{t('set.brand.subtitle')}</p>
           </div>
           <Button variant="primary" size="sm" onClick={openWizard} leftIcon={<Icon as={Sparkles} size="sm" />}>
-            Configurer ma marque
+             {t('set.brand.configure')}
           </Button>
         </header>
 
@@ -588,7 +589,7 @@ export function BrandingSettings() {
                 <>
                   <Icon as={ImagePlus} size="lg" className="settings-dropzone__icon" />
                   <span className="settings-dropzone__title">
-                    {isDragOver ? 'Déposer ici' : 'Uploader logo'}
+                    {isDragOver ? t('set.brand.drop_here_main') : t('set.brand.upload_logo')}
                   </span>
                   <span className="settings-dropzone__hint">PNG, JPG, SVG</span>
                 </>
@@ -609,11 +610,11 @@ export function BrandingSettings() {
 
         <div className="settings-form-grid">
           <div className="settings-form-row settings-form-row--full">
-            <label className="settings-label">Nom de l'entreprise</label>
+            <label className="settings-label">{t('set.brand.company_name')}</label>
             <Input value={companyName} onChange={(e) => setCompanyName(e.target.value)} />
           </div>
           <div className="settings-form-row settings-form-row--full">
-            <label className="settings-label">Adresse</label>
+            <label className="settings-label">{t('set.brand.address')}</label>
             <Textarea
               value={address}
               onChange={(e) => setAddress(e.target.value)}
@@ -625,7 +626,7 @@ export function BrandingSettings() {
         </div>
 
         <div className="settings-actions">
-          <Button onClick={handleSave}>Enregistrer les modifications</Button>
+          <Button onClick={handleSave}>{t('set.brand.save')}</Button>
         </div>
       </Card>
 
@@ -633,15 +634,15 @@ export function BrandingSettings() {
       <Wizard
         open={wizardOpen}
         onOpenChange={setWizardOpen}
-        title="Configurer votre marque"
-        description="Personnalisez votre branding en 4 étapes — vous pourrez tout modifier plus tard."
+        title={t('set.brand.wizard_title')}
+        description={t('set.brand.wizard_desc')}
         steps={wizardSteps}
         currentIndex={wizardStep}
         onStepChange={setWizardStep}
         onComplete={completeWizard}
         onCancel={() => setWizardStep(0)}
         persistKey="branding-setup"
-        completeLabel="Appliquer mon branding"
+        completeLabel={t('set.brand.wizard_done')}
       />
     </>
   );

@@ -20,6 +20,7 @@ const SlackIcon = (props: { size?: number }) => (
 );
 import { useSound, type SoundName } from '@/hooks/useSound';
 import { useHaptic, type HapticIntensity } from '@/hooks/useHaptic';
+import { t } from '@/lib/i18n';
 
 // Sprint 46 M3.3 — 8 events × 5 channels (push + Slack ajoutés).
 // IDs alignés avec le worker `createNotification` (lead.created, lead.assigned,
@@ -106,7 +107,7 @@ export function NotificationsSettings() {
         )
       );
     } else {
-      success('Préférences mises à jour');
+      success(t('set.notif.updated'));
       setAutosaveState('saved');
       setLastSaved(new Date());
       if (decayTimerRef.current) window.clearTimeout(decayTimerRef.current);
@@ -141,8 +142,8 @@ export function NotificationsSettings() {
       <Card className="p-5">
         <EmptyState
           icon={<BellOff size={32} />}
-          title="Aucune préférence à configurer"
-          description="Les types d'événements seront listés ici dès qu'ils seront disponibles."
+          title={t('set.notif.empty_title')}
+          description={t('set.notif.empty_desc')}
         />
       </Card>
     );
@@ -209,7 +210,7 @@ export function NotificationsSettings() {
     <div className="space-y-6">
       <KpiStrip
         items={[
-          { label: 'Activées', value: kpis.enabled, color: 'brand', icon: <Bell size={12} /> },
+          { label: t('set.notif.enabled_label'), value: kpis.enabled, color: 'brand', icon: <Bell size={12} /> },
           { label: 'Total', value: kpis.total, color: 'neutral' },
           { label: 'In-App', value: kpis.perChannel.in_app, color: 'info', icon: <Monitor size={12} /> },
           { label: 'Email', value: kpis.perChannel.email, color: 'brand', icon: <Mail size={12} /> },
@@ -225,9 +226,9 @@ export function NotificationsSettings() {
         </div>
 
         <header className="settings-section-header">
-          <h3 className="t-h3">Préférences de notifications</h3>
+          <h3 className="t-h3">{t('set.notif.title')}</h3>
           <p className="t-caption text-[var(--gray-500)]">
-            Choisis comment être averti pour chaque type d'événement.
+            {t('set.notif.subtitle')}
           </p>
         </header>
 
@@ -308,10 +309,10 @@ function SensorialFeedbackSection() {
       <header className="settings-section-header">
         <h3 className="t-h3 flex items-center gap-2">
           <UIcon as={Volume2} size={16} className="text-[var(--primary)]" />
-          Feedback sensoriel
+          {t('set.notif.feedback')}
         </h3>
         <p className="t-caption text-[var(--gray-500)]">
-          Sons procéduraux et vibrations subtils. Génération en code, aucun téléchargement.
+          {t('set.notif.feedback_desc')}
         </p>
       </header>
 
@@ -319,7 +320,7 @@ function SensorialFeedbackSection() {
         <div className="settings-info-banner settings-info-banner--warning" role="status">
           <UIcon as={AlertCircle} size={16} className="settings-info-banner__icon" />
           <div>
-            <p className="settings-info-banner__title">Désactivé par préférence système</p>
+            <p className="settings-info-banner__title">{t('set.notif.reduced')}</p>
             <p className="settings-info-banner__body">
               <code className="settings-inline-code">prefers-reduced-motion: reduce</code> est actif. Sons et vibrations sont automatiquement désactivés.
             </p>
@@ -336,8 +337,8 @@ function SensorialFeedbackSection() {
             checked={sound.isEnabled}
             onCheckedChange={(v) => sound.setEnabled(v)}
             disabled={sound.reducedMotion}
-            label="Sons activés"
-            description="7 micro-sons procéduraux (toggle, success, send…)"
+            label={t('set.notif.sounds_on')}
+            description={t('set.notif.sounds_desc')}
           />
         </div>
 
@@ -347,7 +348,7 @@ function SensorialFeedbackSection() {
             htmlFor="intralys-sound-volume"
             className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wide shrink-0 w-16"
           >
-            Volume
+            {t('set.notif.volume')}
           </label>
           <input
             id="intralys-sound-volume"
@@ -362,7 +363,7 @@ function SensorialFeedbackSection() {
             style={{
               background: `linear-gradient(90deg, var(--primary) 0%, var(--primary) ${sound.volume * 100}%, var(--gray-200) ${sound.volume * 100}%, var(--gray-200) 100%)`,
             }}
-            aria-label="Volume des sons"
+            aria-label={t('set.notif.volume_label')}
           />
           <span className="text-xs font-mono text-[var(--text-secondary)] tabular-nums w-10 text-right">
             {Math.round(sound.volume * 100)}%
@@ -372,7 +373,7 @@ function SensorialFeedbackSection() {
         {/* Preview buttons */}
         <div>
           <p className="text-[11px] font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-2">
-            Tester les 7 sons
+            {t('set.notif.test_sounds')}
           </p>
           <div className="flex flex-wrap gap-2">
             {SOUND_PREVIEWS.map(({ name, label, icon: Icon }) => (
@@ -399,18 +400,18 @@ function SensorialFeedbackSection() {
           checked={haptic.isEnabled}
           onCheckedChange={(v) => haptic.setEnabled(v)}
           disabled={haptic.reducedMotion || !haptic.isSupported}
-          label="Vibrations (haptic feedback)"
+          label={t('set.notif.haptic_on')}
           description={
             haptic.isSupported
-              ? 'Web Vibration API — appareils tactiles uniquement'
-              : 'Appareil non tactile détecté — disponible sur mobile/tablette'
+              ? t('set.notif.haptic_yes')
+              : t('set.notif.haptic_no')
           }
         />
 
         {haptic.isSupported && (
           <div>
             <p className="text-[11px] font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-2">
-              Tester les patterns
+              {t('set.notif.test_patterns')}
             </p>
             <div className="flex flex-wrap gap-2">
               {HAPTIC_PREVIEWS.map(({ name, label }) => (

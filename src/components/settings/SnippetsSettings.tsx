@@ -19,6 +19,7 @@ import { Modal } from '@/components/ui/Modal';
 import { getSnippets, createSnippet, updateSnippet, deleteSnippet } from '@/lib/api';
 import type { Snippet } from '@/lib/types';
 import { Plus, Search, Pencil, Trash2, MessageSquare, Terminal, MoreVertical, XCircle } from 'lucide-react';
+import { t } from '@/lib/i18n';
 
 export function SnippetsSettings() {
   const { success, error: toastError } = useToast();

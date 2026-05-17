@@ -13,6 +13,7 @@ import { Card, AutosaveIndicator, useToast, Icon, type AutosaveState } from '@/c
 import { ShoppingBag, Users as UsersIcon, Lock } from 'lucide-react';
 import { getModules, patchModule, type ModuleId } from '@/lib/api';
 import { invalidateModulesCache } from '@/components/ecommerce/ModuleGuard';
+import { t } from '@/lib/i18n';
 
 interface ModuleMeta {
   id: ModuleId;

@@ -34,6 +34,7 @@ import {
 } from '@/lib/api';
 import type { Pipeline } from '@/lib/types';
 import { Plus, Trash2, Pencil, Check, X, ArrowUp, ArrowDown, Workflow, BarChart3, Zap } from 'lucide-react';
+import { t } from '@/lib/i18n';
 
 const STAGE_PRESETS = ['#009DDB', '#D96E27', '#37CA37', '#FF9A00', '#E93D3D', '#188BF6', '#8B5CF6', '#8A93A4'];
 
@@ -94,7 +95,7 @@ export function PipelineSettings() {
       setIsCreatingPipeline(false);
       setActivePipelineId(res.data.id);
       await loadPipelines();
-      success('Pipeline créé');
+      success(t('set.pipe.create') + ' ✓');
     } else if (res.error) {
       toastError(res.error);
     }
@@ -106,7 +107,7 @@ export function PipelineSettings() {
     if (res.data?.success) {
       setIsEditingPipeline(false);
       await loadPipelines();
-      success('Pipeline renommé');
+      success(t('set.pipe.rename') + ' ✓');
     } else if (res.error) {
       toastError(res.error);
     }
@@ -114,9 +115,9 @@ export function PipelineSettings() {
 
   const handleDeletePipeline = async (id: string) => {
     const ok = await confirm({
-      title: 'Supprimer ce pipeline ?',
-      description: 'Les leads qui y sont associés seront automatiquement déplacés vers le pipeline par défaut.',
-      confirmLabel: 'Supprimer',
+      title: t('set.pipe.confirm_del'),
+      description: t('set.pipe.confirm_del_desc'),
+      confirmLabel: t('set.pipe.delete'),
       danger: true,
     });
     if (!ok) return;
@@ -124,7 +125,7 @@ export function PipelineSettings() {
     if (res.data?.success) {
       setActivePipelineId(null);
       await loadPipelines();
-      success('Pipeline supprimé');
+      success(t('set.pipe.delete') + ' ✓');
     } else if (res.error) {
       toastError(res.error);
     }
@@ -149,7 +150,7 @@ export function PipelineSettings() {
     setIsCreatingStage(false);
     await loadPipelines();
     if (res?.error) toastError(res.error);
-    else success('Étape ajoutée');
+    else success(t('set.pipe.add_a_stage') + ' ✓');
   };
 
   const handleUpdateStage = async (stageId: string) => {
@@ -163,22 +164,22 @@ export function PipelineSettings() {
     setEditingStageId(null);
     await loadPipelines();
     if (res?.error) toastError(res.error);
-    else success('Étape modifiée');
+    else success(t('set.pipe.save') + ' ✓');
   };
 
   const handleDeleteStage = async (stageId: string) => {
     if (!activePipeline) return;
     const ok = await confirm({
-      title: 'Supprimer cette étape ?',
-      description: "Les leads présents dans cette étape seront déplacés vers l'étape par défaut du pipeline.",
-      confirmLabel: 'Supprimer',
+      title: t('set.pipe.confirm_del_stage'),
+      description: t('set.pipe.confirm_del_stage_desc'),
+      confirmLabel: t('set.pipe.delete'),
       danger: true,
     });
     if (!ok) return;
     const res = await deletePipelineStage(activePipeline.id, stageId);
     await loadPipelines();
     if (res?.error) toastError(res.error);
-    else success('Étape supprimée');
+    else success(t('set.pipe.delete') + ' ✓');
   };
 
   const handleMoveStage = async (stageId: string, direction: 'up' | 'down') => {
@@ -266,11 +267,11 @@ export function PipelineSettings() {
       <Card className="p-5">
         <EmptyState
           icon={<Icon as={Workflow} size={32} />}
-          title="Aucun pipeline"
-          description="Crée ton premier pipeline pour organiser tes opportunités en étapes Kanban."
+          title={t('set.pipe.no_pipeline')}
+          description={t('set.pipe.no_pipeline_desc')}
           action={
             <Button onClick={() => setIsCreatingPipeline(true)} leftIcon={<Icon as={Plus} size="sm" />}>
-              Créer un pipeline
+              {t('set.pipe.create')}
             </Button>
           }
         />
@@ -284,7 +285,7 @@ export function PipelineSettings() {
     <div className="pipeline-step-body">
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <h4 className="text-sm font-semibold text-[var(--text-secondary)]">
-          Étapes du pipeline (Colonnes)
+          {t('set.pipe.stages_title')}
         </h4>
         <button
           type="button"
@@ -292,7 +293,7 @@ export function PipelineSettings() {
           className="action-chip action-chip--accent"
         >
           <Plus size={14} />
-          Ajouter étape
+          {t('set.pipe.add_stage')}
         </button>
       </div>
 
@@ -300,11 +301,11 @@ export function PipelineSettings() {
         <EmptyState
           variant="compact"
           icon={<Icon as={Workflow} size={28} />}
-          title="Aucune étape configurée"
-          description="Crée la première étape de ton Kanban (ex : Nouveau, Qualifié, Gagné…)."
+          title={t('set.pipe.no_stage')}
+          description={t('set.pipe.no_stage_desc')}
           action={
             <Button onClick={() => setIsCreatingStage(true)} leftIcon={<Icon as={Plus} size={14} />}>
-              Ajouter une étape
+              {t('set.pipe.add_a_stage')}
             </Button>
           }
         />
@@ -313,7 +314,7 @@ export function PipelineSettings() {
           {(activePipeline.stages || []).map((stage, idx) => {
             const isWin = stage.probability === 100;
             const isLoss = stage.probability === 0;
-            const typeLabel = isWin ? 'Gagné' : isLoss ? 'Perdu' : 'Normal';
+            const typeLabel = isWin ? t('set.pipe.won') : isLoss ? t('set.pipe.lost') : t('set.pipe.normal');
             const isEditing = editingStageId === stage.id;
             const lastIdx = (activePipeline.stages || []).length - 1;
 
@@ -330,7 +331,7 @@ export function PipelineSettings() {
                     className={`p-0.5 cursor-pointer ${
                       idx === 0 ? 'invisible' : 'hover:bg-[var(--bg-subtle)] rounded'
                     }`}
-                    aria-label="Monter l'étape"
+                    aria-label={t('set.pipe.move_up')}
                   >
                     <ArrowUp size={14} />
                   </button>
@@ -340,7 +341,7 @@ export function PipelineSettings() {
                     className={`p-0.5 cursor-pointer ${
                       idx === lastIdx ? 'invisible' : 'hover:bg-[var(--bg-subtle)] rounded'
                     }`}
-                    aria-label="Descendre l'étape"
+                    aria-label={t('set.pipe.move_down')}
                   >
                     <ArrowDown size={14} />
                   </button>
@@ -367,16 +368,16 @@ export function PipelineSettings() {
                       onChange={(e) => setEditStageType(e.target.value as any)}
                       className="!h-8 max-w-[180px]"
                     >
-                      <option value="normal">Normal</option>
-                      <option value="win">Gagné (100%)</option>
-                      <option value="loss">Perdu (0%)</option>
+                      <option value="normal">{t('set.pipe.normal')}</option>
+                      <option value="win">{t('set.pipe.won_100')}</option>
+                      <option value="loss">{t('set.pipe.lost_0')}</option>
                     </Select>
                     <div className="flex gap-1 ml-auto">
                       <Button size="sm" onClick={() => void handleUpdateStage(stage.id)}>
-                        Sauver
+                        {t('set.pipe.save')}
                       </Button>
                       <Button size="sm" variant="ghost" onClick={() => setEditingStageId(null)}>
-                        Annuler
+                        {t('set.pipe.cancel')}
                       </Button>
                     </div>
                   </div>
@@ -395,7 +396,7 @@ export function PipelineSettings() {
                       </p>
                       <div className="flex items-center gap-2 mt-0.5">
                         <span className="text-[10px] text-[var(--text-muted)]">
-                          Probabilité estimée:{' '}
+                          {t('set.pipe.estimated')}:{' '}
                           {isWin
                             ? '100%'
                             : isLoss
@@ -457,7 +458,7 @@ export function PipelineSettings() {
               <Input
                 value={newStageName}
                 onChange={(e) => setNewStageName(e.target.value)}
-                placeholder="Nom de l'étape"
+                placeholder={t('set.pipe.name_ph')}
                 className="!h-8 max-w-[200px]"
                 autoFocus
               />
@@ -467,16 +468,16 @@ export function PipelineSettings() {
                 onChange={(e) => setNewStageType(e.target.value as any)}
                 className="!h-8 max-w-[180px]"
               >
-                <option value="normal">Normal</option>
-                <option value="win">Gagné (100%)</option>
-                <option value="loss">Perdu (0%)</option>
+                <option value="normal">{t('set.pipe.normal')}</option>
+                <option value="win">{t('set.pipe.won_100')}</option>
+                <option value="loss">{t('set.pipe.lost_0')}</option>
               </Select>
               <div className="flex gap-1 ml-auto">
                 <Button size="sm" onClick={() => void handleCreateStage()}>
-                  Ajouter
+                  {t('set.pipe.add')}
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => setIsCreatingStage(false)}>
-                  Annuler
+                  {t('set.pipe.cancel')}
                 </Button>
               </div>
             </div>
@@ -490,20 +491,20 @@ export function PipelineSettings() {
     <div className="pipeline-step-body space-y-4">
       <h4 className="text-sm font-semibold text-[var(--text-secondary)] flex items-center gap-2">
         <Icon as={BarChart3} size={16} className="text-[var(--primary)]" />
-        Probabilités par étape
+        {t('set.pipe.scoring_title')}
       </h4>
       <p className="text-xs text-[var(--text-muted)] -mt-2">
-        Les probabilités sont calculées automatiquement selon la position de l'étape. Les étapes de type "Gagné" sont à 100% et "Perdu" à 0%.
+        {t('set.pipe.scoring_desc')}
       </p>
       {(activePipeline.stages || []).length === 0 ? (
         <EmptyState
           variant="compact"
           icon={<Icon as={BarChart3} size={28} />}
-          title="Aucune étape"
-          description="Ajoute des étapes dans l'onglet Étapes pour configurer le scoring."
+          title={t('set.pipe.no_stage_scoring')}
+          description={t('set.pipe.no_stage_scoring_desc')}
           action={
             <Button variant="secondary" size="sm" onClick={() => setWizardStep(0)}>
-              Aller aux étapes
+              {t('set.pipe.go_stages')}
             </Button>
           }
         />
@@ -550,8 +551,8 @@ export function PipelineSettings() {
     <div className="pipeline-step-body py-6">
       <EmptyState
         icon={<EmptyStateIllustration kind="pipeline" size={96} />}
-        title="Automations pipeline"
-        description="Bientôt : déclenchement automatique d'actions lorsqu'un deal change d'étape. Envoi d'email, notification Slack, assignation auto, relance programmée."
+        title={t('set.pipe.auto_title')}
+        description={t('set.pipe.auto_desc')}
       />
     </div>
   );
@@ -559,7 +560,7 @@ export function PipelineSettings() {
   const wizardSteps: WizardStep[] = [
     {
       id: 'stages',
-      label: 'Étapes',
+      label: t('set.pipe.stages_step'),
       icon: <Icon as={Workflow} size={12} />,
       content: stagesContent,
     },
@@ -571,7 +572,7 @@ export function PipelineSettings() {
     },
     {
       id: 'automations',
-      label: 'Automations',
+      label: 'Automations',  // universal
       icon: <Icon as={Zap} size={12} />,
       content: automationsContent,
     },
@@ -580,9 +581,9 @@ export function PipelineSettings() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-base font-bold text-[var(--text-primary)] mb-1">Pipelines & Opportunités</h2>
+        <h2 className="text-base font-bold text-[var(--text-primary)] mb-1">{t('set.pipe.title')}</h2>
         <p className="text-sm text-[var(--text-muted)]">
-          Gère tes pipelines et personnalise les étapes (colonnes) de ton Kanban.
+          {t('set.pipe.subtitle')}
         </p>
       </div>
 
@@ -594,7 +595,7 @@ export function PipelineSettings() {
             <button
               onClick={() => setIsCreatingPipeline(true)}
               className="action-chip action-chip-icon"
-              aria-label="Créer un pipeline"
+              aria-label={t('set.pipe.create')}
             >
               <Plus size={14} />
             </button>
@@ -618,7 +619,7 @@ export function PipelineSettings() {
                       activePipelineId === pipeline.id ? 'bg-white/20' : 'bg-[var(--bg-muted)]'
                     }`}
                   >
-                    Défaut
+                    {t('set.pipe.default')}
                   </span>
                 )}
               </button>
@@ -628,7 +629,7 @@ export function PipelineSettings() {
               <div className="p-2.5 rounded-lg bg-[var(--bg-subtle)] mt-2">
                 <input
                   autoFocus
-                  placeholder="Nom du pipeline..."
+                  placeholder={t('set.pipe.pl_name_ph')}
                   value={newPipelineName}
                   onChange={(e) => setNewPipelineName(e.target.value)}
                   onKeyDown={(e) => {
@@ -687,7 +688,7 @@ export function PipelineSettings() {
                         setIsEditingPipeline(true);
                       }}
                       className="text-[var(--text-muted)] hover:text-[var(--primary)] cursor-pointer p-1"
-                      aria-label="Renommer le pipeline"
+                      aria-label={t('set.pipe.rename')}
                     >
                       <Pencil size={14} />
                     </button>
@@ -701,7 +702,7 @@ export function PipelineSettings() {
                     onClick={() => void handleDeletePipeline(activePipeline.id)}
                     className="shrink-0 gap-1.5"
                   >
-                    <Icon as={Trash2} size="sm" /> Supprimer pipeline
+                    <Icon as={Trash2} size="sm" /> {t('set.pipe.delete_pipeline')}
                   </Button>
                 )}
               </div>
@@ -717,15 +718,15 @@ export function PipelineSettings() {
                 onStepChange={setWizardStep}
                 onComplete={() => {
                   // Step final atteint — pas d'action métier (déjà sauvé en autosave par toggles)
-                  success('Pipeline configuré');
+                  success(t('set.pipe.configured'));
                 }}
-                completeLabel="Terminer"
+                completeLabel={t('set.pipe.done')}
               />
             </Card>
           </div>
         ) : (
           <div className="flex-1 flex items-center justify-center p-12 text-[var(--text-muted)] border border-dashed border-[var(--border-subtle)] rounded-xl">
-            Sélectionne un pipeline pour modifier ses étapes.
+            {t('set.pipe.select')}
           </div>
         )}
       </div>

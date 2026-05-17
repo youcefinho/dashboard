@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Card, Button, Tag, EmptyState, Icon } from '@/components/ui';
 import { ShieldCheck, Plus } from 'lucide-react';
+import { t } from '@/lib/i18n';
 
 export function RolesPermissionsSettings() {
   const [roles, setRoles] = useState<any[]>([]);

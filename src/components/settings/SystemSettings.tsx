@@ -10,6 +10,7 @@ import { Fingerprint, Smartphone, CloudOff, Compass, RotateCcw, Sparkles, Trash2
 import { resetAllCoachmarks } from '@/lib/coachmarks';
 // Sprint 45 M1.2 — clear demo data (effacer les seeds + flag local)
 import { clearDemoData, isDemoDataLoaded } from '@/lib/demoData';
+import { t } from '@/lib/i18n';
 
 // Sprint 24 vague 5B — lazy import du tour interactif (évite charge inutile)
 const InteractiveTour = lazy(() =>
