@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Download, X } from 'lucide-react';
 // Sprint 33 vague 33-1A — Icon primitive (stroke 1.75 unifié)
 import { Button, Icon } from '@/components/ui';
+import { t } from '@/lib/i18n';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -72,10 +73,10 @@ export function InstallPrompt() {
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-[13px] font-semibold text-[var(--text-primary)] m-0">
-          Installer Intralys CRM
+          {t('pwa.install')} Intralys CRM
         </p>
         <p className="text-[11px] text-[var(--text-muted)] m-0">
-          Accès rapide depuis l'écran d'accueil
+          {t('pwa.install')}
         </p>
       </div>
       <Button
@@ -85,13 +86,13 @@ export function InstallPrompt() {
         leftIcon={<Icon as={Download} size={14} />}
         className="shrink-0"
       >
-        Installer
+        {t('common.install')}
       </Button>
       <button
         type="button"
         onClick={handleDismiss}
         className="chip-btn chip-btn--sm shrink-0 !w-8 !h-8 !p-0 flex items-center justify-center"
-        aria-label="Fermer"
+        aria-label={t('common.close')}
       >
         <Icon as={X} size={14} />
       </button>

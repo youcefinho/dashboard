@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/Input';
 import { Search } from 'lucide-react';
 // Sprint 33 vague 33-1A — Icon primitive (stroke 1.75 unifié)
 import { Icon } from '@/components/ui';
+import { t } from '@/lib/i18n';
 
 interface ShortcutEntry {
   keys: string[];
@@ -20,39 +21,39 @@ interface ShortcutSection {
 
 const SECTIONS: ShortcutSection[] = [
   {
-    title: 'Global',
+    title: t('kbd.section_global'),
     shortcuts: [
-      { keys: ['⌘', 'K'], description: 'Ouvrir la recherche globale + commandes' },
-      { keys: ['?'], description: 'Afficher ces raccourcis' },
-      { keys: ['Esc'], description: 'Fermer la modale / panel / popover actuel' },
+      { keys: ['⌘', 'K'], description: t('kbd.open_search') },
+      { keys: ['?'], description: t('kbd.show_shortcuts') },
+      { keys: ['Esc'], description: t('kbd.close_modal') },
     ],
   },
   {
-    title: 'Navigation',
+    title: t('kbd.section_nav'),
     shortcuts: [
-      { keys: ['G', 'D'], description: 'Aller au Dashboard' },
-      { keys: ['G', 'L'], description: 'Aller aux Leads' },
-      { keys: ['G', 'P'], description: 'Aller au Pipeline' },
-      { keys: ['G', 'I'], description: 'Aller à l\'Inbox' },
-      { keys: ['G', 'C'], description: 'Aller au Calendrier' },
-      { keys: ['G', 'T'], description: 'Aller aux Tâches' },
+      { keys: ['G', 'D'], description: t('kbd.go_dashboard') },
+      { keys: ['G', 'L'], description: t('kbd.go_leads') },
+      { keys: ['G', 'P'], description: t('kbd.go_pipeline') },
+      { keys: ['G', 'I'], description: t('kbd.go_inbox') },
+      { keys: ['G', 'C'], description: t('kbd.go_calendar') },
+      { keys: ['G', 'T'], description: t('kbd.go_tasks') },
     ],
   },
   {
-    title: 'Recherche / Commandes (dans ⌘K)',
+    title: t('kbd.section_search'),
     shortcuts: [
-      { keys: ['nouveau lead', '<nom>'], description: 'Créer un lead rapidement' },
-      { keys: ['aller au', '<page>'], description: 'Naviguer par nom de page' },
-      { keys: ['déplacer', '<lead>', 'en', '<statut>'], description: 'Changer le statut d\'un lead' },
+      { keys: ['nouveau lead', '<nom>'], description: t('kbd.create_lead') },
+      { keys: ['aller au', '<page>'], description: t('kbd.nav_page') },
+      { keys: ['déplacer', '<lead>', 'en', '<statut>'], description: t('kbd.move_status') },
     ],
   },
   {
-    title: 'AI inline (touche Sparkles)',
+    title: t('kbd.section_ai'),
     shortcuts: [
-      { keys: ['Améliorer'], description: 'Correction + clarification du texte' },
-      { keys: ['Raccourcir'], description: 'Réduire d\'environ 50%' },
-      { keys: ['Formel'], description: 'Registre professionnel québécois' },
-      { keys: ['Amical'], description: 'Registre chaleureux québécois' },
+      { keys: ['Améliorer'], description: t('kbd.ai_improve') },
+      { keys: ['Raccourcir'], description: t('kbd.ai_shorten') },
+      { keys: ['Formel'], description: t('kbd.ai_formal') },
+      { keys: ['Amical'], description: t('kbd.ai_friendly') },
     ],
   },
 ];
@@ -142,12 +143,12 @@ export function KeyboardShortcutsModal() {
   }, [query]);
 
   return (
-    <Modal open={isOpen} onOpenChange={setIsOpen} title="Raccourcis clavier" size="lg">
+    <Modal open={isOpen} onOpenChange={setIsOpen} title={t('kbd.title')} size="lg">
       <div className="space-y-4">
         {/* Search filter live */}
         <Input
           autoFocus
-          placeholder="Filtrer les raccourcis..."
+          placeholder={t('kbd.filter_ph')}
           value={query}
           onChange={e => setQuery(e.target.value)}
           leftIcon={<Icon as={Search} size={15} />}
@@ -156,7 +157,7 @@ export function KeyboardShortcutsModal() {
         <div className="space-y-5 max-h-[55vh] overflow-y-auto -mr-2 pr-2">
           {filteredSections.length === 0 ? (
             <p className="text-xs text-[var(--text-muted)] text-center py-6">
-              Aucun raccourci ne correspond à « {query} ».
+              {t('kbd.no_match')} « {query} ».
             </p>
           ) : (
             filteredSections.map(section => (
@@ -198,7 +199,7 @@ export function KeyboardShortcutsModal() {
           )}
         </div>
         <div className="border-t border-[var(--border-subtle)] pt-3 text-[10px] text-[var(--text-muted)] text-center">
-          Appuyer sur <KbdChip>?</KbdChip> n'importe où dans l'app pour revoir cette liste.
+          {t('kbd.hint')}
         </div>
       </div>
     </Modal>

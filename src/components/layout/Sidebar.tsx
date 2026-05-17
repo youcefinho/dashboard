@@ -15,6 +15,7 @@ import { getSmartLists, getLeads, getTasks, getNotifications, getModules, type M
 import type { SmartList } from '@/lib/types';
 // Sprint 45 M1.4 — Onboarding progress chip (auto-hide quand 5/5 atteint)
 import { OnboardingProgressChip } from '@/components/onboarding/OnboardingProgressChip';
+import { t } from '@/lib/i18n';
 
 interface NavSection {
   label?: string;
@@ -24,69 +25,61 @@ interface NavSection {
 const NAV_SECTIONS: NavSection[] = [
   {
     items: [
-      { path: '/dashboard', label: 'Dashboard', icon: <Icon as={LayoutDashboard} size={18} /> },
+      { path: '/dashboard', label: t('nav.dashboard'), icon: <Icon as={LayoutDashboard} size={18} /> },
     ],
   },
   {
-    label: 'WORKSPACE',
+    label: t('nav.workspace'),
     items: [
-      { path: '/leads', label: 'Leads', icon: <Icon as={Users} size={18} />, badgeKey: 'leadsNew' },
-      { path: '/properties', label: 'Propriétés', icon: <Icon as={Briefcase} size={18} /> },
-      { path: '/agencies', label: 'Agences', icon: <Icon as={Briefcase} size={18} />, adminOnly: true },
-      { path: '/clients', label: 'Clients', icon: <Icon as={UserCircle} size={18} />, adminOnly: true },
-      { path: '/pipeline', label: 'Pipeline', icon: <Icon as={Briefcase} size={18} /> },
-      { path: '/invoices', label: 'Factures', icon: <Icon as={CreditCard} size={18} /> },
-      { path: '/conversations', label: 'Conversations', icon: <Icon as={MessageSquare} size={18} />, badgeKey: 'notifsUnread' },
+      { path: '/leads', label: t('nav.leads'), icon: <Icon as={Users} size={18} />, badgeKey: 'leadsNew' },
+      { path: '/properties', label: t('nav.properties'), icon: <Icon as={Briefcase} size={18} /> },
+      { path: '/agencies', label: t('nav.agencies'), icon: <Icon as={Briefcase} size={18} />, adminOnly: true },
+      { path: '/clients', label: t('nav.clients'), icon: <Icon as={UserCircle} size={18} />, adminOnly: true },
+      { path: '/pipeline', label: t('nav.pipeline'), icon: <Icon as={Briefcase} size={18} /> },
+      { path: '/invoices', label: t('nav.invoices'), icon: <Icon as={CreditCard} size={18} /> },
+      { path: '/conversations', label: t('nav.conversations'), icon: <Icon as={MessageSquare} size={18} />, badgeKey: 'notifsUnread' },
     ],
   },
   {
-    label: 'MARKETING',
+    label: t('nav.marketing'),
     items: [
-      { path: '/templates', label: 'Templates', icon: <Icon as={Mail} size={18} /> },
-      { path: '/workflows', label: 'Automations', icon: <Icon as={Zap} size={18} /> },
-      { path: '/trigger-links', label: 'Trigger Links', icon: <Icon as={Link2} size={18} /> },
-      { path: '/forms/builder/new', label: 'Formulaires', icon: <Icon as={ClipboardList} size={18} /> },
+      { path: '/templates', label: t('nav.templates'), icon: <Icon as={Mail} size={18} /> },
+      { path: '/workflows', label: t('nav.automations'), icon: <Icon as={Zap} size={18} /> },
+      { path: '/trigger-links', label: t('nav.trigger_links'), icon: <Icon as={Link2} size={18} /> },
+      { path: '/forms/builder/new', label: t('nav.forms'), icon: <Icon as={ClipboardList} size={18} /> },
     ],
   },
   {
-    label: 'INSIGHTS',
+    label: t('nav.insights'),
     items: [
-      { path: '/documents', label: 'Documents', icon: <Icon as={FileText} size={18} /> },
-      { path: '/documents/templates', label: 'Modèles docs', icon: <Icon as={FileText} size={18} /> },
-      { path: '/reviews', label: 'Avis', icon: <Icon as={Star} size={18} /> },
-      { path: '/calendar', label: 'Calendrier', icon: <Icon as={CalendarDays} size={18} /> },
-      { path: '/tasks', label: 'Tâches', icon: <Icon as={CheckSquare} size={18} />, badgeKey: 'tasksTodo' },
-      { path: '/integrations', label: 'Intégrations', icon: <Icon as={Plug} size={18} /> },
-      { path: '/reports', label: 'Rapports', icon: <Icon as={BarChart3} size={18} /> },
+      { path: '/documents', label: t('nav.documents'), icon: <Icon as={FileText} size={18} /> },
+      { path: '/documents/templates', label: t('nav.doc_templates'), icon: <Icon as={FileText} size={18} /> },
+      { path: '/reviews', label: t('nav.reviews'), icon: <Icon as={Star} size={18} /> },
+      { path: '/calendar', label: t('nav.calendar'), icon: <Icon as={CalendarDays} size={18} /> },
+      { path: '/tasks', label: t('nav.tasks'), icon: <Icon as={CheckSquare} size={18} />, badgeKey: 'tasksTodo' },
+      { path: '/integrations', label: t('nav.integrations'), icon: <Icon as={Plug} size={18} /> },
+      { path: '/reports', label: t('nav.reports'), icon: <Icon as={BarChart3} size={18} /> },
     ],
   },
-  // Sprint 46 M2.1 — Section Administration (visible admin/owner uniquement
-  // via flag adminOnly + filtre isAdmin déjà en place). Section dédiée pour
-  // que la nav admin (overview, audit, etc.) ne pollue pas l'arborescence
-  // user standard.
   {
-    label: 'ADMINISTRATION',
+    label: t('nav.administration'),
     items: [
-      { path: '/admin/overview', label: "Vue d'ensemble", icon: <Icon as={ShieldCheck} size={18} />, adminOnly: true },
+      { path: '/admin/overview', label: t('nav.admin_overview'), icon: <Icon as={ShieldCheck} size={18} />, adminOnly: true },
     ],
   },
-  // Sprint E1 M2.2 — Section Boutique (module e-commerce B2). Rendue
-  // conditionnellement : visible UNIQUEMENT si le tenant a le module
-  // `ecommerce` actif (modules_json). Items placeholder ; M3 wirera les
-  // vraies pages derrière <ModuleGuard>. Pattern aligné sur adminOnly.
   {
-    label: 'BOUTIQUE',
+    label: t('nav.boutique'),
     items: [
-      { path: '/boutique', label: 'Tableau de bord', icon: <Icon as={Store} size={18} />, moduleRequired: 'ecommerce' },
-      { path: '/boutique/produits', label: 'Produits', icon: <Icon as={Package} size={18} />, moduleRequired: 'ecommerce' },
-      { path: '/boutique/commandes', label: 'Commandes', icon: <Icon as={ShoppingCart} size={18} />, moduleRequired: 'ecommerce' },
-      { path: '/boutique/clients', label: 'Clients', icon: <Icon as={Contact} size={18} />, moduleRequired: 'ecommerce' },
+      { path: '/boutique', label: t('nav.shop_dashboard'), icon: <Icon as={Store} size={18} />, moduleRequired: 'ecommerce' },
+      { path: '/boutique/produits', label: t('nav.shop_products'), icon: <Icon as={Package} size={18} />, moduleRequired: 'ecommerce' },
+      { path: '/boutique/commandes', label: t('nav.shop_orders'), icon: <Icon as={ShoppingCart} size={18} />, moduleRequired: 'ecommerce' },
+      { path: '/boutique/clients', label: t('nav.shop_customers'), icon: <Icon as={Contact} size={18} />, moduleRequired: 'ecommerce' },
     ],
   },
   {
     items: [
-      { path: '/settings', label: 'Paramètres', icon: <Icon as={Settings} size={18} /> },
-      { path: '/trash', label: 'Corbeille', icon: <Icon as={Trash2} size={18} /> },
+      { path: '/settings', label: t('nav.settings'), icon: <Icon as={Settings} size={18} /> },
+      { path: '/trash', label: t('nav.trash'), icon: <Icon as={Trash2} size={18} /> },
     ],
   },
 ];
@@ -204,7 +197,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           </div>
           <button
             onClick={() => setCollapsed(!collapsed)}
-            aria-label={collapsed ? 'Déplier la barre latérale' : 'Replier la barre latérale'}
+            aria-label={collapsed ? t('nav.expand_sidebar') : t('nav.collapse_sidebar')}
             aria-expanded={!collapsed}
             className="hidden lg:inline-flex items-center justify-center h-7 w-7 rounded-md text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
           >
@@ -301,7 +294,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                     {!collapsed && (
                       <div className="px-3 pt-4 pb-1.5">
                         <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">
-                          Vues sauvegardées
+                          {t('nav.saved_views')}
                         </span>
                       </div>
                     )}
@@ -356,7 +349,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-[var(--text-primary)] truncate">{user?.name || 'Admin'}</p>
                 <p className="text-[10px] text-[var(--text-muted)] truncate">
-                  {isAdmin ? 'Administrateur' : 'Utilisateur'}
+                  {isAdmin ? t('nav.role_admin') : t('nav.role_user')}
                 </p>
               </div>
             )}
@@ -364,8 +357,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               <button
                 onClick={logout}
                 className="inline-flex items-center justify-center h-7 w-7 rounded-md text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-[var(--bg-surface)] transition-colors cursor-pointer shrink-0"
-                title="Déconnexion"
-                aria-label="Se déconnecter"
+                title={t('nav.logout')}
+                aria-label={t('nav.logout')}
               >
                 <Icon as={LogOut} size={14} />
               </button>

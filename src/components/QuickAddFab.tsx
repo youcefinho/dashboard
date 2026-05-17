@@ -20,14 +20,15 @@ import { Button } from '@/components/ui/Button';
 import { usePanelStack, useToast, BottomSheet } from '@/components/ui';
 import { useNavigate } from '@tanstack/react-router';
 import { triggerHaptic } from '@/lib/sensorial';
+import { t } from '@/lib/i18n';
 
 type QuickAction = 'lead' | 'appointment' | 'task' | 'note';
 
 const ACTIONS: Array<{ id: QuickAction; label: string; icon: typeof UserPlus; color: string; shortcut: string }> = [
-  { id: 'lead', label: 'Nouveau lead', icon: UserPlus, color: 'var(--primary)', shortcut: 'L' },
-  { id: 'appointment', label: 'Nouveau RDV', icon: CalendarPlus, color: 'var(--accent-orange)', shortcut: 'R' },
-  { id: 'task', label: 'Nouvelle tâche', icon: ListChecks, color: 'var(--success)', shortcut: 'T' },
-  { id: 'note', label: 'Note rapide', icon: StickyNote, color: 'var(--warning)', shortcut: 'N' },
+  { id: 'lead', label: t('fab.new_lead'), icon: UserPlus, color: 'var(--primary)', shortcut: 'L' },
+  { id: 'appointment', label: t('fab.new_appointment'), icon: CalendarPlus, color: 'var(--accent-orange)', shortcut: 'R' },
+  { id: 'task', label: t('fab.new_task'), icon: ListChecks, color: 'var(--success)', shortcut: 'T' },
+  { id: 'note', label: t('fab.quick_note'), icon: StickyNote, color: 'var(--warning)', shortcut: 'N' },
 ];
 
 export function QuickAddFab() {
@@ -109,7 +110,7 @@ export function QuickAddFab() {
     try {
       if (activeAction === 'lead') {
         if (clients.length === 0) {
-          toastError('Aucun client disponible — créez-en un d\'abord.');
+          toastError(t('fab.no_client'));
           return;
         }
         const slug = value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 40);
@@ -121,7 +122,7 @@ export function QuickAddFab() {
           source: 'manual',
         });
         if (res.data?.id) {
-          success(`Lead « ${value.trim()} » créé`);
+          success(t('fab.lead_created').replace('{name}', value.trim()));
           closeModal();
           openPanel({ type: 'lead', id: res.data.id });
         } else {
@@ -137,7 +138,7 @@ export function QuickAddFab() {
           due_date: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
         });
         if (res.data?.id) {
-          success('Tâche créée');
+          success(t('fab.task_created'));
           closeModal();
         } else {
           toastError(`Erreur : ${res.error || 'inconnue'}`);
@@ -146,7 +147,7 @@ export function QuickAddFab() {
       }
       if (activeAction === 'appointment') {
         if (!extraField) {
-          toastError('Date requise');
+          toastError(t('fab.date_required'));
           return;
         }
         const res = await createAppointment({
@@ -156,7 +157,7 @@ export function QuickAddFab() {
           type: 'meeting',
         });
         if (res.data?.id) {
-          success('RDV créé');
+          success(t('fab.appt_created'));
           closeModal();
           void navigate({ to: '/calendar' });
         } else {
@@ -171,7 +172,7 @@ export function QuickAddFab() {
         const notes = stored ? (JSON.parse(stored) as Array<{ body: string; ts: number }>) : [];
         notes.unshift({ body: value.trim(), ts: Date.now() });
         localStorage.setItem('intralys_quick_notes', JSON.stringify(notes.slice(0, 50)));
-        success('Note enregistrée localement');
+        success(t('fab.note_saved'));
         closeModal();
         return;
       }
@@ -262,8 +263,8 @@ export function QuickAddFab() {
         background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
         boxShadow: '0 6px 22px -2px rgba(0,157,219,0.55), 0 0 0 4px rgba(0,157,219,0.10), 0 0 28px -4px rgba(217,110,39,0.45)',
       }}
-      aria-label="Création rapide"
-      title="Création rapide (lead, RDV, tâche, note) — long-press pour fan-out"
+      aria-label={t('fab.title')}
+      title={t('fab.title')}
     >
       <Plus size={isShrunk ? 18 : 24} strokeWidth={2.5} className={`text-white transition-transform duration-200 ${isOpen || isFanOut ? 'rotate-45' : ''}`} />
     </button>
@@ -329,8 +330,8 @@ export function QuickAddFab() {
           <BottomSheet
             open={isOpen}
             onOpenChange={setIsOpen}
-            title="Création rapide"
-            description="Choisissez un type à créer"
+            title={t('fab.title')}
+            description={t('fab.choose_type')}
             size="auto"
             showHandle
           >
@@ -349,8 +350,8 @@ export function QuickAddFab() {
               style={{ boxShadow: '0 1px 2px rgba(15,23,42,0.04), 0 24px 64px -12px rgba(0,157,219,0.20)' }}
             >
               <div className="px-1 pb-2 text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-[0.16em] flex items-center justify-between">
-                <span>Création rapide</span>
-                <span className="text-[9px] normal-case tracking-normal text-[var(--text-muted)]/70">Cliquez ou utilisez le raccourci</span>
+                <span>{t('fab.title')}</span>
+                <span className="text-[9px] normal-case tracking-normal text-[var(--text-muted)]/70">{t('fab.hint')}</span>
               </div>
               {actionGrid}
             </Popover.Content>
@@ -369,10 +370,10 @@ export function QuickAddFab() {
           <Input
             autoFocus
             placeholder={
-              activeAction === 'lead' ? 'Nom du lead (ex: Jean Dupont)' :
-              activeAction === 'appointment' ? 'Titre du RDV' :
-              activeAction === 'task' ? 'Titre de la tâche' :
-              'Contenu de la note'
+              activeAction === 'lead' ? t('fab.ph_lead') :
+              activeAction === 'appointment' ? t('fab.ph_appointment') :
+              activeAction === 'task' ? t('fab.ph_task') :
+              t('fab.ph_note')
             }
             value={value}
             onChange={(e) => setValue(e.target.value)}
@@ -387,15 +388,15 @@ export function QuickAddFab() {
             />
           )}
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="ghost" onClick={closeModal} disabled={isSaving}>Annuler</Button>
+            <Button variant="ghost" onClick={closeModal} disabled={isSaving}>{t('fab.cancel')}</Button>
             <Button onClick={() => void handleSave()} disabled={!value.trim() || isSaving}
               leftIcon={isSaving ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}>
-              Créer
+              {t('fab.create')}
             </Button>
           </div>
           {activeAction === 'lead' && (
             <p className="text-[10px] text-[var(--text-muted)]">
-              Email placeholder généré — à compléter dans la fiche après création.
+              {t('fab.email_hint')}
             </p>
           )}
         </div>
