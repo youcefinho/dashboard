@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, type DragEvent } from 'react';
 import { Link } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { t } from '@/lib/i18n';
 import { Badge, Skeleton, Card, Button, EmptyState, PageHero } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { Avatar } from '@/components/ui/Avatar';
@@ -144,13 +145,13 @@ export function PipelinePage() {
   };
 
   return (
-    <AppLayout title="Pipeline">
+    <AppLayout title={t('pipeline.page.highlight')}>
       <PageHero
         compact
-        meta="Workspace"
-        title="Pipeline de ventes"
-        highlight="Pipeline"
-        description="Kanban drag-and-drop, vue liste ou forecast. Suivez vos opportunités en temps réel."
+        meta={t('pipeline.page.meta')}
+        title={t('pipeline.page.title')}
+        highlight={t('pipeline.page.highlight')}
+        description={t('pipeline.page.description')}
       />
       {/* ── Header : Pipeline selector + KPIs sticky ── */}
       <div className="flex flex-wrap items-center gap-3 mb-5 relative">
@@ -160,7 +161,7 @@ export function PipelinePage() {
             onClick={() => setIsPipelinesDropdownOpen(!isPipelinesDropdownOpen)}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-sm font-semibold text-[var(--text-primary)] hover:border-[var(--brand-primary)] transition-colors cursor-pointer"
           >
-            {activePipeline?.name || 'Chargement...'} <ChevronDown size={14} className="text-[var(--text-muted)]" />
+            {activePipeline?.name || t('pipeline.loading')} <ChevronDown size={14} className="text-[var(--text-muted)]" />
           </button>
           
           {isPipelinesDropdownOpen && pipelines.length > 0 && (
@@ -200,7 +201,7 @@ export function PipelinePage() {
               <DollarSign size={15} className="text-white" />
             </div>
             <div>
-              <p className="text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">Valeur</p>
+              <p className="text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">{t('pipeline.kpi.value')}</p>
               <p className="text-sm font-bold tabular-nums leading-tight" style={{ color: 'var(--brand-primary)' }}>
                 {totalValue.toLocaleString('fr-CA')} <span className="text-[10px] text-[var(--text-muted)]">$</span>
               </p>
@@ -219,7 +220,7 @@ export function PipelinePage() {
               <TrendingUp size={15} className="text-white" />
             </div>
             <div>
-              <p className="text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">Prévision</p>
+              <p className="text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">{t('pipeline.kpi.forecast')}</p>
               <p className="text-sm font-bold tabular-nums leading-tight" style={{ color: 'var(--success)' }}>
                 {weightedForecast.toLocaleString('fr-CA')} <span className="text-[10px] text-[var(--text-muted)]">$</span>
               </p>
@@ -238,7 +239,7 @@ export function PipelinePage() {
               <AlertTriangle size={15} className="text-white" />
             </div>
             <div>
-              <p className="text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">Dormants</p>
+              <p className="text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">{t('pipeline.kpi.dormant')}</p>
               <p className="text-sm font-bold tabular-nums leading-tight" style={{ color: 'var(--warning)' }}>
                 {dormantCount}
               </p>
@@ -252,7 +253,7 @@ export function PipelinePage() {
         {/* Filtres */}
         <button onClick={() => setShowFilters(!showFilters)}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all ${showFilters ? 'bg-[var(--brand-primary)] text-white' : 'bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:border-[var(--brand-primary)]'}`}>
-          <Filter size={13} /> Filtres
+          <Filter size={13} /> {t('pipeline.filter.label')}
           {activeFilters.length > 0 && <span className="ml-1 w-4 h-4 rounded-full bg-white/20 text-[10px] flex items-center justify-center">{activeFilters.length}</span>}
         </button>
 
@@ -275,7 +276,7 @@ export function PipelinePage() {
               {f} <button onClick={() => removeFilter(f)} className="cursor-pointer hover:text-[var(--danger)]"><X size={12} /></button>
             </span>
           ))}
-          <button onClick={() => setActiveFilters([])} className="text-xs text-[var(--text-muted)] hover:text-[var(--danger)] cursor-pointer">Tout effacer</button>
+          <button onClick={() => setActiveFilters([])} className="text-xs text-[var(--text-muted)] hover:text-[var(--danger)] cursor-pointer">{t('pipeline.filter.clear')}</button>
         </div>
       )}
 
@@ -289,9 +290,9 @@ export function PipelinePage() {
       ) : leads.length === 0 && activeFilters.length === 0 ? (
         <EmptyState
           icon={<TrendingUp size={48} />}
-          title="Aucun lead dans le pipeline"
-          description="Vos leads apparaîtront ici une fois capturés (formulaires, webhooks, intégrations) ou ajoutés manuellement."
-          action={<Link to="/leads"><Button>Voir mes leads</Button></Link>}
+          title={t('pipeline.empty.title')}
+          description={t('pipeline.empty.description')}
+          action={<Link to="/leads"><Button>{t('pipeline.empty.action')}</Button></Link>}
         />
       ) : viewMode === 'kanban' ? (
         <div className="flex gap-3 overflow-x-auto pb-4 min-h-[calc(100vh-14rem)] snap-x snap-mandatory custom-scrollbar pr-4">
@@ -490,14 +491,14 @@ export function PipelinePage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[var(--border-subtle)] bg-[var(--bg-subtle)]">
-                  <th className="text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Contact</th>
-                  <th className="text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Client</th>
-                  <th className="text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Stage</th>
-                  <th className="text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Type</th>
-                  <th className="text-right px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Valeur</th>
-                  <th className="text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Score</th>
-                  <th className="text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Jours</th>
-                  <th className="text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Source</th>
+                  <th className="text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t('pipeline.list.contact')}</th>
+                  <th className="text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t('pipeline.list.client')}</th>
+                  <th className="text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t('pipeline.list.stage')}</th>
+                  <th className="text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t('pipeline.list.type')}</th>
+                  <th className="text-right px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t('pipeline.list.value')}</th>
+                  <th className="text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t('pipeline.list.score')}</th>
+                  <th className="text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t('pipeline.list.days')}</th>
+                  <th className="text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t('pipeline.list.source')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -516,7 +517,7 @@ export function PipelinePage() {
                       <td className="px-4 py-3">
                         {stage && <Badge color={stage.color}>{stage.name}</Badge>}
                       </td>
-                      <td className="px-4 py-3"><Badge color={lead.type === 'inbound' ? 'var(--brand-primary)' : 'var(--warning)'}>{lead.type === 'inbound' ? 'Entrant' : 'Client'}</Badge></td>
+                      <td className="px-4 py-3"><Badge color={lead.type === 'inbound' ? 'var(--brand-primary)' : 'var(--warning)'}>{lead.type === 'inbound' ? t('pipeline.list.type_inbound') : t('pipeline.list.type_customer')}</Badge></td>
                       <td className="px-4 py-3 text-right text-xs font-semibold text-[var(--brand-primary)]">{lead.deal_value > 0 ? `${lead.deal_value.toLocaleString('fr-CA')} $` : '—'}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5">
@@ -543,24 +544,24 @@ export function PipelinePage() {
       )}
 
       {/* ── Modal Lost Reason ── */}
-      <Modal open={lostModal.show} onOpenChange={() => setLostModal({ leadId: '', show: false })} title="Marquer comme perdu">
+      <Modal open={lostModal.show} onOpenChange={() => setLostModal({ leadId: '', show: false })} title={t('pipeline.lost.title')}>
         <div className="space-y-4">
           <div>
-            <label className="text-sm font-medium text-[var(--text-secondary)] block mb-1.5">Raison de la perte</label>
+            <label className="text-sm font-medium text-[var(--text-secondary)] block mb-1.5">{t('pipeline.lost.reason_label')}</label>
             <select value={lostReason} onChange={e => setLostReason(e.target.value)}
               className="w-full h-[38px] px-3 text-sm bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:ring-[3px] focus:ring-[var(--ring)] focus:outline-none">
-              <option value="">Sélectionner une raison...</option>
+              <option value="">{t('pipeline.lost.reason_placeholder')}</option>
               {LOST_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
             </select>
           </div>
           <div>
-            <label className="text-sm font-medium text-[var(--text-secondary)] block mb-1.5">Détails (optionnel)</label>
-            <textarea value={lostDetails} onChange={e => setLostDetails(e.target.value)} rows={3} placeholder="Notes supplémentaires..."
+            <label className="text-sm font-medium text-[var(--text-secondary)] block mb-1.5">{t('pipeline.lost.details_label')}</label>
+            <textarea value={lostDetails} onChange={e => setLostDetails(e.target.value)} rows={3} placeholder={t('pipeline.lost.details_placeholder')}
               className="w-full px-3 py-2.5 text-sm bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-default)] rounded-lg placeholder:text-[var(--text-muted)] focus:border-[var(--brand-primary)] focus:ring-[3px] focus:ring-[var(--ring)] focus:outline-none resize-none" />
           </div>
           <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setLostModal({ leadId: '', show: false })}>Annuler</Button>
-            <Button onClick={() => void confirmLost()} className="!bg-[var(--danger)] hover:!bg-[var(--danger)]/90">Confirmer la perte</Button>
+            <Button variant="ghost" onClick={() => setLostModal({ leadId: '', show: false })}>{t('pipeline.lost.cancel')}</Button>
+            <Button onClick={() => void confirmLost()} className="!bg-[var(--danger)] hover:!bg-[var(--danger)]/90">{t('pipeline.lost.confirm')}</Button>
           </div>
         </div>
       </Modal>
