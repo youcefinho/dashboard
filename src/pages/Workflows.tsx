@@ -11,12 +11,13 @@ import { getWorkflows, toggleWorkflow, deleteWorkflow } from '@/lib/api';
 import type { Workflow, TriggerType } from '@/lib/types';
 import { TRIGGER_LABELS, TRIGGER_ICONS } from '@/lib/types';
 import { Search, Zap, Play, Trash2, Copy, Eye, Users, Activity, ArrowRight, Plus, FolderOpen, LayoutGrid, LayoutList, ChevronRight } from 'lucide-react';
+import { t } from '@/lib/i18n';
 
 type FilterMode = 'all' | 'active' | 'inactive';
 type ViewMode = 'grid' | 'list';
 type FolderFilter = 'all' | 'onboarding' | 'sales' | 'reactivation' | 'custom';
 
-const FOLDER_LABELS: Record<FolderFilter, string> = { all: 'Tous', onboarding: 'Onboarding', sales: 'Ventes', reactivation: 'Réactivation', custom: 'Personnalisé' };
+const FOLDER_LABELS_STATIC: Record<FolderFilter, string> = { all: 'Tous', onboarding: 'Onboarding', sales: 'Ventes', reactivation: 'Réactivation', custom: 'Personnalisé' };
 
 export function WorkflowsPage() {
   const confirm = useConfirm();
@@ -41,9 +42,9 @@ export function WorkflowsPage() {
   const handleToggle = async (id: string, active: number) => { await toggleWorkflow(id, active === 0); void load(); };
   const handleDelete = async (id: string) => {
     const ok = await confirm({
-      title: 'Supprimer ce workflow ?',
-      description: 'Toutes les inscriptions actives et l\'historique d\'exécution seront effacés. Les leads concernés ne recevront plus les actions de ce workflow.',
-      confirmLabel: 'Supprimer',
+      title: t('workflows.confirm.title'),
+      description: t('workflows.confirm.desc'),
+      confirmLabel: t('workflows.confirm.label'),
       danger: true,
     });
     if (!ok) return;
@@ -58,10 +59,10 @@ export function WorkflowsPage() {
 
   // KPI strip — Sprint 23 wave 27
   const kpiItems: KpiItem[] = [
-    { label: 'Workflows', value: workflows.length, icon: <Zap size={11} />, color: 'brand' },
-    { label: 'Actifs', value: activeCount, icon: <Play size={11} />, color: 'success' },
-    { label: 'Pausés', value: inactiveCount, icon: <Activity size={11} />, color: 'warning' },
-    { label: 'Exécutions', value: totalExecs, icon: <Users size={11} />, color: 'info' },
+    { label: t('workflows.kpi.workflows'), value: workflows.length, icon: <Zap size={11} />, color: 'brand' },
+    { label: t('workflows.kpi.active'), value: activeCount, icon: <Play size={11} />, color: 'success' },
+    { label: t('workflows.kpi.paused'), value: inactiveCount, icon: <Activity size={11} />, color: 'warning' },
+    { label: t('workflows.kpi.executions'), value: totalExecs, icon: <Users size={11} />, color: 'info' },
   ];
 
   const filtered = workflows.filter(w => {
@@ -77,14 +78,14 @@ export function WorkflowsPage() {
   const ptr = usePullToRefresh(async () => { await load(); }, { scrollParent: scrollParentRef });
 
   return (
-    <AppLayout title="Automations">
+    <AppLayout title={t('workflows.page.title')}>
       <div ref={ptr.containerRef}>
       <PullToRefreshIndicator distance={ptr.pullDistance} progress={ptr.pullProgress} isRefreshing={ptr.isRefreshing} />
       <PageHero
-        meta="Marketing"
-        title="Automations"
-        highlight="Automations"
-        description="Vos workflows AI : relances automatiques, scoring, attribution, nurturing."
+        meta={t('workflows.hero.meta')}
+        title={t('workflows.page.title')}
+        highlight={t('workflows.page.title')}
+        description={t('workflows.hero.description')}
       />
 
       <KpiStrip items={kpiItems} />
@@ -92,7 +93,7 @@ export function WorkflowsPage() {
       {/* ── Header secondaire — view switch + nouveau ── */}
       <div className="flex flex-wrap items-center gap-3 mb-5">
         <div className="text-[11px] text-[var(--text-muted)]">
-          <span className="font-semibold text-[var(--text-secondary)]">{totalEnrolled}</span> inscrits actifs au total
+          <span className="font-semibold text-[var(--text-secondary)]">{totalEnrolled}</span> {t('workflows.enrolled')}
         </div>
 
         <div className="flex-1" />
@@ -105,20 +106,20 @@ export function WorkflowsPage() {
           ))}
         </div>
 
-        <Link to="/workflows/new"><Button size="sm" leftIcon={<UIcon as={Plus} size="sm" />}>Nouveau</Button></Link>
+        <Link to="/workflows/new"><Button size="sm" leftIcon={<UIcon as={Plus} size="sm" />}>{t('workflows.action.new')}</Button></Link>
       </div>
 
       {/* ── Sidebar folders + content ── */}
       <div className="flex gap-4">
         {/* Left sidebar folders */}
         <div className="w-48 flex-shrink-0 hidden lg:block">
-          <h3 className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2 px-2">Dossiers</h3>
+          <h3 className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2 px-2">{t('workflows.folders.title')}</h3>
           <div className="space-y-0.5">
-            {(Object.keys(FOLDER_LABELS) as FolderFilter[]).map(f => (
+            {(Object.keys(FOLDER_LABELS_STATIC) as FolderFilter[]).map(f => (
               <button key={f} onClick={() => setFolderFilter(f)}
                 className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium cursor-pointer transition-all flex items-center gap-2
                   ${folderFilter === f ? 'bg-[var(--brand-tint)] text-[var(--primary)]' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]'}`}>
-                <FolderOpen size={14} /> {FOLDER_LABELS[f]}
+                <FolderOpen size={14} /> {FOLDER_LABELS_STATIC[f]}
               </button>
             ))}
           </div>
@@ -130,7 +131,7 @@ export function WorkflowsPage() {
           <div className="flex flex-wrap gap-2 mb-4">
             <div className="relative flex-1 min-w-[200px]">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
-              <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Rechercher un workflow..."
+              <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder={t('workflows.search.placeholder')}
                 className="w-full pl-9 pr-3 py-2 text-xs bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-lg text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-[3px] focus:ring-[var(--ring)] focus:outline-none" />
             </div>
             <div className="flex gap-1">
@@ -138,7 +139,7 @@ export function WorkflowsPage() {
                 <button key={m} onClick={() => setFilterMode(m)}
                   className={`px-3 py-1.5 rounded-lg text-[11px] font-medium cursor-pointer transition-all
                     ${filterMode === m ? 'bg-[var(--primary)] text-white' : 'bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-[var(--text-muted)] hover:border-[var(--primary)]'}`}>
-                  {m === 'all' ? 'Tous' : m === 'active' ? 'Actifs' : 'Inactifs'}
+                  {m === 'all' ? t('workflows.filter.all') : m === 'active' ? t('workflows.filter.active') : t('workflows.filter.inactive')}
                 </button>
               ))}
             </div>
@@ -173,16 +174,16 @@ export function WorkflowsPage() {
               <EmptyState
                 variant="filtered"
                 icon={<Zap size={48} />}
-                title="Aucun résultat"
-                description="Aucun workflow ne correspond à tes filtres."
-                action={<Button variant="secondary" onClick={() => { setSearchQuery(''); setFilterMode('all'); setFolderFilter('all'); }}>Effacer les filtres</Button>}
+                title={t('workflows.empty.no_results')}
+                description={t('workflows.empty.no_results_desc')}
+                action={<Button variant="secondary" onClick={() => { setSearchQuery(''); setFilterMode('all'); setFolderFilter('all'); }}>{t('workflows.action.clear_filters')}</Button>}
               />
             ) : (
               <EmptyState
                 variant="first-time"
                 icon={<Zap size={48} />}
-                title="Aucune automation encore"
-                description="Crée ton premier workflow pour automatiser tes relances et gagner du temps."
+                title={t('workflows.empty.first_time')}
+                description={t('workflows.empty.first_time_desc')}
               />
             )
           ) : viewMode === 'grid' ? (
@@ -201,7 +202,7 @@ export function WorkflowsPage() {
                             <h3 className="font-semibold text-[13px] text-[var(--text-primary)] truncate">{wf.name}</h3>
                             <div className="mt-0.5">
                               <Tag dot variant={wf.is_active ? 'success' : 'neutral'} size="xs">
-                                {wf.is_active ? 'Actif' : 'Inactif'}
+                                {wf.is_active ? t('workflows.status.active') : t('workflows.status.inactive')}
                               </Tag>
                             </div>
                           </div>
@@ -229,15 +230,15 @@ export function WorkflowsPage() {
                         </div>
                       ))}
                       {(wf.steps_count ?? 0) > 6 && <span className="text-[10px] text-[var(--text-muted)]">+{(wf.steps_count ?? 0) - 6}</span>}
-                      {(wf.steps_count ?? 0) === 0 && <span className="text-[10px] text-[var(--text-muted)] italic">Aucune étape</span>}
+                      {(wf.steps_count ?? 0) === 0 && <span className="text-[10px] text-[var(--text-muted)] italic">{t('workflows.no_steps')}</span>}
                     </div>
 
                     {/* Stats */}
                     <div className="grid grid-cols-3 gap-1.5 mb-3">
                       {[
-                        { v: wf.steps_count ?? 0, l: 'Étapes', c: 'var(--primary)' },
-                        { v: wf.active_enrollments ?? 0, l: 'Inscrits', c: 'var(--success)' },
-                        { v: wf.total_executions ?? 0, l: 'Exécutions', c: 'var(--info)' },
+                        { v: wf.steps_count ?? 0, l: t('workflows.stats.steps'), c: 'var(--primary)' },
+                        { v: wf.active_enrollments ?? 0, l: t('workflows.stats.enrolled'), c: 'var(--success)' },
+                        { v: wf.total_executions ?? 0, l: t('workflows.kpi.executions'), c: 'var(--info)' },
                       ].map(s => (
                         <div key={s.l} className="text-center bg-[var(--bg-subtle)] rounded-lg px-2 py-1.5">
                           <p className="text-sm font-bold" style={{ color: s.c }}>{s.v}</p>
@@ -249,7 +250,7 @@ export function WorkflowsPage() {
                     {/* Actions */}
                     <div className="flex gap-1.5 opacity-60 group-hover:opacity-100 transition-opacity">
                       <Link to={`/workflows/${wf.id}`} className="flex-1">
-                        <Button variant="secondary" size="sm" className="w-full" leftIcon={<UIcon as={Eye} size="xs" />}>Détails</Button>
+                        <Button variant="secondary" size="sm" className="w-full" leftIcon={<UIcon as={Eye} size="xs" />}>{t('workflows.action.details')}</Button>
                       </Link>
                       <button className="p-1.5 rounded-lg border border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--primary)] hover:border-[var(--primary)] cursor-pointer transition-all" title="Dupliquer">
                         <Copy size={13} />
@@ -270,20 +271,20 @@ export function WorkflowsPage() {
                 <table className="table-premium w-full text-left border-collapse">
                   <thead>
                     <tr>
-                      <th className="col-frozen" style={{ minWidth: 240 }}>Workflow</th>
-                      <th style={{ minWidth: 160 }}>Déclencheur</th>
-                      <th className="text-center" style={{ minWidth: 80 }}>Étapes</th>
-                      <th className="text-center" style={{ minWidth: 90 }}>Inscrits</th>
-                      <th className="text-center" style={{ minWidth: 100 }}>Exécutions</th>
-                      <th className="text-center" style={{ minWidth: 80 }}>Statut</th>
-                      <th className="text-right" style={{ minWidth: 90 }}>Actions</th>
+                      <th className="col-frozen" style={{ minWidth: 240 }}>{t('workflows.table.workflow')}</th>
+                      <th style={{ minWidth: 160 }}>{t('workflows.table.trigger')}</th>
+                      <th className="text-center" style={{ minWidth: 80 }}>{t('workflows.table.steps')}</th>
+                      <th className="text-center" style={{ minWidth: 90 }}>{t('workflows.table.enrolled')}</th>
+                      <th className="text-center" style={{ minWidth: 100 }}>{t('workflows.table.executions')}</th>
+                      <th className="text-center" style={{ minWidth: 80 }}>{t('workflows.table.status')}</th>
+                      <th className="text-right" style={{ minWidth: 90 }}>{t('workflows.table.actions')}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filtered.map((wf, idx) => {
                       const isExpanded = expandedId === wf.id;
                       const lastRunRaw = (wf as unknown as { last_run_at?: string }).last_run_at;
-                      const lastRunLabel = lastRunRaw ? new Date(lastRunRaw).toLocaleString('fr-CA', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Jamais exécuté';
+                      const lastRunLabel = lastRunRaw ? new Date(lastRunRaw).toLocaleString('fr-CA', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : t('workflows.table.never_run');
                       const actionsCount = (wf as unknown as { actions_count?: number }).actions_count ?? wf.steps_count ?? 0;
                       return (
                         <React.Fragment key={wf.id}>
@@ -302,7 +303,7 @@ export function WorkflowsPage() {
                                 <span className="text-base leading-none">{TRIGGER_ICONS[wf.trigger_type as TriggerType] || '⚡'}</span>
                                 <div className="min-w-0">
                                   <p className="font-medium text-[13px] text-[var(--text-primary)] truncate">{wf.name}</p>
-                                  <Tag dot variant={wf.is_active ? 'success' : 'neutral'} size="xs">{wf.is_active ? 'Actif' : 'Inactif'}</Tag>
+                                  <Tag dot variant={wf.is_active ? 'success' : 'neutral'} size="xs">{wf.is_active ? t('workflows.status.active') : t('workflows.status.inactive')}</Tag>
                                 </div>
                               </div>
                             </td>
@@ -330,7 +331,7 @@ export function WorkflowsPage() {
                                 <div className="table-expand-inner">
                                   <div className="table-expand-detail">
                                     <div className="table-expand-detail-section" style={{ flex: '1 1 240px' }}>
-                                      <span className="table-expand-detail-label">Déclencheur</span>
+                                      <span className="table-expand-detail-label">{t('workflows.table.trigger')}</span>
                                       <span className="table-expand-detail-value text-[12px]">{TRIGGER_LABELS[wf.trigger_type as TriggerType] || wf.trigger_type}</span>
                                     </div>
                                     <div className="table-expand-detail-section">
@@ -338,7 +339,7 @@ export function WorkflowsPage() {
                                       <span className="table-expand-detail-value t-mono-num">{actionsCount}</span>
                                     </div>
                                     <div className="table-expand-detail-section">
-                                      <span className="table-expand-detail-label">Dernière exécution</span>
+                                      <span className="table-expand-detail-label">{t('workflows.table.last_run')}</span>
                                       <span className="table-expand-detail-value text-[12px]">{lastRunLabel}</span>
                                     </div>
                                     {wf.description && (
