@@ -8,6 +8,7 @@ import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { PullToRefreshIndicator } from '@/components/ui/PullToRefreshIndicator';
 import { apiFetch } from '@/lib/api';
 import { Star, MessageCircle, Inbox, Send, ChevronRight } from 'lucide-react';
+import { t } from '@/lib/i18n';
 
 interface ReviewStats {
   total_reviews: number;
@@ -135,9 +136,9 @@ export function ReviewsPage() {
   };
 
   const tabs: { key: Tab; label: string }[] = [
-    { key: 'overview', label: 'Vue d\'ensemble' },
-    { key: 'reviews', label: `Avis (${reviews.length})` },
-    { key: 'requests', label: `Demandes (${requests.length})` },
+    { key: 'overview', label: t('reviews.tab.overview') },
+    { key: 'reviews', label: `${t('reviews.tab.reviews')} (${reviews.length})` },
+    { key: 'requests', label: `${t('reviews.tab.requests')} (${requests.length})` },
   ];
 
   // Sprint 44 M3.3 — Pull-to-refresh
@@ -146,40 +147,40 @@ export function ReviewsPage() {
   const ptr = usePullToRefresh(async () => { await loadData(); }, { scrollParent: scrollParentRef });
 
   return (
-    <AppLayout title="Avis & Réputation">
+    <AppLayout title={t('reviews.page.title')}>
       <div ref={ptr.containerRef}>
       <PullToRefreshIndicator distance={ptr.pullDistance} progress={ptr.pullProgress} isRefreshing={ptr.isRefreshing} />
       <PageHero
         meta="Insights"
-        title="Avis & Réputation"
-        highlight="Avis"
-        description="Suivez vos avis Google et envoyez des demandes ciblées à vos meilleurs clients."
+        title={t('reviews.page.title')}
+        highlight={t('reviews.tab.reviews')}
+        description={t('reviews.hero.description')}
       />
 
       {stats && (
         <KpiStrip
           items={[
-            { label: 'Total avis', value: stats.total_reviews, icon: <MessageCircle size={11} />, color: 'brand' },
-            { label: 'Note moyenne', value: stats.average_rating ? `${Number(stats.average_rating).toFixed(1)} ★` : '—', icon: <Star size={11} />, color: 'accent' },
-            { label: '5 étoiles', value: stats.five_star, icon: <Star size={11} />, color: 'success' },
-            { label: 'À répondre', value: Math.max(0, stats.total_reviews - stats.replied_count), icon: <Inbox size={11} />, color: 'warning' },
+            { label: t('reviews.kpi.total'), value: stats.total_reviews, icon: <MessageCircle size={11} />, color: 'brand' },
+            { label: t('reviews.kpi.avg'), value: stats.average_rating ? `${Number(stats.average_rating).toFixed(1)} ★` : '—', icon: <Star size={11} />, color: 'accent' },
+            { label: t('reviews.kpi.five_star'), value: stats.five_star, icon: <Star size={11} />, color: 'success' },
+            { label: t('reviews.kpi.to_reply'), value: Math.max(0, stats.total_reviews - stats.replied_count), icon: <Inbox size={11} />, color: 'warning' },
           ] as KpiItem[]}
         />
       )}
 
       {/* Onglets */}
       <div className="flex gap-1 bg-[var(--bg-subtle)] p-1 rounded-[var(--radius-lg)] w-fit mb-6">
-        {tabs.map(t => (
+        {tabs.map(tb => (
           <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
+            key={tb.key}
+            onClick={() => setTab(tb.key)}
             className={`px-4 py-2 text-sm font-medium rounded-[var(--radius-md)] transition-all cursor-pointer ${
-              tab === t.key
+              tab === tb.key
                 ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-[var(--shadow-xs)]'
                 : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
             }`}
           >
-            {t.label}
+            {tb.label}
           </button>
         ))}
       </div>
@@ -196,7 +197,7 @@ export function ReviewsPage() {
               {/* KPIs — Sprint 23 wave 47B2 : migré vers .card-premium (gradient brand + glow) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="card-premium p-5">
-                  <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider mb-1">Note moyenne</p>
+                <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider mb-1">{t('reviews.overview.avg_rating')}</p>
                   <div className="flex items-baseline gap-2">
                     <span className="text-3xl font-bold">{stats.average_rating || '—'}</span>
                     <span className="text-lg">⭐</span>
@@ -204,19 +205,19 @@ export function ReviewsPage() {
                   <p className="text-xs text-[var(--text-muted)] mt-1">{stats.total_reviews} avis au total</p>
                 </div>
                 <div className="card-premium p-5">
-                  <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider mb-1">5 étoiles</p>
+                  <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider mb-1">{t('reviews.overview.five_star')}</p>
                   <span className="text-3xl font-bold text-[var(--success)]">{stats.five_star}</span>
                   <p className="text-xs text-[var(--text-muted)] mt-1">
                     {stats.total_reviews > 0 ? `${((stats.five_star / stats.total_reviews) * 100).toFixed(0)}%` : '—'} du total
                   </p>
                 </div>
                 <div className="card-premium p-5">
-                  <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider mb-1">Réponses</p>
+                  <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider mb-1">{t('reviews.overview.replies')}</p>
                   <span className="text-3xl font-bold">{stats.replied_count}</span>
                   <p className="text-xs text-[var(--text-muted)] mt-1">sur {stats.total_reviews} avis</p>
                 </div>
                 <div className="card-premium p-5">
-                  <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider mb-1">Demandes envoyées</p>
+                  <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider mb-1">{t('reviews.overview.requests_sent')}</p>
                   <span className="text-3xl font-bold">{stats.total_requests}</span>
                   <p className="text-xs text-[var(--text-muted)] mt-1">{stats.pending_requests} en attente</p>
                 </div>
@@ -224,7 +225,7 @@ export function ReviewsPage() {
 
               {/* Distribution des notes */}
               <Card>
-                <h3 className="text-sm font-semibold mb-4">Distribution des notes</h3>
+                <h3 className="text-sm font-semibold mb-4">{t('reviews.overview.distribution')}</h3>
                 <div className="space-y-2 max-w-md">
                   {ratingBar(stats.five_star, stats.total_reviews, 5)}
                   {ratingBar(stats.four_star, stats.total_reviews, 4)}
@@ -242,8 +243,8 @@ export function ReviewsPage() {
               <EmptyState
                 variant="first-time"
                 icon={<span className="text-4xl">⭐</span>}
-                title="Aucun avis encore"
-                description="Les avis Google seront synchronisés automatiquement dès qu'ils arriveront."
+                title={t('reviews.empty.reviews')}
+                description={t('reviews.empty.reviews_desc')}
               />
             ) : (() => {
               const filteredReviews = reviews.filter(r => {
@@ -254,17 +255,17 @@ export function ReviewsPage() {
               return (<>
               {/* Sprint 42 M2 — Filtres rating + source (action-chip Stripe-clean) */}
               <div className="flex flex-wrap items-center gap-2 mb-4">
-                <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--text-muted)] mr-1">Note</span>
+                <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--text-muted)] mr-1">{t('reviews.filter.rating')}</span>
                 {([0, 5, 4, 3, 2, 1] as const).map(r => (
                   <button key={r} type="button" onClick={() => setRatingFilter(r)} className={`action-chip ${ratingFilter === r ? 'action-chip--accent' : ''}`}>
-                    {r === 0 ? 'Toutes' : `${r} ★`}
+                    {r === 0 ? t('reviews.filter.all') : `${r} ★`}
                     <span className="text-[10px] font-bold opacity-70">{r === 0 ? reviews.length : reviews.filter(rev => rev.rating === r).length}</span>
                   </button>
                 ))}
-                <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--text-muted)] ml-3 mr-1">Source</span>
+                <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--text-muted)] ml-3 mr-1">{t('reviews.filter.source')}</span>
                 {(['all', 'google', 'facebook'] as const).map(s => (
                   <button key={s} type="button" onClick={() => setSourceFilter(s)} className={`action-chip ${sourceFilter === s ? 'action-chip--accent' : ''}`}>
-                    {s === 'all' ? 'Toutes' : s === 'google' ? 'Google' : 'Facebook'}
+                    {s === 'all' ? t('reviews.filter.all') : s === 'google' ? 'Google' : 'Facebook'}
                   </button>
                 ))}
               </div>
@@ -273,11 +274,11 @@ export function ReviewsPage() {
                   <table className="table-premium w-full text-left border-collapse">
                     <thead>
                       <tr>
-                        <th className="col-frozen" style={{ minWidth: 240 }}>Auteur</th>
-                        <th style={{ minWidth: 120 }}>Source</th>
-                        <th style={{ minWidth: 280 }}>Commentaire</th>
-                        <th style={{ minWidth: 120 }}>Date</th>
-                        <th className="text-right" style={{ minWidth: 160 }}>Actions</th>
+                        <th className="col-frozen" style={{ minWidth: 240 }}>{t('reviews.table.author')}</th>
+                        <th style={{ minWidth: 120 }}>{t('reviews.table.source')}</th>
+                        <th style={{ minWidth: 280 }}>{t('reviews.table.comment')}</th>
+                        <th style={{ minWidth: 120 }}>{t('reviews.table.date')}</th>
+                        <th className="text-right" style={{ minWidth: 160 }}>{t('reviews.table.actions')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -318,13 +319,13 @@ export function ReviewsPage() {
                               <td className="text-right">
                                 {!review.reply && replyingId !== review.id ? (
                                   <div className="flex gap-1 justify-end">
-                                    <Button size="sm" variant="secondary" onClick={() => { setReplyingId(review.id); setReplyText(''); }}>Répondre</Button>
+                                    <Button size="sm" variant="secondary" onClick={() => { setReplyingId(review.id); setReplyText(''); }}>{t('reviews.action.reply')}</Button>
                                     <Button size="sm" variant="ghost" onClick={() => void suggestReply(review.id)} disabled={suggestingId === review.id}>
                                       {suggestingId === review.id ? 'IA...' : 'IA'}
                                     </Button>
                                   </div>
                                 ) : review.reply ? (
-                                  <Tag size="xs" variant="success">Répondu</Tag>
+                                  <Tag size="xs" variant="success">{t('reviews.status.replied')}</Tag>
                                 ) : null}
                               </td>
                             </tr>
@@ -362,8 +363,8 @@ export function ReviewsPage() {
                                             placeholder="Écrivez votre réponse..."
                                           />
                                           <div className="flex gap-2 mt-2">
-                                            <Button size="sm" onClick={() => void submitReply(review.id)}>Envoyer</Button>
-                                            <Button size="sm" variant="ghost" onClick={() => { setReplyingId(null); setReplyText(''); }}>Annuler</Button>
+                                            <Button size="sm" onClick={() => void submitReply(review.id)}>{t('reviews.action.send')}</Button>
+                                            <Button size="sm" variant="ghost" onClick={() => { setReplyingId(null); setReplyText(''); }}>{t('reviews.action.cancel')}</Button>
                                           </div>
                                         </div>
                                       )}
@@ -389,18 +390,18 @@ export function ReviewsPage() {
               <EmptyState
                 variant="first-time"
                 icon={<span className="text-4xl">📨</span>}
-                title="Aucune demande encore"
-                description="Envoie des demandes d'avis à tes clients satisfaits pour booster ta réputation."
+                title={t('reviews.empty.requests')}
+                description={t('reviews.empty.requests_desc')}
               />
             ) : (
               <Card className="overflow-x-auto p-0">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-[var(--border-subtle)] bg-[var(--bg-subtle)]">
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Lead</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Canal</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Status</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Envoyé le</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t('reviews.req.lead')}</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t('reviews.req.channel')}</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t('reviews.req.status')}</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t('reviews.req.sent_at')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -422,9 +423,9 @@ export function ReviewsPage() {
                             req.status === 'reviewed' ? 'success' :
                             'neutral'
                           }>
-                            {req.status === 'sent' ? 'Envoyé' :
-                             req.status === 'clicked' ? 'Cliqué' :
-                             req.status === 'reviewed' ? 'Avis laissé' :
+                            {req.status === 'sent' ? t('reviews.req.status_sent') :
+                             req.status === 'clicked' ? t('reviews.req.status_clicked') :
+                             req.status === 'reviewed' ? t('reviews.req.status_reviewed') :
                              req.status}
                           </Tag>
                         </td>

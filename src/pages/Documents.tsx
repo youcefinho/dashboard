@@ -8,6 +8,7 @@ import { PullToRefreshIndicator } from '@/components/ui/PullToRefreshIndicator';
 import { Input } from '@/components/ui/Input';
 import { getDocuments, createDocument, sendDocument, getDocumentTemplates, sendSigningSms, apiFetch, type Document, type DocumentTemplate, getLeads } from '@/lib/api';
 import { FileSignature, Plus, Mail, Eye, CheckCircle, Clock, MessageSquare, FileText, FileCheck, Files, Filter, ChevronRight, User } from 'lucide-react';
+import { t } from '@/lib/i18n';
 
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -113,11 +114,11 @@ export function DocumentsPage() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'signed': return <Tag dot variant="success" size="xs" leftIcon={<CheckCircle size={10} />}>Signé</Tag>;
-      case 'viewed': return <Tag dot variant="warning" size="xs" leftIcon={<Eye size={10} />}>Vu</Tag>;
-      case 'sent':   return <Tag dot variant="brand" size="xs" leftIcon={<Mail size={10} />}>Envoyé</Tag>;
-      case 'expired': return <Tag dot variant="danger" size="xs">Expiré</Tag>;
-      default: return <Tag dot variant="neutral" size="xs" leftIcon={<Clock size={10} />}>Brouillon</Tag>;
+      case 'signed': return <Tag dot variant="success" size="xs" leftIcon={<CheckCircle size={10} />}>{t('documents.status.signed')}</Tag>;
+      case 'viewed': return <Tag dot variant="warning" size="xs" leftIcon={<Eye size={10} />}>{t('documents.status.viewed')}</Tag>;
+      case 'sent':   return <Tag dot variant="brand" size="xs" leftIcon={<Mail size={10} />}>{t('documents.status.sent')}</Tag>;
+      case 'expired': return <Tag dot variant="danger" size="xs">{t('documents.status.expired')}</Tag>;
+      default: return <Tag dot variant="neutral" size="xs" leftIcon={<Clock size={10} />}>{t('documents.status.draft')}</Tag>;
     }
   };
 
@@ -125,10 +126,10 @@ export function DocumentsPage() {
   const signedCount = documents.filter(d => d.status === 'signed').length;
   const pendingCount = documents.filter(d => d.status === 'sent' || d.status === 'viewed').length;
   const kpiItems: KpiItem[] = [
-    { label: 'Total docs', value: documents.length, icon: <FileText size={11} />, color: 'brand' },
-    { label: 'Signés', value: signedCount, icon: <FileCheck size={11} />, color: 'success' },
-    { label: 'En attente', value: pendingCount, icon: <Clock size={11} />, color: 'warning' },
-    { label: 'Modèles', value: templates.length, icon: <Files size={11} />, color: 'info' },
+    { label: t('documents.kpi.total'), value: documents.length, icon: <FileText size={11} />, color: 'brand' },
+    { label: t('documents.kpi.signed'), value: signedCount, icon: <FileCheck size={11} />, color: 'success' },
+    { label: t('documents.kpi.pending'), value: pendingCount, icon: <Clock size={11} />, color: 'warning' },
+    { label: t('documents.kpi.templates'), value: templates.length, icon: <Files size={11} />, color: 'info' },
   ];
 
   const filteredDocs = documents.filter(d => {
@@ -138,10 +139,10 @@ export function DocumentsPage() {
   });
 
   const filterPills: { key: StatusFilter; label: string; count: number }[] = [
-    { key: 'all', label: 'Tous', count: documents.length },
-    { key: 'signed', label: 'Signés', count: signedCount },
-    { key: 'sent', label: 'En attente', count: pendingCount },
-    { key: 'draft', label: 'Brouillons', count: documents.filter(d => d.status === 'draft').length },
+    { key: 'all', label: t('documents.filter.all'), count: documents.length },
+    { key: 'signed', label: t('documents.filter.signed'), count: signedCount },
+    { key: 'sent', label: t('documents.filter.pending'), count: pendingCount },
+    { key: 'draft', label: t('documents.filter.drafts'), count: documents.filter(d => d.status === 'draft').length },
   ];
 
   // Sprint 44 M3.3 — Pull-to-refresh
@@ -150,17 +151,17 @@ export function DocumentsPage() {
   const ptr = usePullToRefresh(async () => { await loadData(); }, { scrollParent: scrollParentRef });
 
   return (
-    <AppLayout title="Documents & E-signature">
+    <AppLayout title={t('documents.page.title')}>
       <div ref={ptr.containerRef}>
       <PullToRefreshIndicator distance={ptr.pullDistance} progress={ptr.pullProgress} isRefreshing={ptr.isRefreshing} />
       <PageHero
         meta="Insights"
-        title="Documents"
-        highlight="Documents"
-        description="Gérez vos contrats et mandats envoyés pour signature électronique."
+        title={t('documents.hero.title')}
+        highlight={t('documents.hero.title')}
+        description={t('documents.hero.description')}
         actions={!isCreating && (
           <Button variant="premium" onClick={() => setIsCreating(true)} leftIcon={<Icon as={Plus} size="sm" />}>
-            Envoyer un document
+            {t('documents.action.send')}
           </Button>
         )}
       />
@@ -170,7 +171,7 @@ export function DocumentsPage() {
       {documents.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 mb-5">
           <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--text-muted)] mr-1 flex items-center gap-1">
-            <Filter size={11} /> Filtrer
+            <Filter size={11} /> {t('documents.filter.label')}
           </span>
           {/* Sprint 42 M2 — Stripe-clean : action-chip primitive (plus de gradient brand inline) */}
           {filterPills.map(p => (
@@ -270,9 +271,9 @@ export function DocumentsPage() {
         <EmptyState
           variant="first-time"
           icon={<FileSignature size={48} />}
-          title="Aucun document encore"
-          description="Envoie ton premier document pour signature en quelques clics."
-          action={<Button variant="primary" onClick={() => setIsCreating(true)}>Créer mon premier document</Button>}
+          title={t('documents.empty.title')}
+          description={t('documents.empty.desc')}
+          action={<Button variant="primary" onClick={() => setIsCreating(true)}>{t('documents.empty.action')}</Button>}
         />
       ) : (
         /* Sprint 31 vague 31-2A — Table premium (frozen first col + expand inline) */
@@ -281,11 +282,11 @@ export function DocumentsPage() {
             <table className="table-premium print-data-table">
               <thead>
                 <tr>
-                  <th className="col-frozen" style={{ minWidth: 280 }}>Titre</th>
-                  <th className="text-left">Destinataire</th>
-                  <th className="text-left">Statut</th>
-                  <th className="text-left">Date</th>
-                  <th data-print-hide className="text-right" style={{ width: 160 }}>Actions</th>
+                  <th className="col-frozen" style={{ minWidth: 280 }}>{t('documents.table.title')}</th>
+                  <th className="text-left">{t('documents.table.recipient')}</th>
+                  <th className="text-left">{t('documents.table.status')}</th>
+                  <th className="text-left">{t('documents.table.date')}</th>
+                  <th data-print-hide className="text-right" style={{ width: 160 }}>{t('documents.table.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -327,7 +328,7 @@ export function DocumentsPage() {
                         <td data-print-hide className="text-right">
                           <div className="flex gap-1.5 justify-end">
                             <Button variant="secondary" size="sm" onClick={() => window.open(`/sign/${doc.token}`, '_blank')}>
-                              Voir
+                              {t('documents.action.view')}
                             </Button>
                             {(doc.status === 'draft' || doc.status === 'sent') && (
                               <Button variant="ghost" size="sm" onClick={async () => {

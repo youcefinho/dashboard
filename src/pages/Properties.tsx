@@ -11,6 +11,7 @@ import { Modal } from '@/components/ui/Modal';
 // Sprint 48 M3 — Intl currency + number formatters
 import { formatMoneyCAD, formatNumber } from '@/lib/i18n/number';
 import { getLocale } from '@/lib/i18n';
+import { t } from '@/lib/i18n';
 import { Home, RefreshCw, Plus, Search, MapPin, Trash2, ChevronRight } from 'lucide-react';
 
 interface Property {
@@ -110,14 +111,14 @@ export function PropertiesPage() {
   const ptr = usePullToRefresh(async () => { await loadProperties(); }, { scrollParent: scrollParentRef });
 
   return (
-    <AppLayout title="Inventaire & Propriétés">
+    <AppLayout title={t('properties.page.title')}>
       <div ref={ptr.containerRef}>
       <PullToRefreshIndicator distance={ptr.pullDistance} progress={ptr.pullProgress} isRefreshing={ptr.isRefreshing} />
       <PageHero
         meta="Workspace"
-        title="Inventaire & Propriétés"
-        highlight="Propriétés"
-        description="Vos mandats, fiches Centris et mandats exclusifs. Synchronisez ou ajoutez manuellement."
+        title={t('properties.page.title')}
+        highlight={t('documents.hero.title')}
+        description={t('properties.hero.description')}
       />
 
       {/* KPI Strip — Sprint 23 wave 17 */}
@@ -128,10 +129,10 @@ export function PropertiesPage() {
             const sold = properties.filter(p => p.status === 'sold' || p.status === 'closed').length;
             const totalValue = properties.reduce((s, p) => s + (p.price || 0), 0);
             return [
-              { label: 'Total', value: properties.length, color: 'brand', icon: <Home size={11} /> },
-              { label: 'Actives', value: active, color: 'success' },
-              { label: 'Vendues', value: sold, color: 'info' },
-              { label: 'Valeur $', value: `${(totalValue / 1000000).toFixed(1)}M`, color: 'accent' },
+              { label: t('properties.kpi.total'), value: properties.length, color: 'brand', icon: <Home size={11} /> },
+              { label: t('properties.kpi.active'), value: active, color: 'success' },
+              { label: t('properties.kpi.sold'), value: sold, color: 'info' },
+              { label: t('properties.kpi.value'), value: `${(totalValue / 1000000).toFixed(1)}M`, color: 'accent' },
             ] satisfies KpiItem[];
           })()}
         />
@@ -141,7 +142,7 @@ export function PropertiesPage() {
         <div className="relative w-full md:w-96">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={16} />
           <Input 
-            placeholder="Rechercher par MLS, titre, ville..." 
+            placeholder={t('properties.search.placeholder')} 
             value={search} 
             onChange={(e: any) => setSearch(e.target.value)}
             className="pl-9"
@@ -149,10 +150,10 @@ export function PropertiesPage() {
         </div>
         <div className="flex gap-3 w-full md:w-auto">
           <Button variant="secondary" onClick={() => setIsSyncModalOpen(true)} className="flex-1 md:flex-none gap-2">
-            <Icon as={RefreshCw} size="md" /> Sync Centris
+            <Icon as={RefreshCw} size="md" /> {t('properties.action.sync')}
           </Button>
           <Button className="flex-1 md:flex-none gap-2">
-            <Icon as={Plus} size="md" /> Ajouter manuellement
+            <Icon as={Plus} size="md" /> {t('properties.action.add')}
           </Button>
         </div>
       </div>
@@ -180,16 +181,16 @@ export function PropertiesPage() {
           variant="first-time"
           icon={<Home size={32} strokeWidth={1.8} />}
           meta="Premier pas"
-          title="Votre inventaire est vide pour l'instant"
-          description="Synchronisez votre catalogue depuis Centris pour importer automatiquement vos fiches, ou ajoutez vos mandats exclusifs à la main."
+          title={t('properties.empty.title')}
+          description={t('properties.empty.desc')}
           action={
             <Button onClick={() => setIsSyncModalOpen(true)} leftIcon={<RefreshCw size={14} />}>
-              Importer depuis Centris
+              {t('properties.action.import')}
             </Button>
           }
           secondaryAction={
             <Button variant="ghost" onClick={() => { /* placeholder ajout manuel */ }}>
-              Ajouter manuellement
+              {t('properties.action.add')}
             </Button>
           }
           tips={[
@@ -205,15 +206,15 @@ export function PropertiesPage() {
             <table className="table-premium print-data-table">
               <thead>
                 <tr>
-                  <th className="col-frozen" style={{ minWidth: 280 }}>Propriété</th>
+                  <th className="col-frozen" style={{ minWidth: 280 }}>{t('properties.table.property')}</th>
                   <th className="text-left">MLS</th>
-                  <th className="text-right">Prix</th>
-                  <th className="text-left">Ville</th>
-                  <th className="text-left">Type</th>
-                  <th className="text-center">Chambres</th>
-                  <th className="text-center">SDB</th>
-                  <th className="text-right">Superficie</th>
-                  <th className="text-left">Statut</th>
+                  <th className="text-right">{t('properties.table.price')}</th>
+                  <th className="text-left">{t('properties.table.city')}</th>
+                  <th className="text-left">{t('properties.table.type')}</th>
+                  <th className="text-center">{t('properties.table.bedrooms')}</th>
+                  <th className="text-center">{t('properties.table.bathrooms')}</th>
+                  <th className="text-right">{t('properties.table.area')}</th>
+                  <th className="text-left">{t('properties.table.status')}</th>
                   <th data-print-hide style={{ width: 48 }}></th>
                 </tr>
               </thead>
@@ -286,8 +287,8 @@ export function PropertiesPage() {
                             : property.status === 'sold' || property.status === 'closed' ? 'info'
                             : 'neutral'
                           }>
-                            {property.status === 'active' || property.status === 'for_sale' ? 'À vendre'
-                              : property.status === 'sold' || property.status === 'closed' ? 'Vendue'
+                            {property.status === 'active' || property.status === 'for_sale' ? t('properties.status.for_sale')
+                              : property.status === 'sold' || property.status === 'closed' ? t('properties.status.sold')
                               : property.status || '—'}
                           </Tag>
                         </td>
@@ -352,7 +353,7 @@ export function PropertiesPage() {
         </Card>
       )}
 
-      <Modal open={isSyncModalOpen} onOpenChange={() => setIsSyncModalOpen(false)} title="Synchroniser avec Centris">
+      <Modal open={isSyncModalOpen} onOpenChange={() => setIsSyncModalOpen(false)} title={t('properties.modal.title')}>
         <div className="space-y-4">
           <p className="text-sm text-[var(--text-secondary)]">
             Entrez le numéro MLS d'une propriété active pour importer ses photos, son prix et sa description automatiquement.
@@ -369,7 +370,7 @@ export function PropertiesPage() {
           <div className="flex justify-end gap-3 mt-6">
             <Button variant="secondary" onClick={() => setIsSyncModalOpen(false)}>Annuler</Button>
             <Button onClick={handleSync} disabled={!mlsInput || isSyncing}>
-              {isSyncing ? 'Synchronisation...' : 'Importer'}
+              {isSyncing ? t('properties.modal.syncing') : t('properties.modal.import')}
             </Button>
           </div>
         </div>

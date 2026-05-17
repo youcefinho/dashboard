@@ -13,7 +13,7 @@ import { triggerPdfExport } from '@/lib/pdfExport';
 // Sprint 48 M3 — Intl formatters (display only — TPS/TVQ math préservé verbatim)
 import { formatCurrency, formatNumber } from '@/lib/i18n/number';
 import { formatDate } from '@/lib/i18n/datetime';
-import { getLocale } from '@/lib/i18n';
+import { getLocale, t } from '@/lib/i18n';
 
 interface Invoice {
   id: string;
@@ -94,10 +94,10 @@ export function InvoicesPage() {
   // Sprint 42 M2 — Stripe-clean : <Tag> primitive (plus de classes Tailwind inline custom)
   const getStatusBadge = (status: Invoice['status']) => {
     const map: Record<Invoice['status'], { label: string; variant: 'neutral' | 'info' | 'success' | 'warning' | 'danger' }> = {
-      draft: { label: 'Brouillon', variant: 'neutral' },
-      sent: { label: 'En attente', variant: 'warning' },
-      paid: { label: 'Payée', variant: 'success' },
-      cancelled: { label: 'Annulée', variant: 'danger' },
+      draft: { label: t('invoices.status.draft'), variant: 'neutral' },
+      sent: { label: t('invoices.status.sent'), variant: 'warning' },
+      paid: { label: t('invoices.status.paid'), variant: 'success' },
+      cancelled: { label: t('invoices.status.cancelled'), variant: 'danger' },
     };
     const cfg = map[status] || map.draft;
     return <Tag dot size="xs" variant={cfg.variant}>{cfg.label}</Tag>;
@@ -122,26 +122,26 @@ export function InvoicesPage() {
       <div className="pdf-cover-page" aria-hidden="true">
         <div className="pdf-cover-accent-bar" />
         <div className="pdf-cover-logo">Intralys</div>
-        <div className="pdf-cover-tagline">CRM tout-en-un pour PMEs</div>
-        <h1 className="pdf-cover-title">Rapport de facturation</h1>
+        <div className="pdf-cover-tagline">{t('invoices.pdf.tagline')}</div>
+        <h1 className="pdf-cover-title">{t('invoices.pdf.title')}</h1>
         <p className="pdf-cover-subtitle">
           Synthèse complète des factures émises, paiements reçus et en attente sur la période courante.
         </p>
         <div className="pdf-cover-meta">
           <div className="pdf-cover-meta-item">
-            <span className="label">Généré le</span>
+            <span className="label">{t('invoices.pdf.generated')}</span>
             <span className="value">{todayLabel}</span>
           </div>
           <div className="pdf-cover-meta-item">
-            <span className="label">Référence</span>
+            <span className="label">{t('invoices.pdf.reference')}</span>
             <span className="value">INV-{new Date().getFullYear()}-{String(new Date().getMonth() + 1).padStart(2, '0')}</span>
           </div>
           <div className="pdf-cover-meta-item">
-            <span className="label">Nombre de factures</span>
+            <span className="label">{t('invoices.pdf.count')}</span>
             <span className="value">{invoices.length}</span>
           </div>
           <div className="pdf-cover-meta-item">
-            <span className="label">Total facturé</span>
+            <span className="label">{t('invoices.pdf.total')}</span>
             <span className="value">{totalAmount.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' })}</span>
           </div>
         </div>
@@ -155,15 +155,15 @@ export function InvoicesPage() {
       </div>
       <PageHero
         meta="Workspace"
-        title="Facturation"
-        highlight="Facturation"
-        description="Gérez vos paiements et encaissements via Stripe."
+        title={t('invoices.hero.title')}
+        highlight={t('invoices.hero.title')}
+        description={t('invoices.hero.description')}
         actions={
           <div className="flex items-center gap-2">
             <Button variant="secondary" onClick={handleExportPdf} className="gap-1.5" aria-label="Exporter les factures en PDF">
-              <Download size={14} /> Exporter PDF
+              <Download size={14} /> {t('invoices.action.export')}
             </Button>
-            <Button variant="premium" onClick={() => setShowAdd(true)}>+ Nouvelle facture</Button>
+            <Button variant="premium" onClick={() => setShowAdd(true)}>{t('invoices.action.new')}</Button>
           </div>
         }
       />
@@ -177,10 +177,10 @@ export function InvoicesPage() {
             const pending = invoices.filter(i => i.status === 'sent').reduce((s, i) => s + i.amount, 0);
             const drafts = invoices.filter(i => i.status === 'draft').length;
             return [
-              { label: 'Total facturé', value: `${formatNumber(total / 1000, getLocale(), { maximumFractionDigits: 1, minimumFractionDigits: 1 })}K`, color: 'brand' },
-              { label: 'Payé', value: `${formatNumber(paid / 1000, getLocale(), { maximumFractionDigits: 1, minimumFractionDigits: 1 })}K`, color: 'success' },
-              { label: 'En attente', value: `${formatNumber(pending / 1000, getLocale(), { maximumFractionDigits: 1, minimumFractionDigits: 1 })}K`, color: 'warning' },
-              { label: 'Brouillons', value: drafts, color: 'neutral' },
+              { label: t('invoices.kpi.total'), value: `${formatNumber(total / 1000, getLocale(), { maximumFractionDigits: 1, minimumFractionDigits: 1 })}K`, color: 'brand' },
+              { label: t('invoices.kpi.paid'), value: `${formatNumber(paid / 1000, getLocale(), { maximumFractionDigits: 1, minimumFractionDigits: 1 })}K`, color: 'success' },
+              { label: t('invoices.kpi.pending'), value: `${formatNumber(pending / 1000, getLocale(), { maximumFractionDigits: 1, minimumFractionDigits: 1 })}K`, color: 'warning' },
+              { label: t('invoices.kpi.drafts'), value: drafts, color: 'neutral' },
             ] satisfies KpiItem[];
           })()}
         />
@@ -196,13 +196,13 @@ export function InvoicesPage() {
       {/* Sprint 42 M2 — Filtre statut Stripe-clean (action-chip + counts) */}
       {!isLoading && invoices.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 mb-5">
-          <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--text-muted)] mr-1">Filtrer</span>
+          <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--text-muted)] mr-1">{t('invoices.filter.label')}</span>
           {([
-            { key: 'all' as const, label: 'Toutes', count: invoices.length },
-            { key: 'paid' as const, label: 'Payées', count: invoices.filter(i => i.status === 'paid').length },
-            { key: 'sent' as const, label: 'En attente', count: invoices.filter(i => i.status === 'sent').length },
-            { key: 'draft' as const, label: 'Brouillons', count: invoices.filter(i => i.status === 'draft').length },
-            { key: 'cancelled' as const, label: 'Annulées', count: invoices.filter(i => i.status === 'cancelled').length },
+            { key: 'all' as const, label: t('invoices.filter.all'), count: invoices.length },
+            { key: 'paid' as const, label: t('invoices.filter.paid'), count: invoices.filter(i => i.status === 'paid').length },
+            { key: 'sent' as const, label: t('invoices.filter.pending'), count: invoices.filter(i => i.status === 'sent').length },
+            { key: 'draft' as const, label: t('invoices.filter.drafts'), count: invoices.filter(i => i.status === 'draft').length },
+            { key: 'cancelled' as const, label: t('invoices.filter.cancelled'), count: invoices.filter(i => i.status === 'cancelled').length },
           ]).map(p => (
             <button
               key={p.key}
@@ -240,9 +240,9 @@ export function InvoicesPage() {
           <EmptyState
             variant="first-time"
             icon={<span className="text-5xl">💳</span>}
-            title="Aucune facture encore"
-            description="Tu n'as pas encore émis de facture ou reçu de paiement. Crée ta première facture pour commencer."
-            action={<Button variant="primary" onClick={() => setShowAdd(true)}>Créer ma première facture</Button>}
+            title={t('invoices.empty.title')}
+            description={t('invoices.empty.desc')}
+            action={<Button variant="primary" onClick={() => setShowAdd(true)}>{t('invoices.empty.action')}</Button>}
           />
         ) : (
           /* Sprint 31 vague 31-2A — Table premium (frozen 2 cols + expand inline line items) */
@@ -250,13 +250,13 @@ export function InvoicesPage() {
             <table className="table-premium print-data-table">
               <thead>
                 <tr>
-                  <th className="col-frozen" style={{ minWidth: 200 }}>Numéro</th>
-                  <th className="col-frozen" style={{ left: 200, minWidth: 180 }}>Client / Lead</th>
-                  <th className="text-left">Description</th>
-                  <th className="text-right">Montant</th>
-                  <th className="text-left">Date</th>
-                  <th className="text-left">Statut</th>
-                  <th data-print-hide style={{ width: 160 }} className="text-right">Actions</th>
+                  <th className="col-frozen" style={{ minWidth: 200 }}>{t('invoices.table.number')}</th>
+                  <th className="col-frozen" style={{ left: 200, minWidth: 180 }}>{t('invoices.table.client')}</th>
+                  <th className="text-left">{t('invoices.table.desc')}</th>
+                  <th className="text-right">{t('invoices.table.amount')}</th>
+                  <th className="text-left">{t('invoices.table.date')}</th>
+                  <th className="text-left">{t('invoices.table.status')}</th>
+                  <th data-print-hide style={{ width: 160 }} className="text-right">{t('invoices.table.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -311,7 +311,7 @@ export function InvoicesPage() {
                                 onClick={() => void updateStatus(inv.id, 'sent')}
                                 className="text-[11px] font-semibold text-[var(--primary)] hover:underline cursor-pointer"
                               >
-                                Envoyer
+                                {t('invoices.action.send')}
                               </button>
                             )}
                             {inv.status !== 'paid' && inv.payment_url && (
@@ -388,19 +388,19 @@ export function InvoicesPage() {
         )}
       </Card>
 
-      <Modal open={showAdd} onOpenChange={() => setShowAdd(false)} title="Nouvelle facture (Lien de paiement)">
+      <Modal open={showAdd} onOpenChange={() => setShowAdd(false)} title={t('invoices.modal.title')}>
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Montant (CAD)</label>
+            <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">{t('invoices.modal.amount')}</label>
             <Input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Description (Optionnel)</label>
+            <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">{t('invoices.modal.desc')}</label>
             <Input value={description} onChange={e => setDescription(e.target.value)} placeholder="Ex: Frais de démarrage..." />
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t border-[var(--border-subtle)] mt-6">
-            <Button variant="secondary" onClick={() => setShowAdd(false)}>Annuler</Button>
-            <Button onClick={() => void handleCreate()}>Générer le lien</Button>
+            <Button variant="secondary" onClick={() => setShowAdd(false)}>{t('invoices.modal.cancel')}</Button>
+            <Button onClick={() => void handleCreate()}>{t('invoices.modal.generate')}</Button>
           </div>
         </div>
       </Modal>
