@@ -15,6 +15,7 @@ import { usePanelStack, useToast } from '@/components/ui';
 import { fuzzyScoreMulti } from '@/lib/fuzzy';
 // Sprint 49 M3.4 — Recherche naturelle (NL → filtres structurés → URL params)
 import { isNaturalLanguageQuery, parseNlQuery, nlFiltersToPath } from '@/lib/nlQuery';
+import { t } from '@/lib/i18n';
 // Sprint 45 M3.4 — DiscoverAppTour lazy (8 steps guided tour, intent "discover_app")
 const DiscoverAppTour = lazy(() =>
   import('@/components/onboarding/DiscoverAppTour').then((m) => ({ default: m.DiscoverAppTour }))
@@ -328,7 +329,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
     saveRecentIntent(query);
     if (i.type === 'create-lead') {
       if (clients.length === 0) {
-        toastError('Aucun client disponible — créez-en un d\'abord.');
+        toastError(t('cmd.no_client'));
         return;
       }
       // Pour quick-create, slug du nom comme email placeholder
@@ -342,7 +343,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
         source: 'manual',
       });
       if (res.data?.id) {
-        success(`Lead « ${i.name} » créé. Pensez à compléter l'email.`);
+        success(t('cmd.create_lead_label').replace('{name}', i.name));
         openPanel({ type: 'lead', id: res.data.id });
       } else {
         toastError(`Erreur création lead : ${res.error || 'inconnue'}`);
@@ -357,7 +358,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       const q = i.leadQuery.toLowerCase();
       const match = leads.find(l => l.name.toLowerCase().includes(q) || l.email?.toLowerCase().includes(q));
       if (!match) {
-        toastError(`Aucun lead trouvé pour « ${i.leadQuery} ».`);
+        toastError(`${t('cmd.no_result')} « ${i.leadQuery} ».`);
         return;
       }
       onClose();
@@ -387,14 +388,14 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
         setNlParsing(false);
         onClose();
         if (res.fromFallback && Object.keys(res.filters).filter(k => k !== 'target').length === 0) {
-          toastError('Requête non comprise — affichage complet. Reformulez avec un statut, score ou source.');
+          toastError(t('cmd.nl_error'));
         } else {
           success(res.explanation);
         }
         void navigate({ to: path });
       } catch {
         setNlParsing(false);
-        toastError('Erreur d\'analyse de la requête.');
+        toastError(t('cmd.nl_parse_error'));
       }
       return;
     }
@@ -586,10 +587,10 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       return [{
         id: 'intent-create-lead',
         icon: '✨',
-        label: `Créer le lead « ${intent.name} »`,
-        description: 'Crée le lead et ouvre sa fiche pour compléter',
+      label: `${t('cmd.create_lead_label').replace('{name}', intent.name)}`,
+        description: t('cmd.create_lead_desc'),
         action: () => void executeIntent(intent),
-        category: 'Action détectée',
+        category: t('cmd.category_detected'),
       }];
     }
     if (intent.type === 'navigate') {
@@ -597,20 +598,20 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       return [{
         id: 'intent-navigate',
         icon: '🎯',
-        label: `Aller vers ${route?.label || intent.target}`,
+        label: `${t('cmd.go_to')} ${route?.label || intent.target}`,
         description: intent.target,
         action: () => void executeIntent(intent),
-        category: 'Action détectée',
+        category: t('cmd.category_detected'),
       }];
     }
     if (intent.type === 'move-status') {
       return [{
         id: 'intent-move',
         icon: '🔀',
-        label: `Déplacer « ${intent.leadQuery} » en ${STATUS_LABELS[intent.status]}`,
-        description: 'Met à jour le statut du lead',
+        label: t('cmd.move_label').replace('{lead}', intent.leadQuery).replace('{status}', STATUS_LABELS[intent.status]),
+        description: t('cmd.move_desc'),
         action: () => void executeIntent(intent),
-        category: 'Action détectée',
+        category: t('cmd.category_detected'),
       }];
     }
     // Sprint 45 M3.4 — Discover app intent → tour guidé 8 steps
@@ -618,10 +619,10 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       return [{
         id: 'intent-discover-app',
         icon: '🧭',
-        label: 'Lancer le tour guidé de l\'application',
-        description: '8 étapes : navigation, dashboard, leads, pipeline, tâches, conversations, calendrier, ⌘K',
+        label: t('cmd.discover_label'),
+        description: t('cmd.discover_desc'),
         action: () => void executeIntent(intent),
-        category: 'Action détectée',
+        category: t('cmd.category_detected'),
       }];
     }
     // Sprint 49 M3.4 — Recherche naturelle → filtres structurés
@@ -630,13 +631,13 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
         id: 'intent-nl-search',
         icon: nlParsing ? '⏳' : '🔮',
         label: nlParsing
-          ? 'Analyse de votre demande…'
-          : `Recherche IA : « ${intent.query} »`,
+          ? t('cmd.nl_parsing')
+          : `${t('cmd.nl_label')} : « ${intent.query} »`,
         description: nlParsing
-          ? 'Extraction des filtres en cours'
-          : 'Convertit votre demande en filtres et ouvre la page filtrée',
+          ? t('cmd.nl_parsing_desc')
+          : t('cmd.nl_desc'),
         action: () => { if (!nlParsing) void executeIntent(intent); },
-        category: 'Action détectée',
+        category: t('cmd.category_detected'),
       }];
     }
     return [];
@@ -649,7 +650,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
     if (favorites.length === 0) return [];
     return allItems
       .filter(item => favorites.includes(item.id))
-      .map(item => ({ ...item, category: 'Favoris' }));
+      .map(item => ({ ...item, category: t('cmd.category_favorites') }));
   }, [favorites, allItems, query]);
 
   // Sprint 24 vague 4A — items "Saved Searches" : smart lists Leads existantes
@@ -659,12 +660,12 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       id: `saved-${sl.id}`,
       icon: '🔖',
       label: sl.name,
-      description: `Vue sauvegardée · ${Object.keys(sl.filters).length} filtre(s)`,
+      description: `${t('cmd.saved_view')} · ${Object.keys(sl.filters).length} filtre(s)`,
       action: () => {
         const params = smartListToParams(sl.filters);
         go(params ? `/leads?${params}` : '/leads');
       },
-      category: 'Saved Searches',
+      category: t('cmd.category_saved'),
     }));
   }, [smartLists, go, query]);
 
@@ -690,10 +691,10 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
     } else if ((e.metaKey || e.ctrlKey) && (e.key === 'd' || e.key === 'D')) {
       // Sprint 24 vague 4A — cmd/ctrl+D pour bookmark item sélectionné
       const cur = combinedItems[selectedIndex];
-      if (cur && cur.category !== 'Favoris' && cur.category !== 'Action détectée' && cur.category !== 'Saved Searches' && cur.category !== 'Filtres') {
+      if (cur && cur.category !== t('cmd.category_favorites') && cur.category !== t('cmd.category_detected') && cur.category !== t('cmd.category_saved') && cur.category !== t('cmd.category_filters')) {
         e.preventDefault();
         toggleFavorite(cur.id);
-      } else if (cur && cur.category === 'Favoris') {
+      } else if (cur && cur.category === t('cmd.category_favorites')) {
         // Unpin depuis section Favoris
         e.preventDefault();
         // Retrouver l'id originel (favoriteItems garde le même id que allItems)
@@ -722,13 +723,13 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
   // Sprint 24 vague 4A — ordre final :
   //   Action détectée → Filtres → Favoris → (Recents render séparé) → Navigation/Leads/Clients/Rapports → Saved Searches
   const groupsForRender: Array<[string, CommandItem[]]> = [];
-  if (intentItems.length > 0) groupsForRender.push(['Action détectée', intentItems]);
-  if (filterItems.length > 0) groupsForRender.push(['Filtres', filterItems]);
-  if (favoriteItems.length > 0) groupsForRender.push(['Favoris', favoriteItems]);
+  if (intentItems.length > 0) groupsForRender.push([t('cmd.category_detected'), intentItems]);
+  if (filterItems.length > 0) groupsForRender.push([t('cmd.category_filters'), filterItems]);
+  if (favoriteItems.length > 0) groupsForRender.push([t('cmd.category_favorites'), favoriteItems]);
   for (const [cat, items] of Object.entries(groupedItems)) {
     groupsForRender.push([cat, items]);
   }
-  if (savedSearchItems.length > 0) groupsForRender.push(['Saved Searches', savedSearchItems]);
+  if (savedSearchItems.length > 0) groupsForRender.push([t('cmd.category_saved'), savedSearchItems]);
 
   return (
     <div className="cmd-overlay" onClick={onClose}>
@@ -742,7 +743,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       >
         {/* Sprint 48 M1.3 — description SR (sr-only) pour orientation */}
         <span id="cmd-palette-desc" className="sr-only-aaa">
-          Tapez pour rechercher ou exécuter une commande. Utilisez les flèches haut et bas pour naviguer, Entrée pour valider, Échap pour fermer.
+          {t('cmd.sr_desc')}
         </span>
         {/* Search input */}
         <div className={`cmd-search ${isFocused ? 'is-focused' : ''}`}>
@@ -767,14 +768,14 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
             aria-autocomplete="list"
             aria-controls="cmd-palette-listbox"
             aria-activedescendant={`cmd-item-${selectedIndex}`}
-            aria-label="Rechercher ou taper une commande"
+            aria-label={t('cmd.search_label')}
           />
           {hasQuery && (
             <button
               type="button"
               onClick={() => { setQuery(''); inputRef.current?.focus(); }}
               className="chip-btn chip-btn--sm"
-              aria-label="Effacer la recherche"
+              aria-label={t('cmd.clear')}
               title="Effacer"
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
@@ -791,14 +792,14 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
           className="cmd-results max-h-[420px] overflow-y-auto py-1"
           id="cmd-palette-listbox"
           role="listbox"
-          aria-label="Résultats de la recherche"
+          aria-label={t('cmd.results_label')}
         >
           {/* Section "Récents" si query vide et qu'il y en a */}
           {showRecents && (
             <div>
               <div className="cmd-section-header">
                 <span aria-hidden="true">⚡</span>
-                <span className="cmd-section-header-label">Récents</span>
+                <span className="cmd-section-header-label">{t('cmd.recents')}</span>
                 <span className="cmd-section-header-line" />
               </div>
               {recentIntents.map((recent, idx) => (
@@ -811,7 +812,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
                   <span className="cmd-recent-icon" aria-hidden="true">↩</span>
                   <div className="cmd-item-body">
                     <div className="cmd-item-label">{recent}</div>
-                    <div className="cmd-item-desc">Rejouer cette commande</div>
+                    <div className="cmd-item-desc">{t('cmd.replay')}</div>
                   </div>
                 </button>
               ))}
@@ -827,7 +828,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
                 </svg>
               </span>
               <div className="text-sm font-semibold text-[var(--text-primary)]">
-                Aucun résultat pour « {query} »
+                {t('cmd.no_result')} « {query} »
               </div>
               <div className="text-xs text-[var(--text-muted)]">
                 Essaie « <span className="text-[var(--primary)] font-medium">leads</span> », « <span className="text-[var(--primary)] font-medium">paramètres</span> » ou « <span className="text-[var(--primary)] font-medium">nouveau lead [nom]</span> »
@@ -869,8 +870,8 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
                         <span
                           role="button"
                           tabIndex={-1}
-                          aria-label={isPinned ? 'Retirer des favoris' : 'Ajouter aux favoris'}
-                          title={isPinned ? 'Retirer des favoris (⌘D)' : 'Ajouter aux favoris (⌘D)'}
+                          aria-label={isPinned ? t('cmd.remove_fav') : t('cmd.add_fav')}
+                          title={isPinned ? `${t('cmd.remove_fav')} (⌘D)` : `${t('cmd.add_fav')} (⌘D)`}
                           onClick={(e) => { e.stopPropagation(); toggleFavorite(item.id); }}
                           className={`cmd-fav-icon ${isPinned ? 'is-pinned' : ''} ${isBouncing ? 'is-bouncing' : ''}`}
                         >
@@ -894,28 +895,28 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
         <div className="cmd-footer">
           <span className="cmd-footer-hint">
             <kbd className="cmd-kbd">↑↓</kbd>
-            <span>Naviguer</span>
+            <span>{t('cmd.footer_nav')}</span>
           </span>
           <span className="cmd-footer-hint">
             <kbd className="cmd-kbd">↵</kbd>
-            <span>Ouvrir</span>
+            <span>{t('cmd.footer_open')}</span>
           </span>
           <span className="cmd-footer-hint">
             <kbd className="cmd-kbd">Esc</kbd>
-            <span>Fermer</span>
+            <span>{t('cmd.footer_close')}</span>
           </span>
           <span className="cmd-footer-hint">
             <kbd className="cmd-kbd">⌘K</kbd>
-            <span>Toggler</span>
+            <span>{t('cmd.footer_toggle')}</span>
           </span>
           <span className="cmd-footer-hint">
             <kbd className="cmd-kbd">⌘D</kbd>
-            <span>Favori</span>
+            <span>{t('cmd.footer_fav')}</span>
           </span>
           {intentItems.length > 0 && (
             <span className="cmd-footer-status">
               <span aria-hidden="true">🎯</span>
-              Action prête
+              {t('cmd.action_ready')}
             </span>
           )}
         </div>

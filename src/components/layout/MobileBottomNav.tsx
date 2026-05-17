@@ -4,13 +4,14 @@
 import { Link, useLocation } from '@tanstack/react-router';
 import { LayoutDashboard, Users, Briefcase, MessageSquare, MoreHorizontal } from 'lucide-react';
 import { Icon } from '@/components/ui';
+import { t } from '@/lib/i18n';
 
 const NAV_ITEMS = [
-  { path: '/dashboard', label: 'Accueil', icon: LayoutDashboard },
-  { path: '/leads', label: 'Leads', icon: Users },
-  { path: '/pipeline', label: 'Pipeline', icon: Briefcase },
+  { path: '/dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
+  { path: '/leads', label: t('nav.leads'), icon: Users },
+  { path: '/pipeline', label: t('nav.pipeline'), icon: Briefcase },
   { path: '/conversations', label: 'Inbox', icon: MessageSquare },
-  { path: '/settings', label: 'Plus', icon: MoreHorizontal },
+  { path: '/settings', label: '+', icon: MoreHorizontal },
 ];
 
 export function MobileBottomNav() {
