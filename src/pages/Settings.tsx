@@ -10,6 +10,7 @@ import {
   Building, BookOpen, Smartphone, Search, Plug, Boxes, Globe, Truck
 } from 'lucide-react';
 import { fuzzyScoreMulti } from '@/lib/fuzzy';
+import { t } from '@/lib/i18n';
 
 // Sous-composants importés
 import { ProfileSettings } from '@/components/settings/ProfileSettings';
@@ -149,15 +150,15 @@ export function SettingsPage() {
       // Placeholder pour les autres
       default: return (
         <div className="p-8 text-center text-[var(--text-muted)] bg-[var(--bg-surface)] rounded-xl border border-dashed border-[var(--border-strong)]">
-          <h3 className="text-lg font-medium mb-2">Module en construction</h3>
-          <p className="text-sm">Le module "{activeTab}" sera disponible dans une prochaine mise à jour.</p>
+          <h3 className="text-lg font-medium mb-2">{t('settings.default.title')}</h3>
+          <p className="text-sm">{t('settings.default.desc')}</p>
         </div>
       );
     }
   };
 
   return (
-    <AppLayout title="Paramètres">
+    <AppLayout title={t('settings.page.title')}>
       {/* Mobile tabs — action-chip premium */}
       <div className="md:hidden flex gap-1.5 overflow-x-auto pb-3 mb-4 -mx-1 px-1 no-scrollbar">
         {visibleTabs.map(tab => {
@@ -189,8 +190,8 @@ export function SettingsPage() {
               type="search"
               value={navQuery}
               onChange={(e) => setNavQuery(e.target.value)}
-              placeholder="Rechercher (API, équipe, RGPD…)"
-              aria-label="Rechercher dans les paramètres"
+              placeholder={t('settings.search.placeholder')}
+              aria-label={t('settings.search.placeholder')}
               leftSlot={
                 <span className="settings-nav-search-icon" aria-hidden="true">
                   <Icon as={Search} size={13} />
@@ -201,7 +202,7 @@ export function SettingsPage() {
               <button
                 type="button"
                 onClick={() => setNavQuery('')}
-                aria-label="Effacer la recherche"
+                aria-label={t('settings.search.placeholder')}
                 className="settings-nav-search-clear"
               >
                 ×
@@ -209,14 +210,14 @@ export function SettingsPage() {
             )}
             {navQuery && (
               <p className="settings-nav-search-count">
-                {filteredTabs.length} résultat{filteredTabs.length > 1 ? 's' : ''}
+                {filteredTabs.length} {filteredTabs.length > 1 ? t('settings.search.count_other', { n: filteredTabs.length }) : t('settings.search.count_one')}
               </p>
             )}
           </div>
 
           {filteredTabs.length === 0 && navQuery && (
             <div className="settings-nav-search-empty">
-              <p className="font-semibold text-[13px] text-[var(--text-primary)]">Aucun paramètre</p>
+              <p className="font-semibold text-[13px] text-[var(--text-primary)]">{t('settings.search.no_results')}</p>
               <p className="text-[11px] text-[var(--text-muted)] mt-1">
                 Essaie « <span className="text-[var(--primary)] font-medium">team</span> » ou
                 « <span className="text-[var(--primary)] font-medium">API</span> »
@@ -240,7 +241,7 @@ export function SettingsPage() {
                         backgroundClip: 'text',
                       }}
                     >
-                      Résultats
+                      {t('settings.search.results')}
                     </span>
                     <span
                       aria-hidden
@@ -413,9 +414,9 @@ function PacksSettings() {
 
   const handleInstall = async (packId: string) => {
     const ok = await confirm({
-      title: 'Installer ce pack industrie ?',
-      description: 'L\'installation va ajouter des champs personnalisés, des templates email et des pipelines à votre CRM. Vous pourrez désinstaller à tout moment depuis les paramètres.',
-      confirmLabel: 'Installer',
+      title: t('settings.packs.install_confirm'),
+      description: t('settings.packs.install_desc'),
+      confirmLabel: t('settings.packs.install_btn'),
     });
     if (!ok) return;
 
@@ -423,9 +424,9 @@ function PacksSettings() {
     try {
       const res = await installPack(packId, 'gatineau');
       if (res.data) {
-        success('Pack installé. Rechargez la page pour voir les changements.', { duration: 8000 });
+        success(t('settings.packs.installed'), { duration: 8000 });
       } else if (res.error) {
-        toastError(`Échec de l'installation: ${res.error}`);
+        toastError(`${t('settings.packs.install_error')}: ${res.error}`);
       }
     } catch (err: any) {
       toastError(`Erreur: ${err.message}`);
@@ -476,21 +477,21 @@ function PacksSettings() {
                 <h3 className="text-lg font-bold text-[var(--text-primary)]">{pack.name}</h3>
                 <p className="text-sm text-[var(--text-secondary)] mt-1 max-w-xl">{pack.description}</p>
               </div>
-              <Tag variant="brand" size="sm">Gratuit</Tag>
+              <Tag variant="brand" size="sm">{t('settings.packs.free')}</Tag>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-5 p-4 bg-[var(--bg-subtle)] rounded-lg">
               <div>
-                <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase">Champs Persos</p>
-                <p className="text-lg font-semibold">10+ <span className="text-xs font-normal">inclus</span></p>
+                <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase">{t('settings.packs.custom_fields')}</p>
+                <p className="text-lg font-semibold">10+ <span className="text-xs font-normal">{t('settings.packs.included')}</span></p>
               </div>
               <div>
                 <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase">Templates</p>
-                <p className="text-lg font-semibold">3 <span className="text-xs font-normal">inclus</span></p>
+                <p className="text-lg font-semibold">3 <span className="text-xs font-normal">{t('settings.packs.included')}</span></p>
               </div>
               <div>
                 <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase">Workflows</p>
-                <p className="text-lg font-semibold">2 <span className="text-xs font-normal">inclus</span></p>
+                <p className="text-lg font-semibold">2 <span className="text-xs font-normal">{t('settings.packs.included')}</span></p>
               </div>
             </div>
 
@@ -499,7 +500,7 @@ function PacksSettings() {
               onClick={() => void handleInstall(pack.id)}
               disabled={installingId === pack.id}
             >
-              {installingId === pack.id ? 'Installation en cours...' : '📦 Installer ce pack (1-clic)'}
+              {installingId === pack.id ? t('settings.packs.installing') : t('settings.packs.install_cta')}
             </Button>
           </Card>
         ))

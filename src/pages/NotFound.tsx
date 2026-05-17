@@ -6,6 +6,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { Search, Home } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Icon } from '@/components/ui/Icon';
+import { t } from '@/lib/i18n';
 
 export function NotFound() {
   const navigate = useNavigate();
@@ -89,9 +90,9 @@ export function NotFound() {
       </div>
 
       <EmptyState
-        meta="Erreur 404"
-        title="Cette page semble introuvable"
-        description="L'adresse que vous avez saisie n'existe pas ou a été déplacée. Vérifiez l'URL ou utilisez la recherche pour trouver ce dont vous avez besoin."
+        meta={t('notfound.meta')}
+        title={t('notfound.title')}
+        description={t('notfound.description')}
         action={
           <button
             onClick={() => void navigate({ to: '/dashboard' })}
@@ -105,7 +106,7 @@ export function NotFound() {
             }}
           >
             <Icon as={Home} size={15} strokeWidth={2.3} />
-            Retour au dashboard
+            {t('notfound.action.home')}
           </button>
         }
         secondaryAction={
@@ -118,7 +119,7 @@ export function NotFound() {
             }}
           >
             <Icon as={Search} size={15} strokeWidth={2.3} />
-            Ouvrir la recherche
+            {t('notfound.action.search')}
             <span
               className="ml-1 text-[10px] px-1.5 py-0.5 rounded font-bold tracking-wider"
               style={{
@@ -133,9 +134,9 @@ export function NotFound() {
           </button>
         }
         tips={[
-          "Vérifiez l'orthographe de l'URL dans la barre d'adresse",
-          'Utilisez la recherche globale (⌘K) pour trouver des leads, tâches ou pages',
-          'Si vous suiviez un lien, il a peut-être été supprimé ou archivé',
+          t('notfound.tips.url'),
+          t('notfound.tips.search'),
+          t('notfound.tips.link'),
         ]}
       />
     </div>

@@ -6,6 +6,7 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { AlertTriangle, RefreshCcw, Home, Bug } from 'lucide-react';
 import { Icon } from '@/components/ui/Icon';
+import { t } from '@/lib/i18n';
 
 interface Props {
   children: ReactNode;
@@ -134,16 +135,15 @@ export class ErrorBoundary extends Component<Props, State> {
             backgroundClip: 'text',
           }}
         >
-          Erreur inattendue
+          {t('error.meta')}
         </p>
 
         <h1 className="relative text-3xl font-bold tracking-tight text-[var(--text-primary)] mb-3 max-w-2xl">
-          <span className="text-gradient-brand">Oups,</span> quelque chose s'est mal passé
+          <span className="text-gradient-brand">{t('error.oops')}</span> {t('error.title')}
         </h1>
 
         <p className="relative text-sm text-[var(--text-secondary)] max-w-md mb-8 leading-relaxed">
-          L'application a rencontré une erreur inattendue. Ce n'est pas de votre faute.
-          Vous pouvez recharger la page ou retourner à l'accueil. L'équipe a été notifiée.
+          {t('error.description')}
         </p>
 
         {/* Error message (dev mode helper) */}
@@ -152,7 +152,7 @@ export class ErrorBoundary extends Component<Props, State> {
             className="relative mb-8 max-w-xl w-full text-left"
           >
             <summary className="text-[11px] font-semibold text-[var(--text-muted)] cursor-pointer hover:text-[var(--text-primary)] transition-colors mb-2">
-              Détails techniques
+              {t('error.details')}
             </summary>
             <pre
               className="text-[10px] font-mono p-3 rounded-lg overflow-auto max-h-40 text-[var(--text-secondary)]"
@@ -180,7 +180,7 @@ export class ErrorBoundary extends Component<Props, State> {
             }}
           >
             <Icon as={RefreshCcw} size="md" strokeWidth={2.4} />
-            Recharger la page
+            {t('error.reload')}
           </button>
 
           <button
@@ -202,7 +202,7 @@ export class ErrorBoundary extends Component<Props, State> {
             }}
           >
             <Icon as={Home} size="md" strokeWidth={2.2} />
-            Retour à l'accueil
+            {t('error.home')}
           </button>
 
           <button
@@ -210,7 +210,7 @@ export class ErrorBoundary extends Component<Props, State> {
             className="inline-flex items-center gap-2 h-11 px-5 text-sm font-semibold rounded-[10px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
           >
             <Icon as={Bug} size="md" strokeWidth={2.2} />
-            Signaler le bug
+            {t('error.report')}
           </button>
         </div>
       </div>

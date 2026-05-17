@@ -1,4 +1,4 @@
-﻿// ── Page Corbeille — Leads supprimés ──────────────────────
+// ── Page Corbeille — Leads supprimés ──────────────────────
 
 import React, { useState, useEffect, useRef } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -10,6 +10,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Avatar } from '@/components/ui/Avatar';
 import { getTrash, restoreLead, emptyTrash } from '@/lib/api';
 import { Trash2, RotateCcw, AlertTriangle, Calendar, FileX, ChevronRight, Mail, Phone } from 'lucide-react';
+import { t } from '@/lib/i18n';
 
 interface TrashItem {
   id: string;
@@ -55,7 +56,7 @@ export function TrashPage() {
         setItems(prev => prev.filter(i => i.id !== id));
         if (item) {
           setLastRestored(item);
-          toastSuccess(`${item.name} restauré`);
+          toastSuccess(t('trash.banner.restored', { name: item.name }));
         }
       }
     } catch (err) {
@@ -98,10 +99,10 @@ export function TrashPage() {
     : 0;
 
   const kpiItems: KpiItem[] = [
-    { label: 'Items', value: items.length, icon: <Trash2 size={11} />, color: 'brand' },
-    { label: 'Restaurables', value: items.length, icon: <RotateCcw size={11} />, color: 'success' },
-    { label: 'Auto-purge prochaine', value: items.length > 0 ? `${soonestDays}j` : '—', icon: <Calendar size={11} />, color: urgentCount > 0 ? 'danger' : 'warning' },
-    { label: 'Urgents (≤7j)', value: urgentCount, icon: <FileX size={11} />, color: urgentCount > 0 ? 'danger' : 'neutral' },
+    { label: t('trash.label.items'), value: items.length, icon: <Trash2 size={11} />, color: 'brand' },
+    { label: t('trash.label.restorable'), value: items.length, icon: <RotateCcw size={11} />, color: 'success' },
+    { label: t('trash.label.next_purge'), value: items.length > 0 ? `${soonestDays}j` : '—', icon: <Calendar size={11} />, color: urgentCount > 0 ? 'danger' : 'warning' },
+    { label: t('trash.label.urgent'), value: urgentCount, icon: <FileX size={11} />, color: urgentCount > 0 ? 'danger' : 'neutral' },
   ];
 
   // Sprint 44 M3.3 — Pull-to-refresh
@@ -110,18 +111,18 @@ export function TrashPage() {
   const ptr = usePullToRefresh(async () => { await fetchTrash(); }, { scrollParent: scrollParentRef });
 
   return (
-    <AppLayout title="Corbeille">
+    <AppLayout title={t('trash.page.title')}>
       <div ref={ptr.containerRef}>
       <PullToRefreshIndicator distance={ptr.pullDistance} progress={ptr.pullProgress} isRefreshing={ptr.isRefreshing} />
       <PageHero
-        meta="Système"
-        title="Corbeille"
-        highlight="Corbeille"
-        description="Les leads supprimés sont conservés 30 jours avant d'être définitivement effacés."
+        meta={t('trash.page.meta')}
+        title={t('trash.page.title')}
+        highlight={t('trash.page.title')}
+        description={t('trash.page.description')}
         actions={items.length > 0 && (
           <Button variant="destructive" size="sm" leftIcon={<Icon as={AlertTriangle} size="sm" />}
             onClick={() => setShowConfirm(true)}>
-            Vider la corbeille
+            {t('trash.action.empty')}
           </Button>
         )}
       />
@@ -131,16 +132,16 @@ export function TrashPage() {
       {urgentCount > 0 && (
         <SmartBanner
           variant="warning"
-          title={`${urgentCount} lead${urgentCount > 1 ? 's' : ''} sera purgé${urgentCount > 1 ? 's' : ''} dans ≤ 7 jours`}
-          description="Restaure ce qui vaut la peine avant qu'il soit perdu définitivement."
+          title={t('trash.banner.urgent', { n: urgentCount })}
+          description={t('trash.banner.urgent_desc')}
         />
       )}
 
       {lastRestored && (
         <SmartBanner
           variant="success"
-          title={`${lastRestored.name} restauré`}
-          description="Le lead est revenu dans ta liste active."
+          title={t('trash.banner.restored', { name: lastRestored.name })}
+          description={t('trash.banner.restored_desc')}
           action={{ label: 'Voir', onClick: () => { setLastRestored(null); } }}
           secondaryLabel="Fermer"
           onSecondaryClick={() => setLastRestored(null)}
@@ -174,8 +175,8 @@ export function TrashPage() {
         <EmptyState
           variant="first-time"
           icon={<Icon as={Trash2} size={48} />}
-          title="Corbeille vide"
-          description="Aucun élément supprimé récemment. Les leads supprimés apparaîtront ici pendant 30 jours."
+          title={t('trash.empty.title')}
+          description={t('trash.empty.description')}
         />
       ) : (
         /* Sprint 32 vague 32-3A — table-premium + frozen col + expand inline */
@@ -184,12 +185,12 @@ export function TrashPage() {
             <table className="table-premium w-full text-left border-collapse">
               <thead>
                 <tr>
-                  <th className="col-frozen" style={{ minWidth: 240 }}>Contact</th>
-                  <th style={{ minWidth: 200 }}>Email</th>
-                  <th style={{ minWidth: 140 }}>Téléphone</th>
-                  <th style={{ minWidth: 120 }}>Supprimé</th>
-                  <th style={{ minWidth: 120 }}>Expire dans</th>
-                  <th className="text-right" style={{ minWidth: 120 }}>Actions</th>
+                  <th className="col-frozen" style={{ minWidth: 240 }}>{t('trash.table.contact')}</th>
+                  <th style={{ minWidth: 200 }}>{t('trash.table.email')}</th>
+                  <th style={{ minWidth: 140 }}>{t('trash.table.phone')}</th>
+                  <th style={{ minWidth: 120 }}>{t('trash.table.deleted')}</th>
+                  <th style={{ minWidth: 120 }}>{t('trash.table.expires')}</th>
+                  <th className="text-right" style={{ minWidth: 120 }}>{t('trash.table.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -207,7 +208,7 @@ export function TrashPage() {
                               type="button"
                               className={`table-expand-trigger ${isExpanded ? 'is-expanded' : ''}`}
                               onClick={() => setExpandedId(isExpanded ? null : item.id)}
-                              aria-label={isExpanded ? 'Réduire' : 'Afficher les détails'}
+                              aria-label={isExpanded ? t('trash.action.restore') : t('trash.label.deleted_lead')}
                               aria-expanded={isExpanded}
                             >
                               <ChevronRight size={14} />
@@ -215,7 +216,7 @@ export function TrashPage() {
                             <Avatar name={item.name} size="sm" />
                             <div className="min-w-0">
                               <p className="font-medium text-[var(--text-primary)] truncate">{item.name}</p>
-                              <p className="text-[10px] text-[var(--text-muted)]">Lead supprimé</p>
+                              <p className="text-[10px] text-[var(--text-muted)]">{t('trash.label.deleted_lead')}</p>
                             </div>
                           </div>
                         </td>
@@ -223,13 +224,13 @@ export function TrashPage() {
                         <td className="text-[var(--text-secondary)]">{item.phone || '—'}</td>
                         <td className="text-[var(--text-muted)] text-xs">{timeAgo(item.deleted_at)}</td>
                         <td>
-                          <Tag dot variant={urgencyVariant} size="xs">{days}j restants</Tag>
+                          <Tag dot variant={urgencyVariant} size="xs">{t('trash.label.days_remaining', { n: days })}</Tag>
                         </td>
                         <td className="text-right">
                           <Button variant="secondary" size="sm" leftIcon={<Icon as={RotateCcw} size="sm" />}
                             onClick={() => handleRestore(item.id)}
                             disabled={restoringId === item.id}>
-                            {restoringId === item.id ? '...' : 'Restaurer'}
+                            {restoringId === item.id ? '...' : t('trash.action.restore')}
                           </Button>
                         </td>
                       </tr>
@@ -239,11 +240,11 @@ export function TrashPage() {
                             <div className="table-expand-inner">
                               <div className="table-expand-detail">
                                 <div className="table-expand-detail-section">
-                                  <span className="table-expand-detail-label">Supprimé le</span>
+                                  <span className="table-expand-detail-label">{t('trash.label.deleted_at')}</span>
                                   <span className="table-expand-detail-value text-[12px]">{deletedDateFull}</span>
                                 </div>
                                 <div className="table-expand-detail-section">
-                                  <span className="table-expand-detail-label">Jours avant purge auto</span>
+                                  <span className="table-expand-detail-label">{t('trash.label.days_before_purge')}</span>
                                   <span className="table-expand-detail-value t-mono-num" style={{ color: days <= 5 ? 'var(--danger)' : days <= 15 ? 'var(--warning)' : 'var(--text-primary)' }}>{days} j</span>
                                 </div>
                                 <div className="table-expand-detail-section">
@@ -258,7 +259,7 @@ export function TrashPage() {
                                   <Button variant="secondary" size="sm" leftIcon={<Icon as={RotateCcw} size="sm" />}
                                     onClick={() => handleRestore(item.id)}
                                     disabled={restoringId === item.id}>
-                                    {restoringId === item.id ? 'Restauration…' : 'Restaurer ce lead'}
+                                    {restoringId === item.id ? t('trash.action.restoring') : t('trash.action.restore_lead')}
                                   </Button>
                                 </div>
                               </div>
@@ -276,20 +277,20 @@ export function TrashPage() {
       )}
 
       {/* Modal confirmation vider */}
-      <Modal open={showConfirm} onOpenChange={() => setShowConfirm(false)} title="Vider la corbeille ?">
+      <Modal open={showConfirm} onOpenChange={() => setShowConfirm(false)} title={t('trash.modal.title')}>
         <div className="space-y-4">
           <div className="flex items-start gap-3 p-4 bg-[var(--danger)]/8 rounded-xl border border-[var(--danger)]/20">
             <AlertTriangle size={20} className="text-[var(--danger)] shrink-0 mt-0.5" />
             <div>
-              <p className="font-semibold text-sm text-[var(--text-primary)]">Action irréversible</p>
+              <p className="font-semibold text-sm text-[var(--text-primary)]">{t('trash.modal.warning')}</p>
               <p className="text-xs text-[var(--text-secondary)] mt-1">
-                Cette action supprimera définitivement <strong>{items.length} lead(s)</strong> et toutes leurs données associées. Cette action ne peut pas être annulée.
+                {t('trash.modal.warning_desc', { n: items.length })}
               </p>
             </div>
           </div>
           <div className="flex justify-end gap-3">
-            <Button variant="secondary" onClick={() => setShowConfirm(false)}>Annuler</Button>
-            <Button variant="destructive" onClick={handleEmptyTrash}>Supprimer définitivement</Button>
+            <Button variant="secondary" onClick={() => setShowConfirm(false)}>{t('trash.modal.cancel')}</Button>
+            <Button variant="destructive" onClick={handleEmptyTrash}>{t('trash.modal.confirm')}</Button>
           </div>
         </div>
       </Modal>

@@ -4,6 +4,7 @@ import { useState, useEffect, type FormEvent } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useAuth } from '@/lib/auth';
 import { Button, Input, Icon } from '@/components/ui';
+import { t } from '@/lib/i18n';
 import { isBiometricAvailable, getBiometricCredentials, saveBiometricCredentials } from '@/lib/biometric';
 import { Capacitor } from '@capacitor/core';
 import { Fingerprint, Mail, Lock } from 'lucide-react';
@@ -23,11 +24,11 @@ export function LoginPage() {
   // Sprint 26-2B — validation locale par champ (n'apparait qu'après touched)
   const emailValid = EMAIL_RE.test(email);
   const emailError = touched.email && email.length > 0 && !emailValid
-    ? 'Format d’email invalide'
+    ? t('login.email.invalid')
     : '';
-  const emailSuccess = touched.email && emailValid ? 'Email valide' : '';
+  const emailSuccess = touched.email && emailValid ? t('login.email.valid') : '';
   const passwordError = touched.password && password.length > 0 && password.length < 4
-    ? 'Mot de passe trop court'
+    ? t('login.password.short')
     : '';
 
   // Vérifier si la biométrie est disponible au montage
@@ -54,14 +55,14 @@ export function LoginPage() {
   const handleBiometricLogin = async () => {
     const creds = await getBiometricCredentials('crm.intralys.com');
     if (!creds) {
-      setError('Aucune empreinte enregistrée. Connectez-vous avec vos identifiants.');
+      setError(t('login.biometric.no_creds'));
       return;
     }
     const result = await login(creds.username, creds.password);
     if (result.success) {
       void navigate({ to: '/dashboard' });
     } else {
-      setError(result.error || 'Erreur biométrique');
+      setError(result.error || t('login.biometric.error'));
     }
   };
 
@@ -70,7 +71,7 @@ export function LoginPage() {
     setError('');
 
     if (!email || !password) {
-      setError('Email et mot de passe requis');
+      setError(t('login.required'));
       return;
     }
 
@@ -83,7 +84,7 @@ export function LoginPage() {
       }
       void navigate({ to: '/dashboard' });
     } else {
-      setError(result.error || 'Erreur de connexion');
+      setError(result.error || t('login.error'));
     }
   };
 
@@ -115,7 +116,7 @@ export function LoginPage() {
           <h1 className="text-3xl font-bold tracking-tight">
             <span className="text-gradient-brand">Intralys</span> <span className="text-[var(--text-primary)]">CRM</span>
           </h1>
-          <p className="text-sm text-[var(--text-secondary)] mt-1.5">Connectez-vous à votre espace</p>
+          <p className="text-sm text-[var(--text-secondary)] mt-1.5">{t('login.subtitle')}</p>
         </div>
 
         {/* Formulaire — Sprint 23 premium card */}
@@ -130,7 +131,7 @@ export function LoginPage() {
           <Input
             type="email"
             id="login-email"
-            label="Adresse email"
+            label={t('login.email.label')}
             placeholder="rochdi@intralys.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -140,13 +141,13 @@ export function LoginPage() {
             leftSlot={<Icon as={Mail} size="sm" />}
             error={emailError || undefined}
             success={emailSuccess || undefined}
-            helper={!touched.email ? 'Utilisez votre email professionnel' : undefined}
+            helper={!touched.email ? t('login.email.helper') : undefined}
           />
 
           <Input
             type="password"
             id="login-password"
-            label="Mot de passe"
+            label={t('login.password.label')}
             placeholder="••••••••"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -164,7 +165,7 @@ export function LoginPage() {
           )}
 
           <Button type="submit" variant="premium" className="w-full" size="lg" isLoading={isLoading}>
-            Se connecter
+            {t('login.submit')}
           </Button>
 
           {biometricReady && (
@@ -174,7 +175,7 @@ export function LoginPage() {
               className="w-full flex items-center justify-center gap-2 py-3 rounded-[var(--radius-md)] border border-[var(--border-default)] text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] transition-colors text-sm font-medium cursor-pointer"
             >
               <Icon as={Fingerprint} size={18} />
-              Connexion biométrique
+              {t('login.biometric')}
             </button>
           )}
         </form>
@@ -183,13 +184,13 @@ export function LoginPage() {
         <div className="flex items-center justify-center gap-4 mt-6 text-[10px] text-[var(--text-muted)]">
           <span className="flex items-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full bg-[var(--success)]" />
-            Système en ligne
+            {t('login.status.online')}
           </span>
           <span>v2.0</span>
         </div>
 
         <p className="text-center text-xs text-[var(--text-muted)] mt-4">
-          © {new Date().getFullYear()} Intralys — Tous droits réservés
+          {t('login.copyright', { year: new Date().getFullYear() })}
         </p>
       </div>
     </div>
