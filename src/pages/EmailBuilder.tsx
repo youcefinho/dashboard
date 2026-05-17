@@ -11,6 +11,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { getTemplate, updateTemplate, saveTemplateBlocks, sendTestEmail } from '@/lib/api';
 import { BLOCK_PALETTE, createDefaultBlock, compileBlocksToHtml, type EmailBlock, type BlockType } from '@/worker/email-blocks';
 import { ArrowLeft, Save, Send, Eye, Code, Smartphone, Monitor, GripVertical, Plus, Trash2, Copy } from 'lucide-react';
+import { t } from '@/lib/i18n';
 
 type PreviewMode = 'desktop' | 'mobile' | 'source';
 
@@ -38,7 +39,7 @@ function SortableBlock({ block, isSelected, onSelect, onDelete }: {
 const BRAND_PRESETS = ['#009DDB', '#0086C0', '#D96E27', '#FF9A00', '#37CA37', '#E93D3D', '#1a1a2e', '#374151', '#9ca3af', '#FFFFFF'];
 
 function BlockProperties({ block, onChange }: { block: EmailBlock | null; onChange: (updated: EmailBlock) => void }) {
-  if (!block) return <div className="block-props-empty">Sélectionnez un block pour modifier ses propriétés</div>;
+  if (!block) return <div className="block-props-empty">{t('eb.select_block')}</div>;
 
   const updateConfig = (key: string, value: unknown) => {
     onChange({ ...block, config: { ...block.config, [key]: value } });
@@ -47,7 +48,7 @@ function BlockProperties({ block, onChange }: { block: EmailBlock | null; onChan
   return (
     <div className="block-props">
       <h4 style={{ margin: '0 0 12px', fontSize: '13px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.18em', color: 'var(--text-secondary)' }}>
-        Propriétés — {BLOCK_PALETTE.find(b => b.type === block.type)?.label}
+        {t('eb.props')} — {BLOCK_PALETTE.find(b => b.type === block.type)?.label}
       </h4>
 
       {block.type === 'header' && (
@@ -225,16 +226,16 @@ export function EmailBuilderPage() {
     await updateTemplate(templateId, { name: templateName, subject: templateSubject });
     const result = await saveTemplateBlocks(templateId, blocks, preheader);
     setIsSaving(false);
-    if (result.data) success('Modèle enregistré');
-    else toastError('L\'enregistrement a échoué. Réessaie.');
+    if (result.data) success(t('eb.saved'));
+    else toastError(t('eb.save_error'));
   };
 
   const handleSendTest = async () => {
     const email = await prompt({
-      title: 'Envoyer un email test',
-      description: 'À quelle adresse envoyer la version test de ce template ?',
+      title: t('eb.send_test.title'),
+      description: t('eb.send_test.desc'),
       placeholder: 'toi@exemple.com',
-      confirmLabel: 'Envoyer',
+      confirmLabel: t('eb.send_test.send'),
     });
     if (!email) return;
     setIsSending(true);
@@ -253,7 +254,7 @@ export function EmailBuilderPage() {
       <div className="builder-topbar">
         <div className="builder-topbar-left">
           <Button variant="ghost" size="sm" onClick={() => navigate({ to: '/templates' })}>
-            <Icon as={ArrowLeft} size="md" /> Retour
+            <Icon as={ArrowLeft} size="md" /> {t('fb.back')}
           </Button>
           <div className="builder-meta">
             <Input value={templateName} onChange={e => setTemplateName(e.target.value)} placeholder="Nom du template"
@@ -272,7 +273,7 @@ export function EmailBuilderPage() {
             <Icon as={Send} size="sm" /> {isSending ? 'Envoi...' : 'Test'}
           </Button>
           <Button variant="primary" size="sm" onClick={handleSave} disabled={isSaving}>
-            <Icon as={Save} size="sm" /> {isSaving ? '...' : 'Sauver'}
+            <Icon as={Save} size="sm" /> {isSaving ? '...' : t('fb.save')}
           </Button>
         </div>
       </div>
@@ -329,7 +330,7 @@ export function EmailBuilderPage() {
       ) : (
       <div className="builder-layout">
         <div className="builder-palette">
-          <h4 className="palette-title">Blocks</h4>
+          <h4 className="palette-title">{t('eb.blocks')}</h4>
           {BLOCK_PALETTE.map(bp => (
             <button key={bp.type} className="action-chip" onClick={() => addBlock(bp.type)} style={{ width: '100%', justifyContent: 'flex-start', marginBottom: 6 }}>
               <span className="action-chip-icon">{bp.icon}</span>
@@ -348,7 +349,7 @@ export function EmailBuilderPage() {
             <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
                 {blocks.length === 0 ? (
-                  <div className="canvas-empty"><Icon as={Eye} size={32} style={{ opacity: 0.3 }} /><p>Ajoutez des blocks depuis la palette</p></div>
+                  <div className="canvas-empty"><Icon as={Eye} size={32} style={{ opacity: 0.3 }} /><p>{t('fb.canvas.empty')}</p></div>
                 ) : blocks.map(block => (
                   <SortableBlock key={block.id} block={block} isSelected={selectedBlockId === block.id}
                     onSelect={() => setSelectedBlockId(block.id)} onDelete={() => deleteBlock(block.id)} />
@@ -394,7 +395,7 @@ export function EmailBuilderPage() {
                 const dup = { ...selectedBlock, id: crypto.randomUUID(), config: { ...selectedBlock.config } };
                 setBlocks(prev => { const next = [...prev]; next.splice(prev.findIndex(b => b.id === selectedBlock.id) + 1, 0, dup); return next; });
                 setSelectedBlockId(dup.id);
-              }}><Icon as={Copy} size="sm" /> Dupliquer</Button>
+              }}><Icon as={Copy} size="sm" /> {t('fb.props.duplicate')}</Button>
             </div>
           )}
         </div>

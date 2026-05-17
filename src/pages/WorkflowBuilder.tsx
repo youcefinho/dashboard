@@ -1,4 +1,4 @@
-﻿import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { DesktopOnlyBanner } from '@/components/DesktopOnlyBanner';
@@ -11,6 +11,7 @@ import { ReactFlow, Background, applyNodeChanges, applyEdgeChanges, addEdge, Han
 import type { Node, Edge, Connection, NodeTypes, NodeChange, EdgeChange } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { ZoomIn, ZoomOut, Maximize2, Lock } from 'lucide-react';
+import { t } from '@/lib/i18n';
 
 // ── Custom Nodes (Sprint 23 wave 34 — premium type-coded) ────
 
@@ -46,7 +47,7 @@ const TriggerNode = ({ data, selected }: any) => {
           background: 'linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.02) 100%)',
         }}
       >
-        Déclencheur
+        {t('wb.trigger')}
       </div>
       <div className="flex items-center gap-3 p-3">
         <div
@@ -530,12 +531,12 @@ function WorkflowBuilderInner() {
             style={{ background: 'linear-gradient(90deg, transparent 0%, rgba(0,157,219,0.5) 30%, rgba(217,110,39,0.5) 70%, transparent 100%)' }} />
           <button onClick={() => void navigate({ to: '/workflows' })}
             className="text-sm text-[var(--text-muted)] hover:text-[var(--primary)] flex items-center gap-1 cursor-pointer font-medium">
-            ← Retour
+            ← {t('wb.back')}
           </button>
           <div className="flex gap-2">
-            <Button variant="secondary" onClick={() => setShowAddStep(true)}>+ Ajouter Nœud</Button>
+            <Button variant="secondary" onClick={() => setShowAddStep(true)}>+ {t('wb.add_step')}</Button>
             <Button variant="premium" onClick={() => void handleSave()} disabled={isSaving || !name.trim()}>
-              {isSaving ? 'Enregistrement…' : '⚡ Enregistrer'}
+              {isSaving ? '...' : '⚡ ' + t('wb.save')}
             </Button>
           </div>
         </div>
@@ -549,7 +550,7 @@ function WorkflowBuilderInner() {
               </h3>
               <div className="space-y-3">
                 <div>
-                  <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Nom</label>
+                  <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">{t('tpl.modal.name')}</label>
                   <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nom du workflow" />
                 </div>
                 <div>
@@ -607,10 +608,10 @@ function WorkflowBuilderInner() {
 
             <Card className="p-4 flex-1 card-premium">
               <h3 className="heading-premium text-[11px] mb-3" style={{ letterSpacing: '0.18em', textTransform: 'uppercase' }}>
-                <span className="text-gradient-brand">Config Nœud</span>
+                <span className="text-gradient-brand">{t('wb.config')}</span>
               </h3>
               {!selectedNodeId ? (
-                <p className="text-xs text-[var(--text-muted)]">Sélectionnez un nœud dans le canvas pour le configurer.</p>
+                <p className="text-xs text-[var(--text-muted)]">{t('wb.select_step')}</p>
               ) : (
                 <div className="text-xs text-[var(--text-muted)]">
                   Configuration détaillée pour le nœud : {selectedNodeId}
@@ -718,7 +719,7 @@ function WorkflowBuilderInner() {
       </div>
 
       {/* Modal ajout nœud — grid 3 cols action-chip categories */}
-      <Modal open={showAddStep} onOpenChange={() => setShowAddStep(false)} title="Ajouter un nœud">
+      <Modal open={showAddStep} onOpenChange={() => setShowAddStep(false)} title={t('wb.add_step')}>
         <div className="grid grid-cols-3 gap-2">
           {STEP_TYPES.map((st) => {
             // Catégorisation simple pour gradient tint
