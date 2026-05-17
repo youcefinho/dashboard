@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, Button, Badge, Skeleton, EmptyState, PageHero } from '@/components/ui';
+import { t } from '@/lib/i18n';
 import { LeadLink } from '@/components/panels/LeadLink';
 import { Modal } from '@/components/ui/Modal';
 import { Avatar } from '@/components/ui/Avatar';
@@ -378,15 +379,15 @@ export function LeadsPage() {
   const wonCount = leads.filter(l => l.status === 'won').length;
 
   return (
-    <AppLayout title="Leads">
+    <AppLayout title={t('leads.page.title')}>
       <PageHero
-        meta="Workspace"
-        title={`${leads.length} Leads`}
-        highlight="Leads"
-        description={`${newCount} nouveaux à qualifier · ${wonCount} signés · Triez par score, statut ou source.`}
+        meta={t('leads.page.meta')}
+        title={`${leads.length} ${t('leads.page.title')}`}
+        highlight={t('leads.page.title')}
+        description={t('leads.page.description')}
         actions={
           <Button variant="premium" leftIcon={<Plus size={14} />} onClick={() => setCreateOpen(true)}>
-            Nouveau lead
+            {t('leads.action.new')}
           </Button>
         }
       />
@@ -426,7 +427,7 @@ export function LeadsPage() {
       <Card className="p-4 mb-4">
         <div className="flex flex-wrap gap-3">
           <div className="flex-1 min-w-48">
-            <Input placeholder="Rechercher par nom, email, téléphone..." id="search-all-leads"
+            <Input placeholder={t('leads.search.placeholder')} id="search-all-leads"
               value={search} onChange={(e) => setSearch(e.target.value)} leftIcon={<Search size={16} />} />
           </div>
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
@@ -479,13 +480,13 @@ export function LeadsPage() {
         <Card><Skeleton className="h-96 w-full" /></Card>
       ) : leads.length === 0 ? (
         hasFilters ? (
-          <EmptyState icon={<Users size={48} />} title="Aucun lead ne correspond à vos filtres"
-            description="Essayez d'élargir vos critères ou réinitialisez les filtres."
-            action={<Button variant="secondary" onClick={() => { setSearch(''); setStatusFilter(''); setSourceFilter(''); setClientFilter(''); }}>Réinitialiser les filtres</Button>} />
+          <EmptyState icon={<Users size={48} />} title={t('leads.empty.search_title')}
+            description={t('leads.empty.search_desc', { query: search || statusFilter })}
+            action={<Button variant="secondary" onClick={() => { setSearch(''); setStatusFilter(''); setSourceFilter(''); setClientFilter(''); }}>{t('leads.filter.all')}</Button>} />
         ) : (
-          <EmptyState icon={<Users size={48} />} title="Aucun lead pour l'instant"
-            description="Créez votre premier lead manuellement ou attendez vos captures via formulaires et intégrations."
-            action={<Button variant="primary" leftIcon={<Plus size={14} />} onClick={() => setCreateOpen(true)}>Nouveau lead</Button>} />
+          <EmptyState icon={<Users size={48} />} title={t('leads.empty.title')}
+            description={t('leads.empty.description')}
+            action={<Button variant="primary" leftIcon={<Plus size={14} />} onClick={() => setCreateOpen(true)}>{t('leads.action.new')}</Button>} />
         )
       ) : viewMode === 'map' ? (
         /* ── Vue Carte ── */
@@ -525,7 +526,7 @@ export function LeadsPage() {
                       <p className="text-[10px] text-[var(--text-muted)]">{getClientName(lead)}</p>
                     </div>
                   </div>
-                  <Badge color={lead.type === 'inbound' ? 'var(--brand-primary)' : 'var(--warning)'}>{lead.type === 'inbound' ? 'Entrant' : 'Client'}</Badge>
+                  <Badge color={lead.type === 'inbound' ? 'var(--brand-primary)' : 'var(--warning)'}>{lead.type === 'inbound' ? t('lead.type.inbound') : t('lead.type.customer')}</Badge>
                 </div>
                 <div className="flex items-center gap-2 mb-2">
                   <Badge color={STATUS_COLORS[lead.status]}>{STATUS_LABELS[lead.status]}</Badge>
@@ -543,7 +544,7 @@ export function LeadsPage() {
                 </div>
                 {lead.tags && lead.tags.length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-2">
-                    {lead.tags.slice(0, 3).map(t => <span key={t} className="text-[9px] px-1.5 py-0.5 rounded-full bg-[var(--bg-muted)] text-[var(--text-muted)]">{t}</span>)}
+                    {lead.tags.slice(0, 3).map(tag => <span key={tag} className="text-[9px] px-1.5 py-0.5 rounded-full bg-[var(--bg-muted)] text-[var(--text-muted)]">{tag}</span>)}
                   </div>
                 )}
               </LeadLink>
@@ -584,17 +585,17 @@ export function LeadsPage() {
                     <input type="checkbox" checked={selectedIds.size === leads.length && leads.length > 0} onChange={toggleSelectAll} className="rounded cursor-pointer accent-[var(--brand-primary)]" />
                   </th>
                   <th onClick={() => toggleSort('name')} className="group text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider cursor-pointer hover:text-[var(--brand-primary)] select-none">
-                    <span className="inline-flex items-center gap-1">Nom <SortIcon col="name" /></span>
+                    <span className="inline-flex items-center gap-1">{t('leads.table.name')} <SortIcon col="name" /></span>
                   </th>
-                  <th className="text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Client</th>
+                  <th className="text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t('leads.table.client')}</th>
                   <th className="text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Contact</th>
-                  <th className="text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Type</th>
-                  <th className="text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Statut</th>
+                  <th className="text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t('leads.table.type')}</th>
+                  <th className="text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t('leads.table.status')}</th>
                   <th onClick={() => toggleSort('score')} className="group text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider cursor-pointer hover:text-[var(--brand-primary)] select-none">
-                    <span className="inline-flex items-center gap-1">Score <SortIcon col="score" /></span>
+                    <span className="inline-flex items-center gap-1">{t('leads.table.score')} <SortIcon col="score" /></span>
                   </th>
                   <th onClick={() => toggleSort('created_at')} className="group text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider cursor-pointer hover:text-[var(--brand-primary)] select-none">
-                    <span className="inline-flex items-center gap-1">Date <SortIcon col="created_at" /></span>
+                    <span className="inline-flex items-center gap-1">{t('leads.table.date')} <SortIcon col="created_at" /></span>
                   </th>
                   <th className="text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider w-16"></th>
                 </tr>
@@ -644,7 +645,7 @@ export function LeadsPage() {
                         {lead.phone && <p className="text-[11px] text-[var(--text-muted)]">{lead.phone}</p>}
                       </td>
                       <td className="px-4 py-3">
-                        <Badge color={lead.type === 'inbound' ? 'var(--brand-primary)' : 'var(--warning)'}>{lead.type === 'inbound' ? 'Entrant' : 'Client'}</Badge>
+                        <Badge color={lead.type === 'inbound' ? 'var(--brand-primary)' : 'var(--warning)'}>{lead.type === 'inbound' ? t('lead.type.inbound') : t('lead.type.customer')}</Badge>
                       </td>
                       <td className="px-4 py-3">
                         <select value={lead.status} onChange={(e) => void handleStatusChange(lead.id, e.target.value as LeadStatus)}
@@ -677,7 +678,7 @@ export function LeadsPage() {
       )}
 
       {/* Modal — Nouveau lead */}
-      <Modal open={createOpen} onOpenChange={closeCreate} title="Nouveau lead">
+      <Modal open={createOpen} onOpenChange={closeCreate} title={t('leads.modal.title')}>
         <div className="space-y-3">
           {createError && (
             <div className="text-xs text-[var(--danger)] px-3 py-2 rounded-[var(--radius-sm)] bg-[var(--danger)]/10 border border-[var(--danger)]/20">
@@ -686,7 +687,7 @@ export function LeadsPage() {
           )}
           <div>
             <label htmlFor="new-lead-client" className="text-sm font-medium text-[var(--text-secondary)] block mb-1.5">
-              Client <span className="text-[var(--danger)]">*</span>
+              {t('leads.modal.client')} <span className="text-[var(--danger)]">*</span>
             </label>
             <select id="new-lead-client" value={createForm.client_id}
               onChange={(e) => setCreateForm(f => ({ ...f, client_id: e.target.value }))}
@@ -698,7 +699,7 @@ export function LeadsPage() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label htmlFor="new-lead-name" className="text-sm font-medium text-[var(--text-secondary)] block mb-1.5">
-                Nom <span className="text-[var(--danger)]">*</span>
+                {t('leads.modal.name')} <span className="text-[var(--danger)]">*</span>
               </label>
               <Input id="new-lead-name" value={createForm.name}
                 onChange={(e) => setCreateForm(f => ({ ...f, name: e.target.value }))}
@@ -706,7 +707,7 @@ export function LeadsPage() {
             </div>
             <div>
               <label htmlFor="new-lead-email" className="text-sm font-medium text-[var(--text-secondary)] block mb-1.5">
-                Email <span className="text-[var(--danger)]">*</span>
+                {t('leads.modal.email')} <span className="text-[var(--danger)]">*</span>
               </label>
               <Input id="new-lead-email" type="email" value={createForm.email}
                 onChange={(e) => setCreateForm(f => ({ ...f, email: e.target.value }))}
@@ -715,7 +716,7 @@ export function LeadsPage() {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label htmlFor="new-lead-phone" className="text-sm font-medium text-[var(--text-secondary)] block mb-1.5">Téléphone</label>
+              <label htmlFor="new-lead-phone" className="text-sm font-medium text-[var(--text-secondary)] block mb-1.5">{t('leads.modal.phone')}</label>
               <Input id="new-lead-phone" value={createForm.phone}
                 onChange={(e) => setCreateForm(f => ({ ...f, phone: e.target.value }))}
                 placeholder="514-555-1234" />
@@ -747,9 +748,9 @@ export function LeadsPage() {
               className="w-full px-3 py-2.5 text-sm bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-default)] rounded-[var(--radius-sm)] placeholder:text-[var(--text-muted)] focus:border-[var(--brand-primary)] focus:ring-[3px] focus:ring-[var(--ring)] focus:outline-none resize-none" />
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="ghost" onClick={closeCreate} disabled={createSubmitting}>Annuler</Button>
+            <Button variant="ghost" onClick={closeCreate} disabled={createSubmitting}>{t('leads.modal.cancel')}</Button>
             <Button onClick={() => void handleCreateLead()} disabled={createSubmitting}>
-              {createSubmitting ? 'Création...' : 'Créer le lead'}
+              {createSubmitting ? '...' : t('leads.modal.submit')}
             </Button>
           </div>
         </div>

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, Button, Badge, Skeleton, EmptyState, useToast, useConfirm, AiSparkles, usePanelStack } from '@/components/ui';
+import { t } from '@/lib/i18n';
 import { Avatar } from '@/components/ui/Avatar';
 import { getLeadDetail, updateLead, addTag, removeTag, getAppointments, getTasks, updateTask, getLeadNotes, createLeadNote, deleteLeadNote, getLeadScores, getLeadCustomFields, softDeleteLead, restoreLead, apiFetch, getPipelines, getLeadMessages } from '@/lib/api';
 import { getCachedLead, setCachedLead } from '@/lib/prefetch';
@@ -175,8 +176,8 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
 
   if (!lead) {
     return (
-      <EmptyState title="Lead introuvable" description="Ce lead n'existe pas ou a été supprimé."
-        action={<Button onClick={() => void navigate({ to: '/leads' })}>Retour aux leads</Button>} />
+      <EmptyState title={t('lead.not_found.title')} description={t('lead.not_found.desc')}
+        action={<Button onClick={() => void navigate({ to: '/leads' })}>{t('lead.not_found.action')}</Button>} />
     );
   }
 
@@ -204,7 +205,7 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
       {!compact && (
         <button onClick={() => void navigate({ to: '/leads' })}
           className="text-sm text-[var(--text-muted)] hover:text-[var(--brand-primary)] mb-4 flex items-center gap-1.5 cursor-pointer transition-colors">
-          <ArrowLeft size={16} /> Retour aux leads
+          <ArrowLeft size={16} /> {t('lead.back')}
         </button>
       )}
 
@@ -254,11 +255,11 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
                     const res = await updateLead(leadId, { favorite: nextFav } as Record<string, unknown>);
                     if (res.error) { setLead(prev); toastError(`Erreur favori : ${res.error}`); }
                   }}
-                  className="p-1 cursor-pointer hover:scale-110 transition-transform" title={lead.favorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}>
+                  className="p-1 cursor-pointer hover:scale-110 transition-transform" title={lead.favorite ? t('lead.fav.remove') : t('lead.fav.add')}>
                   <Star size={18} className={lead.favorite ? 'fill-[var(--warning)] text-[var(--warning)]' : 'text-[var(--text-muted)]'} />
                 </button>
                 <Badge color={lead.type === 'inbound' ? 'var(--brand-primary)' : 'var(--warning)'}>
-                  {lead.type === 'inbound' ? 'Entrant' : lead.type === 'customer' ? 'Client' : lead.type}
+                  {lead.type === 'inbound' ? t('lead.type.inbound') : lead.type === 'customer' ? t('lead.type.customer') : lead.type}
                 </Badge>
                 <Badge color={STATUS_COLORS[lead.status]}>{STATUS_LABELS[lead.status]}</Badge>
                 {lead.lifecycle_stage && (
@@ -312,31 +313,31 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
             <div className="flex flex-wrap gap-2 mb-4 pb-4 border-b border-[var(--border-subtle)]">
               {lead.phone && (
                 <PhoneLink phone={lead.phone} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-[var(--radius-sm)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] hover:bg-[var(--brand-primary)] hover:text-white transition-colors cursor-pointer">
-                  <Phone size={13} /> Appeler
+                  <Phone size={13} /> {t('lead.action.call')}
                 </PhoneLink>
               )}
               <a href={`mailto:${lead.email}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-[var(--radius-sm)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] hover:bg-[var(--brand-primary)] hover:text-white transition-colors cursor-pointer">
                 <Mail size={13} /> Email
               </a>
               <button onClick={() => void navigate({ to: '/calendar' })} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-[var(--radius-sm)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] hover:bg-[var(--brand-primary)] hover:text-white transition-colors cursor-pointer">
-                <CalendarPlus size={13} /> Planifier RDV
+                <CalendarPlus size={13} /> {t('lead.action.schedule')}
               </button>
               <button onClick={() => void navigate({ to: '/tasks' })} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-[var(--radius-sm)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] hover:bg-[var(--brand-primary)] hover:text-white transition-colors cursor-pointer">
-                <CheckSquare size={13} /> Créer tâche
+                <CheckSquare size={13} /> {t('lead.action.create_task')}
               </button>
               <button onClick={() => void navigate({ to: `/visit/${leadId}` })} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-[var(--radius-sm)] bg-gradient-to-r from-indigo-500/10 to-purple-500/10 text-indigo-600 border border-indigo-500/20 hover:bg-indigo-500 hover:text-white transition-colors cursor-pointer">
-                <Compass size={13} /> Mode Visite
+                <Compass size={13} /> {t('lead.action.visit_mode')}
               </button>
             </div>
 
             {/* Champs avec édition inline */}
             <div className="grid grid-cols-2 gap-3 text-sm">
-              {[{ key: 'email', label: 'Email', val: lead.email, link: `mailto:${lead.email}` },
-                { key: 'phone', label: 'Téléphone', val: lead.phone || '—', isPhone: true },
-                { key: 'address', label: 'Adresse', val: lead.address || '—' },
-                { key: 'budget', label: 'Budget', val: lead.budget || '—' },
-                { key: 'property_type', label: 'Type propriété', val: lead.property_type || '—' },
-                { key: 'timeline', label: 'Délai', val: lead.timeline || '—' },
+              {[{ key: 'email', label: t('lead.field.email'), val: lead.email, link: `mailto:${lead.email}` },
+                { key: 'phone', label: t('lead.field.phone'), val: lead.phone || '—', isPhone: true },
+                { key: 'address', label: t('lead.field.address'), val: lead.address || '—' },
+                { key: 'budget', label: t('lead.field.budget'), val: lead.budget || '—' },
+                { key: 'property_type', label: t('lead.field.property_type'), val: lead.property_type || '—' },
+                { key: 'timeline', label: t('lead.field.timeline'), val: lead.timeline || '—' },
               ].map(f => (
                 <div key={f.key}>
                   <p className="text-[var(--text-muted)] text-[10px] uppercase tracking-wider mb-0.5">{f.label}</p>
@@ -352,7 +353,7 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
                   )}
                 </div>
               ))}
-              {lead.message && <div className="col-span-2"><p className="text-[var(--text-muted)] text-[10px] uppercase tracking-wider mb-0.5">Message</p><p className="text-[var(--text-secondary)] text-sm">{lead.message}</p></div>}
+              {lead.message && <div className="col-span-2"><p className="text-[var(--text-muted)] text-[10px] uppercase tracking-wider mb-0.5">{t('lead.field.message')}</p><p className="text-[var(--text-secondary)] text-sm">{lead.message}</p></div>}
             </div>
 
             {/* UTM */}
@@ -367,8 +368,8 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
             {/* Champs Personnalisés — source unique : customFields state (chargé via getLeadCustomFields) */}
             <div className="mt-4 pt-4 border-t border-[var(--border-subtle)]">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">Champs Personnalisés</h3>
-                <button onClick={() => void navigate({ to: '/settings' })} className="text-[10px] text-[var(--brand-primary)] hover:underline cursor-pointer">Gérer les champs</button>
+                <h3 className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">{t('lead.custom_fields.title')}</h3>
+                <button onClick={() => void navigate({ to: '/settings' })} className="text-[10px] text-[var(--brand-primary)] hover:underline cursor-pointer">{t('lead.custom_fields.manage')}</button>
               </div>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 {customFields.length > 0 ? (
@@ -379,7 +380,7 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
                     </div>
                   ))
                 ) : (
-                  <div className="col-span-2 text-xs text-[var(--text-muted)] italic">Aucun champ personnalisé défini pour ce lead.</div>
+                  <div className="col-span-2 text-xs text-[var(--text-muted)] italic">{t('lead.custom_fields.empty')}</div>
                 )}
               </div>
             </div>
@@ -387,7 +388,7 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
 
           {/* Onglets Sprint 23 — underline gradient + glow sur active */}
           <div className="flex gap-1 border-b border-[var(--border-subtle)] overflow-x-auto relative">
-            {([['details', 'Détails'], ['notes', `Notes (${leadNotes.length})`], ['conversations', `Conversations (${messagesCount})`], ['scores', 'Scores'], ['activity', 'Activité']] as const).map(([key, label]) => {
+            {([['details', t('lead.tab.details')], ['notes', `${t('lead.tab.notes')} (${leadNotes.length})`], ['conversations', `${t('lead.tab.conversations')} (${messagesCount})`], ['scores', t('lead.tab.scores')], ['activity', t('lead.tab.activity')]] as const).map(([key, label]) => {
               const isActive = activeTab === key;
               return (
                 <button key={key} onClick={() => setActiveTab(key as typeof activeTab)}
@@ -412,7 +413,7 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
 
           {activeTab === 'conversations' && (
           <Card className="p-5">
-            <h3 className="text-sm font-semibold mb-3">💬 Conversations</h3>
+            <h3 className="text-sm font-semibold mb-3">{t('lead.conversations.title')}</h3>
             <ConversationPanel
               leadId={lead.id}
               leadName={lead.name}
@@ -425,8 +426,8 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
           {activeTab === 'activity' && (
           <Card className="p-5">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold">📋 Timeline complète</h3>
-              <span className="text-[10px] text-[var(--text-muted)]">Activité · Notes · RDV · Tâches</span>
+              <h3 className="text-sm font-semibold">{t('lead.activity.title')}</h3>
+              <span className="text-[10px] text-[var(--text-muted)]">{t('lead.activity.subtitle')}</span>
             </div>
             <LeadTimeline lead={lead} notes={leadNotes} appointments={leadAppointments} tasks={leadTasks} />
           </Card>
@@ -434,12 +435,12 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
 
           {activeTab === 'notes' && (
           <Card className="p-5">
-            <h3 className="text-sm font-semibold mb-3">📝 Notes ({leadNotes.length})</h3>
+            <h3 className="text-sm font-semibold mb-3">{t('lead.notes.title')} ({leadNotes.length})</h3>
             {/* Note héritée (lead.notes legacy) — proposée à la conversion en note structurée */}
             {lead.notes && lead.notes.trim() && (
               <div className="mb-4 p-3 rounded-[var(--radius-md)] border border-[var(--warning)] bg-[oklch(0.95_0.02_90)]">
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-xs font-medium text-[var(--text-muted)]">📌 Note héritée (ancien format)</span>
+                  <span className="text-xs font-medium text-[var(--text-muted)]">{t('lead.notes.legacy')}</span>
                   <div className="flex gap-2">
                     <button
                       onClick={async () => {
@@ -449,7 +450,7 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
                         void loadLead();
                       }}
                       className="text-xs text-[var(--brand-primary)] hover:underline cursor-pointer">
-                      Convertir en note
+                      {t('lead.notes.convert')}
                     </button>
                     <button
                       onClick={async () => {
@@ -459,7 +460,7 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
                         void loadLead();
                       }}
                       className="text-xs text-[var(--danger)] hover:underline cursor-pointer">
-                      Supprimer
+                      {t('lead.notes.delete')}
                     </button>
                   </div>
                 </div>
@@ -470,7 +471,7 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
             <div className="mb-4 space-y-2 p-3 rounded-[var(--radius-md)] bg-[var(--bg-subtle)]">
               <div className="relative">
                 <textarea value={newNoteBody} onChange={e => setNewNoteBody(e.target.value)} rows={3}
-                  placeholder="Ajouter une note..."
+                  placeholder={t('lead.notes.placeholder')}
                   className="w-full px-3 py-2 pr-10 text-sm bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-[var(--text-primary)] resize-none focus:border-[var(--brand-primary)] focus:outline-none" />
                 <AiSparkles value={newNoteBody} onChange={setNewNoteBody} leadId={leadId} className="absolute bottom-2 right-2" />
               </div>
@@ -483,12 +484,12 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
                   await createLeadNote(leadId, { body: newNoteBody, category: newNoteCategory });
                   setNewNoteBody(''); setNewNoteCategory('general');
                   const r = await getLeadNotes(leadId); if (r.data) setLeadNotes(r.data);
-                }}>Ajouter</Button>
+                }}>{t('lead.notes.add')}</Button>
               </div>
             </div>
             {/* Liste des notes */}
             {leadNotes.length === 0 ? (
-              <p className="text-sm text-[var(--text-muted)]">Aucune note pour le moment.</p>
+              <p className="text-sm text-[var(--text-muted)]">{t('lead.notes.empty')}</p>
             ) : (
               <div className="space-y-3">
                 {leadNotes.map(note => (
@@ -498,7 +499,7 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
                         {note.is_pinned ? <span>📌</span> : null}
                         <span>{NOTE_CATEGORY_ICONS[note.category] || '📝'} {NOTE_CATEGORY_LABELS[note.category] || note.category}</span>
                         <span>·</span>
-                        <span>{note.author_name || 'Système'}</span>
+                        <span>{note.author_name || t('lead.notes.system')}</span>
                         <span>·</span>
                         <span>{new Date(note.created_at).toLocaleDateString('fr-CA')}</span>
                       </div>
@@ -520,9 +521,9 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
 
           {activeTab === 'scores' && (
           <Card className="p-5">
-            <h3 className="text-sm font-semibold mb-3">📊 Scores multi-profils</h3>
+            <h3 className="text-sm font-semibold mb-3">{t('lead.scores.title')}</h3>
             {leadScores.length === 0 ? (
-              <p className="text-sm text-[var(--text-muted)]">Aucun score calculé. Les scores seront calculés automatiquement.</p>
+              <p className="text-sm text-[var(--text-muted)]">{t('lead.scores.empty')}</p>
             ) : (
               <div className="space-y-3">
                 {leadScores.map(s => (
@@ -550,7 +551,7 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
         <div className="space-y-4">
           {/* Statut */}
           <Card className="p-4">
-            <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Statut</h3>
+            <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">{t('lead.sidebar.status')}</h3>
             <div className="space-y-1.5">
               {LEAD_STATUSES.map((s) => (
                 <button key={s} onClick={() => void handleStatusChange(s)}
@@ -565,10 +566,10 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
 
           {/* Opportunité / Deal */}
           <Card className="p-4">
-            <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">💰 Opportunité</h3>
+            <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">{t('lead.sidebar.opportunity')}</h3>
             <div className="space-y-3">
               <div>
-                <p className="text-[10px] text-[var(--text-muted)] mb-0.5">Valeur du deal</p>
+                <p className="text-[10px] text-[var(--text-muted)] mb-0.5">{t('lead.sidebar.deal_value')}</p>
                 {isEditingDeal ? (
                   <div className="flex gap-2">
                     <input type="number" value={editDealValue} onChange={(e) => setEditDealValue(e.target.value)}
@@ -577,12 +578,12 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
                   </div>
                 ) : (
                   <button onClick={() => setIsEditingDeal(true)} className="text-xl font-bold text-[var(--brand-primary)] cursor-pointer hover:underline">
-                    {lead.deal_value ? `${lead.deal_value.toLocaleString('fr-CA')} $` : 'Ajouter'}
+                    {lead.deal_value ? `${lead.deal_value.toLocaleString('fr-CA')} $` : t('lead.sidebar.deal_add')}
                   </button>
                 )}
               </div>
               <div>
-                <p className="text-[10px] text-[var(--text-muted)] mb-0.5">Probabilité ({stageFromBackend?.name || STATUS_LABELS[lead.status]})</p>
+                <p className="text-[10px] text-[var(--text-muted)] mb-0.5">{t('lead.sidebar.probability')} ({stageFromBackend?.name || STATUS_LABELS[lead.status]})</p>
                 <div className="flex items-center gap-2">
                   <div className="flex-1 h-1.5 rounded-full bg-[var(--bg-subtle)] overflow-hidden">
                     <div className="h-full rounded-full bg-[var(--brand-primary)] transition-all" style={{ width: `${probability}%` }} />
@@ -592,7 +593,7 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
               </div>
               {forecast > 0 && (
                 <div>
-                  <p className="text-[10px] text-[var(--text-muted)] mb-0.5">Prévision pondérée</p>
+                  <p className="text-[10px] text-[var(--text-muted)] mb-0.5">{t('lead.sidebar.forecast')}</p>
                   <p className="text-sm font-semibold text-[var(--success)]">{forecast.toLocaleString('fr-CA')} $</p>
                 </div>
               )}
@@ -601,17 +602,17 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
 
           {/* Tags */}
           <Card className="p-4">
-            <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">🏷️ Tags</h3>
+            <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">{t('lead.sidebar.tags')}</h3>
             <div className="flex flex-wrap gap-1.5 mb-3">
               {lead.tags && lead.tags.length > 0 ? lead.tags.map((tag) => (
                 <span key={tag} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-[var(--bg-subtle)] text-[var(--text-secondary)]">
                   {tag}
                   <button onClick={() => void handleRemoveTag(tag)} className="text-[var(--text-muted)] hover:text-[var(--danger)] cursor-pointer">×</button>
                 </span>
-              )) : <p className="text-xs text-[var(--text-muted)]">Aucun tag</p>}
+              )) : <p className="text-xs text-[var(--text-muted)]">{t('lead.sidebar.no_tags')}</p>}
             </div>
             <div className="flex gap-1.5">
-              <input type="text" value={newTag} onChange={(e) => setNewTag(e.target.value)} placeholder="Nouveau tag..."
+              <input type="text" value={newTag} onChange={(e) => setNewTag(e.target.value)} placeholder={t('lead.sidebar.tag_placeholder')}
                 onKeyDown={(e) => { if (e.key === 'Enter') void handleAddTag(); }}
                 className="flex-1 px-2 py-1.5 text-xs bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] focus:outline-none" />
               <Button size="sm" variant="secondary" onClick={() => void handleAddTag()}>+</Button>
@@ -620,7 +621,7 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
 
           {/* DND — Do Not Disturb */}
           <Card className="p-4">
-            <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">🔕 Ne pas déranger</h3>
+            <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">{t('lead.sidebar.dnd')}</h3>
             <div className="space-y-2">
               {(['email', 'sms', 'call'] as const).map(channel => {
                 const dndSettings = (() => {
@@ -629,7 +630,7 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
                 })() as Record<string, boolean>;
                 const isActive = dndSettings[channel] ?? false;
                 const icons = { email: '📧', sms: '📱', call: '📞' };
-                const labels = { email: 'Email', sms: 'SMS', call: 'Appels' };
+                const labels = { email: 'Email', sms: t('lead.sidebar.dnd_sms'), call: t('lead.sidebar.dnd_calls') };
                 return (
                   <button
                     key={channel}
@@ -659,12 +660,12 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
 
           {/* Champs étendus */}
           <Card className="p-4">
-            <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">📋 Infos complémentaires</h3>
+            <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">{t('lead.sidebar.extra')}</h3>
             <div className="space-y-2 text-xs">
               {[
-                { key: 'date_of_birth', label: 'Date de naissance', val: (lead as unknown as Record<string, unknown>).date_of_birth as string || '—', type: 'date' },
-                { key: 'country', label: 'Pays', val: (lead as unknown as Record<string, unknown>).country as string || 'CA', type: 'text' },
-                { key: 'timezone', label: 'Fuseau horaire', val: (lead as unknown as Record<string, unknown>).timezone as string || 'America/Toronto', type: 'text' },
+                { key: 'date_of_birth', label: t('lead.sidebar.dob'), val: (lead as unknown as Record<string, unknown>).date_of_birth as string || '—', type: 'date' },
+                { key: 'country', label: t('lead.sidebar.country'), val: (lead as unknown as Record<string, unknown>).country as string || 'CA', type: 'text' },
+                { key: 'timezone', label: t('lead.sidebar.timezone'), val: (lead as unknown as Record<string, unknown>).timezone as string || 'America/Toronto', type: 'text' },
               ].map(f => (
                 <div key={f.key} className="flex items-center justify-between">
                   <span className="text-[var(--text-muted)]">{f.label}</span>
@@ -688,7 +689,7 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
 
           {/* RDV liés */}
           <Card className="p-4">
-            <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">📅 Rendez-vous</h3>
+            <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">{t('lead.sidebar.appointments')}</h3>
             {leadAppointments.length > 0 ? (
               <div className="space-y-2">
                 {leadAppointments.map((appt) => {
@@ -715,13 +716,13 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
                 })}
               </div>
             ) : (
-              <p className="text-xs text-[var(--text-muted)]">Aucun RDV planifié</p>
+              <p className="text-xs text-[var(--text-muted)]">{t('lead.sidebar.no_appointments')}</p>
             )}
           </Card>
 
           {/* Score visuel */}
           <Card className="p-4">
-            <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">🔥 Lead Score</h3>
+            <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">{t('lead.sidebar.lead_score')}</h3>
             <div className="flex items-center gap-3">
               <div className="flex-1">
                 <div className="h-2.5 rounded-full bg-[var(--bg-subtle)] overflow-hidden">
@@ -736,7 +737,7 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
               }`}>{lead.score}</span>
             </div>
             <p className="text-[10px] text-[var(--text-muted)] mt-1">
-              {lead.score >= 70 ? '🔥 Lead chaud — prêt à convertir' : lead.score >= 40 ? '🟡 Lead tiède — à relancer' : '🔵 Lead froid — à nourrir'}
+              {lead.score >= 70 ? t('lead.score.hot') : lead.score >= 40 ? t('lead.score.warm') : t('lead.score.cold')}
             </p>
           </Card>
 
@@ -749,7 +750,7 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
 
           {/* Tâches liées */}
           <Card className="p-4">
-            <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">📋 Tâches</h3>
+            <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">{t('lead.sidebar.tasks')}</h3>
             {leadTasks.length > 0 ? (
               <div className="space-y-1.5">
                 {leadTasks.map(task => (
@@ -780,16 +781,16 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-[var(--text-muted)]">Aucune tâche liée</p>
+              <p className="text-xs text-[var(--text-muted)]">{t('lead.sidebar.no_tasks')}</p>
             )}
           </Card>
 
           {/* Infos */}
           <Card className="p-4">
-            <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">Infos</h3>
+            <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">{t('lead.sidebar.info')}</h3>
             <div className="space-y-2 text-xs">
-              <div className="flex justify-between"><span className="text-[var(--text-muted)]">Créé le</span><span>{new Date(lead.created_at).toLocaleDateString('fr-CA')}</span></div>
-              <div className="flex justify-between"><span className="text-[var(--text-muted)]">Mis à jour</span><span>{new Date(lead.updated_at).toLocaleDateString('fr-CA')}</span></div>
+              <div className="flex justify-between"><span className="text-[var(--text-muted)]">{t('lead.sidebar.created')}</span><span>{new Date(lead.created_at).toLocaleDateString('fr-CA')}</span></div>
+              <div className="flex justify-between"><span className="text-[var(--text-muted)]">{t('lead.sidebar.updated')}</span><span>{new Date(lead.updated_at).toLocaleDateString('fr-CA')}</span></div>
               <div className="flex justify-between"><span className="text-[var(--text-muted)]">Source</span><span>{SOURCE_LABELS[lead.source] || lead.source}</span></div>
               <div className="flex justify-between"><span className="text-[var(--text-muted)]">ID</span><span className="font-mono truncate ml-2">{lead.id.slice(0, 8)}</span></div>
             </div>
@@ -797,13 +798,13 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
 
           {/* Conformité (Loi 25) */}
           <Card className="p-4">
-            <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">⚖️ Loi 25 (Québec)</h3>
+            <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">{t('lead.sidebar.loi25')}</h3>
             <div className="space-y-2">
               <Button size="sm" variant="secondary" className="w-full justify-center" onClick={handleExportPii}>
-                Exporter données (JSON)
+                {t('lead.sidebar.export_pii')}
               </Button>
               <Button size="sm" className="w-full justify-center bg-[color-mix(in_oklch,var(--danger)_10%,transparent)] text-[var(--danger)] hover:bg-[color-mix(in_oklch,var(--danger)_20%,transparent)] border border-[color-mix(in_oklch,var(--danger)_30%,transparent)]" onClick={handleForgetLead}>
-                Droit à l'oubli
+                {t('lead.sidebar.forget')}
               </Button>
             </div>
           </Card>
@@ -817,7 +818,7 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
 export function LeadDetailPage() {
   const { leadId } = useParams({ strict: false }) as { leadId: string };
   return (
-    <AppLayout title="Fiche lead">
+    <AppLayout title={t('lead.page.title')}>
       <LeadDetailBody leadId={leadId} />
     </AppLayout>
   );
