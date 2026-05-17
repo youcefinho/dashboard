@@ -165,7 +165,7 @@ export function seedPayment(
     idempotencyKey?: string;
   },
 ): void {
-  db.seed('from payments where', [
+  db.seed('from payments', [
     {
       id: o.paymentId,
       order_id: o.orderId,

@@ -21,6 +21,7 @@ import { frCA } from '@/lib/i18n/fr-CA';
 import { frFR } from '@/lib/i18n/fr-FR';
 import { en } from '@/lib/i18n/en';
 import { es } from '@/lib/i18n/es';
+import { t } from '@/lib/i18n';
 
 // ── Mocks (router + API + module guard) ─────────────────────────────────────
 // useNavigate : le chip l'appelle au click ; un noop suffit pour le rendu.
@@ -43,10 +44,11 @@ vi.mock('@/components/ecommerce/ModuleGuard', () => ({
 // Import APRÈS les mocks (hoisting vi.mock garanti, mais explicite = clair).
 import { OnboardingProgressChip } from '../OnboardingProgressChip';
 
-// Libellés S8 (fr-CA, locale par défaut) pour assertions de présence.
-const L_CATALOG = frCA['onboarding.checklist.ecommerce_catalog'];
-const L_PRODUCT = frCA['onboarding.checklist.ecommerce_first_product'];
-const L_CHANNEL = frCA['onboarding.checklist.ecommerce_channel'];
+// Libellés résolus via t() (jsdom détecte locale 'en', pas 'fr-CA').
+// On utilise t() pour matcher la locale réellement active dans le test.
+const L_CATALOG = () => t('onboarding.checklist.ecommerce_catalog');
+const L_PRODUCT = () => t('onboarding.checklist.ecommerce_first_product');
+const L_CHANNEL = () => t('onboarding.checklist.ecommerce_channel');
 
 function setFlags(flags: Record<string, '1' | undefined>) {
   for (const [k, v] of Object.entries(flags)) {
@@ -85,34 +87,34 @@ describe('OnboardingProgressChip — items e-commerce conditionnels (S8)', () =>
     useHasModuleMock.mockReturnValue('disabled');
     render(<OnboardingProgressChip />);
     // Ouvrir le panneau pour voir la checklist.
-    screen.getByRole('button', { name: /Configuration/i }).click();
+    screen.getByRole('button', { name: /Configuration|setup/i }).click();
     await waitFor(() =>
-      expect(screen.getByText('Compléter ton profil')).not.toBeNull(),
+      expect(screen.getByText(/Compléter ton profil|Complete your profile/i)).not.toBeNull(),
     );
-    expect(screen.queryByText(L_CATALOG)).toBeNull();
-    expect(screen.queryByText(L_PRODUCT)).toBeNull();
-    expect(screen.queryByText(L_CHANNEL)).toBeNull();
+    expect(screen.queryByText(L_CATALOG())).toBeNull();
+    expect(screen.queryByText(L_PRODUCT())).toBeNull();
+    expect(screen.queryByText(L_CHANNEL())).toBeNull();
   });
 
   it('masque aussi les items e-commerce tant que le module est en chargement', async () => {
     useHasModuleMock.mockReturnValue('loading');
     render(<OnboardingProgressChip />);
-    screen.getByRole('button', { name: /Configuration/i }).click();
+    screen.getByRole('button', { name: /Configuration|setup/i }).click();
     await waitFor(() =>
-      expect(screen.getByText('Compléter ton profil')).not.toBeNull(),
+      expect(screen.getByText(/Compléter ton profil|Complete your profile/i)).not.toBeNull(),
     );
-    expect(screen.queryByText(L_CATALOG)).toBeNull();
+    expect(screen.queryByText(L_CATALOG())).toBeNull();
   });
 
   it('affiche les 3 items e-commerce si le module Boutique est actif', async () => {
     useHasModuleMock.mockReturnValue('enabled');
     render(<OnboardingProgressChip />);
-    screen.getByRole('button', { name: /Configuration/i }).click();
+    screen.getByRole('button', { name: /Configuration|setup/i }).click();
     await waitFor(() =>
-      expect(screen.getByText(L_CATALOG)).not.toBeNull(),
+      expect(screen.getByText(L_CATALOG())).not.toBeNull(),
     );
-    expect(screen.getByText(L_PRODUCT)).not.toBeNull();
-    expect(screen.getByText(L_CHANNEL)).not.toBeNull();
+    expect(screen.getByText(L_PRODUCT())).not.toBeNull();
+    expect(screen.getByText(L_CHANNEL())).not.toBeNull();
   });
 
   it('auto-hide 100% inchangé SANS items e-comm (6/6 CRM, module inactif)', async () => {

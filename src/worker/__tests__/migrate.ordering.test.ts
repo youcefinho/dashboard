@@ -6,11 +6,16 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // État du faux filesystem, piloté test-par-test.
 const fsState: { files: Record<string, string> } = { files: {} };
 
+// Normalise les séparateurs de chemin (Windows → forward slash) pour
+// matcher les clés seedées dans fsState.files quel que soit l'OS.
+const norm = (p: string) => p.replace(/\\/g, '/');
+
 vi.mock('fs', () => ({
-  existsSync: (p: string) => p in fsState.files,
+  existsSync: (p: string) => norm(p) in fsState.files,
   readFileSync: (p: string) => {
-    if (!(p in fsState.files)) throw new Error(`ENOENT mock: ${p}`);
-    return fsState.files[p];
+    const key = norm(p);
+    if (!(key in fsState.files)) throw new Error(`ENOENT mock: ${p}`);
+    return fsState.files[key];
   },
   // readdirSync non utilisé par getOrderedMigrations (on passe allFiles).
   readdirSync: () => [],

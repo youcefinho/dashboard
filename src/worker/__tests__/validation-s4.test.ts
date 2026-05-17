@@ -152,9 +152,14 @@ describe('handleUpdateLeadNote — validation', () => {
 describe('handleUpdateCartItem — validation', () => {
   it('payload légitime { quantity } → procède (200)', async () => {
     const db = createMockD1();
-    db.seed('from clients', [{ id: 'c1' }]); // resolveClientId / getClientModules
-    db.seed('client_modules', [{ client_id: 'c1' }]);
+    // getClientModules : SELECT client_id FROM users WHERE id → user-1 lié à c1
+    db.seed('from users where', [{ client_id: 'c1' }]);
+    // getClientModules : SELECT modules_json FROM clients WHERE id
+    db.seed('from clients where', [{ modules_json: '["crm","ecommerce"]' }]);
+    // handleUpdateCartItem : JOIN carts c ON c.id = ci.cart_id
     db.seed('join carts c on c.id', [{ id: 'cart1', client_id: 'c1', customer_id: null, token: 't', status: 'active' }]);
+    // shapeCart : SELECT ci.id AS id ... FROM cart_items
+    db.seed('from cart_items ci', []);
     const res = await handleUpdateCartItem(
       makeReq({ quantity: 3 }),
       envWith(db),
@@ -166,9 +171,10 @@ describe('handleUpdateCartItem — validation', () => {
 
   it('non-régression : quantity absent (coercée à 0 côté handler = suppression)', async () => {
     const db = createMockD1();
-    db.seed('from clients', [{ id: 'c1' }]);
-    db.seed('client_modules', [{ client_id: 'c1' }]);
+    db.seed('from users where', [{ client_id: 'c1' }]);
+    db.seed('from clients where', [{ modules_json: '["crm","ecommerce"]' }]);
     db.seed('join carts c on c.id', [{ id: 'cart1', client_id: 'c1', customer_id: null, token: 't', status: 'active' }]);
+    db.seed('from cart_items ci', []);
     const res = await handleUpdateCartItem(
       makeReq({}),
       envWith(db),
@@ -180,8 +186,8 @@ describe('handleUpdateCartItem — validation', () => {
 
   it('quantity mauvais type (string) → 400 VALIDATION', async () => {
     const db = createMockD1();
-    db.seed('from clients', [{ id: 'c1' }]);
-    db.seed('client_modules', [{ client_id: 'c1' }]);
+    db.seed('from users where', [{ client_id: 'c1' }]);
+    db.seed('from clients where', [{ modules_json: '["crm","ecommerce"]' }]);
     const res = await handleUpdateCartItem(
       makeReq({ quantity: 'trois' }),
       envWith(db),
@@ -193,8 +199,8 @@ describe('handleUpdateCartItem — validation', () => {
 
   it('JSON invalide → 400 VALIDATION', async () => {
     const db = createMockD1();
-    db.seed('from clients', [{ id: 'c1' }]);
-    db.seed('client_modules', [{ client_id: 'c1' }]);
+    db.seed('from users where', [{ client_id: 'c1' }]);
+    db.seed('from clients where', [{ modules_json: '["crm","ecommerce"]' }]);
     const res = await handleUpdateCartItem(
       makeReq('{xxx'),
       envWith(db),

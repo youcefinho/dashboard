@@ -12,7 +12,6 @@
 //   - best-effort INSERT dans `web_vitals` (migration-sprintS9-m1.sql)
 //   - client_id best-effort si dispo, sinon NULL (la table l'autorise)
 import type { Env } from './types';
-import { json } from './helpers';
 
 // Whitelist alignée src/lib/webVitals.ts:14 (WebVitalName).
 const KNOWN_VITALS = new Set(['LCP', 'CLS', 'INP', 'TTFB', 'FCP']);
@@ -46,7 +45,8 @@ interface WebVitalBeacon {
  */
 export async function handlePostWebVitals(request: Request, env: Env): Promise<Response> {
   // 204 = réponse canonique d'un beacon. On la renvoie dans TOUS les cas.
-  const ack = (): Response => json({ ok: true }, 204);
+  // 204 No Content ne peut PAS avoir de body (spec HTTP) → new Response(null).
+  const ack = (): Response => new Response(null, { status: 204 });
 
   let body: WebVitalBeacon;
   try {

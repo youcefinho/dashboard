@@ -203,6 +203,12 @@ describe('handleUpdateOrderStatus — transitions valides', () => {
     // 'from orders where id' que d'éventuels seed précédents (1er-match).
     seedOrderState(db, { orderId: 'o-1', status: 'pending', paidAt: null });
     seedOrderItems(db, [{ variant_id: 'v-1', quantity: 2 }]);
+    // commitSale lit l'inventaire via ensureInventory (SELECT * FROM inventory)
+    db.seed('from inventory where variant_id', [{
+      id: 'inv-1', variant_id: 'v-1', quantity: 100, reserved: 2,
+      low_stock_threshold: 5, track_inventory: 1, allow_backorder: 0,
+      location: null, updated_at: null, last_low_stock_alert_at: null,
+    }]);
 
     const res = await handleUpdateOrderStatus(
       statusReq('paid'), ecomEnv(db) as never, AUTH, 'o-1',
@@ -242,6 +248,12 @@ describe('handleUpdateOrderStatus — transitions valides', () => {
     seedTenant(db, CLIENT);
     seedOrderState(db, { orderId: 'o-1', status: 'paid', cancelledAt: null });
     seedOrderItems(db, [{ variant_id: 'v-1', quantity: 1 }]);
+    // releaseStock lit l'inventaire via ensureInventory (SELECT * FROM inventory)
+    db.seed('from inventory where variant_id', [{
+      id: 'inv-1', variant_id: 'v-1', quantity: 100, reserved: 1,
+      low_stock_threshold: 5, track_inventory: 1, allow_backorder: 0,
+      location: null, updated_at: null, last_low_stock_alert_at: null,
+    }]);
 
     const res = await handleUpdateOrderStatus(
       statusReq('cancelled'), ecomEnv(db) as never, AUTH, 'o-1',

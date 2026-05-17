@@ -66,10 +66,13 @@ function parseAudit(call: { sql: string; args: any[] }) {
 /** Le JSON `details` ne doit contenir AUCUN champ/valeur sensible. */
 function assertNoSecretInDetails(detailsJson: string) {
   const lower = String(detailsJson).toLowerCase();
-  // Clés interdites
-  for (const banned of ['token', 'secret', 'apikey', 'api_key', 'rawkey', 'keyhash', 'password', 'amf_certificate', 'certificate']) {
+  // Clés interdites (exclut 'has_certificate' qui est un booléen métadonnée légitime)
+  for (const banned of ['token', 'secret', 'apikey', 'api_key', 'rawkey', 'keyhash', 'password', 'amf_certificate']) {
     expect(lower).not.toContain(banned);
   }
+  // 'certificate' seul interdit, SAUF dans 'has_certificate' (booléen de présence, pas la valeur)
+  const withoutHasCert = lower.replace(/has_certificate/g, '');
+  expect(withoutHasCert).not.toContain('certificate');
   // Préfixes de valeurs secrètes produites par le worker
   expect(lower).not.toContain('whsec_');
   expect(lower).not.toContain('ilys_');

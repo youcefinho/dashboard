@@ -109,12 +109,12 @@ function makeNonRefundableProvider(): PaymentProvider {
 }
 
 // Seed le paiement source lu par handleCreateRefund :
-//   ORDER BY (status='paid') DESC, created_at DESC  → 'from payments where'
+//   ORDER BY (status='paid') DESC, created_at DESC  → 'from payments'
 function seedSourcePayment(
   db: MockD1,
   o: { paid: number; provider?: string; status?: string },
 ): void {
-  db.seed('from payments where', [
+  db.seed('from payments', [
     {
       id: 'pay-1',
       client_id: CLIENT,
@@ -145,7 +145,7 @@ describe('M2.B4 handleCreateRefund — anti double-remboursement (clé idem)', (
     // État « déjà présent » : un refund non-échoué pour la MÊME clé idem.
     // Le code relit `from refunds where ... idempotency_key` (1er match) et
     // doit retourner CET existant sans rappeler provider.refund.
-    db.seed('from refunds where', [
+    db.seed('from refunds', [
       {
         id: 'ref-existing',
         order_id: 'o-1',
@@ -205,10 +205,10 @@ describe('M2.B4 handleCreateRefund — gardes montant & provider', () => {
     ]);
     seedSourcePayment(db, { paid: 10000 });
     // engaged déjà = 8000 ; demande 5000 ⇒ 13000 > 10000 ⇒ 409.
-    // Le SELECT engaged et le SELECT existing partagent 'from refunds where' :
+    // Le SELECT engaged et le SELECT existing partagent 'from refunds' :
     // on seede une ligne portant engaged ET un idempotency_key DISTINCT de la
     // clé calculée (refund:o-1:5000:<seq>) ⇒ pas de court-circuit "existant".
-    db.seed('from refunds where', [
+    db.seed('from refunds', [
       {
         id: 'r-prev',
         order_id: 'o-1',
@@ -257,7 +257,7 @@ describe('M2.B4 handleCreateRefund — gardes montant & provider', () => {
       { id: 'o-1', client_id: CLIENT, financial_status: 'paid' },
     ]);
     seedSourcePayment(db, { paid: 10000, provider: 'dz_gateway' });
-    db.seed('from refunds where', []); // aucun refund engagé
+    db.seed('from refunds', []); // aucun refund engagé
 
     const prev = getProvider('dz_gateway');
     registerProvider(makeNonRefundableProvider());
@@ -302,7 +302,7 @@ describe('M2.B4 handleCreateRefund — gardes montant & provider', () => {
     db.seed('from orders where id', [
       { id: 'o-1', client_id: CLIENT, financial_status: 'unpaid' },
     ]);
-    db.seed('from payments where', []); // pas de paiement
+    db.seed('from payments', []); // pas de paiement
 
     const res = await handleCreateRefund(
       refundReq({ amount_cents: 1000 }),
@@ -326,7 +326,7 @@ describe('M2.B4 handleCreateRefund — restock garde anti double + COD no-op', (
     seedSourcePayment(db, { paid: 5000 });
     // Refund déjà présent POUR LA CLÉ + restocked=1 ⇒ retour anticipé de
     // l'existant (status != failed) ⇒ aucun nouveau restock déclenché.
-    db.seed('from refunds where', [
+    db.seed('from refunds', [
       {
         id: 'ref-restocked',
         order_id: 'o-1',
@@ -368,7 +368,7 @@ describe('M2.B4 handleCreateRefund — restock garde anti double + COD no-op', (
       { id: 'o-1', client_id: CLIENT, financial_status: 'paid' },
     ]);
     seedSourcePayment(db, { paid: 4000, provider: 'cod', status: 'pending_cod' });
-    db.seed('from refunds where', []);
+    db.seed('from refunds', []);
 
     // cod est enregistré via ./payments/register côté prod ; on s'assure de
     // sa présence (sinon on l'enregistre localement, refund no-op tracé).
@@ -430,7 +430,7 @@ describe('M2.B4 recordRefundTransition — financial_status déterministe', () =
       { id: 'o-1', client_id: CLIENT, financial_status: 'paid' },
     ]);
     db.seed('from payments', [{ paid_sum: 10000, max_amount: 10000 }]);
-    db.seed('from refunds where', [{ refunded_sum: 0 }]);
+    db.seed('from refunds', [{ refunded_sum: 0 }]);
 
     const r = await recordRefundTransition(ecomEnv(db) as never, {
       order_id: 'o-1',
@@ -448,7 +448,7 @@ describe('M2.B4 recordRefundTransition — financial_status déterministe', () =
       { id: 'o-1', client_id: CLIENT, financial_status: 'paid' },
     ]);
     db.seed('from payments', [{ paid_sum: 10000, max_amount: 10000 }]);
-    db.seed('from refunds where', [{ refunded_sum: 4000 }]);
+    db.seed('from refunds', [{ refunded_sum: 4000 }]);
 
     const r = await recordRefundTransition(ecomEnv(db) as never, {
       order_id: 'o-1',
@@ -466,7 +466,7 @@ describe('M2.B4 recordRefundTransition — financial_status déterministe', () =
       { id: 'o-1', client_id: CLIENT, financial_status: 'paid' },
     ]);
     db.seed('from payments', [{ paid_sum: 10000, max_amount: 10000 }]);
-    db.seed('from refunds where', [{ refunded_sum: 10000 }]);
+    db.seed('from refunds', [{ refunded_sum: 10000 }]);
 
     const r = await recordRefundTransition(ecomEnv(db) as never, {
       order_id: 'o-1',
@@ -484,7 +484,7 @@ describe('M2.B4 recordRefundTransition — financial_status déterministe', () =
         { id: 'o-1', client_id: CLIENT, financial_status: 'paid' },
       ]);
       db.seed('from payments', [{ paid_sum: 10000, max_amount: 10000 }]);
-      db.seed('from refunds where', [{ refunded_sum: 6000 }]);
+      db.seed('from refunds', [{ refunded_sum: 6000 }]);
       return db;
     };
     const r1 = await recordRefundTransition(ecomEnv(seeds()) as never, {

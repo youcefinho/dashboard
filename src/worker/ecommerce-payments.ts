@@ -37,10 +37,10 @@ import { getClientModules } from './modules';
 import { resolveRegionContext } from './ecommerce-region';
 import { commitOrderSale } from './ecommerce-orders';
 // E4 M2 — bootstrap registry (side-effect : registerProvider stripe/cod/dz).
-// La registry ci-dessous n'auto-enregistre rien ; ce module la peuple. Unique
-// ligne ownership-exception autorisée au Manager M2 (M1 fini, M3 ne touche pas
-// ce fichier → zéro race).
-import './payments/register';
+// Importé APRÈS la déclaration de REGISTRY + registerProvider pour éviter
+// le TDZ (Temporal Dead Zone) sur REGISTRY lors de l'initialisation circulaire.
+// bootProviders() reçoit registerProvider en paramètre → pas d'import circulaire.
+import { bootProviders } from './payments/register';
 
 type Auth = { userId: string; role: string };
 
@@ -110,6 +110,10 @@ const REGISTRY = new Map<PaymentProviderId, PaymentProvider>();
 export function registerProvider(p: PaymentProvider): void {
   REGISTRY.set(p.id, p);
 }
+
+// Bootstrap immédiat : bootProviders reçoit registerProvider en paramètre,
+// pas d'import circulaire (register.ts n'importe plus registerProvider).
+bootProviders(registerProvider);
 
 /** Provider enregistré (ou null si M2/M3 ne l'ont pas encore branché). */
 export function getProvider(id: PaymentProviderId): PaymentProvider | null {

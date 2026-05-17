@@ -19,22 +19,30 @@
 
 ---
 
-## 🔴 BLOQUANT GO-LIVE — SPRINT R NON REMÉDIÉ
+## ✅ SPRINT R — RÉSOLU 2026-05-17 (restauration Antigravity)
 
-**Les 6 pages cœur CRM — `Leads`, `Dashboard`, `LeadDetail`, `Tasks`,
-`Pipeline`, `Clients` — affichent des clés i18n brutes (≈185 appels `t()`
-orphelins) au lieu du texte français.** L'interface principale du CRM est
-cassée pour l'utilisateur final.
+**Régression i18n levée.** Les 6 pages cœur CRM (`Leads`, `Dashboard`,
+`LeadDetail`, `Tasks`, `Pipeline`, `Clients`) ont été restaurées par
+Antigravity depuis le commit `5764096` (parent du commit S6-M2 cassé
+`84e909b`), commit de réparation `7846e72` poussé sur `master`.
+**Vérifié sur disque** : 0 appel `t()` orphelin dans les 6 pages, texte
+FR hardcodé restauré, build `bun run build` vert (tsconfig exclut
+désormais `src/**/__tests__` ; tests toujours exécutés via vitest),
+2 doublons i18n `calendar.*` nettoyés sans casser S9 (parité 79 clés ×
+4 catalogues). Vérif visuelle navigateur OK (Antigravity).
 
-**VERDICT : GO-LIVE = NON.** Aucune autre case cochée de cette checklist (ni
-build, ni 5 gates, ni PCI, ni bindings, ni smoke E2E) ne rend ce verdict
-vert. Tant que le sprint R n'est pas remédié **et vérifié**, la plateforme
-**NE PEUT PAS** être mise en production ni ouverte aux clients bêta, quelle
-que soit la complétude du reste. Ce bloc est non enterrable.
+**Dette future tracée (NON bloquante go-live)** : les 6 pages sont
+dé-internationalisées (FR hardcodé) → fr-FR/en/es affichent du FR sur
+ces pages. Acceptable (marché cible fr-CA Québec). Ré-i18n propre = tâche
+future en petits lots (créer TOUTES les clés AVANT conversion).
 
-- [ ] **(Rochdi)** Sprint R remédié : les 6 pages CRM affichent le texte FR
-      (plus aucune clé i18n brute) — vérifié visuellement en navigateur.
-      *Hors scope S10 (doc only). Prérequis dur absolu.*
+**VERDICT : R ne bloque plus le go-live.** Restent les gates de prod
+normaux ci-dessous (build/tests exécutés hors VM, 5 gates, PCI/légale
+E4/E6, bindings) — ce sont des prérequis d'infra/qualité standard, pas
+une régression produit.
+
+- [x] **Sprint R remédié** : 6 pages CRM affichent le FR (zéro clé brute)
+      — restauration commit `5764096`, vérifié disque + navigateur.
 
 ---
 

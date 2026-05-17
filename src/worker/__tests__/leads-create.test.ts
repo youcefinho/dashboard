@@ -34,11 +34,11 @@ describe('handleCreateLead', () => {
 
     const res2 = await handleCreateLead(makeReq({ client_id: 'c1', email: 'x@y.com' }), mockEnv, auth);
     expect(res2.status).toBe(400);
-    expect((await res2.json() as { error: string }).error).toMatch(/Nom/);
+    expect((await res2.json() as { error: string }).error).toMatch(/name/i);
 
     const res3 = await handleCreateLead(makeReq({ client_id: 'c1', name: 'X' }), mockEnv, auth);
     expect(res3.status).toBe(400);
-    expect((await res3.json() as { error: string }).error).toMatch(/Email/);
+    expect((await res3.json() as { error: string }).error).toMatch(/email/i);
   });
 
   it('retourne 404 si le client n\'existe pas', async () => {

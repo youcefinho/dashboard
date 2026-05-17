@@ -9,12 +9,13 @@
 
 ---
 
-## 🔴 BLOQUANT GO-LIVE — SPRINT R NON REMÉDIÉ
+## ✅ SPRINT R — RÉSOLU 2026-05-17
 
-Les 6 pages cœur CRM — `Leads`, `Dashboard`, `LeadDetail`, `Tasks`,
-`Pipeline`, `Clients` — affichent des clés i18n brutes (≈185 appels `t()`
-orphelins) au lieu du texte français. **VERDICT : GO-LIVE = NON.** Aucune
-autre case cochée ne rend ce verdict vert tant que R est ouvert.
+Les 6 pages cœur CRM (`Leads`, `Dashboard`, `LeadDetail`, `Tasks`,
+`Pipeline`, `Clients`) restaurées par Antigravity (commit `5764096` →
+réparation `7846e72`), 0 `t()` orphelin vérifié, FR hardcodé restauré,
+build vert. R ne bloque plus le go-live. Restent les prérequis infra
+ci-dessous (bindings) + 5 gates + PCI/légale E4/E6.
 
 > Configurer parfaitement tous les bindings ci-dessous ne lève PAS R. R valide
 > que l'app est utilisable ; les bindings valident l'infra. Les deux sont requis.

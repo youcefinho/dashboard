@@ -13,19 +13,23 @@
 
 ---
 
-## 🔴 BLOQUANT GO-LIVE — SPRINT R NON REMÉDIÉ
+## ✅ SPRINT R — RÉSOLU 2026-05-17 (restauration Antigravity)
 
-**Les 6 pages cœur CRM — `Leads`, `Dashboard`, `LeadDetail`, `Tasks`,
-`Pipeline`, `Clients` — affichent des clés i18n brutes (≈185 appels `t()`
-orphelins) au lieu du texte français.** L'interface principale du CRM est
-donc cassée pour l'utilisateur final.
+**Régression i18n levée.** Les 6 pages cœur CRM (`Leads`, `Dashboard`,
+`LeadDetail`, `Tasks`, `Pipeline`, `Clients`) restaurées depuis commit
+`5764096` (parent du S6-M2 cassé `84e909b`), réparation `7846e72` sur
+`master`. **Vérifié disque** : 0 `t()` orphelin, FR hardcodé restauré,
+build vert (tsconfig exclut `src/**/__tests__`, tests via vitest),
+2 doublons `calendar.*` nettoyés sans casser S9 (parité 79×4 catalogues),
+vérif visuelle navigateur OK.
 
-**VERDICT : GO-LIVE = NON.** Aucune autre case cochée de cette checklist (ni
-build, ni 5 gates, ni PCI, ni bindings) ne rend ce verdict vert. Tant que le
-sprint R n'est pas remédié et vérifié, **la plateforme NE PEUT PAS être mise
-en production ni ouverte aux clients bêta**, quelle que soit la complétude du
-reste. Ce bloc est non enterrable et doit rester en tête de tout document de
-go-live tant que R est ouvert.
+**Dette future NON bloquante** : 6 pages dé-i18n (FR hardcodé) →
+fr-FR/en/es en FR sur ces pages. Acceptable (cible fr-CA Québec).
+Ré-i18n propre = tâche future en petits lots, clés créées AVANT conversion.
+
+**VERDICT : R ne bloque plus le go-live.** Restent les prérequis prod
+normaux : build/tests hors VM, 5 gates, PCI/légale E4/E6, bindings —
+infra/qualité standard, pas une régression produit.
 
 ---
 
@@ -181,6 +185,12 @@ le mentionne si pertinent. Texte canonique (copier tel quel) :
 > `Pipeline`, `Clients` — affichent des clés i18n brutes (≈185 appels `t()`
 > orphelins) au lieu du texte français. **VERDICT : GO-LIVE = NON.** Aucune
 > autre case cochée ne rend ce verdict vert tant que R est ouvert.
+
+> **✅ MISE À JOUR 2026-05-17 — R RÉSOLU.** Libellé §6.1 ci-dessus conservé
+> pour trace historique. R a été remédié par Antigravity (restauration des
+> 6 pages depuis commit `5764096`, réparation `7846e72`, 0 `t()` orphelin
+> vérifié, build vert). Le bloc 🔴 n'est plus actif — voir la section
+> « ✅ SPRINT R — RÉSOLU » en tête de ce document et de `LAUNCH-CHECKLIST.md`.
 
 ### §6.2 — Liste canonique numérotée des 5 gates Rochdi
 

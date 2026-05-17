@@ -44,7 +44,7 @@ describe('computeTax — régime QC (verbatim createOrderCore, régression-zéro
       [10, 1, 1],         // round(0.5)=1 (round-half-up JS) ; round(0.9975)=1
       [100, 5, 10],       // round(5)=5 ; round(9.975)=10
       [1999, 100, 199],   // round(99.95)=100 ; round(199.40025)=199
-      [12345, 617, 1232], // round(617.25)=617 ; round(1231.41375)=1232
+      [12345, 617, 1231], // round(617.25)=617 ; round(12345*0.09975)=round(1231.41375)=1231
       [99999, 5000, 9975],// round(4999.95)=5000 ; round(9974.90025)=9975
     ];
     for (const [sub, tps, tvq] of cases) {
