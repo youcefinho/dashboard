@@ -517,16 +517,16 @@ export interface PipelineData {
   [key: string]: Lead[];
 }
 
-// ── Labels FR pour l'interface ──────────────────────────────
+// ── Labels i18n pour l'interface ────────────────────────────
+// Chaque getter construit un Record dynamique via t() — permet le changement de langue à la volée.
+// L'API publique (nom, type) est inchangée : les consommateurs existants n'ont aucune modification à faire.
 
-export const STATUS_LABELS: Record<LeadStatus, string> = {
-  new: 'Nouveau',
-  contacted: 'Contacté',
-  qualified: 'Qualifié',
-  won: 'Gagné',
-  closed: 'Fermé',
-  lost: 'Perdu',
-};
+import { t } from '@/lib/i18n';
+
+
+export const STATUS_LABELS: Record<LeadStatus, string> = new Proxy({} as Record<LeadStatus, string>, {
+  get: (_, key: string) => t(`labels.status.${key}` as any) || key,
+});
 
 export const STATUS_COLORS: Record<LeadStatus, string> = {
   new: 'var(--primary)',
@@ -537,31 +537,20 @@ export const STATUS_COLORS: Record<LeadStatus, string> = {
   lost: 'var(--danger)',
 };
 
-export const TYPE_LABELS: Record<LeadType, string> = {
-  inbound: 'Entrant',
-  qualified: 'Qualifié',
-  customer: 'Client',
-};
+export const TYPE_LABELS: Record<LeadType, string> = new Proxy({} as Record<LeadType, string>, {
+  get: (_, key: string) => t(`labels.type.${key}` as any) || key,
+});
 
-export const SOURCE_LABELS: Record<string, string> = {
-  website: 'Site web',
-  facebook: 'Facebook',
-  google: 'Google Ads',
-  referral: 'Référence',
-  phone: 'Téléphone',
-  walkin: 'Sans RDV',
-  ghl_import: 'Import GHL',
-  other: 'Autre',
-};
+export const SOURCE_LABELS: Record<string, string> = new Proxy({} as Record<string, string>, {
+  get: (_, key: string) => {
+    if (typeof key !== 'string') return undefined;
+    return t(`labels.source.${key}` as any) || key;
+  },
+});
 
-export const LIFECYCLE_LABELS: Record<LifecycleStage, string> = {
-  lead: 'Lead',
-  mql: 'MQL',
-  sql: 'SQL',
-  opportunity: 'Opportunité',
-  customer: 'Client',
-  lost: 'Perdu',
-};
+export const LIFECYCLE_LABELS: Record<LifecycleStage, string> = new Proxy({} as Record<LifecycleStage, string>, {
+  get: (_, key: string) => t(`labels.lifecycle.${key}` as any) || key,
+});
 
 export const LIFECYCLE_COLORS: Record<LifecycleStage, string> = {
   lead: 'var(--info)',
@@ -572,13 +561,12 @@ export const LIFECYCLE_COLORS: Record<LifecycleStage, string> = {
   lost: 'var(--danger)',
 };
 
-export const NOTE_CATEGORY_LABELS: Record<string, string> = {
-  general: 'Général',
-  call: 'Appel',
-  meeting: 'Rencontre',
-  'follow-up': 'Relance',
-  important: 'Important',
-};
+export const NOTE_CATEGORY_LABELS: Record<string, string> = new Proxy({} as Record<string, string>, {
+  get: (_, key: string) => {
+    if (typeof key !== 'string') return undefined;
+    return t(`labels.note.${key}` as any) || key;
+  },
+});
 
 export const NOTE_CATEGORY_ICONS: Record<string, string> = {
   general: '📝',
@@ -588,17 +576,9 @@ export const NOTE_CATEGORY_ICONS: Record<string, string> = {
   important: '⚠️',
 };
 
-export const ACTIVITY_LABELS: Record<ActivityType, string> = {
-  created: 'Lead créé',
-  status_change: 'Statut modifié',
-  note_added: 'Note ajoutée',
-  tag_added: 'Tag ajouté',
-  tag_removed: 'Tag retiré',
-  email_sent: 'Email envoyé',
-  sms_sent: 'SMS envoyé',
-  assigned: 'Assigné',
-  deal_value_changed: 'Valeur modifiée',
-};
+export const ACTIVITY_LABELS: Record<ActivityType, string> = new Proxy({} as Record<ActivityType, string>, {
+  get: (_, key: string) => t(`labels.activity.${key}` as any) || key,
+});
 
 export const ACTIVITY_ICONS: Record<ActivityType, string> = {
   created: '🆕',
@@ -614,14 +594,9 @@ export const ACTIVITY_ICONS: Record<ActivityType, string> = {
 
 // ── Labels Phase 2 : Conversations ─────────────────────────
 
-export const CHANNEL_LABELS: Record<MessageChannel, string> = {
-  email: 'Email',
-  sms: 'SMS',
-  webchat: 'Webchat',
-  facebook_messenger: 'Messenger',
-  instagram_dm: 'Instagram',
-  internal_note: 'Note interne',
-};
+export const CHANNEL_LABELS: Record<MessageChannel, string> = new Proxy({} as Record<MessageChannel, string>, {
+  get: (_, key: string) => t(`labels.channel.${key}` as any) || key,
+});
 
 export const CHANNEL_ICONS: Record<MessageChannel, string> = {
   email: '📧',
@@ -632,11 +607,9 @@ export const CHANNEL_ICONS: Record<MessageChannel, string> = {
   internal_note: '📝',
 };
 
-export const CONVERSATION_STATUS_LABELS: Record<ConversationStatus, string> = {
-  open: 'Ouverte',
-  closed: 'Fermée',
-  snoozed: 'En pause',
-};
+export const CONVERSATION_STATUS_LABELS: Record<ConversationStatus, string> = new Proxy({} as Record<ConversationStatus, string>, {
+  get: (_, key: string) => t(`labels.conv_status.${key}` as any) || key,
+});
 
 export const CONVERSATION_STATUS_COLORS: Record<ConversationStatus, string> = {
   open: 'var(--success)',
@@ -644,56 +617,19 @@ export const CONVERSATION_STATUS_COLORS: Record<ConversationStatus, string> = {
   snoozed: 'var(--warning)',
 };
 
-export const MESSAGE_STATUS_LABELS: Record<MessageStatus, string> = {
-  draft: 'Brouillon',
-  sending: 'Envoi…',
-  sent: 'Envoyé',
-  delivered: 'Livré',
-  failed: 'Échoué',
-  read: 'Lu',
-  bounced: 'Rebondi',
-};
+export const MESSAGE_STATUS_LABELS: Record<MessageStatus, string> = new Proxy({} as Record<MessageStatus, string>, {
+  get: (_, key: string) => t(`labels.msg_status.${key}` as any) || key,
+});
 
-export const TEMPLATE_CATEGORY_LABELS: Record<TemplateCategory, string> = {
-  welcome: 'Bienvenue',
-  followup: 'Relance',
-  reminder: 'Rappel',
-  notification: 'Notification',
-  marketing: 'Marketing',
-  general: 'Général',
-};
+export const TEMPLATE_CATEGORY_LABELS: Record<TemplateCategory, string> = new Proxy({} as Record<TemplateCategory, string>, {
+  get: (_, key: string) => t(`labels.tpl_cat.${key}` as any) || key,
+});
 
 // ── Labels Phase 3 : Workflows ─────────────────────────────
 
-export const TRIGGER_LABELS: Record<TriggerType, string> = {
-  lead_created: 'Lead créé',
-  status_changed: 'Statut modifié',
-  pipeline_stage_changed: 'Étape Pipeline modifiée',
-  tag_added: 'Tag ajouté',
-  form_submitted: 'Formulaire soumis',
-  score_threshold: 'Score atteint',
-  lead_score_changed: 'Score modifié',
-  deal_won: 'Gagné (Deal won)',
-  task_overdue: 'Tâche en retard',
-  email_opened: 'Email ouvert',
-  link_clicked: 'Lien cliqué',
-  appointment_booked: 'RDV réservé',
-  appointment_cancelled: 'RDV annulé',
-  appointment_no_show: 'RDV absent',
-  opportunity_status_changed: 'Opportunité modifiée',
-  note_added: 'Note ajoutée',
-  task_completed: 'Tâche complétée',
-  inactivity_threshold: 'Inactivité (Seuil)',
-  birthday_today: 'Anniversaire',
-  manual: 'Manuel',
-  // ── Sprint E9 — libellés FR québécois e-commerce (additif) ──
-  order_created: 'Commande créée',
-  order_paid: 'Commande payée',
-  cart_abandoned: 'Panier abandonné',
-  post_purchase: 'Après-achat',
-  win_back: 'Reconquête client',
-  refund_issued: 'Remboursement émis',
-};
+export const TRIGGER_LABELS: Record<TriggerType, string> = new Proxy({} as Record<TriggerType, string>, {
+  get: (_, key: string) => t(`labels.trigger.${key}` as any) || key,
+});
 
 export const TRIGGER_ICONS: Record<TriggerType, string> = {
   lead_created: '🆕',
@@ -725,32 +661,9 @@ export const TRIGGER_ICONS: Record<TriggerType, string> = {
   refund_issued: '↩️',
 };
 
-export const STEP_TYPE_LABELS: Record<StepType, string> = {
-  send_email: 'Envoyer email',
-  send_internal_email: 'Email interne',
-  send_sms: 'Envoyer SMS',
-  wait: 'Attendre',
-  condition: 'Condition',
-  add_tag: 'Ajouter tag',
-  remove_tag: 'Retirer tag',
-  change_status: 'Changer statut',
-  assign: 'Assigner',
-  notify: 'Notifier',
-  webhook: 'Webhook',
-  update_pipeline: 'Changer Pipeline',
-  update_stage: 'Changer Étape',
-  create_task: 'Créer tâche',
-  create_appointment: 'Créer RDV',
-  create_opportunity: 'Créer Opportunité',
-  update_opportunity: 'Mettre à jour Opportunité',
-  update_custom_field: 'Mettre à jour Champ Personnalisé',
-  trigger_another_workflow: 'Déclencher autre workflow',
-  end_other_workflow: 'Arrêter autre workflow',
-  ai_action: 'Action IA',
-  math_operation: 'Opération Math',
-  goal_reached: 'Atteindre Objectif',
-  add_to_smart_list: 'Ajouter Smart List',
-};
+export const STEP_TYPE_LABELS: Record<StepType, string> = new Proxy({} as Record<StepType, string>, {
+  get: (_, key: string) => t(`labels.step.${key}` as any) || key,
+});
 
 export const STEP_TYPE_ICONS: Record<StepType, string> = {
   send_email: '📧',
@@ -779,22 +692,15 @@ export const STEP_TYPE_ICONS: Record<StepType, string> = {
   add_to_smart_list: '📋',
 };
 
-export const ENROLLMENT_STATUS_LABELS: Record<EnrollmentStatus, string> = {
-  active: 'Actif',
-  paused: 'En pause',
-  completed: 'Terminé',
-  cancelled: 'Annulé',
-};
+export const ENROLLMENT_STATUS_LABELS: Record<EnrollmentStatus, string> = new Proxy({} as Record<EnrollmentStatus, string>, {
+  get: (_, key: string) => t(`labels.enrollment.${key}` as any) || key,
+});
 
 // ── Labels Phase 4 : Calendrier ────────────────────────────
 
-export const APPOINTMENT_TYPE_LABELS: Record<AppointmentType, string> = {
-  meeting: 'Rencontre',
-  call: 'Appel',
-  visit: 'Visite',
-  signing: 'Signature',
-  other: 'Autre',
-};
+export const APPOINTMENT_TYPE_LABELS: Record<AppointmentType, string> = new Proxy({} as Record<AppointmentType, string>, {
+  get: (_, key: string) => t(`labels.appt_type.${key}` as any) || key,
+});
 
 export const APPOINTMENT_TYPE_ICONS: Record<AppointmentType, string> = {
   meeting: '🤝',
@@ -812,21 +718,15 @@ export const APPOINTMENT_TYPE_COLORS: Record<AppointmentType, string> = {
   other: 'var(--text-muted)',
 };
 
-export const APPOINTMENT_STATUS_LABELS: Record<AppointmentStatus, string> = {
-  scheduled: 'Planifié',
-  confirmed: 'Confirmé',
-  cancelled: 'Annulé',
-  completed: 'Terminé',
-  no_show: 'Absent',
-};
+export const APPOINTMENT_STATUS_LABELS: Record<AppointmentStatus, string> = new Proxy({} as Record<AppointmentStatus, string>, {
+  get: (_, key: string) => t(`labels.appt_status.${key}` as any) || key,
+});
 
 // ── Labels Phase 7 : Tâches ────────────────────────────────
 
-export const TASK_PRIORITY_LABELS: Record<TaskPriority, string> = {
-  high: 'Haute',
-  medium: 'Moyenne',
-  low: 'Basse',
-};
+export const TASK_PRIORITY_LABELS: Record<TaskPriority, string> = new Proxy({} as Record<TaskPriority, string>, {
+  get: (_, key: string) => t(`labels.task_priority.${key}` as any) || key,
+});
 
 export const TASK_PRIORITY_COLORS: Record<TaskPriority, string> = {
   high: 'var(--danger)',
@@ -840,11 +740,9 @@ export const TASK_PRIORITY_ICONS: Record<TaskPriority, string> = {
   low: '🔵',
 };
 
-export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
-  todo: 'À faire',
-  in_progress: 'En cours',
-  done: 'Terminé',
-};
+export const TASK_STATUS_LABELS: Record<TaskStatus, string> = new Proxy({} as Record<TaskStatus, string>, {
+  get: (_, key: string) => t(`labels.task_status.${key}` as any) || key,
+});
 
 export const TASK_STATUS_ICONS: Record<TaskStatus, string> = {
   todo: '⬜',
