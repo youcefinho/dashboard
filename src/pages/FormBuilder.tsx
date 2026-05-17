@@ -1,4 +1,4 @@
-﻿// ── FormBuilder — Éditeur de formulaires — Intralys CRM ─────
+// ── FormBuilder — Éditeur de formulaires — Intralys CRM ─────
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from '@tanstack/react-router';
@@ -12,6 +12,7 @@ import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } 
 import { CSS } from '@dnd-kit/utilities';
 import { getForm, updateForm, getFormStats } from '@/lib/api';
 import { ArrowLeft, Save, Eye, GripVertical, Plus, Trash2, Settings, BarChart3, Code, Copy } from 'lucide-react';
+import { t } from '@/lib/i18n';
 
 type FieldType = 'text' | 'email' | 'phone' | 'number' | 'date' | 'select' | 'multiselect' | 'checkbox' | 'radio' | 'textarea' | 'file' | 'hidden';
 
@@ -159,9 +160,9 @@ export function FormBuilderPage() {
       <div className="builder-topbar">
         <div className="builder-topbar-left">
           <Button variant="ghost" size="sm" onClick={() => navigate({ to: '/templates' })}>
-            <Icon as={ArrowLeft} size="md" /> Retour
+            <Icon as={ArrowLeft} size="md" /> {t('fb.back')}
           </Button>
-          <Input value={formName} onChange={e => setFormName(e.target.value)} placeholder="Nom du formulaire"
+          <Input value={formName} onChange={e => setFormName(e.target.value)} placeholder={t('fb.form_name_ph')}
             style={{ fontWeight: 600, fontSize: '15px', background: 'transparent', border: 'none', padding: 0, maxWidth: 300 }} />
           <Tag solid size="sm" color={formType === 'quiz' ? '#a855f7' : formType === 'survey' ? '#f59e0b' : '#009DDB'}>
             {formType.toUpperCase()}
@@ -170,21 +171,21 @@ export function FormBuilderPage() {
         <div className="builder-topbar-actions">
           <Select size="sm" style={{ width: 'auto', minWidth: 140 }} value={formType}
             onChange={e => setFormType(e.target.value as 'form' | 'survey' | 'quiz')}>
-            <option value="form">Formulaire</option><option value="survey">Sondage</option><option value="quiz">Quiz</option>
+            <option value="form">{t('fb.type.form')}</option><option value="survey">{t('fb.type.survey')}</option><option value="quiz">{t('fb.type.quiz')}</option>
           </Select>
-          <Button variant="ghost" size="sm" onClick={() => setShowPreview(!showPreview)}><Icon as={Eye} size="sm" /> Aperçu</Button>
+          <Button variant="ghost" size="sm" onClick={() => setShowPreview(!showPreview)}><Icon as={Eye} size="sm" /> {t('fb.preview')}</Button>
           <Button variant="ghost" size="sm" onClick={loadStats}><BarChart3 size={14} /> Stats</Button>
           <Button variant="ghost" size="sm" onClick={() => setShowEmbed(true)}><Icon as={Code} size="sm" /> Embed</Button>
           <Button variant="ghost" size="sm" onClick={() => setShowSettings(true)} aria-label="Paramètres"><Icon as={Settings} size="sm" /></Button>
           <Button variant="primary" size="sm" onClick={handleSave} disabled={isSaving}>
-            <Icon as={Save} size="sm" /> {isSaving ? '...' : 'Sauver'}
+            <Icon as={Save} size="sm" /> {isSaving ? '...' : t('fb.save')}
           </Button>
         </div>
       </div>
 
       <div className="builder-layout">
         <div className="builder-palette">
-          <h4 className="palette-title">Champs</h4>
+          <h4 className="palette-title">{t('fb.palette.title')}</h4>
           {FIELD_TYPES.map(ft => (
             <button key={ft.type} className="action-chip" onClick={() => addField(ft.type)} style={{ width: '100%', justifyContent: 'flex-start', marginBottom: 6 }}>
               <span className="action-chip-icon">{ft.icon}</span>
@@ -219,7 +220,7 @@ export function FormBuilderPage() {
               <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                 <SortableContext items={fields.map(f => f.id)} strategy={verticalListSortingStrategy}>
                   {fields.length === 0 ? (
-                    <div className="canvas-empty"><Icon as={Plus} size={32} style={{ opacity: 0.3 }} /><p>Ajoutez des champs depuis la palette</p></div>
+                    <div className="canvas-empty"><Icon as={Plus} size={32} style={{ opacity: 0.3 }} /><p>{t('fb.canvas.empty')}</p></div>
                   ) : fields.map(field => (
                     <SortableField key={field.id} field={field} isSelected={selectedFieldId === field.id}
                       onSelect={() => setSelectedFieldId(field.id)} onDelete={() => deleteField(field.id)} />
@@ -231,7 +232,7 @@ export function FormBuilderPage() {
 
           {showPreview && (
             <div className="form-preview-pane">
-              <h4 style={{ margin: '0 0 16px', fontSize: '15px' }}>Aperçu</h4>
+              <h4 style={{ margin: '0 0 16px', fontSize: '15px' }}>{t('fb.preview')}</h4>
               <div className="form-preview-card">
                 {fields.map(field => (
                   <div key={field.id} style={{ marginBottom: 12 }}>
@@ -269,7 +270,7 @@ export function FormBuilderPage() {
           {selectedField ? (
             <div className="block-props">
               <h4 style={{ margin: '0 0 12px', fontSize: '13px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-secondary)' }}>
-                Propriétés
+                {t('fb.props.title')}
               </h4>
               <label className="prop-label">Label</label>
               <Input value={selectedField.label} onChange={e => updateField({ ...selectedField, label: e.target.value })} />
@@ -283,19 +284,19 @@ export function FormBuilderPage() {
                   onCheckedChange={(v) => updateField({ ...selectedField, required: v })}
                   size="sm"
                   variant="brand"
-                  label="Obligatoire"
+                  label={t('fb.props.required')}
                 />
               </div>
               {selectedField.options && (
                 <>
-                  <label className="prop-label">Options (1 par ligne)</label>
+                  <label className="prop-label">{t('fb.props.options')}</label>
                   <Textarea rows={4} value={selectedField.options.join('\n')}
                     onChange={e => updateField({ ...selectedField, options: e.target.value.split('\n') })} />
                 </>
               )}
               {formType === 'quiz' && selectedField.options && (
                 <>
-                  <label className="prop-label">Poids (quiz)</label>
+                  <label className="prop-label">{t('fb.props.weight')}</label>
                   <Input type="number" value={selectedField.weight || 0} onChange={e => updateField({ ...selectedField, weight: Number(e.target.value) })} />
                 </>
               )}
@@ -305,29 +306,29 @@ export function FormBuilderPage() {
                 <Button variant="ghost" size="sm" onClick={() => {
                   const dup = { ...selectedField, id: crypto.randomUUID(), name: `${selectedField.name}_copy` };
                   setFields(prev => [...prev, dup]); setSelectedFieldId(dup.id);
-                }}><Icon as={Copy} size="sm" /> Dupliquer</Button>
+                }}><Icon as={Copy} size="sm" /> {t('fb.props.duplicate')}</Button>
               </div>
             </div>
           ) : (
-            <div className="block-props-empty">Sélectionnez un champ</div>
+            <div className="block-props-empty">{t('fb.props.select_field')}</div>
           )}
         </div>
       </div>
 
-      <Modal open={showStats} onOpenChange={() => setShowStats(false)} title="Statistiques">
+      <Modal open={showStats} onOpenChange={() => setShowStats(false)} title={t('fb.stats.title')}>
         {stats ? (
           (() => {
             const statsKpis: KpiItem[] = [
-              { label: 'Vues', value: stats.total_views, color: 'brand' },
-              { label: 'Soumissions', value: stats.total_submissions, color: 'success' },
-              { label: 'Conversion', value: `${stats.conversion_rate}%`, color: 'warning' },
+              { label: t('fb.stats.views'), value: stats.total_views, color: 'brand' },
+              { label: t('fb.stats.subs'), value: stats.total_submissions, color: 'success' },
+              { label: t('fb.stats.conversion'), value: `${stats.conversion_rate}%`, color: 'warning' },
             ];
             return <KpiStrip items={statsKpis} className="!mb-0" />;
           })()
-        ) : <p style={{ color: 'var(--text-muted)' }}>Chargement...</p>}
+        ) : <p style={{ color: 'var(--text-muted)' }}>{t('fb.stats.loading')}</p>}
       </Modal>
 
-      <Modal open={showEmbed} onOpenChange={() => setShowEmbed(false)} title="Intégration">
+      <Modal open={showEmbed} onOpenChange={() => setShowEmbed(false)} title={t('fb.embed.title')}>
         <div>
           <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: 12 }}>
             URL publique : <code style={{ color: 'var(--primary)' }}>https://crm.intralys.com/f/{formSlug}</code>
@@ -335,16 +336,16 @@ export function FormBuilderPage() {
           <label className="prop-label">Code d'intégration</label>
           <Textarea rows={3} value={embedCode} readOnly className="font-mono text-xs" onClick={e => (e.target as HTMLTextAreaElement).select()} />
           <Button variant="primary" size="sm" style={{ marginTop: 8 }} onClick={() => { navigator.clipboard.writeText(embedCode); }}>
-            <Icon as={Copy} size="sm" /> Copier
+            <Icon as={Copy} size="sm" /> {t('fb.embed.copy')}
           </Button>
         </div>
       </Modal>
 
-      <Modal open={showSettings} onOpenChange={() => setShowSettings(false)} title="Paramètres">
+      <Modal open={showSettings} onOpenChange={() => setShowSettings(false)} title={t('fb.settings.title')}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div><label className="prop-label">Message de succès</label><Input value={successMessage} onChange={e => setSuccessMessage(e.target.value)} /></div>
+          <div><label className="prop-label">{t('fb.settings.success_msg')}</label><Input value={successMessage} onChange={e => setSuccessMessage(e.target.value)} /></div>
           <div>
-            <label className="prop-label">URL de redirection après envoi (optionnel)</label>
+            <label className="prop-label">{t('fb.settings.redirect')}</label>
             <Input value={redirectUrl} onChange={e => setRedirectUrl(e.target.value)} placeholder="https://votresite.com/merci" />
             <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: 4 }}>
               Si renseignée, le widget redirige le visiteur ici après une soumission réussie.

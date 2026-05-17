@@ -1,4 +1,4 @@
-﻿// ── TemplatesPage — Gestion avancée des templates d'emails ──
+// ── TemplatesPage — Gestion avancée des templates d'emails ──
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -11,6 +11,7 @@ import { getTemplates, createTemplate, updateTemplate, deleteTemplate } from '@/
 import { Wand2, FileText, FolderOpen, Tag as TagIcon, Calendar, ChevronRight } from 'lucide-react';
 import type { EmailTemplate, TemplateCategory } from '@/lib/types';
 import { TEMPLATE_CATEGORY_LABELS, TEMPLATE_CATEGORIES } from '@/lib/types';
+import { t as tb } from '@/lib/i18n';
 
 const CATEGORY_COLORS: Record<TemplateCategory, string> = {
   welcome: 'var(--primary)',
@@ -90,9 +91,9 @@ export function TemplatesPage() {
 
   const handleDelete = async (id: string) => {
     const ok = await confirm({
-      title: 'Supprimer ce template ?',
-      description: 'Le template sera retiré définitivement. Les emails déjà envoyés ne sont pas affectés.',
-      confirmLabel: 'Supprimer',
+      title: tb('tpl.confirm.title'),
+      description: tb('tpl.confirm.desc'),
+      confirmLabel: tb('common.delete'),
       danger: true,
     });
     if (!ok) return;
@@ -132,10 +133,10 @@ export function TemplatesPage() {
     return new Date(t.updated_at).getTime() > new Date(latest.updated_at).getTime() ? t : latest;
   }, null);
   const kpiItems: KpiItem[] = [
-    { label: 'Total', value: totalTemplates, icon: <FileText size={11} />, color: 'brand' },
-    { label: 'Marketing', value: marketingCount, icon: <TagIcon size={11} />, color: 'accent' },
-    { label: 'Transactionnels', value: transactionalCount, icon: <FolderOpen size={11} />, color: 'info' },
-    { label: 'Dernier édité', value: lastEdited ? (lastEdited.name.length > 14 ? lastEdited.name.slice(0, 12) + '…' : lastEdited.name) : '—', icon: <Calendar size={11} />, color: 'neutral' },
+    { label: tb('tpl.kpi.total'), value: totalTemplates, icon: <FileText size={11} />, color: 'brand' },
+    { label: tb('tpl.kpi.marketing'), value: marketingCount, icon: <TagIcon size={11} />, color: 'accent' },
+    { label: tb('tpl.kpi.transactional'), value: transactionalCount, icon: <FolderOpen size={11} />, color: 'info' },
+    { label: tb('tpl.kpi.last_edited'), value: lastEdited ? (lastEdited.name.length > 14 ? lastEdited.name.slice(0, 12) + '…' : lastEdited.name) : '—', icon: <Calendar size={11} />, color: 'neutral' },
   ];
 
   // Sprint 44 M3.3 — Pull-to-refresh
@@ -149,10 +150,10 @@ export function TemplatesPage() {
       <PullToRefreshIndicator distance={ptr.pullDistance} progress={ptr.pullProgress} isRefreshing={ptr.isRefreshing} />
       <PageHero
         meta="Marketing"
-        title="Templates d'emails"
+        title={tb('tpl.page.title')}
         highlight="Templates"
-        description={`${templates.length} modèles disponibles pour vos campagnes et relances automatisées.`}
-        actions={<Button variant="premium" onClick={openNewTemplate}>+ Nouveau template</Button>}
+        description={`${templates.length} ${tb('tpl.hero.desc')}`}
+        actions={<Button variant="premium" onClick={openNewTemplate}>{tb('tpl.action.new')}</Button>}
       />
 
       <KpiStrip items={kpiItems} />
@@ -171,11 +172,11 @@ export function TemplatesPage() {
 
       {/* Recherche + Filtres */}
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
-        <Input placeholder="Rechercher un template..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="flex-1" />
+        <Input placeholder={tb('tpl.filter.search')} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="flex-1" />
         <div className="flex gap-1.5 flex-wrap">
           <button onClick={() => setCategoryFilter('')}
             className={`px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer border transition-all ${categoryFilter === '' ? 'bg-[var(--primary)] text-white border-[var(--primary)]' : 'border-[var(--border-subtle)] text-[var(--text-secondary)]'}`}>
-            Tous ({templates.length})
+            {tb('tpl.filter.all')} ({templates.length})
           </button>
           {TEMPLATE_CATEGORIES.map(cat => (
             <button key={cat} onClick={() => setCategoryFilter(cat)}
@@ -217,16 +218,16 @@ export function TemplatesPage() {
           <EmptyState
             variant="filtered"
             icon={<Icon as={FileText} size={48} />}
-            title="Aucun résultat"
-            description="Aucun template ne correspond à ta recherche."
-            action={<Button variant="secondary" onClick={() => { setSearchQuery(''); setCategoryFilter(''); }}>Effacer les filtres</Button>}
+            title={tb('tpl.empty.filtered_title')}
+            description={tb('tpl.empty.filtered_desc')}
+            action={<Button variant="secondary" onClick={() => { setSearchQuery(''); setCategoryFilter(''); }}>{tb('tpl.empty.filtered_action')}</Button>}
           />
         ) : (
           <EmptyState
             variant="first-time"
             illustration={<EmptyStateIllustration kind="inbox" size={160} />}
-            title="Aucun template encore"
-            description="Crée ton premier template d'email pour accélérer tes communications."
+            title={tb('tpl.empty.first_title')}
+            description={tb('tpl.empty.first_desc')}
           />
         )
       ) : viewMode === 'grid' ? (
@@ -241,7 +242,7 @@ export function TemplatesPage() {
                       <span className="text-lg">{CATEGORY_ICONS[tpl.category]}</span>
                       <div>
                         <h3 className="font-semibold text-sm">{tpl.name}</h3>
-                        <p className="text-xs text-[var(--text-muted)] mt-0.5">Sujet : {tpl.subject}</p>
+                        <p className="text-xs text-[var(--text-muted)] mt-0.5">{tb('tpl.grid.subject')} : {tpl.subject}</p>
                       </div>
                     </div>
                     <Tag dot color={CATEGORY_COLORS[tpl.category]} size="xs" className="shrink-0">
@@ -267,9 +268,9 @@ export function TemplatesPage() {
 
                   {/* Actions */}
                   <div className="flex gap-2 opacity-70 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => setPreviewId(tpl.id)} className="text-xs text-[var(--info)] hover:underline cursor-pointer">👁️ Aperçu</button>
-                    <button onClick={() => openEditTemplate(tpl)} className="text-xs text-[var(--primary)] hover:underline cursor-pointer">✏️ Modifier</button>
-                    <button onClick={() => duplicateTemplate(tpl)} className="text-xs text-[var(--text-muted)] hover:underline cursor-pointer">📋 Dupliquer</button>
+                    <button onClick={() => setPreviewId(tpl.id)} className="text-xs text-[var(--info)] hover:underline cursor-pointer">👁️ {tb('tpl.grid.preview')}</button>
+                    <button onClick={() => openEditTemplate(tpl)} className="text-xs text-[var(--primary)] hover:underline cursor-pointer">✏️ {tb('tpl.grid.edit')}</button>
+                    <button onClick={() => duplicateTemplate(tpl)} className="text-xs text-[var(--text-muted)] hover:underline cursor-pointer">📋 {tb('tpl.grid.duplicate')}</button>
                     {!tpl.id.startsWith('tpl-') && (
                       <button onClick={() => void handleDelete(tpl.id)} className="text-xs text-[var(--danger)] hover:underline cursor-pointer ml-auto">🗑️</button>
                     )}
@@ -286,11 +287,11 @@ export function TemplatesPage() {
             <table className="table-premium w-full text-left border-collapse">
               <thead>
                 <tr>
-                  <th className="col-frozen" style={{ minWidth: 240 }}>Template</th>
-                  <th style={{ minWidth: 120 }}>Catégorie</th>
-                  <th style={{ minWidth: 200 }}>Sujet</th>
-                  <th style={{ minWidth: 140 }}>Variables</th>
-                  <th className="text-right" style={{ minWidth: 180 }}>Actions</th>
+                  <th className="col-frozen" style={{ minWidth: 240 }}>{tb('tpl.list.template')}</th>
+                  <th style={{ minWidth: 120 }}>{tb('tpl.list.category')}</th>
+                  <th style={{ minWidth: 200 }}>{tb('tpl.grid.subject')}</th>
+                  <th style={{ minWidth: 140 }}>{tb('tpl.list.vars')}</th>
+                  <th className="text-right" style={{ minWidth: 180 }}>{tb('agencies.table.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -329,9 +330,9 @@ export function TemplatesPage() {
                         </td>
                         <td className="text-right">
                           <div className="flex gap-2 justify-end">
-                            <button onClick={() => setPreviewId(tpl.id)} className="text-xs text-[var(--info)] hover:underline cursor-pointer">Aperçu</button>
-                            <button onClick={() => openEditTemplate(tpl)} className="text-xs text-[var(--primary)] hover:underline cursor-pointer">Modifier</button>
-                            <button onClick={() => duplicateTemplate(tpl)} className="text-xs text-[var(--text-muted)] hover:underline cursor-pointer">Dupliquer</button>
+                            <button onClick={() => setPreviewId(tpl.id)} className="text-xs text-[var(--info)] hover:underline cursor-pointer">{tb('tpl.grid.preview')}</button>
+                            <button onClick={() => openEditTemplate(tpl)} className="text-xs text-[var(--primary)] hover:underline cursor-pointer">{tb('tpl.grid.edit')}</button>
+                            <button onClick={() => duplicateTemplate(tpl)} className="text-xs text-[var(--text-muted)] hover:underline cursor-pointer">{tb('tpl.grid.duplicate')}</button>
                           </div>
                         </td>
                       </tr>
@@ -341,19 +342,19 @@ export function TemplatesPage() {
                             <div className="table-expand-inner">
                               <div className="table-expand-detail">
                                 <div className="table-expand-detail-section" style={{ flex: '1 1 320px' }}>
-                                  <span className="table-expand-detail-label">Aperçu du contenu</span>
+                                  <span className="table-expand-detail-label">{tb('tpl.list.preview_label')}</span>
                                   <span className="table-expand-detail-value text-[12px] leading-relaxed text-[var(--text-secondary)]">{bodyPreview}{tpl.body_html.length > 280 ? '…' : ''}</span>
                                 </div>
                                 <div className="table-expand-detail-section">
-                                  <span className="table-expand-detail-label">Utilisations</span>
+                                  <span className="table-expand-detail-label">{tb('tpl.list.usage')}</span>
                                   <span className="table-expand-detail-value t-mono-num">{usage}</span>
                                 </div>
                                 <div className="table-expand-detail-section">
-                                  <span className="table-expand-detail-label">Dernière utilisation</span>
+                                  <span className="table-expand-detail-label">{tb('tpl.list.last_used')}</span>
                                   <span className="table-expand-detail-value text-[12px]">{lastUsedLabel}</span>
                                 </div>
                                 <div className="table-expand-detail-section">
-                                  <span className="table-expand-detail-label">Modifié</span>
+                                  <span className="table-expand-detail-label">{tb('tpl.list.modified')}</span>
                                   <span className="table-expand-detail-value text-[12px]">{new Date(tpl.updated_at).toLocaleDateString('fr-CA', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                                 </div>
                               </div>
@@ -371,15 +372,15 @@ export function TemplatesPage() {
       )}
 
       {/* Modal éditeur avec preview live */}
-      <Modal open={showEditor} onOpenChange={() => { setShowEditor(false); resetForm(); }} title={editingId ? 'Modifier le template' : 'Nouveau template'}>
+      <Modal open={showEditor} onOpenChange={() => { setShowEditor(false); resetForm(); }} title={editingId ? tb('tpl.modal.edit') : tb('tpl.modal.new')}>
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Nom</label>
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">{tb('tpl.modal.name')}</label>
               <Input value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="Bienvenue nouveau lead" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Catégorie</label>
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">{tb('tpl.modal.category')}</label>
               <select value={formCategory} onChange={(e) => setFormCategory(e.target.value as TemplateCategory)}
                 className="w-full px-3 py-2 bg-[var(--bg-subtle)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-sm focus:outline-none focus:border-[var(--primary)]">
                 {TEMPLATE_CATEGORIES.map(cat => <option key={cat} value={cat}>{CATEGORY_ICONS[cat]} {TEMPLATE_CATEGORY_LABELS[cat]}</option>)}
@@ -422,7 +423,7 @@ export function TemplatesPage() {
                     } catch { /* silencieux */ }
                     setIsGenerating(false);
                   }} isLoading={isGenerating} leftIcon={<Icon as={Wand2} size="xs" className="text-[#A855F7]" />} className="h-[24px] text-[10px] px-2 py-0 border border-[var(--border-subtle)] bg-white hover:bg-purple-50">
-                    ✨ Générer avec IA
+                    {tb('tpl.modal.generate')}
                   </Button>
                 </div>
                 <div className="flex bg-[var(--bg-subtle)] rounded p-0.5">
@@ -452,9 +453,9 @@ export function TemplatesPage() {
           )}
 
           <div className="flex gap-2 justify-end">
-            <Button variant="secondary" onClick={() => { setShowEditor(false); resetForm(); }}>Annuler</Button>
+            <Button variant="secondary" onClick={() => { setShowEditor(false); resetForm(); }}>{tb('tpl.modal.cancel')}</Button>
             <Button onClick={() => void handleSave()} disabled={isSaving || !formName.trim() || !formSubject.trim() || !formBody.trim()}>
-              {isSaving ? 'Enregistrement...' : editingId ? 'Mettre à jour' : 'Créer le template'}
+              {isSaving ? tb('tpl.modal.saving') : editingId ? tb('tpl.modal.update') : tb('tpl.modal.create')}
             </Button>
           </div>
         </div>
