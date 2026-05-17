@@ -55,6 +55,7 @@ import { LiveRegionPortal } from '@/lib/announce';
 import { NotificationsPanel } from '@/components/notifications/NotificationsPanel';
 import { useNotificationsWs } from '@/hooks/useNotificationsWs';
 import { useToast } from '@/components/ui';
+import { t } from '@/lib/i18n';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -65,22 +66,22 @@ function formatRelativeTime(dateStr: string): string {
   const now = Date.now();
   const diff = now - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60_000);
-  if (mins < 1) return "à l'instant";
-  if (mins < 60) return `il y a ${mins} min`;
+  if (mins < 1) return t('time.now');
+  if (mins < 60) return t('time.min').replace('{n}', String(mins));
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `il y a ${hours}h`;
+  if (hours < 24) return t('time.hours').replace('{n}', String(hours));
   const days = Math.floor(hours / 24);
-  if (days === 1) return 'hier';
-  return `il y a ${days}j`;
+  if (days === 1) return t('time.yesterday');
+  return t('time.days').replace('{n}', String(days));
 }
 
 // Sprint 24 vague 3A — notification grouping chronologique (Gmail-style)
 type NotifGroupKey = 'today' | 'yesterday' | 'week' | 'older';
 const NOTIF_GROUP_LABELS: Record<NotifGroupKey, string> = {
-  today: "Aujourd'hui",
-  yesterday: 'Hier',
-  week: 'Cette semaine',
-  older: 'Plus ancien',
+  today: t('notif.today'),
+  yesterday: t('notif.yesterday'),
+  week: t('notif.this_week'),
+  older: t('notif.older'),
 };
 
 function getNotifGroup(dateStr: string): NotifGroupKey {
@@ -99,9 +100,9 @@ function getNotifGroup(dateStr: string): NotifGroupKey {
 type NotifFilter = 'all' | 'unread' | 'mentions';
 const NOTIF_FILTER_KEY = 'intralys_notif_filter';
 const NOTIF_FILTER_LABELS: Record<NotifFilter, string> = {
-  all: 'Toutes',
-  unread: 'Non lues',
-  mentions: 'Mentions',
+  all: t('notif.all'),
+  unread: t('notif.unread'),
+  mentions: t('notif.mentions'),
 };
 
 function isMention(n: NotificationItem): boolean {
@@ -376,11 +377,11 @@ export function AppLayout({ children, title }: AppLayoutProps) {
         setUnreadCount((c) => c + 1);
       }
       // Toast inline (info) — l'user voit l'arrivée même si panel fermé
-      toast.info(notif.description || notif.title || 'Nouvelle notification', {
+      toast.info(notif.description || notif.title || t('notif.new'), {
         title: notif.description ? notif.title : undefined,
         action: notif.link
           ? {
-              label: 'Voir',
+              label: t('notif.view'),
               onClick: () => {
                 void navigate({ to: notif.link });
               },
@@ -487,7 +488,7 @@ export function AppLayout({ children, title }: AppLayoutProps) {
       <main className="flex-1 flex flex-col overflow-hidden bg-[var(--bg-canvas)]">
         {/* Skip-to-content link — visible uniquement au focus clavier (a11y WCAG 2.4.1) */}
         <a href="#main-content" className="skip-link">
-          Aller au contenu principal
+          {t('layout.skip_content')}
         </a>
         {/* Header — Stripe-clean : 56px, white bg, border-bottom 1px */}
         {/* Sprint 44 M1.2 : `cap-aware` ajoute safe-area-inset-top sur natif */}
@@ -497,19 +498,19 @@ export function AppLayout({ children, title }: AppLayoutProps) {
             <button
               onClick={() => setSidebarOpen(true)}
               className="inline-flex lg:hidden items-center justify-center h-8 w-8 rounded-md text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
-              aria-label="Ouvrir le menu"
+              aria-label={t('layout.open_menu')}
             >
               <Icon as={Menu} size={18} />
             </button>
             <h2 className="text-[15px] font-semibold text-[var(--text-primary)] truncate">{title}</h2>
             {offline && (
               <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[var(--warning-soft)] text-[var(--warning)] text-[11px] font-medium">
-                <Icon as={WifiOff} size={12} /> Hors ligne
+                <Icon as={WifiOff} size={12} /> {t('layout.offline')}
               </span>
             )}
             {!offline && pendingSync > 0 && (
               <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[var(--info-soft)] text-[var(--info)] text-[11px] font-medium">
-                {pendingSync} en attente
+                {t('layout.pending').replace('{n}', String(pendingSync))}
               </span>
             )}
           </div>
@@ -521,7 +522,7 @@ export function AppLayout({ children, title }: AppLayoutProps) {
             className="hidden sm:flex items-center gap-2 px-3 h-9 rounded-md text-xs text-[var(--text-muted)] w-48 lg:w-80 cursor-pointer transition-colors bg-[var(--bg-canvas)] border border-[var(--border)] hover:border-[var(--border-strong)] hover:text-[var(--text-secondary)]"
           >
             <Icon as={Search} size={14} />
-            <span>Rechercher...</span>
+            <span>{t('layout.search')}</span>
             <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded font-semibold tracking-wider bg-[var(--bg-surface)] border border-[var(--border)] text-[var(--text-secondary)]">
               {'⌘'}K
             </span>
@@ -533,7 +534,7 @@ export function AppLayout({ children, title }: AppLayoutProps) {
             <button
               onClick={() => setCmdOpen(true)}
               className="inline-flex sm:hidden items-center justify-center h-8 w-8 rounded-md text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
-              aria-label="Rechercher"
+              aria-label={t('layout.search_label')}
             >
               <Icon as={Search} size={16} />
             </button>
@@ -545,15 +546,15 @@ export function AppLayout({ children, title }: AppLayoutProps) {
               className="hidden sm:inline-flex items-center gap-1.5 h-8 px-3 text-[13px] font-medium rounded-md text-white bg-[var(--primary)] hover:bg-[var(--primary-hover,#5851DB)] active:scale-[0.98] transition-colors cursor-pointer"
             >
               <Icon as={Plus} size={14} strokeWidth={2.25} />
-              Nouveau
+              {t('layout.new')}
             </button>
 
             {/* Activity feed (Sprint 22) — ghost icon button Stripe */}
-            <Tooltip title="Activité de l'équipe" description="Voir le flux des actions récentes de tous les collaborateurs">
+            <Tooltip title={t('layout.activity_title')} description={t('layout.activity_desc')}>
               <button
                 onClick={() => setActivityOpen(true)}
                 className="hidden sm:inline-flex items-center justify-center h-8 w-8 rounded-md text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
-                aria-label="Voir l'activité d'équipe"
+                aria-label={t('layout.activity_label')}
               >
                 <Icon as={ActivityIcon} size={16} />
               </button>
@@ -561,25 +562,25 @@ export function AppLayout({ children, title }: AppLayoutProps) {
 
             {/* Density toggle (Sprint 21) */}
             <Tooltip
-              title="Densité d'affichage"
-              description={`Actuelle : ${density === 'compact' ? 'Compacte (plus dense)' : density === 'spacious' ? 'Spacieuse (plus aérée)' : 'Confortable (par défaut)'}. Clic pour cycler.`}
+              title={t('layout.density_title')}
+              description={`${t('layout.density_current')} : ${density === 'compact' ? t('layout.density_compact') : density === 'spacious' ? t('layout.density_spacious') : t('layout.density_comfort')}. Clic pour cycler.`}
             >
               <button
                 data-tour-id="header-density"
                 onClick={cycleDensity}
                 className="hidden sm:inline-flex items-center justify-center h-8 w-8 rounded-md text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
-                aria-label="Changer la densité de l'interface"
+                aria-label={t('layout.density_label')}
               >
                 {density === 'compact' ? <Icon as={Rows4} size={16} /> : density === 'spacious' ? <Icon as={Rows2} size={16} /> : <Icon as={Rows3} size={16} />}
               </button>
             </Tooltip>
 
             {/* Theme toggle */}
-            <Tooltip title={theme === 'dark' ? 'Passer en mode clair' : 'Passer en mode sombre'}>
+            <Tooltip title={theme === 'dark' ? t('layout.theme_light') : t('layout.theme_dark')}>
               <button
                 onClick={toggleTheme}
                 className="inline-flex items-center justify-center h-8 w-8 rounded-md text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
-                aria-label="Changer le thème"
+                aria-label={t('layout.theme_label')}
               >
                 {theme === 'dark' ? <Icon as={Sun} size={16} /> : <Icon as={Moon} size={16} />}
               </button>
@@ -595,7 +596,7 @@ export function AppLayout({ children, title }: AppLayoutProps) {
                   setNotifOpen(false);
                 }}
                 className={`relative inline-flex items-center justify-center h-8 w-8 rounded-md transition-colors cursor-pointer ${notifPanelOpen || notifOpen ? 'bg-[var(--primary-soft)] text-[var(--primary)]' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'}`}
-                aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} non lues)` : ''}`}
+                aria-label={`${t('notif.title')}${unreadCount > 0 ? ` (${t('notif.unread_count').replace('{n}', String(unreadCount))})` : ''}`}
               >
                 <Icon as={Bell} size={16} />
                 {unreadCount > 0 && (
@@ -623,16 +624,16 @@ export function AppLayout({ children, title }: AppLayoutProps) {
                   <div className="absolute right-0 top-11 w-96 max-w-[calc(100vw-2rem)] rounded-lg z-50 overflow-hidden bg-[var(--bg-surface)] border border-[var(--border)] shadow-[var(--shadow-md,0_8px_24px_rgba(50,50,93,0.15))] animate-slide-down">
                     {/* Header : titre + mark all */}
                     <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)] bg-[var(--bg-surface)]">
-                      <h3 className="text-sm font-semibold text-[var(--text-primary)]">Notifications</h3>
+                      <h3 className="text-sm font-semibold text-[var(--text-primary)]">{t('notif.title')}</h3>
                       {unreadCount > 0 && (
                         <button onClick={() => void markAllRead()} className="text-[11px] font-medium text-[var(--primary)] hover:underline cursor-pointer">
-                          Tout marquer lu
+                          {t('notif.mark_all')}
                         </button>
                       )}
                     </div>
                     {/* Filter chips (segmented-control sober) */}
                     <div className="px-3 py-2 border-b border-[var(--border)]">
-                      <div className="segmented-control w-full" role="tablist" aria-label="Filtrer les notifications">
+                      <div className="segmented-control w-full" role="tablist" aria-label={t('notif.filter_label')}>
                         {(['all', 'unread', 'mentions'] as NotifFilter[]).map(f => (
                           <button
                             key={f}
@@ -659,12 +660,12 @@ export function AppLayout({ children, title }: AppLayoutProps) {
                             <Icon as={BellOff} size={20} />
                           </div>
                           <div className="text-sm font-semibold text-[var(--text-primary)]">
-                            {notifFilter === 'all' ? 'Tu es à jour' : notifFilter === 'unread' ? 'Aucune notif non lue' : 'Aucune mention'}
+                            {notifFilter === 'all' ? t('notif.up_to_date') : notifFilter === 'unread' ? t('notif.no_unread') : t('notif.no_mention')}
                           </div>
                           <div className="text-[11px] text-[var(--text-muted)] max-w-[240px] leading-relaxed">
                             {notifFilter === 'all'
-                              ? 'Aucune notification pour l\'instant. Reviens plus tard.'
-                              : 'Essaie un autre filtre pour voir d\'autres notifications.'}
+                              ? t('notif.empty_all')
+                              : t('notif.empty_filter')}
                           </div>
                         </div>
                       ) : (
@@ -694,7 +695,7 @@ export function AppLayout({ children, title }: AppLayoutProps) {
                                       {/* Priority dot — Stripe sober */}
                                       <span
                                         className="shrink-0 mt-1.5 w-1.5 h-1.5 rounded-full"
-                                        aria-label={high ? 'Priorité haute' : 'Priorité normale'}
+                                        aria-label={high ? t('notif.priority_high') : t('notif.priority_normal')}
                                         style={{ background: high ? 'var(--warning, #D97706)' : 'var(--primary)' }}
                                       />
                                       <span className="text-sm mt-0.5">{notif.icon}</span>
@@ -710,8 +711,8 @@ export function AppLayout({ children, title }: AppLayoutProps) {
                                             type="button"
                                             onClick={(e) => { e.stopPropagation(); void handleNotifClick(notif); }}
                                             className="inline-flex items-center justify-center h-7 w-7 rounded-md text-[var(--text-secondary)] hover:bg-[var(--bg-surface)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
-                                            aria-label="Ouvrir"
-                                            title="Ouvrir"
+                                            aria-label={t('notif.open')}
+                                            title={t('notif.open')}
                                           >
                                             <Icon as={ExternalLink} size={12} />
                                           </button>
@@ -721,8 +722,8 @@ export function AppLayout({ children, title }: AppLayoutProps) {
                                             type="button"
                                             onClick={(e) => markNotifReadOnly(e, notif)}
                                             className="inline-flex items-center justify-center h-7 w-7 rounded-md text-[var(--text-secondary)] hover:bg-[var(--bg-surface)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
-                                            aria-label="Marquer comme lu"
-                                            title="Marquer lu"
+                                            aria-label={t('notif.mark_read')}
+                                            title={t('notif.mark_read')}
                                           >
                                             <Icon as={Check} size={12} />
                                           </button>
@@ -731,8 +732,8 @@ export function AppLayout({ children, title }: AppLayoutProps) {
                                           type="button"
                                           onClick={(e) => dismissNotif(e, notif)}
                                           className="inline-flex items-center justify-center h-7 w-7 rounded-md text-[var(--text-secondary)] hover:bg-[var(--bg-surface)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
-                                          aria-label="Ignorer"
-                                          title="Ignorer"
+                                          aria-label={t('notif.dismiss')}
+                                          title={t('notif.dismiss')}
                                         >
                                           <Icon as={XIcon} size={12} />
                                         </button>
@@ -757,8 +758,8 @@ export function AppLayout({ children, title }: AppLayoutProps) {
         {showPwBanner && (
           <div className="bg-[var(--warning-soft)] border-b border-[var(--warning)]/30 px-4 py-2 flex items-center justify-between text-xs shrink-0 animate-slide-down">
             <span className="text-[var(--text-primary)]">
-              🔐 Votre mot de passe est temporaire.
-              <Link to="/change-password" className="ml-1 font-semibold text-[var(--primary)] hover:underline">Changez-le maintenant →</Link>
+              🔐 {t('banner.temp_password')}
+              <Link to="/change-password" className="ml-1 font-semibold text-[var(--primary)] hover:underline">{t('banner.change_now')}</Link>
             </span>
             <button
               onClick={() => { setShowPwBanner(false); localStorage.removeItem('must_change_password'); }}
