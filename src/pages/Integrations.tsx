@@ -5,6 +5,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, Button, Input, Select, SlidePanel, PageHero, KpiStrip, type KpiItem, Tag, Icon, useToast } from '@/components/ui';
 import { Plug, CheckCircle2, AlertCircle, Layers, Trash2, Plus } from 'lucide-react';
 import { apiFetch, getClients } from '@/lib/api';
+import { t } from '@/lib/i18n';
 
 interface IntegrationConfig {
   id: string;
@@ -226,11 +227,11 @@ function LeadAdsConfigPanel({
 
         {/* Formulaire nouvelle connexion */}
         <div className="space-y-3">
-          <h4 className="text-sm font-semibold">Nouvelle connexion</h4>
+          <h4 className="text-sm font-semibold">{t('integrations.panel.new_connection')}</h4>
           <div>
-            <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Sous-compte client</label>
-            <Select value={clientId} onChange={(e) => setClientId(e.target.value)} aria-label="Sous-compte client">
-              <option value="">— Choisir un client —</option>
+            <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">{t('integrations.panel.sub_account')}</label>
+            <Select value={clientId} onChange={(e) => setClientId(e.target.value)} aria-label={t('integrations.panel.sub_account')}>
+              <option value="">{t('integrations.panel.choose_client')}</option>
               {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </Select>
           </div>
@@ -266,7 +267,7 @@ function LeadAdsConfigPanel({
           {/* Éditeur de mapping champs */}
           <div>
             <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">
-              Correspondance des champs (optionnel — sinon détection auto)
+              {t('integrations.panel.mapping_label')}
             </label>
             <div className="space-y-2">
               {mappingRows.map((row, i) => (
@@ -298,25 +299,25 @@ function LeadAdsConfigPanel({
                 </div>
               ))}
               <Button variant="ghost" size="sm" onClick={() => setMappingRows(rows => [...rows, { src: '', target: 'message' }])}>
-                <Icon as={Plus} size={12} /> Ajouter une correspondance
+                <Icon as={Plus} size={12} /> {t('integrations.panel.add_mapping')}
               </Button>
             </div>
           </div>
 
           <div className="flex justify-end pt-1">
             <Button size="sm" onClick={() => void save()} disabled={saving}>
-              {saving ? 'Enregistrement…' : 'Enregistrer la connexion'}
+              {saving ? t('integrations.panel.saving') : t('integrations.panel.save')}
             </Button>
           </div>
         </div>
 
         {/* Liste connexions actives */}
         <div className="border-t border-[var(--border-subtle)] pt-4">
-          <h4 className="text-sm font-semibold mb-2">Connexions actives ({conns.length})</h4>
+          <h4 className="text-sm font-semibold mb-2">{t('integrations.panel.active_conns')} ({conns.length})</h4>
           {loading ? (
-            <p className="text-xs text-[var(--text-muted)]">Chargement…</p>
+            <p className="text-xs text-[var(--text-muted)]">{t('integrations.panel.loading')}</p>
           ) : conns.length === 0 ? (
-            <p className="text-xs text-[var(--text-muted)]">Aucune connexion configurée pour l'instant.</p>
+            <p className="text-xs text-[var(--text-muted)]">{t('integrations.panel.no_conn')}</p>
           ) : (
             <div className="space-y-2">
               {conns.map((c) => {
@@ -334,7 +335,7 @@ function LeadAdsConfigPanel({
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <Tag dot size="xs" variant={c.active ? 'success' : 'neutral'}>
-                        {c.active ? 'Active' : 'Inactive'}
+                        {c.active ? t('integrations.panel.status.active') : t('integrations.panel.status.inactive')}
                       </Tag>
                       <button
                         type="button"
@@ -412,7 +413,7 @@ function LeadSourcesCallout() {
     <Card className="p-4 mb-6 border-l-4 border-l-[var(--brand-cyan,var(--primary))]">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div className="min-w-0">
-          <h3 className="text-sm font-semibold mb-1">📥 Sources de leads entrantes</h3>
+          <h3 className="text-sm font-semibold mb-1">{t('integrations.sources.title')}</h3>
           <p className="text-xs text-[var(--text-muted)] max-w-prose">
             Connecteur universel par token : créez une source (Zapier, Make, webhook custom),
             configurez le mapping des champs et la déduplication. Chaque source a son propre
@@ -423,14 +424,14 @@ function LeadSourcesCallout() {
           href="/settings?tab=sources_leads"
           className="px-3 py-1.5 text-xs font-medium rounded-[var(--radius-md)] bg-[var(--primary)] text-white hover:opacity-90 transition-opacity shrink-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
         >
-          Gérer les sources{total > 0 ? ` (${total})` : ''}
+          {t('integrations.sources.manage')}{total > 0 ? ` (${total})` : ''}
         </a>
       </div>
 
       {recent.length > 0 && (
         <div className="mt-3 pt-3 border-t border-[var(--border-subtle)]">
           <p className="text-[10px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2">
-            Derniers leads reçus
+            {t('integrations.sources.recent')}
           </p>
           <ul className="space-y-1.5">
             {recent.map(l => (
@@ -474,38 +475,38 @@ export function IntegrationsPage() {
   };
 
   return (
-    <AppLayout title="Intégrations">
+    <AppLayout title={t('integrations.page.title')}>
       <PageHero
         meta="Insights"
-        title="Intégrations"
-        highlight="Intégrations"
+        title={t('integrations.page.title')}
+        highlight={t('integrations.page.title')}
         description={`${activeCount} active${activeCount > 1 ? 's' : ''} sur ${INTEGRATIONS.length} disponibles — Facebook, Google, Calendly, Stripe et plus.`}
       />
 
       {/* KPIs — KpiStrip premium */}
       <KpiStrip
         items={[
-          { label: 'Total intégrations', value: INTEGRATIONS.length, color: 'brand', icon: <Icon as={Plug} size={11} /> },
-          { label: 'Connectées', value: activeCount, color: 'success', icon: <Icon as={CheckCircle2} size={11} /> },
-          { label: 'À configurer', value: INTEGRATIONS.length - activeCount, color: 'warning', icon: <Icon as={AlertCircle} size={11} /> },
-          { label: 'Catégories', value: Object.keys(CATEGORY_LABELS).length, color: 'info', icon: <Icon as={Layers} size={11} /> },
+          { label: t('integrations.kpi.total'), value: INTEGRATIONS.length, color: 'brand', icon: <Icon as={Plug} size={11} /> },
+          { label: t('integrations.kpi.connected'), value: activeCount, color: 'success', icon: <Icon as={CheckCircle2} size={11} /> },
+          { label: t('integrations.kpi.to_configure'), value: INTEGRATIONS.length - activeCount, color: 'warning', icon: <Icon as={AlertCircle} size={11} /> },
+          { label: t('integrations.kpi.categories'), value: Object.keys(CATEGORY_LABELS).length, color: 'info', icon: <Icon as={Layers} size={11} /> },
         ] as KpiItem[]}
       />
 
       {/* Webhook URL */}
       <Card className="p-4 mb-6 border-l-4 border-l-[var(--primary)]">
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-sm font-semibold">🔗 URL Webhook Universelle</h3>
-          <Tag dot size="sm" variant="success">Toujours active</Tag>
+          <h3 className="text-sm font-semibold">{t('integrations.webhook.title')}</h3>
+          <Tag dot size="sm" variant="success">{t('integrations.webhook.always_active')}</Tag>
         </div>
         <p className="text-xs text-[var(--text-muted)] mb-2">
-          Utilisez cette URL pour recevoir des leads depuis n'importe quelle source externe.
+          {t('integrations.webhook.desc')}
         </p>
         <div className="flex gap-2">
           <code className="flex-1 px-3 py-2 bg-[var(--bg-subtle)] rounded-[var(--radius-md)] text-xs font-mono text-[var(--primary)] overflow-x-auto">
             POST {webhookUrl}
           </code>
-          <Button size="sm" onClick={copyUrl}>{copiedUrl ? '✓ Copié !' : '📋 Copier'}</Button>
+          <Button size="sm" onClick={copyUrl}>{copiedUrl ? t('integrations.webhook.copied') : t('integrations.webhook.copy')}</Button>
         </div>
         <details className="mt-3">
           <summary className="text-xs text-[var(--text-muted)] cursor-pointer hover:text-[var(--primary)]">
@@ -547,7 +548,7 @@ X-Client-Id: <id_sous_compte>`}</pre>
               className={`action-chip ${isActive ? 'action-chip--accent' : ''}`}
               aria-pressed={isActive}
             >
-              {cat === 'all' ? `Toutes (${INTEGRATIONS.length})` : `${CATEGORY_LABELS[cat]} (${INTEGRATIONS.filter(i => i.category === cat).length})`}
+              {cat === 'all' ? `${t('integrations.filter.all')} (${INTEGRATIONS.length})` : `${CATEGORY_LABELS[cat]} (${INTEGRATIONS.filter(i => i.category === cat).length})`}
             </button>
           );
         })}
@@ -598,13 +599,13 @@ X-Client-Id: <id_sous_compte>`}</pre>
                       {isActive ? (
                         <Tag variant="success" size="xs">
                           <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--success)] mr-1 align-middle" />
-                          Connecté
+                          {t('integrations.status.connected')}
                         </Tag>
                       ) : isSoon ? (
-                        <Tag dot size="xs" variant="neutral">Bientôt disponible</Tag>
+                        <Tag dot size="xs" variant="neutral">{t('integrations.status.coming_soon')}</Tag>
                       ) : (
                         <Tag dot size="xs" variant={integration.status === 'pending' ? 'warning' : 'neutral'}>
-                          {integration.status === 'pending' ? 'En attente' : 'Non connecté'}
+                          {integration.status === 'pending' ? t('integrations.status.pending') : t('integrations.status.not_connected')}
                         </Tag>
                       )}
                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--bg-subtle)] text-[var(--text-muted)]">
@@ -626,15 +627,15 @@ X-Client-Id: <id_sous_compte>`}</pre>
                         size="sm"
                         onClick={() => setLeadAdsPanel(integration.id === 'facebook' ? 'meta' : 'google')}
                       >
-                        ⚙️ Configurer
+                        {t('integrations.action.configure')}
                       </Button>
                     ) : isSoon ? (
                       <Button variant="ghost" size="sm" disabled aria-label={`${integration.name} — bientôt disponible`}>
-                        Bientôt
+                        {t('integrations.action.coming_soon')}
                       </Button>
                     ) : (
                       <Button variant="secondary" size="sm" onClick={() => setExpanded(isExpanded ? null : integration.id)}>
-                        {isExpanded ? '▲ Réduire' : '⚙️ Configurer'}
+                        {isExpanded ? t('integrations.action.collapse') : t('integrations.action.configure')}
                       </Button>
                     )}
                   </div>
@@ -655,9 +656,9 @@ X-Client-Id: <id_sous_compte>`}</pre>
                         ))}
                       </div>
                       <div className="flex gap-2 justify-end pt-1">
-                        <Button variant="ghost" size="sm" onClick={() => setExpanded(null)}>Annuler</Button>
+                        <Button variant="ghost" size="sm" onClick={() => setExpanded(null)}>{t('integrations.action.cancel')}</Button>
                         <Button size="sm" onClick={() => setExpanded(null)}>
-                          {isActive ? '💾 Mettre à jour' : '🔗 Connecter'}
+                          {isActive ? t('integrations.action.update') : t('integrations.action.connect')}
                         </Button>
                       </div>
                     </>
@@ -690,7 +691,7 @@ X-Client-Id: <id_sous_compte>`}</pre>
 
       {/* Documentation API enrichie */}
       <Card className="p-5 mt-6">
-        <h3 className="text-sm font-semibold mb-4">📖 Documentation API</h3>
+        <h3 className="text-sm font-semibold mb-4">{t('integrations.api.title')}</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {[
             { method: 'POST', path: '/api/webhook/lead', desc: 'Créer un lead depuis une source externe', auth: 'Secret Header' },
