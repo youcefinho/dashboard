@@ -3,6 +3,7 @@ import { useParams } from '@tanstack/react-router';
 import { Button, Card, useToast, Input, Select, Textarea, Switch, Icon } from '@/components/ui';
 import { Mail, Phone, Hash } from 'lucide-react';
 import React from 'react';
+import { t } from '@/lib/i18n';
 
 type Field = {
   id: string;
@@ -115,19 +116,19 @@ export function PublicFormPage() {
     );
   }
   if (error) return <div className="p-6 text-center text-red-500">{error}</div>;
-  if (!config) return <div className="p-6 text-center">Formulaire introuvable</div>;
+  if (!config) return <div className="p-6 text-center">{t('public_form.not_found')}</div>;
 
   if (submitResult?.success) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-transparent font-inter">
         <Card className="w-full max-w-md text-center p-8 border-none shadow-none bg-transparent">
           <div className="w-16 h-16 bg-green-50 text-green-500 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">✓</div>
-          <h2 className="text-xl font-bold mb-2 text-[var(--text-primary)]">Succès</h2>
+          <h2 className="text-xl font-bold mb-2 text-[var(--text-primary)]">{t('public_form.success')}</h2>
           <p className="text-[var(--text-muted)] whitespace-pre-wrap">{submitResult.message}</p>
           
           {submitResult.quiz_result && (
             <div className="mt-6 p-4 rounded-xl bg-blue-50 text-left">
-              <p className="text-sm font-semibold text-blue-600 mb-1">Votre résultat :</p>
+              <p className="text-sm font-semibold text-blue-600 mb-1">{t('public_form.quiz_result')}</p>
               <p className="text-[var(--text-primary)]">{submitResult.quiz_result.message}</p>
             </div>
           )}
@@ -206,7 +207,7 @@ export function PublicFormPage() {
                         value={formData[f.name] || ''}
                         onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleFieldChange(f.name, e.target.value)}
                       >
-                        <option value="">Sélectionnez...</option>
+                        <option value="">{t('public_form.select_ph')}</option>
                         {f.options?.map(opt => (
                           <option key={opt.value} value={opt.value}>{opt.label}</option>
                         ))}
@@ -264,13 +265,13 @@ export function PublicFormPage() {
                     </div>
                   );
                 default:
-                  return <div key={f.id} className="text-sm text-red-500">Champ non supporté : {f.type}</div>;
+                  return <div key={f.id} className="text-sm text-red-500">{t('public_form.unsupported')} : {f.type}</div>;
               }
             })}
             
             <div className="pt-4">
               <Button type="submit" variant="primary" className="w-full text-base py-3" isLoading={isSubmitting}>
-                {config.form_type === 'quiz' ? 'Voir mon résultat' : 'Soumettre'}
+                {config.form_type === 'quiz' ? t('public_form.submit_quiz') : t('public_form.submit')}
               </Button>
             </div>
             

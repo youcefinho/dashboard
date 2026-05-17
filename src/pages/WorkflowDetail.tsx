@@ -9,6 +9,7 @@ import { getWorkflow, toggleWorkflow } from '@/lib/api';
 import type { Workflow, WorkflowStep, WorkflowEnrollment, TriggerType, StepType, EnrollmentStatus } from '@/lib/types';
 import { TRIGGER_LABELS, TRIGGER_ICONS, STEP_TYPE_LABELS, STEP_TYPE_ICONS, ENROLLMENT_STATUS_LABELS } from '@/lib/types';
 import { Activity, Settings, Users, GitMerge } from 'lucide-react';
+import { t } from '@/lib/i18n';
 
 type WorkflowWithDetails = Workflow & { steps: WorkflowStep[]; enrollments: WorkflowEnrollment[] };
 type TabType = 'sequence' | 'config' | 'enrollments' | 'analytics';
@@ -103,8 +104,8 @@ export function WorkflowDetailPage() {
   if (!workflow) {
     return (
       <AppLayout title="Workflow introuvable">
-        <EmptyState title="Workflow introuvable" description="Ce workflow n'existe pas."
-          action={<Button onClick={() => void navigate({ to: '/workflows' })}>Retour</Button>} />
+        <EmptyState title={t('wf_detail.not_found')} description={t('wf_detail.not_found_desc')}
+          action={<Button onClick={() => void navigate({ to: '/workflows' })}>{t('wf_detail.return')}</Button>} />
       </AppLayout>
     );
   }
@@ -114,16 +115,16 @@ export function WorkflowDetailPage() {
 
   // Analytics KpiStrip items (Sprint 23 wave 37)
   const analyticsKpis: KpiItem[] = useMemo(() => [
-    { label: 'Inscrits totaux', value: enrollments.length, color: 'brand' },
-    { label: 'Actifs', value: enrollments.filter(e => e.status === 'active').length, color: 'success' },
-    { label: 'Terminés', value: enrollments.filter(e => e.status === 'completed').length, color: 'info' },
+    { label: t('wf_detail.kpi.total'), value: enrollments.length, color: 'brand' },
+    { label: t('wf_detail.kpi.active'), value: enrollments.filter(e => e.status === 'active').length, color: 'success' },
+    { label: t('wf_detail.kpi.completed'), value: enrollments.filter(e => e.status === 'completed').length, color: 'info' },
   ], [enrollments]);
 
   return (
     <AppLayout title={workflow.name}>
       <button onClick={() => void navigate({ to: '/workflows' })}
         className="text-sm text-[var(--text-muted)] hover:text-[var(--primary)] mb-4 flex items-center gap-1 cursor-pointer">
-        ← Retour aux automations
+        {t('wf_detail.back')}
       </button>
 
       <div className="print-builder-snapshot grid grid-cols-1 lg:grid-cols-3 gap-4 max-w-5xl">
@@ -147,7 +148,7 @@ export function WorkflowDetailPage() {
             <div className="flex items-center gap-2 px-3 py-2 bg-[var(--bg-subtle)] rounded-[var(--radius-md)]">
               <span className="text-lg">{TRIGGER_ICONS[workflow.trigger_type as TriggerType] || '⚡'}</span>
               <span className="text-sm font-medium">
-                Déclencheur : <strong>{TRIGGER_LABELS[workflow.trigger_type as TriggerType]}</strong>
+                {t('wf_detail.trigger')} : <strong>{TRIGGER_LABELS[workflow.trigger_type as TriggerType]}</strong>
               </span>
               {workflow.trigger_config && workflow.trigger_config !== '{}' && (
                 <span className="text-xs text-[var(--text-muted)] ml-2">
@@ -160,10 +161,10 @@ export function WorkflowDetailPage() {
           {/* ── Tabs primitive (Sprint 23 wave 37) ── */}
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabType)}>
             <TabsList className="overflow-x-auto hide-scrollbar">
-              <TabsTrigger value="sequence"><Icon as={GitMerge} size={15} className="inline mr-2" />Séquence</TabsTrigger>
-              <TabsTrigger value="config"><Icon as={Settings} size={15} className="inline mr-2" />Configuration</TabsTrigger>
-              <TabsTrigger value="enrollments"><Icon as={Users} size={15} className="inline mr-2" />Inscrits</TabsTrigger>
-              <TabsTrigger value="analytics"><Icon as={Activity} size={15} className="inline mr-2" />Analytique</TabsTrigger>
+              <TabsTrigger value="sequence"><Icon as={GitMerge} size={15} className="inline mr-2" />{t('wf_detail.tab.sequence')}</TabsTrigger>
+              <TabsTrigger value="config"><Icon as={Settings} size={15} className="inline mr-2" />{t('wf_detail.tab.config')}</TabsTrigger>
+              <TabsTrigger value="enrollments"><Icon as={Users} size={15} className="inline mr-2" />{t('wf_detail.tab.enrollments')}</TabsTrigger>
+              <TabsTrigger value="analytics"><Icon as={Activity} size={15} className="inline mr-2" />{t('wf_detail.tab.analytics')}</TabsTrigger>
             </TabsList>
 
             <TabsContent value="sequence">
@@ -171,11 +172,11 @@ export function WorkflowDetailPage() {
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-sm font-semibold">Séquence ({steps.length} étapes)</h3>
                   <Link to={`/workflows/${workflow.id}/edit`}>
-                    <Button size="sm" variant="secondary">Éditer le workflow</Button>
+                    <Button size="sm" variant="secondary">{t('wf_detail.edit')}</Button>
                   </Link>
                 </div>
                 {steps.length === 0 ? (
-                  <p className="text-sm text-[var(--text-muted)]">Aucune étape configurée.</p>
+                  <p className="text-sm text-[var(--text-muted)]">{t('wf_detail.no_steps')}</p>
                 ) : (
                   <div className="space-y-0">
                     {steps.sort((a, b) => a.step_order - b.step_order).map((step, i) => {
@@ -224,7 +225,7 @@ export function WorkflowDetailPage() {
 
             <TabsContent value="config">
               <Card className="p-5 space-y-4">
-                <h3 className="text-sm font-semibold">Configuration du déclencheur</h3>
+                <h3 className="text-sm font-semibold">{t('wf_detail.config_title')}</h3>
                 <div className="bg-[var(--bg-subtle)] p-4 rounded-[var(--radius-md)] text-sm">
                   <p><span className="text-[var(--text-muted)]">Type:</span> {TRIGGER_LABELS[workflow.trigger_type as TriggerType]}</p>
                   <p className="mt-2"><span className="text-[var(--text-muted)]">Filtre JSON:</span></p>
@@ -239,12 +240,12 @@ export function WorkflowDetailPage() {
               <Card className="p-5">
                 <h3 className="text-sm font-semibold mb-4">Leads inscrits ({enrollments.length})</h3>
                 {enrollments.length === 0 ? (
-                  <p className="text-sm text-[var(--text-muted)]">Aucun lead inscrit.</p>
+                  <p className="text-sm text-[var(--text-muted)]">{t('wf_detail.no_enrolled')}</p>
                 ) : (
                   <div className="rounded-lg overflow-hidden border border-[var(--border-subtle)]">
                     <div className="grid grid-cols-[1fr_140px_120px] text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--text-muted)] px-3 py-2 bg-[var(--bg-subtle)] border-b border-[var(--border-subtle)]">
-                      <span>Lead</span>
-                      <span>Inscrit le</span>
+                      <span>{t('common.lead')}</span>
+                      <span>{t('common.enrolled_on')}</span>
                       <span>Statut</span>
                     </div>
                     {enrollments.map((enr, idx) => (
@@ -275,7 +276,7 @@ export function WorkflowDetailPage() {
 
             <TabsContent value="analytics">
               <Card className="p-5">
-                <h3 className="text-sm font-semibold mb-4">Performance du workflow</h3>
+                <h3 className="text-sm font-semibold mb-4">{t('wf_detail.perf')}</h3>
                 <KpiStrip items={analyticsKpis} />
               </Card>
             </TabsContent>
@@ -286,30 +287,30 @@ export function WorkflowDetailPage() {
         <div className="space-y-4">
           {/* Stats */}
           <Card className="p-4">
-            <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Statistiques</h3>
+            <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">{t('wf_detail.stats')}</h3>
             <div className="space-y-3">
               <div className="flex justify-between text-sm">
-                <span className="text-[var(--text-muted)]">Statut</span>
+                <span className="text-[var(--text-muted)]">{t('wf_detail.stats.status')}</span>
                 <Tag dot size="sm" variant={workflow.is_active ? 'success' : 'neutral'}>
-                  {workflow.is_active ? 'Actif' : 'Inactif'}
+                  {workflow.is_active ? t('wf_detail.stats.active') : t('wf_detail.stats.inactive')}
                 </Tag>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-[var(--text-muted)]">Étapes</span>
+                <span className="text-[var(--text-muted)]">{t('wf_detail.stats.steps')}</span>
                 <span className="font-medium">{steps.length}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-[var(--text-muted)]">Leads inscrits</span>
+                <span className="text-[var(--text-muted)]">{t('wf_detail.stats.enrolled')}</span>
                 <span className="font-medium">{enrollments.length}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-[var(--text-muted)]">Actifs</span>
+                <span className="text-[var(--text-muted)]">{t('wf_detail.kpi.active')}</span>
                 <span className="font-medium text-[var(--success)]">
                   {enrollments.filter(e => e.status === 'active').length}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-[var(--text-muted)]">Terminés</span>
+                <span className="text-[var(--text-muted)]">{t('wf_detail.kpi.completed')}</span>
                 <span className="font-medium">
                   {enrollments.filter(e => e.status === 'completed').length}
                 </span>
@@ -321,15 +322,15 @@ export function WorkflowDetailPage() {
 
           {/* Infos */}
           <Card className="p-4">
-            <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">Infos</h3>
+            <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">{t('wf_detail.infos')}</h3>
             <div className="space-y-2 text-xs">
               <div className="flex justify-between">
-                <span className="text-[var(--text-muted)]">Créé le</span>
+                <span className="text-[var(--text-muted)]">{t('wf_detail.infos.created')}</span>
                 <span>{new Date(workflow.created_at).toLocaleDateString('fr-CA')}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-[var(--text-muted)]">Scope</span>
-                <span>{workflow.client_id ? 'Client spécifique' : 'Global (tous)'}</span>
+                <span>{workflow.client_id ? t('wf_detail.infos.scope_client') : t('wf_detail.infos.scope_global')}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-[var(--text-muted)]">ID</span>

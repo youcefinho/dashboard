@@ -4,6 +4,7 @@ import { apiFetch } from '@/lib/api';
 import { Button, Card, Tag, Input, useToast, Icon } from '@/components/ui';
 import { PenTool, CheckCircle, Shield, AlertTriangle } from 'lucide-react';
 import SignatureCanvas from 'react-signature-canvas';
+import { t } from '@/lib/i18n';
 
 interface PublicDocument {
   id: string;
@@ -43,12 +44,12 @@ export function SignDocumentPage() {
 
   const handleSign = async () => {
     if (!sigCanvas.current || sigCanvas.current.isEmpty()) {
-      warning('Veuillez signer le document avant de soumettre.');
+      warning(t('sign.warn.no_sig'));
       return;
     }
 
     if (!signerName.trim()) {
-      warning('Veuillez entrer votre nom.');
+      warning(t('sign.warn.no_name'));
       return;
     }
 
@@ -78,7 +79,7 @@ export function SignDocumentPage() {
       <div className="min-h-screen flex items-center justify-center bg-[var(--bg-canvas)] p-4">
         <Card className="max-w-md w-full p-8 text-center border-[var(--danger)]">
           <Icon as={AlertTriangle} size={48} className="mx-auto text-[var(--danger)] mb-4" />
-          <h1 className="text-xl font-bold mb-2 text-[var(--danger)]">Document indisponible</h1>
+          <h1 className="text-xl font-bold mb-2 text-[var(--danger)]">{t('sign.error.title')}</h1>
           <p className="text-[var(--text-secondary)]">{error}</p>
         </Card>
       </div>
@@ -90,12 +91,12 @@ export function SignDocumentPage() {
       <div className="min-h-screen flex items-center justify-center bg-[var(--bg-canvas)] p-4">
         <Card className="max-w-md w-full p-8 text-center border-[var(--success)] shadow-lg">
           <Icon as={CheckCircle} size={64} className="mx-auto text-[var(--success)] mb-4" />
-          <h1 className="text-2xl font-bold mb-2">Document Signé !</h1>
+          <h1 className="text-2xl font-bold mb-2">{t('sign.success.title')}</h1>
           <p className="text-[var(--text-secondary)] mb-6">
-            Merci. Votre signature a été enregistrée avec succès de manière sécurisée. Vous pouvez maintenant fermer cette page.
+            {t('sign.success.desc')}
           </p>
           <div className="p-4 bg-[var(--bg-subtle)] rounded-[var(--radius-md)] flex items-center justify-center gap-2 text-sm text-[var(--text-muted)]">
-            <Icon as={Shield} size="md" /> Signature certifiée & cryptée
+            <Icon as={Shield} size="md" /> {t('sign.success.certified')}
           </div>
         </Card>
       </div>
@@ -105,7 +106,7 @@ export function SignDocumentPage() {
   if (!doc) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--bg-canvas)]">
-        <div className="animate-pulse text-[var(--text-muted)]">Chargement sécurisé du document...</div>
+        <div className="animate-pulse text-[var(--text-muted)]">{t('sign.loading')}</div>
       </div>
     );
   }
@@ -132,7 +133,7 @@ export function SignDocumentPage() {
             <span className="text-gradient-brand">INTRALYS</span>
           </div>
         </div>
-        <Tag variant="brand" size="sm">En attente de signature</Tag>
+        <Tag variant="brand" size="sm">{t('sign.pending')}</Tag>
       </div>
 
       <div className="relative w-full max-w-4xl rounded-2xl overflow-hidden flex flex-col md:flex-row z-10"
@@ -165,14 +166,14 @@ export function SignDocumentPage() {
         <div className="w-full md:w-96 bg-[var(--bg-surface)] p-6 flex flex-col">
           <div className="mb-6">
             <h3 className="font-bold text-lg flex items-center gap-2 mb-1">
-              <Icon as={PenTool} size={18} /> Espace de signature
+              <Icon as={PenTool} size={18} /> {t('sign.panel.title')}
             </h3>
-            <p className="text-xs text-[var(--text-muted)]">En signant, vous acceptez les termes de ce document.</p>
+            <p className="text-xs text-[var(--text-muted)]">{t('sign.panel.desc')}</p>
           </div>
 
           <div className="space-y-4 flex-1">
             <div>
-              <label className="block text-sm font-medium mb-1">Votre nom complet</label>
+              <label className="block text-sm font-medium mb-1">{t('sign.panel.name')}</label>
               <Input
                 type="text"
                 placeholder="Ex: Jean Dupont"
@@ -182,7 +183,7 @@ export function SignDocumentPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Signature</label>
+              <label className="block text-sm font-medium mb-1">{t('sign.panel.signature')}</label>
               <div className="border border-[var(--border-default)] rounded bg-white overflow-hidden touch-none relative">
                 <SignatureCanvas 
                   ref={sigCanvas} 
@@ -193,7 +194,7 @@ export function SignDocumentPage() {
                   onClick={clearSignature}
                   className="absolute bottom-2 right-2 text-xs bg-[var(--bg-subtle)] px-2 py-1 rounded hover:bg-[var(--bg-muted)] text-[var(--text-secondary)]"
                 >
-                  Effacer
+                  {t('sign.panel.clear')}
                 </button>
               </div>
             </div>
@@ -210,7 +211,7 @@ export function SignDocumentPage() {
               onClick={() => void handleSign()}
               disabled={isSigning}
             >
-              {isSigning ? 'Signature en cours...' : 'Signer le document'}
+              {isSigning ? t('sign.panel.submitting') : t('sign.panel.submit')}
             </Button>
           </div>
         </div>
