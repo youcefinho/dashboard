@@ -6,6 +6,7 @@ import { Card, Button, Input, EmptyState, Skeleton, useConfirm, PageHero, KpiStr
 import { Modal } from '@/components/ui/Modal';
 import { getTriggerLinks, createTriggerLink, deleteTriggerLink } from '@/lib/api';
 import { Plus, Trash2, Copy, ExternalLink, MousePointerClick, Link as LinkIcon, TrendingUp, Award, Check } from 'lucide-react';
+import { t } from '@/lib/i18n';
 
 interface TriggerLink {
   id: string; name: string; target_url: string;
@@ -44,9 +45,9 @@ export function TriggerLinksPage() {
 
   const handleDelete = async (id: string) => {
     const ok = await confirm({
-      title: 'Supprimer ce trigger link ?',
-      description: 'Les clics déjà comptabilisés restent dans les stats. Le lien lui-même ne fonctionnera plus.',
-      confirmLabel: 'Supprimer',
+      title: t('trigger.confirm.title'),
+      description: t('trigger.confirm.desc'),
+      confirmLabel: t('common.delete'),
       danger: true,
     });
     if (!ok) return;
@@ -72,10 +73,10 @@ export function TriggerLinksPage() {
   const conversions = links.filter(l => (l.total_clicks || l.click_count || 0) > 0).length;
 
   const kpiItems: KpiItem[] = [
-    { label: 'Total links', value: links.length, icon: <LinkIcon size={11} />, color: 'brand' },
-    { label: 'Clics totaux', value: totalClicks, icon: <MousePointerClick size={11} />, color: 'success' },
-    { label: 'Avec activité', value: conversions, icon: <TrendingUp size={11} />, color: 'info' },
-    { label: 'Top performer', value: bestPerformer ? (bestPerformer.name.length > 14 ? bestPerformer.name.slice(0, 12) + '…' : bestPerformer.name) : '—', icon: <Award size={11} />, color: 'accent' },
+    { label: t('trigger.kpi.total'), value: links.length, icon: <LinkIcon size={11} />, color: 'brand' },
+    { label: t('trigger.kpi.clicks'), value: totalClicks, icon: <MousePointerClick size={11} />, color: 'success' },
+    { label: t('trigger.kpi.active'), value: conversions, icon: <TrendingUp size={11} />, color: 'info' },
+    { label: t('trigger.kpi.top'), value: bestPerformer ? (bestPerformer.name.length > 14 ? bestPerformer.name.slice(0, 12) + '…' : bestPerformer.name) : '—', icon: <Award size={11} />, color: 'accent' },
   ];
 
   return (
@@ -84,8 +85,8 @@ export function TriggerLinksPage() {
         meta="Marketing"
         title="Trigger Links"
         highlight="Trigger Links"
-        description="Liens trackés qui déclenchent des workflows automatiquement au clic."
-        actions={<Button variant="premium" onClick={() => setShowCreate(true)} leftIcon={<Icon as={Plus} size="sm" />}>Nouveau link</Button>}
+        description={t('trigger.hero.desc')}
+        actions={<Button variant="premium" onClick={() => setShowCreate(true)} leftIcon={<Icon as={Plus} size="sm" />}>{t('trigger.action.new')}</Button>}
       />
 
       <KpiStrip items={kpiItems} />
@@ -120,9 +121,9 @@ export function TriggerLinksPage() {
         <EmptyState
           variant="first-time"
           icon={<Icon as={LinkIcon} size={48} />}
-          title="Aucun trigger link encore"
-          description="Crée ton premier lien tracké pour mesurer l'engagement de tes campagnes."
-          action={<Button variant="primary" onClick={() => setShowCreate(true)}>Créer mon premier lien</Button>}
+          title={t('trigger.empty.title')}
+          description={t('trigger.empty.desc')}
+          action={<Button variant="primary" onClick={() => setShowCreate(true)}>{t('trigger.empty.action')}</Button>}
         />
       ) : (
         <Card>
@@ -130,10 +131,10 @@ export function TriggerLinksPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border-default)' }}>
-                <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)' }}>Nom</th>
-                <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)' }}>URL cible</th>
-                <th style={{ padding: '10px 16px', textAlign: 'center', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)' }}>Clics</th>
-                <th style={{ padding: '10px 16px', textAlign: 'right', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)' }}>Actions</th>
+                <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)' }}>{t('trigger.table.name')}</th>
+                <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)' }}>{t('trigger.table.url')}</th>
+                <th style={{ padding: '10px 16px', textAlign: 'center', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)' }}>{t('trigger.table.clicks')}</th>
+                <th style={{ padding: '10px 16px', textAlign: 'right', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)' }}>{t('trigger.table.actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -172,7 +173,7 @@ export function TriggerLinksPage() {
                         <span className="action-chip-icon">
                           {isCopied ? <Icon as={Check} size="xs" /> : <Icon as={Copy} size="xs" />}
                         </span>
-                        <span>{isCopied ? 'Copié !' : 'Copier'}</span>
+                        <span>{isCopied ? t('trigger.action.copied') : t('trigger.action.copy')}</span>
                       </button>
                       <Button variant="ghost" size="sm" onClick={() => handleDelete(link.id)} title="Supprimer"><Icon as={Trash2} size="sm" style={{ color: 'var(--danger)' }} /></Button>
                     </div>
@@ -185,13 +186,13 @@ export function TriggerLinksPage() {
         </Card>
       )}
 
-      <Modal open={showCreate} onOpenChange={() => setShowCreate(false)} title="Nouveau Trigger Link">
+      <Modal open={showCreate} onOpenChange={() => setShowCreate(false)} title={t('trigger.modal.title')}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div><label className="prop-label">Nom</label><Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="ex: Lien guide gratuit" autoFocus /></div>
           <div><label className="prop-label">URL cible</label><Input value={newUrl} onChange={e => setNewUrl(e.target.value)} placeholder="https://..." /></div>
           <div><label className="prop-label">Tag au clic (optionnel)</label><Input value={newTag} onChange={e => setNewTag(e.target.value)} placeholder="ex: intéressé_guide" /></div>
           <Button variant="primary" onClick={handleCreate} disabled={isCreating || !newName || !newUrl} style={{ marginTop: 8 }}>
-            {isCreating ? 'Création...' : 'Créer le link'}
+            {isCreating ? t('trigger.modal.creating') : t('trigger.modal.submit')}
           </Button>
         </div>
       </Modal>

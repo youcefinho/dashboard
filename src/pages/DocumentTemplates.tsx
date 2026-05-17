@@ -5,6 +5,7 @@ import type { KpiItem } from '@/components/ui';
 import { Input } from '@/components/ui/Input';
 import { getDocumentTemplates, createDocumentTemplate, deleteDocumentTemplate, type DocumentTemplate } from '@/lib/api';
 import { FileText, Plus, Trash2, Edit, CheckCircle2 } from 'lucide-react';
+import { t } from '@/lib/i18n';
 
 export function DocumentTemplatesPage() {
   const confirm = useConfirm();
@@ -49,9 +50,9 @@ export function DocumentTemplatesPage() {
 
   const handleDelete = async (id: string) => {
     const ok = await confirm({
-      title: 'Supprimer ce template ?',
-      description: 'Le template sera retiré définitivement. Les documents déjà envoyés ne sont pas affectés.',
-      confirmLabel: 'Supprimer',
+      title: t('doc_tpl.confirm.title'),
+      description: t('doc_tpl.confirm.desc'),
+      confirmLabel: t('common.delete'),
       danger: true,
     });
     if (!ok) return;
@@ -73,21 +74,21 @@ export function DocumentTemplatesPage() {
       return created >= monthStart;
     }).length;
     return [
-      { label: 'Total modèles', value: total, color: 'brand', icon: <Icon as={FileText} size={12} /> },
-      { label: 'Créés ce mois', value: recentCount, color: 'success', icon: <Icon as={CheckCircle2} size={12} /> },
+      { label: t('doc_tpl.kpi.total'), value: total, color: 'brand', icon: <Icon as={FileText} size={12} /> },
+      { label: t('doc_tpl.kpi.month'), value: recentCount, color: 'success', icon: <Icon as={CheckCircle2} size={12} /> },
     ];
   }, [templates]);
 
   return (
-    <AppLayout title="Modèles de Documents">
+    <AppLayout title={t('doc_tpl.page.title')}>
       <PageHero
         meta="Insights"
-        title="Modèles de Documents"
-        highlight="Modèles"
-        description="Créez des modèles de contrats et de mandats réutilisables."
+        title={t('doc_tpl.page.title')}
+        highlight={t('doc_tpl.page.title')}
+        description={t('doc_tpl.hero.desc')}
         actions={!isCreating && (
           <Button variant="premium" onClick={() => setIsCreating(true)} leftIcon={<Icon as={Plus} size="sm" />}>
-            Nouveau modèle
+            {t('doc_tpl.action.new')}
           </Button>
         )}
       />
@@ -96,10 +97,10 @@ export function DocumentTemplatesPage() {
 
       {isCreating && (
         <Card className="p-6 mb-6 animate-fade-in border border-[var(--primary)]">
-          <h3 className="text-lg font-bold mb-4">Créer un nouveau modèle</h3>
+          <h3 className="text-lg font-bold mb-4">{t('doc_tpl.form.title')}</h3>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Nom du modèle</label>
+              <label className="block text-sm font-medium mb-1">{t('doc_tpl.form.name')}</label>
               <Input 
                 placeholder="Ex: Contrat de prestation de services" 
                 value={newTitle} 
@@ -107,7 +108,7 @@ export function DocumentTemplatesPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Contenu (HTML)</label>
+              <label className="block text-sm font-medium mb-1">{t('doc_tpl.form.content')}</label>
               <Textarea
                 rows={12}
                 className="font-mono text-xs"
@@ -120,8 +121,8 @@ export function DocumentTemplatesPage() {
               </p>
             </div>
             <div className="flex gap-2 justify-end">
-              <Button variant="secondary" onClick={() => setIsCreating(false)}>Annuler</Button>
-              <Button onClick={() => void handleCreate()}>Enregistrer le modèle</Button>
+              <Button variant="secondary" onClick={() => setIsCreating(false)}>{t('doc_tpl.form.cancel')}</Button>
+              <Button onClick={() => void handleCreate()}>{t('doc_tpl.form.save')}</Button>
             </div>
           </div>
         </Card>
@@ -158,9 +159,9 @@ export function DocumentTemplatesPage() {
         <EmptyState
           variant="first-time"
           icon={<Icon as={FileText} size={48} />}
-          title="Aucun modèle encore"
-          description="Crée ton premier modèle de document pour gagner du temps sur tes envois."
-          action={<Button variant="primary" onClick={() => setIsCreating(true)}>Créer mon premier modèle</Button>}
+          title={t('doc_tpl.empty.title')}
+          description={t('doc_tpl.empty.desc')}
+          action={<Button variant="primary" onClick={() => setIsCreating(true)}>{t('doc_tpl.empty.action')}</Button>}
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

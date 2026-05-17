@@ -7,6 +7,7 @@ import { Card, Button, Input, Select, Tag, Skeleton, EmptyState, KpiStrip, type 
 import { getClientLeads, updateLead } from '@/lib/api';
 import { STATUS_LABELS, STATUS_COLORS, TYPE_LABELS, LEAD_STATUSES, type Lead, type LeadStatus } from '@/lib/types';
 import { Users, Inbox, UserCheck, Trophy } from 'lucide-react';
+import { t } from '@/lib/i18n';
 
 export function ClientLeadsPage() {
   const { clientId } = useParams({ strict: false }) as { clientId: string };
@@ -37,10 +38,10 @@ export function ClientLeadsPage() {
     const customer = leads.filter(l => l.type === 'customer').length;
     const won = leads.filter(l => l.status === 'won').length;
     return [
-      { label: 'Total leads', value: total, color: 'brand', icon: <Icon as={Users} size={11} /> },
-      { label: 'Inbound', value: inbound, color: 'info', icon: <Icon as={Inbox} size={11} /> },
-      { label: 'Clients', value: customer, color: 'accent', icon: <Icon as={UserCheck} size={11} /> },
-      { label: 'Gagnés', value: won, color: 'success', icon: <Icon as={Trophy} size={11} /> },
+      { label: t('client_leads.kpi.total'), value: total, color: 'brand', icon: <Icon as={Users} size={11} /> },
+      { label: t('client_leads.kpi.inbound'), value: inbound, color: 'info', icon: <Icon as={Inbox} size={11} /> },
+      { label: t('client_leads.kpi.clients'), value: customer, color: 'accent', icon: <Icon as={UserCheck} size={11} /> },
+      { label: t('client_leads.kpi.won'), value: won, color: 'success', icon: <Icon as={Trophy} size={11} /> },
     ];
   }, [leads]);
 
@@ -52,7 +53,7 @@ export function ClientLeadsPage() {
   };
 
   return (
-    <AppLayout title="Leads du client">
+    <AppLayout title={t('client_leads.page.title')}>
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-[var(--text-muted)] mb-4">
         <Link to="/clients" className="hover:text-[var(--primary)] transition-colors">Clients</Link>
@@ -68,7 +69,7 @@ export function ClientLeadsPage() {
         <div className="flex flex-wrap gap-3">
           <div className="flex-1 min-w-48">
             <Input
-              placeholder="Rechercher par nom, email, téléphone..."
+              placeholder={t('client_leads.filter.search')}
               id="search-leads"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -81,7 +82,7 @@ export function ClientLeadsPage() {
           </div>
           <div className="min-w-[180px]">
             <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-              <option value="">Tous les statuts</option>
+              <option value="">{t('client_leads.filter.all_status')}</option>
               {LEAD_STATUSES.map(s => (
                 <option key={s} value={s}>{STATUS_LABELS[s]}</option>
               ))}
@@ -89,9 +90,9 @@ export function ClientLeadsPage() {
           </div>
           <div className="min-w-[160px]">
             <Select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
-              <option value="">Tous les types</option>
-              <option value="inbound">Entrant</option>
-              <option value="customer">Client</option>
+              <option value="">{t('client_leads.filter.all_types')}</option>
+              <option value="inbound">{t('client_leads.filter.inbound')}</option>
+              <option value="customer">{t('client_leads.filter.customer')}</option>
             </Select>
           </div>
         </div>
@@ -126,9 +127,9 @@ export function ClientLeadsPage() {
       ) : leads.length === 0 ? (
         <EmptyState
           variant="filtered"
-          title="Aucun résultat"
-          description="Aucun lead ne correspond à tes filtres."
-          action={<Button variant="secondary" onClick={() => { setSearch(''); setStatusFilter(''); setTypeFilter(''); }}>Effacer les filtres</Button>}
+          title={t('client_leads.empty.title')}
+          description={t('client_leads.empty.desc')}
+          action={<Button variant="secondary" onClick={() => { setSearch(''); setStatusFilter(''); setTypeFilter(''); }}>{t('client_leads.empty.action')}</Button>}
         />
       ) : (
         <Card className="overflow-hidden p-0">
@@ -136,11 +137,11 @@ export function ClientLeadsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[var(--border-subtle)]">
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Nom</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Contact</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Type</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Statut</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Date</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t('client_leads.table.name')}</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t('client_leads.table.contact')}</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t('client_leads.table.type')}</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t('client_leads.table.status')}</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t('client_leads.table.date')}</th>
                 </tr>
               </thead>
               <tbody>
