@@ -5,6 +5,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { getDashboardStats, getLeads, getClients, exportLeadsCsv } from '@/lib/api';
+import { t } from '@/lib/i18n';
 import { usePanelStack, AnimatedNumber } from '@/components/ui';
 import {
   STATUS_LABELS, STATUS_COLORS, ACTIVITY_LABELS,
@@ -133,19 +134,19 @@ export function DashboardPage() {
     const diffMin = Math.floor(diffMs / 60000);
     const diffH = Math.floor(diffMin / 60);
     const diffD = Math.floor(diffH / 24);
-    if (diffMin < 60) return `il y a ${diffMin} min`;
-    if (diffH < 24) return `il y a ${diffH}h`;
-    if (diffD === 1) return 'il y a 1j';
-    return `il y a ${diffD}j`;
+    if (diffMin < 60) return t('dashboard.time.min_ago', { n: diffMin });
+    if (diffH < 24) return t('dashboard.time.hours_ago', { n: diffH });
+    if (diffD === 1) return t('dashboard.time.1d_ago');
+    return t('dashboard.time.days_ago', { n: diffD });
   };
 
   if (error) {
     return (
-      <AppLayout title="Dashboard">
+      <AppLayout title={t('dashboard.page.title')}>
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <p className="text-[var(--danger)] mb-2">{error}</p>
-            <button onClick={() => window.location.reload()} className="text-sm text-[var(--brand-primary)] hover:underline cursor-pointer">Réessayer</button>
+        <button onClick={() => window.location.reload()} className="text-sm text-[var(--brand-primary)] hover:underline cursor-pointer">{t('dashboard.error.retry')}</button>
           </div>
         </div>
       </AppLayout>
@@ -167,13 +168,13 @@ export function DashboardPage() {
   const sourceTotal = sourceData.reduce((s, d) => s + d.count, 0);
 
   const hour = new Date().getHours();
-  const greeting = hour < 12 ? 'Bonjour' : hour < 18 ? 'Bon après-midi' : 'Bonsoir';
+  const greeting = hour < 12 ? t('dashboard.greeting.morning') : hour < 18 ? t('dashboard.greeting.afternoon') : t('dashboard.greeting.evening');
 
   // Sparkline pour stat cards
   const sparkPts = (stats?.leads_by_day || []).map(d => d.count);
 
   return (
-    <AppLayout title="Dashboard">
+    <AppLayout title={t('dashboard.page.title')}>
       <>
 
         {/* ═══ Hero greeting Sprint 23 — orbs dramatiques + gradient title ═══ */}
@@ -188,12 +189,12 @@ export function DashboardPage() {
           <div className="hero-stat-orb absolute rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(217,110,39,0.28) 0%, rgba(217,110,39,0.08) 50%, transparent 80%)', width: 220, height: 220, bottom: -80, left: '25%', filter: 'blur(48px)', animationDelay: '4s' }} />
           <div className="relative z-10 flex items-center justify-between">
             <div>
-              <p className="heading-premium mb-1.5">{periodDays} derniers jours</p>
+              <p className="heading-premium mb-1.5">{t('dashboard.period.days', { days: periodDays })}</p>
               <h2 className="text-3xl font-bold tracking-tight leading-tight">
                 {greeting} <span className="text-gradient-brand">{user?.name || 'Rochdi'}</span> 👋
               </h2>
               <p className="text-sm mt-2" style={{ color: 'var(--text-secondary)' }}>
-                Voici la vue d'ensemble de votre activité.
+                {t('dashboard.subtitle')}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -203,14 +204,14 @@ export function DashboardPage() {
                   <button key={p} onClick={() => setPeriod(p)}
                     className="px-3 h-7 text-xs font-medium rounded-md cursor-pointer transition-all"
                     style={period === p ? { background: 'var(--bg-surface)', color: 'var(--text-primary)', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', fontWeight: 600 } : { color: 'var(--text-secondary)' }}>
-                    {p === '7d' ? '7j' : p === '30d' ? '30j' : '90j'}
+                    {p === '7d' ? t('dashboard.period.7d') : p === '30d' ? t('dashboard.period.30d') : t('dashboard.period.90d')}
                   </button>
                 ))}
               </div>
               <button onClick={() => void exportLeadsCsv()}
                 className="h-9 px-3 rounded-lg text-sm font-medium flex items-center gap-2 transition hover:bg-[var(--bg-subtle)] cursor-pointer"
                 style={{ border: '1px solid var(--border-default)', color: 'var(--text-secondary)' }}>
-                <Download size={16} /> Exporter
+                <Download size={16} /> {t('dashboard.action.export')}
               </button>
               <button onClick={() => setShowConfig(!showConfig)}
                 className={`h-9 w-9 rounded-lg flex items-center justify-center transition cursor-pointer ${showConfig ? 'bg-[var(--brand-primary)] text-white' : 'hover:bg-[var(--bg-subtle)]'}`}
@@ -226,8 +227,8 @@ export function DashboardPage() {
         {showConfig && (
           <div className="mb-4 p-4 rounded-xl animate-fade-in" style={{ background: 'var(--bg-surface)', border: '1px solid var(--brand-primary)', borderStyle: 'dashed' }}>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold flex items-center gap-2"><Settings2 size={14} className="text-[var(--brand-primary)]" /> Personnaliser le dashboard</h3>
-              <button onClick={() => updateWidgets(() => DEFAULT_WIDGETS)} className="text-[10px] text-[var(--text-muted)] hover:text-[var(--brand-primary)] cursor-pointer">Réinitialiser</button>
+              <h3 className="text-sm font-semibold flex items-center gap-2"><Settings2 size={14} className="text-[var(--brand-primary)]" /> {t('dashboard.config.title')}</h3>
+              <button onClick={() => updateWidgets(() => DEFAULT_WIDGETS)} className="text-[10px] text-[var(--text-muted)] hover:text-[var(--brand-primary)] cursor-pointer">{t('dashboard.config.reset')}</button>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {widgets.map((w, idx) => (
@@ -281,16 +282,16 @@ export function DashboardPage() {
             ))
           ) : (
             <>
-              <StatCardMockup label="Total contacts" value={stats?.total_leads ?? 0}
+              <StatCardMockup label={t('dashboard.stat.contacts')} value={stats?.total_leads ?? 0}
                 icon={<Users size={20} />} iconBg="var(--brand-tint)" iconColor="var(--brand-primary)"
                 sparkColor="#009DDB" sparkData={sparkPts} />
-              <StatCardMockup label="Pipeline value" value={`${((stats?.total_deal_value ?? 0) / 1000).toFixed(1)}K $`}
+              <StatCardMockup label={t('dashboard.stat.pipeline_value')} value={`${((stats?.total_deal_value ?? 0) / 1000).toFixed(1)}K $`}
                 icon={<DollarSign size={20} />} iconBg="var(--success-soft)" iconColor="var(--success)"
                 sparkColor="#37CA37" sparkData={sparkPts.slice(-7)} />
-              <StatCardMockup label="Taux conversion" value={`${stats?.conversion_rate ?? 0}%`}
+              <StatCardMockup label={t('dashboard.stat.conversion')} value={`${stats?.conversion_rate ?? 0}%`}
                 icon={<Target size={20} />} iconBg="var(--accent-orange-soft)" iconColor="var(--accent-orange)"
                 sparkColor="#D96E27" />
-              <StatCardMockup label="Revenu (Mois)" value={`${((stats?.revenue_value ?? 0) / 1000).toFixed(1)}K $`}
+              <StatCardMockup label={t('dashboard.stat.revenue')} value={`${((stats?.revenue_value ?? 0) / 1000).toFixed(1)}K $`}
                 icon={<Zap size={20} />} iconBg="var(--info-soft)" iconColor="var(--info)"
                 sparkColor="#188BF6" />
             </>
@@ -324,7 +325,7 @@ export function DashboardPage() {
               style={{ background: 'var(--bg-canvas)', border: '1px dashed var(--border-default)', color: 'var(--text-muted)' }}
               onClick={() => void navigate({ to: '/clients' })}>
               <div className="flex items-center gap-2 text-xs font-medium">
-                <span className="text-lg">+</span> Ajouter
+                <span className="text-lg">+</span> {t('dashboard.client.add')}
               </div>
             </div>
           </div>
@@ -345,13 +346,13 @@ export function DashboardPage() {
               style={{ background: 'radial-gradient(circle, rgba(0,157,219,0.18) 0%, transparent 70%)', filter: 'blur(40px)' }} />
             <div className="flex items-center justify-between mb-5">
               <div>
-                <h3 className="text-base font-semibold">Acquisition de leads</h3>
-                <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>{periodDays} derniers jours par source</p>
+                <h3 className="text-base font-semibold">{t('dashboard.chart.title')}</h3>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>{t('dashboard.chart.subtitle', { days: periodDays })}</p>
               </div>
               <div className="flex items-center gap-3 text-xs">
-                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ background: 'var(--brand-primary)' }} /><span style={{ color: 'var(--text-secondary)' }}>Site web</span></span>
-                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ background: 'var(--accent-orange)' }} /><span style={{ color: 'var(--text-secondary)' }}>Facebook</span></span>
-                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ background: 'var(--success)' }} /><span style={{ color: 'var(--text-secondary)' }}>Référence</span></span>
+                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ background: 'var(--brand-primary)' }} /><span style={{ color: 'var(--text-secondary)' }}>{t('dashboard.chart.website')}</span></span>
+                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ background: 'var(--accent-orange)' }} /><span style={{ color: 'var(--text-secondary)' }}>{t('dashboard.chart.facebook')}</span></span>
+                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ background: 'var(--success)' }} /><span style={{ color: 'var(--text-secondary)' }}>{t('dashboard.chart.referral')}</span></span>
               </div>
             </div>
             {isLoading ? <Skeleton className="h-48 w-full" /> : (
@@ -385,7 +386,7 @@ export function DashboardPage() {
             <div aria-hidden className="absolute -bottom-12 -right-12 w-40 h-40 rounded-full pointer-events-none opacity-50"
               style={{ background: 'radial-gradient(circle, rgba(217,110,39,0.16) 0%, transparent 70%)', filter: 'blur(40px)' }} />
             <div className="relative flex items-center justify-between mb-5">
-              <h3 className="text-base font-semibold tracking-tight">Activité récente</h3>
+              <h3 className="text-base font-semibold tracking-tight">{t('dashboard.activity.title')}</h3>
             </div>
             <div className="space-y-4">
               {isLoading ? (
@@ -414,13 +415,13 @@ export function DashboardPage() {
                   </div>
                 )})
               ) : (
-                <p className="text-xs text-center py-4" style={{ color: 'var(--text-muted)' }}>Aucune activité</p>
+                <p className="text-xs text-center py-4" style={{ color: 'var(--text-muted)' }}>{t('dashboard.activity.empty')}</p>
               )}
             </div>
             <button onClick={() => void navigate({ to: '/leads' })}
               className="w-full mt-5 text-xs font-semibold py-2 rounded-lg transition cursor-pointer hover:bg-[var(--brand-tint)]"
               style={{ color: 'var(--brand-primary)' }}>
-              Voir toute l'activité →
+              {t('dashboard.activity.view_all')}
             </button>
           </div>
         </div>
@@ -439,7 +440,7 @@ export function DashboardPage() {
             }}>
             <div aria-hidden className="absolute -top-12 -left-12 w-40 h-40 rounded-full pointer-events-none opacity-50"
               style={{ background: 'radial-gradient(circle, rgba(55,202,55,0.15) 0%, transparent 70%)', filter: 'blur(40px)' }} />
-            <h3 className="relative text-base font-semibold mb-4 tracking-tight">Répartition pipeline</h3>
+            <h3 className="relative text-base font-semibold mb-4 tracking-tight">{t('dashboard.pipeline.title')}</h3>
             {isLoading ? <Skeleton className="h-48 w-full" /> : pipelineData.length > 0 ? (
               <div className="flex items-center gap-8">
                 <ResponsiveContainer width={180} height={180}>
@@ -469,7 +470,7 @@ export function DashboardPage() {
                   ))}
                 </div>
               </div>
-            ) : <p className="text-sm text-[var(--text-muted)]">Aucune donnée pipeline</p>}
+            ) : <p className="text-sm text-[var(--text-muted)]">{t('dashboard.pipeline.empty')}</p>}
           </div>
 
           {/* Top sources */}
@@ -482,11 +483,11 @@ export function DashboardPage() {
             }}>
             <div aria-hidden className="absolute -bottom-10 -right-10 w-36 h-36 rounded-full pointer-events-none opacity-50"
               style={{ background: 'radial-gradient(circle, rgba(0,157,219,0.16) 0%, transparent 70%)', filter: 'blur(40px)' }} />
-            <h3 className="relative text-base font-semibold mb-4 tracking-tight">🔗 Top sources</h3>
+            <h3 className="relative text-base font-semibold mb-4 tracking-tight">{t('dashboard.sources.title')}</h3>
             <div className="space-y-3">
               {sourceData.map(({ source, count, value }) => {
                 const pct = sourceTotal > 0 ? Math.round((count / sourceTotal) * 100) : 0;
-                const labels: Record<string, string> = { website: '🌐 Site web', facebook: '📘 Facebook', google: '🔍 Google', referral: '🤝 Référence', direct: '🔗 Direct', instagram: '📷 Instagram' };
+                const labels: Record<string, string> = { website: t('dashboard.sources.website'), facebook: t('dashboard.sources.facebook'), google: t('dashboard.sources.google'), referral: t('dashboard.sources.referral'), direct: t('dashboard.sources.direct'), instagram: t('dashboard.sources.instagram') };
                 return (
                   <div key={source}>
                     <div className="flex items-center justify-between mb-1">
@@ -502,7 +503,7 @@ export function DashboardPage() {
                   </div>
                 );
               })}
-              {sourceData.length === 0 && <p className="text-xs text-[var(--text-muted)]">Aucune donnée</p>}
+              {sourceData.length === 0 && <p className="text-xs text-[var(--text-muted)]">{t('dashboard.sources.empty')}</p>}
             </div>
           </div>
           )}
@@ -515,14 +516,14 @@ export function DashboardPage() {
         <div className="rounded-xl card-lift" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
           <div className="px-4 sm:px-6 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
             <div>
-              <h3 className="text-base font-semibold">Derniers contacts</h3>
-              <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>{recentLeads.length} contacts actifs cette semaine</p>
+              <h3 className="text-base font-semibold">{t('dashboard.contacts.title')}</h3>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>{t('dashboard.contacts.subtitle', { count: recentLeads.length })}</p>
             </div>
             <div className="flex items-center gap-2">
               <button onClick={() => void navigate({ to: '/leads' })}
                 className="h-8 px-3 rounded-lg text-xs font-semibold flex items-center gap-1 transition cursor-pointer hover:bg-[var(--brand-tint)]"
                 style={{ color: 'var(--brand-primary)' }}>
-                Voir tout <ArrowRight size={14} />
+                {t('dashboard.contacts.view_all')} <ArrowRight size={14} />
               </button>
             </div>
           </div>
@@ -554,7 +555,7 @@ export function DashboardPage() {
                       </span>
                     </div>
                     <div className="flex items-center gap-2 text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                      <span className="truncate">{lead.source === 'website' ? 'Site web' : lead.source === 'facebook' ? 'Facebook' : lead.source || 'Direct'}</span>
+                      <span className="truncate">{lead.source === 'website' ? t('dashboard.source.website') : lead.source === 'facebook' ? t('dashboard.source.facebook') : lead.source || t('dashboard.source.direct')}</span>
                       <span>·</span>
                       <span style={{ fontVariantNumeric: 'tabular-nums' }}>{lead.deal_value ? `${(lead.deal_value / 1000).toFixed(0)}k$` : '—'}</span>
                       <span>·</span>
@@ -570,12 +571,12 @@ export function DashboardPage() {
           <table className="hidden md:table w-full">
             <thead>
               <tr style={{ background: 'var(--bg-subtle)' }}>
-                <th className="text-left px-6 py-2.5 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Contact</th>
-                <th className="text-left px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Statut</th>
-                <th className="text-left px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Source</th>
-                <th className="text-right px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Valeur</th>
-                <th className="text-left px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Score</th>
-                <th className="text-right px-6 py-2.5 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Activité</th>
+                <th className="text-left px-6 py-2.5 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>{t('dashboard.contacts.col_contact')}</th>
+                <th className="text-left px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>{t('dashboard.contacts.col_status')}</th>
+                <th className="text-left px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>{t('dashboard.contacts.col_source')}</th>
+                <th className="text-right px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>{t('dashboard.contacts.col_value')}</th>
+                <th className="text-left px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>{t('dashboard.contacts.col_score')}</th>
+                <th className="text-right px-6 py-2.5 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>{t('dashboard.contacts.col_activity')}</th>
               </tr>
             </thead>
             <tbody>
@@ -611,7 +612,7 @@ export function DashboardPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-secondary)' }}>
-                      {lead.source === 'website' ? 'Site web' : lead.source === 'facebook' ? 'Facebook Ads' : lead.source || 'Direct'}
+                      {lead.source === 'website' ? t('dashboard.source.website') : lead.source === 'facebook' ? t('dashboard.source.facebook_ads') : lead.source || t('dashboard.source.direct')}
                     </td>
                     <td className="px-4 py-3 text-right text-sm font-semibold" style={{ fontVariantNumeric: 'tabular-nums' }}>
                       {lead.deal_value ? `${(lead.deal_value / 1000).toFixed(0)}k$` : <span style={{ color: 'var(--text-muted)' }}>—</span>}
