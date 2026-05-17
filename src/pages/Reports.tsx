@@ -31,7 +31,7 @@ import { DashboardBuilder, createEmptyDashboard, type DashboardBuilderValue } fr
 // Sprint 48 M3 — Intl currency + date
 import { formatMoneyCAD } from '@/lib/i18n/number';
 import { formatDate } from '@/lib/i18n/datetime';
-import { getLocale } from '@/lib/i18n';
+import { getLocale, t } from '@/lib/i18n';
 import {
   getDashboards, createDashboard, updateDashboard, deleteDashboard,
   shareDashboard, type DashboardRecord,
@@ -172,13 +172,13 @@ export function ReportsPage() {
       config: createEmptyDashboard(),
     });
     if (res.data) {
-      success('Dashboard créé');
+      success(t('reports.toast.created'));
       await loadDashboards();
       setActiveDashboardId(res.data.id);
       setBuilderValue((res.data.config as DashboardBuilderValue) || createEmptyDashboard());
       setBuilderDirty(false);
     } else {
-      toastError('Impossible de créer le dashboard');
+      toastError(t('reports.toast.create_error'));
     }
   };
 
@@ -192,25 +192,25 @@ export function ReportsPage() {
     if (activeDashboardId === null) return;
     const res = await updateDashboard(activeDashboardId, { config: builderValue });
     if (res.data?.success) {
-      success('Tableau de bord enregistré');
+      success(t('reports.toast.saved'));
       setBuilderDirty(false);
       void loadDashboards();
     } else {
-      toastError('L\'enregistrement a échoué. Réessaie.');
+      toastError(t('reports.toast.save_error'));
     }
   };
 
   const handleDeleteDashboard = async (id: number) => {
     const res = await deleteDashboard(id);
     if (res.data?.success) {
-      success('Dashboard supprimé');
+      success(t('reports.toast.deleted'));
       if (activeDashboardId === id) {
         setActiveDashboardId(null);
         setBuilderValue(createEmptyDashboard());
       }
       void loadDashboards();
     } else {
-      toastError('Échec de la suppression');
+      toastError(t('reports.toast.delete_error'));
     }
   };
 
@@ -220,13 +220,13 @@ export function ReportsPage() {
       const url = `${window.location.origin}/dashboards/shared/${res.data.share_token}`;
       try {
         await navigator.clipboard.writeText(url);
-        success('Lien copié dans le presse-papier');
+        success(t('reports.toast.link_copied'));
       } catch {
         success(`Lien : ${url}`);
       }
       void loadDashboards();
     } else {
-      toastError('Impossible de générer le lien');
+      toastError(t('reports.toast.link_error'));
     }
   };
 
@@ -242,11 +242,11 @@ export function ReportsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: `Rapport ${activeTab}`, type: activeTab, config_json: { period, comparePeriod } })
       });
-      if (res.ok) success('Rapport enregistré');
-      else toastError('L\'enregistrement du rapport a échoué. Réessaie.');
+      if (res.ok) success(t('reports.toast.saved_report'));
+      else toastError(t('reports.toast.save_report_error'));
     } catch (e) {
       console.error(e);
-      toastError('Problème de connexion. Vérifie ton réseau et réessaie.');
+      toastError(t('reports.toast.connection_error'));
     }
   };
 
@@ -317,7 +317,7 @@ export function ReportsPage() {
 
   if (isLoading) {
     return (
-      <AppLayout title="Rapports d'Analyse">
+      <AppLayout title={t('reports.page.title')}>
         <div className="space-y-4">
           {/* Hero placeholder */}
           <Skeleton className="h-28 w-full rounded-2xl" />
@@ -349,10 +349,10 @@ export function ReportsPage() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold flex items-center gap-2">
-                  <Icon as={LayoutIcon} size="sm" /> Mes dashboards
+                {t('reports.builder.title')}
                 </h3>
                 <Button variant="primary" onClick={handleCreateDashboard} className="text-xs gap-1.5">
-                  <Icon as={LayoutIcon} size={14} /> Nouveau dashboard
+                  <Icon as={LayoutIcon} size={14} /> {t('reports.builder.new')}
                 </Button>
               </div>
               {dashboardsLoading ? (
@@ -362,8 +362,8 @@ export function ReportsPage() {
                   <EmptyState
                     variant="first-time"
                     illustration={<EmptyStateIllustration kind="reports" size={160} />}
-                    title="Aucun dashboard"
-                    description="Crée ton premier dashboard personnalisé pour assembler tes widgets favoris."
+                    title={t('reports.builder.empty_title')}
+                    description={t('reports.builder.empty_desc')}
                   />
                 </Card>
               ) : (
@@ -381,7 +381,7 @@ export function ReportsPage() {
                       </div>
                       <div className="db-list-card__actions">
                         <Button variant="secondary" onClick={() => handleOpenDashboard(d)} className="text-xs">
-                          Ouvrir
+                          {t('reports.builder.open')}
                         </Button>
                         <button
                           type="button"
@@ -398,7 +398,7 @@ export function ReportsPage() {
                             className="db-list-card__icon-btn"
                             onClick={async () => {
                               const url = `${window.location.origin}/dashboards/shared/${d.share_token}`;
-                              try { await navigator.clipboard.writeText(url); success('Lien copié'); }
+                              try { await navigator.clipboard.writeText(url); success(t('reports.toast.link_copied')); }
                               catch { success(`Lien : ${url}`); }
                             }}
                             aria-label="Copier lien public"
@@ -435,18 +435,18 @@ export function ReportsPage() {
                 onClick={() => { setActiveDashboardId(null); setBuilderDirty(false); }}
                 className="db-builder-bar__back"
               >
-                ← Retour à la liste
+                {t('reports.builder.back')}
               </button>
               <div className="db-builder-bar__title">
                 {current?.name || 'Dashboard'}
-                {builderDirty && <Tag size="sm" variant="warning">non enregistré</Tag>}
+                {builderDirty && <Tag size="sm" variant="warning">{t('reports.builder.unsaved')}</Tag>}
               </div>
               <div className="db-builder-bar__actions">
                 <Button variant="secondary" onClick={() => handleShareDashboard(activeDashboardId!)} className="text-xs gap-1.5">
-                  <Icon as={Share2} size={14} /> Partager
+                  <Icon as={Share2} size={14} /> {t('reports.builder.share')}
                 </Button>
                 <Button variant="primary" onClick={handleSaveDashboard} disabled={!builderDirty} className="text-xs gap-1.5">
-                  <Icon as={Save} size={14} /> Enregistrer
+                  <Icon as={Save} size={14} /> {t('reports.builder.save')}
                 </Button>
               </div>
             </div>
@@ -846,32 +846,32 @@ export function ReportsPage() {
     }
   };
 
-  const periodLabel = period === '30d' ? '30 derniers jours' : period === '90d' ? '90 derniers jours' : '12 derniers mois';
+  const periodLabel = period === '30d' ? t('reports.period.label_30d') : period === '90d' ? t('reports.period.label_90d') : t('reports.period.label_12m');
   const todayLabel = formatDate(new Date(), getLocale(), { day: 'numeric', month: 'long', year: 'numeric' });
   const activeTabLabel = TABS.find(t => t.id === activeTab)?.label || activeTab;
 
   return (
-    <AppLayout title="Rapports d'Analyse">
+    <AppLayout title={t('reports.page.title')}>
       {/* Sprint 34 wave 34-1A — PDF cover page premium */}
       <div className="pdf-cover-page" aria-hidden="true">
         <div className="pdf-cover-accent-bar" />
         <div className="pdf-cover-logo">Intralys</div>
-        <div className="pdf-cover-tagline">CRM tout-en-un pour PMEs</div>
+        <div className="pdf-cover-tagline">{t('reports.pdf.tagline')}</div>
         <h1 className="pdf-cover-title">Rapport · {activeTabLabel}</h1>
         <p className="pdf-cover-subtitle">
           Synthèse analytique de vos performances commerciales et marketing sur la période sélectionnée.
         </p>
         <div className="pdf-cover-meta">
           <div className="pdf-cover-meta-item">
-            <span className="label">Généré le</span>
+            <span className="label">{t('reports.pdf.generated')}</span>
             <span className="value">{todayLabel}</span>
           </div>
           <div className="pdf-cover-meta-item">
-            <span className="label">Période</span>
+            <span className="label">{t('reports.pdf.period')}</span>
             <span className="value">{periodLabel}</span>
           </div>
           <div className="pdf-cover-meta-item">
-            <span className="label">Total leads</span>
+            <span className="label">{t('reports.pdf.total_leads')}</span>
             <span className="value">{totalLeads}</span>
           </div>
           <div className="pdf-cover-meta-item">
@@ -888,18 +888,18 @@ export function ReportsPage() {
         </div>
       </div>
       <PageHero
-        meta="Insights"
-        title="Rapports"
-        highlight="Rapports"
-        description="Analyse de vos performances : leads, conversion, valeur pipeline, sources."
+        meta={t('reports.hero.meta')}
+        title={t('reports.hero.title')}
+        highlight={t('reports.hero.title')}
+        description={t('reports.hero.description')}
       />
       {/* KPI Strip Sprint 23 wave 16 — unified GHL pattern */}
       <KpiStrip
         items={[
-          { label: 'Total leads', value: totalLeads, color: 'brand', icon: <Icon as={Users} size={11} /> },
-          { label: 'Ce mois', value: leadsThisMonth, color: 'success', icon: <Icon as={Activity} size={11} /> },
-          { label: 'Conversion', value: `${conversionRate}%`, color: 'info', icon: <Icon as={Percent} size={11} /> },
-          { label: 'Pipeline $', value: `${(totalPipelineValue / 1000).toFixed(1)}K`, color: 'accent', icon: <Icon as={DollarSign} size={11} /> },
+          { label: t('reports.kpi.total_leads'), value: totalLeads, color: 'brand', icon: <Icon as={Users} size={11} /> },
+          { label: t('reports.kpi.this_month'), value: leadsThisMonth, color: 'success', icon: <Icon as={Activity} size={11} /> },
+          { label: t('reports.kpi.conversion'), value: `${conversionRate}%`, color: 'info', icon: <Icon as={Percent} size={11} /> },
+          { label: t('reports.kpi.pipeline'), value: `${(totalPipelineValue / 1000).toFixed(1)}K`, color: 'accent', icon: <Icon as={DollarSign} size={11} /> },
         ] satisfies KpiItem[]}
       />
 
@@ -911,18 +911,18 @@ export function ReportsPage() {
               <button key={p} onClick={() => setPeriod(p)}
                 className={`px-3 py-1.5 text-[11px] rounded-md font-medium cursor-pointer transition-all
                   ${period === p ? 'bg-[var(--primary)] text-white shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>
-                {p === '30d' ? '30j' : p === '90d' ? '90j' : '12 mois'}
+                {p === '30d' ? t('reports.period.30d') : p === '90d' ? t('reports.period.90d') : t('reports.period.12m')}
               </button>
             ))}
           </div>
           <Button variant="secondary" onClick={() => setComparePeriod(!comparePeriod)} className={`text-xs gap-1.5 ${comparePeriod ? 'bg-[var(--brand-tint)] text-[var(--primary)]' : ''}`}>
-            <Icon as={Presentation} size="sm" /> Comparer
+            <Icon as={Presentation} size="sm" /> {t('reports.action.compare')}
           </Button>
           <Button variant="secondary" onClick={handleSaveReport} className="text-xs gap-1.5">
-            <Icon as={Save} size={14} /> Enregistrer
+            <Icon as={Save} size={14} /> {t('reports.action.save')}
           </Button>
           <Button variant="primary" onClick={handleExportPDF} disabled={isExporting} className="text-xs gap-1.5" aria-label={activeTab === 'builder' ? 'Exporter le dashboard en PDF' : 'Exporter le rapport en PDF'}>
-            <Icon as={Download} size={14} /> {isExporting ? 'Export…' : (activeTab === 'builder' ? 'Exporter dashboard PDF' : 'Exporter rapport PDF')}
+            <Icon as={Download} size={14} /> {isExporting ? t('reports.action.exporting') : (activeTab === 'builder' ? t('reports.action.export_dashboard') : t('reports.action.export_report'))}
           </Button>
         </div>
       </div>
@@ -966,8 +966,8 @@ export function ReportsPage() {
               <EmptyState
                 variant="first-time"
                 illustration={<EmptyStateIllustration kind="reports" size={160} />}
-                title="Aucune donnée encore"
-                description="Tes rapports apparaîtront ici dès tes premières activités (leads, ventes, conversions)."
+                title={t('reports.empty.title')}
+                description={t('reports.empty.description')}
               />
             </Card>
           ) : (
