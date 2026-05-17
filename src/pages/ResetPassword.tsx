@@ -3,6 +3,7 @@ import { Link, useParams } from '@tanstack/react-router';
 import { Button } from '@/components/ui';
 import { Input } from '@/components/ui/Input';
 import { resetPassword } from '@/lib/api';
+import { t } from '@/lib/i18n';
 
 export function ResetPasswordPage() {
   const { token } = useParams({ strict: false }) as { token?: string };
@@ -59,10 +60,10 @@ export function ResetPasswordPage() {
             <span className="text-white font-bold text-2xl">I</span>
           </div>
           <h1 className="text-3xl font-bold tracking-tight">
-            <span className="text-gradient-brand">Nouveau</span> mot de passe
+            <span className="text-gradient-brand">{t('auth.reset.title')}</span>
           </h1>
           <p className="text-sm text-[var(--text-secondary)] mt-2">
-            Veuillez entrer votre nouveau mot de passe.
+            {t('auth.reset.desc')}
           </p>
         </div>
 
@@ -97,7 +98,7 @@ export function ResetPasswordPage() {
               
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">
-                  Nouveau mot de passe
+                  {t('auth.reset.new')}
                 </label>
                 <Input
                   id="password"
@@ -111,7 +112,7 @@ export function ResetPasswordPage() {
               </div>
 
               <Button type="submit" variant="premium" className="w-full mt-2" disabled={loading || !token}>
-                {loading ? 'Enregistrement...' : 'Enregistrer le mot de passe'}
+                {loading ? t('auth.reset.submitting') : t('auth.reset.submit')}
               </Button>
             </form>
           )}

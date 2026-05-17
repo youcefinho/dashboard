@@ -6,6 +6,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, Button, Input, PageHero, Icon } from '@/components/ui';
 import { changePassword } from '@/lib/api';
 import { Lock, KeyRound, ShieldCheck } from 'lucide-react';
+import { t } from '@/lib/i18n';
 
 export function ChangePasswordPage() {
   const navigate = useNavigate();
@@ -28,11 +29,11 @@ export function ChangePasswordPage() {
     setError('');
 
     if (next.length < 8) {
-      setError('Le nouveau mot de passe doit faire au moins 8 caractères.');
+      setError(t('auth.change_pw.err_short'));
       return;
     }
     if (next !== confirm) {
-      setError('Les mots de passe ne correspondent pas.');
+      setError(t('auth.change_pw.err_mismatch'));
       return;
     }
 
@@ -48,26 +49,26 @@ export function ChangePasswordPage() {
         setTimeout(() => void navigate({ to: '/dashboard' }), 2000);
       }
     } catch {
-      setError('Erreur réseau. Réessayez.');
+      setError(t('auth.change_pw.err_network'));
     }
     setLoading(false);
   };
 
   return (
-    <AppLayout title="Changer le mot de passe">
+    <AppLayout title={t('auth.change_pw.title')}>
       <PageHero
         compact
-        meta="Sécurité"
-        title="🔐 Changement de mot de passe"
-        highlight="mot de passe"
-        description="Votre mot de passe doit faire au moins 8 caractères."
+        meta={t('auth.change_pw.meta')}
+        title={t('auth.change_pw.hero_title')}
+        highlight={t('auth.change_pw.title')}
+        description={t('auth.change_pw.hero_desc')}
       />
       <div className="max-w-md mx-auto">
         <Card className="p-6">
 
           {success ? (
             <div className="p-4 bg-[var(--success)]/10 border border-[var(--success)]/30 rounded-[var(--radius-md)] text-sm text-[var(--success)]">
-              ✅ Mot de passe changé avec succès ! Redirection...
+              {t('auth.change_pw.success')}
             </div>
           ) : (
             <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
@@ -79,48 +80,49 @@ export function ChangePasswordPage() {
 
               <Input
                 type="password"
-                label="Mot de passe actuel"
+                label={t('auth.change_pw.current')}
                 value={current}
                 onChange={(e) => setCurrent(e.target.value)}
-                placeholder="Votre mot de passe actuel"
+                placeholder={t('auth.change_pw.current_ph')}
                 required
                 leftSlot={<Icon as={Lock} size="sm" />}
                 autoComplete="current-password"
               />
 
+
               <Input
                 type="password"
-                label="Nouveau mot de passe"
+                label={t('auth.change_pw.new')}
                 value={next}
                 onChange={(e) => setNext(e.target.value)}
-                onBlur={() => setTouched((t) => ({ ...t, next: true }))}
-                placeholder="Min. 8 caractères"
+                onBlur={() => setTouched((t2) => ({ ...t2, next: true }))}
+                placeholder={t('auth.change_pw.new_ph')}
                 required
                 minLength={8}
                 leftSlot={<Icon as={KeyRound} size="sm" />}
                 autoComplete="new-password"
-                error={nextTooShort ? 'Minimum 8 caractères requis' : undefined}
-                success={touched.next && nextValid ? 'Longueur suffisante' : undefined}
-                helper={!touched.next ? 'Au moins 8 caractères — mélangez chiffres et lettres' : undefined}
+                error={nextTooShort ? t('auth.change_pw.hint_min') : undefined}
+                success={touched.next && nextValid ? t('auth.change_pw.hint_ok') : undefined}
+                helper={!touched.next ? t('auth.change_pw.hint_chars') : undefined}
               />
 
               <Input
                 type="password"
-                label="Confirmer le nouveau mot de passe"
+                label={t('auth.change_pw.confirm')}
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
-                onBlur={() => setTouched((t) => ({ ...t, confirm: true }))}
-                placeholder="Retapez le nouveau mot de passe"
+                onBlur={() => setTouched((t2) => ({ ...t2, confirm: true }))}
+                placeholder={t('auth.change_pw.confirm_ph')}
                 required
                 minLength={8}
                 leftSlot={<Icon as={ShieldCheck} size="sm" />}
                 autoComplete="new-password"
-                error={confirmMismatch ? 'Les mots de passe ne correspondent pas' : undefined}
-                success={confirmMatch ? 'Mots de passe identiques' : undefined}
+                error={confirmMismatch ? t('auth.change_pw.hint_mismatch') : undefined}
+                success={confirmMatch ? t('auth.change_pw.hint_match') : undefined}
               />
 
               <Button type="submit" variant="premium" className="w-full" disabled={loading}>
-                {loading ? 'Changement...' : 'Changer le mot de passe'}
+                {loading ? t('auth.change_pw.submitting') : t('auth.change_pw.submit')}
               </Button>
             </form>
           )}

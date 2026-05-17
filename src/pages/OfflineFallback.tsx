@@ -4,6 +4,7 @@
 
 import { WifiOff, RefreshCcw, CheckCircle2 } from 'lucide-react';
 import { Icon } from '@/components/ui/Icon';
+import { t } from '@/lib/i18n';
 
 // Pages cachées par défaut (cf src/lib/offline/sync.ts — fallback statique
 // si l'API du module change).
@@ -114,7 +115,7 @@ export function OfflineFallback() {
         }}
       >
         <Icon as={RefreshCcw} size="md" strokeWidth={2.4} />
-        Réessayer
+        {t('offline.retry')}
       </button>
 
       <div className="relative max-w-md w-full">

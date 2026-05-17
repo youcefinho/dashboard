@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { Loader2, CheckCircle2, XCircle, ArrowLeft } from 'lucide-react';
 import { Icon } from '@/components/ui/Icon';
+import { t } from '@/lib/i18n';
 
 type Phase = 'verifying' | 'success' | 'error';
 
@@ -58,7 +59,7 @@ export function MagicLinkVerifyPage() {
             <span className="magic-auth__icon">
               <Icon as={Loader2} size={26} className="animate-spin" aria-hidden />
             </span>
-            <h1 className="magic-auth__title">Connexion en cours…</h1>
+            <h1 className="magic-auth__title">{t('auth.magic.verifying')}</h1>
             <p className="magic-auth__text">On vérifie ton lien sécurisé.</p>
           </div>
         )}

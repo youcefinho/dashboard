@@ -3,6 +3,7 @@ import { Link } from '@tanstack/react-router';
 import { Button } from '@/components/ui';
 import { Input } from '@/components/ui/Input';
 import { forgotPassword } from '@/lib/api';
+import { t } from '@/lib/i18n';
 
 export function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -54,10 +55,10 @@ export function ForgotPasswordPage() {
             <span className="text-white font-bold text-2xl">I</span>
           </div>
           <h1 className="text-3xl font-bold tracking-tight">
-            <span className="text-gradient-brand">Mot de passe</span> oublié
+            <span className="text-gradient-brand">{t('auth.forgot.title')}</span>
           </h1>
           <p className="text-sm text-[var(--text-secondary)] mt-2">
-            Entrez votre courriel pour recevoir un lien de réinitialisation.
+            {t('auth.forgot.desc')}
           </p>
         </div>
 
@@ -79,7 +80,7 @@ export function ForgotPasswordPage() {
                 Si un compte est associé à cette adresse, vous recevrez un courriel avec les instructions.
               </p>
               <Link to="/login" className="block w-full">
-                <Button className="w-full">Retour à la connexion</Button>
+                <Button className="w-full">{t('auth.forgot.back')}</Button>
               </Link>
             </div>
           ) : (
@@ -92,7 +93,7 @@ export function ForgotPasswordPage() {
               
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">
-                  Courriel
+                  {t('auth.forgot.email')}
                 </label>
                 <Input
                   id="email"
@@ -106,7 +107,7 @@ export function ForgotPasswordPage() {
               </div>
 
               <Button type="submit" variant="premium" className="w-full mt-2" disabled={loading}>
-                {loading ? 'Envoi...' : 'Envoyer le lien'}
+                {loading ? t('auth.forgot.submitting') : t('auth.forgot.submit')}
               </Button>
             </form>
           )}
@@ -114,7 +115,7 @@ export function ForgotPasswordPage() {
 
         <p className="text-center text-sm text-[var(--text-muted)] mt-8">
           <Link to="/login" className="text-[var(--primary)] hover:underline font-medium">
-            Retour à la connexion
+            {t('auth.forgot.back')}
           </Link>
         </p>
       </div>

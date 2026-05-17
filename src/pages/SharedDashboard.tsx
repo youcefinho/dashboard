@@ -9,10 +9,11 @@ import { useParams } from '@tanstack/react-router';
 import { getSharedDashboard } from '@/lib/api';
 import { DashboardBuilder, createEmptyDashboard, type DashboardBuilderValue } from '@/components/reports/DashboardBuilder';
 import { Card, Skeleton } from '@/components/ui';
+import { t } from '@/lib/i18n';
 
 export function SharedDashboardPage() {
   const { token } = useParams({ strict: false }) as { token: string };
-  const [name, setName] = useState<string>('Dashboard partagé');
+  const [name, setName] = useState<string>(t('shared.title'));
   const [updatedAt, setUpdatedAt] = useState<number | null>(null);
   const [value, setValue] = useState<DashboardBuilderValue>(createEmptyDashboard());
   const [loading, setLoading] = useState(true);
@@ -27,7 +28,7 @@ export function SharedDashboardPage() {
       if (res.error) {
         setError(res.error);
       } else if (res.data) {
-        setName(res.data.name || 'Dashboard partagé');
+        setName(res.data.name || t('shared.title'));
         setUpdatedAt(res.data.updated_at || null);
         setValue((res.data.config as DashboardBuilderValue) || createEmptyDashboard());
       }

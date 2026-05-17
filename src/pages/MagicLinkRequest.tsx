@@ -8,6 +8,7 @@ import { Mail, Loader2, MailCheck, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Icon } from '@/components/ui/Icon';
+import { t } from '@/lib/i18n';
 
 export function MagicLinkRequestPage() {
   const [email, setEmail] = useState('');
@@ -63,7 +64,7 @@ export function MagicLinkRequestPage() {
             <span className="magic-auth__icon">
               <Icon as={Mail} size={24} aria-hidden />
             </span>
-            <h1 className="magic-auth__title">Connexion par lien magique</h1>
+            <h1 className="magic-auth__title">{t('auth.magic.request_title')}</h1>
             <p className="magic-auth__text">
               Réservé aux membres de la beta privée. Entre ton courriel, on
               t'envoie un lien sécurisé — pas de mot de passe à retenir.
@@ -92,7 +93,7 @@ export function MagicLinkRequestPage() {
                   )
                 }
               >
-                {submitting ? 'Envoi…' : 'Recevoir mon lien'}
+                {submitting ? t('auth.magic.submitting') : t('auth.magic.submit')}
               </Button>
             </form>
             <div className="magic-auth__alt">
