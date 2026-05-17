@@ -6,6 +6,7 @@ import type { AutosaveState } from '@/components/ui/AutosaveIndicator';
 import { Modal } from '@/components/ui/Modal';
 import { getSessions, deleteSession, deleteOtherSessions, generateBackupCodes, type AdminSession } from '@/lib/api';
 import { Smartphone, Monitor, Download, Copy, AlertTriangle, ShieldCheck, KeyRound, Activity } from 'lucide-react';
+import { t } from '@/lib/i18n';
 
 export function SecuritySettings() {
   const [sessions, setSessions] = useState<AdminSession[]>([]);
@@ -48,22 +49,22 @@ export function SecuritySettings() {
   const revokeSession = async (token: string) => {
     const res = await deleteSession(token);
     if (!res.error) {
-      success('Session révoquée avec succès');
+      success(t('set.sec.revoke') + ' ✓');
       setSessions((s) => s.filter((x) => x.token !== token));
     } else toastError(res.error);
   };
 
   const revokeOtherSessions = async () => {
     const ok = await confirm({
-      title: 'Fermer toutes les autres sessions ?',
-      description: 'Les autres appareils connectés à votre compte seront déconnectés immédiatement.',
-      confirmLabel: 'Fermer les sessions',
+      title: t('set.sec.confirm_close_all'),
+      description: t('set.sec.confirm_close_desc'),
+      confirmLabel: t('set.sec.confirm_close_label'),
       danger: true,
     });
     if (!ok) return;
     const res = await deleteOtherSessions();
     if (!res.error) {
-      success('Toutes les autres sessions ont été fermées');
+      success(t('set.sec.confirm_close_all') + ' ✓');
       void fetchSessions();
     } else toastError(res.error);
   };
@@ -72,9 +73,9 @@ export function SecuritySettings() {
     setAutosaveState('saving');
     if (totpEnabled) {
       const ok = await confirm({
-        title: 'Désactiver le 2FA ?',
-        description: 'Ton compte sera moins protégé. Tu peux réactiver à tout moment.',
-        confirmLabel: 'Désactiver',
+        title: t('set.sec.confirm_2fa_off'),
+        description: t('set.sec.confirm_2fa_desc'),
+        confirmLabel: t('set.sec.disabled'),
         danger: true,
       });
       if (!ok) {
@@ -82,19 +83,19 @@ export function SecuritySettings() {
         return;
       }
       setTotpEnabled(false);
-      success('2FA désactivé');
+      success('2FA ' + t('set.sec.disabled'));
     } else {
       setTotpEnabled(true);
-      success('2FA activé');
+      success('2FA ' + t('set.sec.enabled'));
     }
     markSaved();
   };
 
   const handleGenerateBackupCodes = async () => {
     const ok = await confirm({
-      title: 'Générer de nouveaux codes de secours ?',
-      description: 'Les anciens codes seront invalidés immédiatement. Conservez les nouveaux en lieu sûr.',
-      confirmLabel: 'Générer',
+      title: t('set.sec.confirm_gen_codes'),
+      description: t('set.sec.confirm_gen_desc'),
+      confirmLabel: t('set.sec.generate'),
       danger: true,
     });
     if (!ok) return;
@@ -126,18 +127,18 @@ export function SecuritySettings() {
     () => [
       {
         label: '2FA',
-        value: totpEnabled ? 'Activé' : 'Désactivé',
+        value: totpEnabled ? t('set.sec.enabled') : t('set.sec.disabled'),
         color: (totpEnabled ? 'success' : 'warning') as 'success' | 'warning',
         icon: <ShieldCheck size={12} />,
       },
       {
-        label: 'Sessions actives',
+        label: t('set.sec.sessions_title'),
         value: sessionCount,
         color: 'brand' as const,
         icon: <Activity size={12} />,
       },
       {
-        label: 'Codes de secours',
+        label: t('set.sec.backup_title'),
         value: backupCodesRemaining,
         color: 'neutral' as const,
         icon: <KeyRound size={12} />,
@@ -163,53 +164,53 @@ export function SecuritySettings() {
 
       <Card className="settings-card p-6">
         <header className="settings-section-header">
-          <h3 className="t-h3">Authentification à deux facteurs (2FA)</h3>
+          <h3 className="t-h3">{t('set.sec.2fa_title')}</h3>
           <p className="t-caption text-[var(--gray-500)]">
-            Protège ton compte avec une couche supplémentaire.
+            {t('set.sec.2fa_desc')}
           </p>
         </header>
 
         <div className="settings-toggle-row">
           <div className="settings-toggle-row__meta">
-            <p className="settings-toggle-row__title">Application d'authentification</p>
+            <p className="settings-toggle-row__title">{t('set.sec.totp_title')}</p>
             <p className="settings-toggle-row__desc">
-              Google Authenticator, Authy ou 1Password.
+              {t('set.sec.totp_desc')}
             </p>
           </div>
           <Switch
             checked={totpEnabled}
             onCheckedChange={() => void handleToggleTotp()}
             variant="success"
-            label={totpEnabled ? 'Activé' : 'Désactivé'}
+            label={totpEnabled ? t('set.sec.enabled') : t('set.sec.disabled')}
           />
         </div>
 
         {totpEnabled && (
           <div className="settings-toggle-row">
             <div className="settings-toggle-row__meta">
-              <p className="settings-toggle-row__title">Codes de secours</p>
-              <p className="settings-toggle-row__desc">En cas de perte de ton appareil.</p>
+               <p className="settings-toggle-row__title">{t('set.sec.backup_title')}</p>
+               <p className="settings-toggle-row__desc">{t('set.sec.backup_desc')}</p>
             </div>
             <Button variant="secondary" size="sm" onClick={handleGenerateBackupCodes}>
-              Générer nouveaux codes
+              {t('set.sec.gen_codes')}
             </Button>
           </div>
         )}
 
         <div className="settings-toggle-row">
           <div className="settings-toggle-row__meta">
-            <p className="settings-toggle-row__title">Mot de passe</p>
-            <p className="settings-toggle-row__desc">Modifie-le régulièrement pour plus de sécurité.</p>
+            <p className="settings-toggle-row__title">{t('set.sec.password')}</p>
+            <p className="settings-toggle-row__desc">{t('set.sec.password_desc')}</p>
           </div>
-          <Button variant="secondary" size="sm">Changer le mot de passe</Button>
+          <Button variant="secondary" size="sm">{t('set.sec.change_pw')}</Button>
         </div>
       </Card>
 
       <Card className="settings-card p-6">
         <header className="settings-section-header settings-section-header--with-action">
           <div>
-            <h3 className="t-h3">Sessions actives</h3>
-            <p className="t-caption text-[var(--gray-500)]">Appareils connectés à ton compte.</p>
+            <h3 className="t-h3">{t('set.sec.sessions_title')}</h3>
+            <p className="t-caption text-[var(--gray-500)]">{t('set.sec.sessions_desc')}</p>
           </div>
           <Button
             variant="secondary"
@@ -217,7 +218,7 @@ export function SecuritySettings() {
             onClick={revokeOtherSessions}
             className="settings-danger-action"
           >
-            Fermer autres sessions
+            {t('set.sec.close_others')}
           </Button>
         </header>
 
@@ -245,14 +246,14 @@ export function SecuritySettings() {
           <EmptyState
             variant="compact"
             icon={<Monitor size={28} />}
-            title="Aucune session active"
-            description="Vos sessions actives apparaîtront ici."
+            title={t('set.sec.no_session')}
+            description={t('set.sec.no_session_desc')}
           />
         ) : (
           <div className="space-y-3">
             {sessions.map((session, idx) => {
               const isMobile = session.user_agent?.toLowerCase().includes('mobile');
-              const deviceName = session.user_agent || 'Appareil inconnu';
+              const deviceName = session.user_agent || t('set.sec.unknown_device');
               return (
                 <div
                   key={session.token}
@@ -272,12 +273,12 @@ export function SecuritySettings() {
                         <span className="truncate">{deviceName}</span>
                         {session.is_current && (
                           <span className="text-[10px] bg-[var(--primary)]/10 text-[var(--primary)] px-2 py-0.5 rounded-full font-semibold">
-                            Actuelle
+                            {t('set.sec.current')}
                           </span>
                         )}
                       </p>
                       <p className="text-xs text-[var(--text-muted)] truncate">
-                        IP: {session.ip || 'Inconnue'} • Actif le {new Date(session.last_active_at).toLocaleString()}
+                        IP: {session.ip || t('set.sec.unknown_ip')} • Actif le {new Date(session.last_active_at).toLocaleString()}
                       </p>
                     </div>
                   </div>
@@ -287,7 +288,7 @@ export function SecuritySettings() {
                       className="text-[var(--danger)]"
                       onClick={() => revokeSession(session.token)}
                     >
-                      Révoquer
+                      {t('set.sec.revoke')}
                     </Button>
                   )}
                 </div>
@@ -300,14 +301,13 @@ export function SecuritySettings() {
       <Modal
         open={showBackupCodes}
         onOpenChange={() => setShowBackupCodes(false)}
-        title="Codes de secours 2FA"
+        title={t('set.sec.backup_modal')}
       >
         <div className="p-4 space-y-4">
           <div className="flex items-start gap-3 p-3 bg-[var(--warning)]/10 text-[var(--warning)] rounded-lg">
             <AlertTriangle size={20} className="mt-0.5 shrink-0" />
             <p className="text-sm">
-              Ces codes ne seront affichés qu'une seule fois. Veuillez les copier ou les télécharger
-              immédiatement et les conserver en lieu sûr.
+              {t('set.sec.backup_warn')}
             </p>
           </div>
           <div className="grid grid-cols-2 gap-3 font-mono text-center text-sm p-4 bg-[var(--bg-subtle)] rounded border border-[var(--border-subtle)]">
@@ -319,10 +319,10 @@ export function SecuritySettings() {
           </div>
           <div className="flex gap-2 justify-end pt-2">
             <Button variant="secondary" onClick={copyCodes} leftIcon={<Icon as={Copy} size={16} />}>
-              Copier
+              {t('set.sec.copy')}
             </Button>
             <Button variant="primary" onClick={downloadCodes} leftIcon={<Icon as={Download} size={16} />}>
-              Télécharger
+              {t('set.sec.download')}
             </Button>
           </div>
         </div>

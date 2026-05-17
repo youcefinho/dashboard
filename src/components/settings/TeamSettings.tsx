@@ -20,6 +20,7 @@ import {
   Icon,
 } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
+import { t } from '@/lib/i18n';
 import {
   Users,
   Shield,
@@ -45,15 +46,15 @@ interface PendingInvite {
 }
 
 const ROLE_LABEL: Record<RoleKey, string> = {
-  admin: 'Administrateur',
-  broker: 'Courtier',
-  agent: 'Agent (Limité)',
+  admin: t('set.team.admin'),
+  broker: t('set.team.broker'),
+  agent: t('set.team.agent_limited'),
 };
 
 const ROLE_DESCRIPTION: Record<RoleKey, string> = {
-  admin: 'Accès complet — paramètres, facturation, équipe.',
-  broker: 'Gère pipelines, leads et assignations.',
-  agent: 'Accès limité à ses propres leads et tâches.',
+  admin: t('set.team.admin_desc'),
+  broker: t('set.team.broker_desc'),
+  agent: t('set.team.agent_desc'),
 };
 
 export function TeamSettings() {
@@ -161,7 +162,7 @@ export function TeamSettings() {
     () => [
       {
         id: 'members',
-        label: 'Membres',
+        label: t('set.team.members_step'),
         icon: <Icon as={Users} size={14} />,
         isValid: () => pendingInvites.length > 0,
         content: (
@@ -171,9 +172,9 @@ export function TeamSettings() {
                 <UserPlus size={16} />
               </div>
               <div className="min-w-0">
-                <h4 className="text-sm font-semibold text-[var(--text-primary)]">Ajouter des collaborateurs</h4>
+                <h4 className="text-sm font-semibold text-[var(--text-primary)]">{t('set.team.add_collab')}</h4>
                 <p className="text-xs text-[var(--text-muted)] mt-0.5 leading-relaxed">
-                  Entrez leur adresse courriel, ils recevront une invitation à rejoindre votre équipe.
+                  {t('set.team.add_collab_desc')}
                 </p>
               </div>
             </div>
@@ -197,20 +198,20 @@ export function TeamSettings() {
                 leftIcon={<Plus size={14} />}
                 disabled={!pendingEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(pendingEmail.trim())}
               >
-                Ajouter
+                {t('set.team.add')}
               </Button>
             </div>
 
             {pendingInvites.length === 0 ? (
               <div className="text-center py-8 px-4 rounded-xl border border-dashed border-[var(--border-default)] bg-[var(--bg-subtle)]">
                 <Mail size={28} className="mx-auto text-[var(--text-muted)] mb-2" />
-                <p className="text-sm text-[var(--text-muted)]">Aucune invitation en attente.</p>
-                <p className="text-xs text-[var(--text-muted)] mt-1">Ajoutez au moins un courriel pour continuer.</p>
+                <p className="text-sm text-[var(--text-muted)]">{t('set.team.no_pending')}</p>
+                <p className="text-xs text-[var(--text-muted)] mt-1">{t('set.team.add_email')}</p>
               </div>
             ) : (
               <div className="space-y-2">
                 <p className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
-                  {pendingInvites.length} {pendingInvites.length > 1 ? 'invitations' : 'invitation'} en attente
+                  {pendingInvites.length} {pendingInvites.length > 1 ? t('set.team.invitations') : t('set.team.invitation')} {t('set.team.pending')}
                 </p>
                 {pendingInvites.map((inv) => (
                   <div
@@ -226,7 +227,7 @@ export function TeamSettings() {
                       type="button"
                       onClick={() => removePendingInvite(inv.id)}
                       className="p-1.5 rounded-md text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-[var(--bg-subtle)] transition-colors cursor-pointer"
-                      aria-label="Retirer cette invitation"
+                      aria-label={t('set.team.remove_invite')}
                     >
                       <X size={14} />
                     </button>
@@ -239,7 +240,7 @@ export function TeamSettings() {
       },
       {
         id: 'roles',
-        label: 'Rôles',
+        label: t('set.team.roles_step'),
         icon: <Icon as={Shield} size={14} />,
         isValid: () => pendingInvites.length > 0,
         content: (
@@ -249,9 +250,9 @@ export function TeamSettings() {
                 <Shield size={16} />
               </div>
               <div className="min-w-0">
-                <h4 className="text-sm font-semibold text-[var(--text-primary)]">Attribuer un rôle</h4>
+                <h4 className="text-sm font-semibold text-[var(--text-primary)]">{t('set.team.assign_role')}</h4>
                 <p className="text-xs text-[var(--text-muted)] mt-0.5 leading-relaxed">
-                  Chaque rôle définit les permissions. Vous pourrez toujours les modifier plus tard.
+                  {t('set.team.assign_role_desc')}
                 </p>
               </div>
             </div>
@@ -272,9 +273,9 @@ export function TeamSettings() {
                     onChange={(e) => updateInviteRole(inv.id, e.target.value as RoleKey)}
                     className="w-[170px] shrink-0"
                   >
-                    <option value="admin">Administrateur</option>
-                    <option value="broker">Courtier</option>
-                    <option value="agent">Agent (Limité)</option>
+                    <option value="admin">{t('set.team.admin')}</option>
+                    <option value="broker">{t('set.team.broker')}</option>
+                    <option value="agent">{t('set.team.agent_limited')}</option>
                   </Select>
                 </div>
               ))}
@@ -284,7 +285,7 @@ export function TeamSettings() {
       },
       {
         id: 'invitations',
-        label: 'Invitations',
+        label: t('set.team.invitations_step'),
         icon: <Icon as={Send} size={14} />,
         isOptional: false,
         isValid: () => inviteMessage.trim().length > 0 && pendingInvites.length > 0,
@@ -295,16 +296,16 @@ export function TeamSettings() {
                 <Sparkles size={16} />
               </div>
               <div className="min-w-0">
-                <h4 className="text-sm font-semibold text-[var(--text-primary)]">Message personnalisé</h4>
+                <h4 className="text-sm font-semibold text-[var(--text-primary)]">{t('set.team.custom_msg')}</h4>
                 <p className="text-xs text-[var(--text-muted)] mt-0.5 leading-relaxed">
-                  Ajoutez une touche humaine — vos collaborateurs verront ce message dans leur courriel.
+                  {t('set.team.custom_msg_desc')}
                 </p>
               </div>
             </div>
 
             <div>
               <label className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1.5 block">
-                Votre message
+                {t('set.team.your_msg')}
               </label>
               <Textarea
                 value={inviteMessage}
@@ -317,24 +318,24 @@ export function TeamSettings() {
 
             <div>
               <label className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1.5 block">
-                Aperçu courriel
+                {t('set.team.email_preview')}
               </label>
               <div className="settings-email-preview">
                 <div className="settings-email-preview__head">
                   <div className="settings-email-preview__brandchip">IL</div>
                   <div className="min-w-0 flex-1">
                     <p className="text-[11px] font-semibold text-[var(--text-primary)] truncate">
-                      Invitation à rejoindre Intralys CRM
+                      {t('set.team.invite_subject')}
                     </p>
                     <p className="text-[10px] text-[var(--text-muted)]">de Intralys &lt;noreply@intralys.com&gt;</p>
                   </div>
                 </div>
                 <div className="settings-email-preview__body">
-                  {inviteMessage || <span className="italic text-[var(--text-muted)]">Votre message apparaîtra ici…</span>}
+                  {inviteMessage || <span className="italic text-[var(--text-muted)]">{t('set.team.msg_placeholder')}</span>}
                 </div>
                 <div className="settings-email-preview__cta-wrap">
                   <span className="settings-email-preview__cta">
-                    Accepter l'invitation
+                    {t('set.team.accept_invite')}
                   </span>
                 </div>
               </div>
@@ -362,10 +363,10 @@ export function TeamSettings() {
     const agents = users.filter((u) => u.role === 'agent').length;
     const brokers = users.filter((u) => u.role === 'broker').length;
     return [
-      { label: 'Total utilisateurs', value: users.length, color: 'brand' as const, icon: <Users size={12} /> },
-      { label: 'Administrateurs', value: admins, color: 'accent' as const, icon: <Shield size={12} /> },
-      { label: 'Courtiers', value: brokers, color: 'info' as const },
-      { label: 'Agents', value: agents, color: 'neutral' as const, icon: <UserCog size={12} /> },
+      { label: t('set.team.total_users'), value: users.length, color: 'brand' as const, icon: <Users size={12} /> },
+      { label: t('set.team.admin'), value: admins, color: 'accent' as const, icon: <Shield size={12} /> },
+      { label: t('set.team.broker'), value: brokers, color: 'info' as const },
+      { label: t('set.team.agent_limited'), value: agents, color: 'neutral' as const, icon: <UserCog size={12} /> },
     ];
   }, [users]);
 
@@ -377,8 +378,8 @@ export function TeamSettings() {
         <header className="settings-section-header settings-section-header--with-action">
           <div className="flex items-center gap-3 min-w-0">
             <div>
-              <h3 className="t-h3">Équipe & utilisateurs</h3>
-              <p className="t-caption text-[var(--gray-500)]">Membres et invitations en attente.</p>
+              <h3 className="t-h3">{t('set.team.title')}</h3>
+              <p className="t-caption text-[var(--gray-500)]">{t('set.team.subtitle')}</p>
             </div>
             {users.length > 0 && (
               <AvatarGroup
@@ -392,10 +393,10 @@ export function TeamSettings() {
           </div>
           <div className="flex items-center gap-2">
             <Button variant="secondary" size="sm" onClick={() => setShowInviteModal(true)} leftIcon={<Icon as={UserPlus} size={14} />}>
-              Inviter
+              {t('set.team.invite')}
             </Button>
             <Button variant="primary" size="sm" onClick={openWizard} leftIcon={<Icon as={Sparkles} size={14} />}>
-              Inviter (assisté)
+              {t('set.team.invite_assisted')}
             </Button>
           </div>
         </header>
@@ -404,11 +405,11 @@ export function TeamSettings() {
           <EmptyState
             variant="compact"
             icon={<Users size={32} />}
-            title="Aucun membre dans l'équipe"
-            description="Invitez vos premiers collaborateurs pour démarrer."
+            title={t('set.team.no_member')}
+            description={t('set.team.no_member_desc')}
             action={
               <Button onClick={openWizard} leftIcon={<UserPlus size={14} />} variant="primary">
-                Inviter
+                {t('set.team.invite')}
               </Button>
             }
           />
@@ -446,15 +447,15 @@ export function TeamSettings() {
                       </button>
                     }
                   >
-                    <DropdownMenuItem leftIcon={<Pencil size={14} />}>Modifier</DropdownMenuItem>
-                    <DropdownMenuItem leftIcon={<Ban size={14} />}>Désactiver</DropdownMenuItem>
+                    <DropdownMenuItem leftIcon={<Pencil size={14} />}>{t('set.team.edit')}</DropdownMenuItem>
+                    <DropdownMenuItem leftIcon={<Ban size={14} />}>{t('set.team.disable')}</DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       variant="danger"
                       leftIcon={<Trash2 size={14} />}
                       onSelect={() => removeUser(u.id)}
                     >
-                      Retirer
+                      {t('set.team.remove')}
                     </DropdownMenuItem>
                   </DropdownMenu>
                 </div>
@@ -465,16 +466,16 @@ export function TeamSettings() {
       </Card>
 
       {/* Mode existant : modale rapide pour un seul invité */}
-      <Modal open={showInviteModal} onOpenChange={() => setShowInviteModal(false)} title="Inviter un collaborateur">
+      <Modal open={showInviteModal} onOpenChange={() => setShowInviteModal(false)} title={t('set.team.invite_modal')}>
         <div className="space-y-3">
           <Input placeholder="Email" type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
           <Select value={newRole} onChange={(e) => setNewRole(e.target.value)}>
-            <option value="admin">Administrateur</option>
-            <option value="broker">Courtier</option>
-            <option value="agent">Agent (Limité)</option>
+            <option value="admin">{t('set.team.admin')}</option>
+            <option value="broker">{t('set.team.broker')}</option>
+            <option value="agent">{t('set.team.agent_limited')}</option>
           </Select>
           <Button className="w-full" onClick={inviteUser} disabled={!newEmail}>
-            Envoyer l'invitation
+            {t('set.team.send_invite')}
           </Button>
         </div>
       </Modal>
@@ -483,8 +484,8 @@ export function TeamSettings() {
       <Wizard
         open={wizardOpen}
         onOpenChange={setWizardOpen}
-        title="Inviter des membres dans l'équipe"
-        description="Ajoutez plusieurs collaborateurs, attribuez leurs rôles et envoyez les invitations en une fois."
+        title={t('set.team.wizard_title')}
+        description={t('set.team.wizard_desc')}
         steps={wizardSteps}
         currentIndex={wizardStep}
         onStepChange={setWizardStep}
