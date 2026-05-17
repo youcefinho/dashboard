@@ -6,7 +6,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Wizard, Input, Select, Textarea, Card, Button, Tag, Icon,
+  Wizard, Input, Select, Textarea, Card, Button, Tag, Icon, Skeleton,
   useToast, announceSR, type WizardStep,
 } from '@/components/ui';
 import {
@@ -70,6 +70,9 @@ export function ProductWizard({ open, onOpenChange, productId, onSaved }: Produc
   const isEdit = Boolean(productId);
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
+  // S6 M1.3 — chargement du produit en édition (skeleton, évite le flash
+  // champs vides → préremplis). Reste false en création ⇒ iso-comportement.
+  const [loadingProduct, setLoadingProduct] = useState(false);
   const [categories, setCategories] = useState<ProductCategory[]>([]);
 
   // ── Étape 1 — Infos générales ──
@@ -94,11 +97,13 @@ export function ProductWizard({ open, onOpenChange, productId, onSaved }: Produc
     setStep(0);
     getEcommerceCategories().then((r) => setCategories(r.data || [])).catch(() => {});
     if (!isEdit || !productId) {
+      setLoadingProduct(false);
       setTitle(''); setDescription(''); setProductType(''); setVendor('');
       setBasePrice(''); setStatus('draft'); setSeoTitle(''); setSeoDescription('');
       setSelectedCats([]); setVariants([emptyVariant()]); setImages([]);
       return;
     }
+    setLoadingProduct(true);
     getEcommerceProduct(productId).then((r) => {
       const p = r.data;
       if (!p) return;
@@ -138,7 +143,8 @@ export function ProductWizard({ open, onOpenChange, productId, onSaved }: Produc
       setImages((p.images || []).map((img, i) => ({
         id: img.id, url: img.url, alt: img.alt || '', primary: i === 0,
       })));
-    }).catch(() => toastError(t('shop.product_save_error')));
+    }).catch(() => toastError(t('shop.product_save_error')))
+      .finally(() => setLoadingProduct(false));
   }, [open, productId, isEdit]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleStepChange = (i: number) => {
@@ -235,7 +241,16 @@ export function ProductWizard({ open, onOpenChange, productId, onSaved }: Produc
       id: 'general',
       label: t('shop.step_general'),
       isValid: () => title.trim().length > 0,
-      content: (
+      content: loadingProduct ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4" aria-busy="true" aria-live="polite">
+          <div className="md:col-span-2"><Skeleton className="h-[42px] w-full rounded-[var(--radius-md)]" /></div>
+          <div className="md:col-span-2"><Skeleton className="h-[78px] w-full rounded-[var(--radius-md)]" /></div>
+          <Skeleton className="h-[42px] w-full rounded-[var(--radius-md)]" />
+          <Skeleton className="h-[42px] w-full rounded-[var(--radius-md)]" />
+          <Skeleton className="h-[42px] w-full rounded-[var(--radius-md)]" />
+          <Skeleton className="h-[42px] w-full rounded-[var(--radius-md)]" />
+        </div>
+      ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="md:col-span-2">
             <Input label={`${t('shop.product')} *`} value={title}
@@ -417,7 +432,7 @@ export function ProductWizard({ open, onOpenChange, productId, onSaved }: Produc
     },
   ], [
     title, description, productType, vendor, basePrice, status, seoTitle, seoDescription,
-    categories, selectedCats, variants, images, productId,
+    categories, selectedCats, variants, images, productId, loadingProduct,
   ]);
 
   return (

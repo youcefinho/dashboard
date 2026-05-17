@@ -12148,6 +12148,38 @@ html[data-capacitor="true"][data-app-booting="true"] body {
 .beta-fb__seg-btn:hover { color: var(--text-primary); }
 .beta-fb__seg-btn.is-active { background: var(--primary); color: #fff; font-weight: 600; }
 .beta-fb__actions { display: flex; gap: 8px; }
+
+/* ── Sprint S8 — Onboarding boutique (additif, Stripe-clean SUBTLE) ───────── */
+/* Réutilise .welcome-* existant ; quelques classes spécifiques aux étapes
+   e-commerce optionnelles (région / boutique / canaux / récap). */
+.onboarding-shop-step { display: flex; flex-direction: column; }
+.onboarding-ecommerce-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm, 8px);
+  background: var(--bg-subtle);
+}
+.onboarding-ecommerce-note > svg { flex-shrink: 0; margin-top: 1px; }
+.onboarding-channel-row { display: flex; flex-direction: column; }
+.onboarding-recap-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.onboarding-recap-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.onboarding-recap-list li > svg { flex-shrink: 0; }
 .beta-fb__shot {
   display: inline-flex;
   align-items: center;

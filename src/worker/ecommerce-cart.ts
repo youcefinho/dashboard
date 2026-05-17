@@ -26,6 +26,9 @@ import { json, sanitizeInput } from './helpers';
 import { getClientModules } from './modules';
 import { createOrderCore } from './ecommerce-orders';
 import { computeTax } from './ecommerce-tax-engine';
+// S3 M2 — validation d'entrée (schéma M1 figé, import only).
+import { validate, addCartItemSchema, updateCartItemSchema } from '../lib/schemas';
+import { validationError } from './lib/validate-response';
 
 type Auth = { userId: string; role: string };
 
@@ -201,12 +204,12 @@ export async function handleAddCartItem(
   const clientId = await resolveClientId(env, auth);
   if (!clientId) return noClient();
 
-  let body: Record<string, unknown>;
-  try {
-    body = (await request.json()) as Record<string, unknown>;
-  } catch {
-    return json({ error: 'Requête invalide' }, 400);
-  }
+  // S3 M2 — validation d'entrée AVANT la logique (early-return additif).
+  // Le gate multi-tenant variantInTenant (S2) reste APRÈS, intact.
+  const parsed = await request.json().catch(() => null);
+  const vc = validate(addCartItemSchema, parsed);
+  if (!vc.success) return validationError(vc.error);
+  const body = vc.data as Record<string, unknown>;
 
   const variantId = sanitizeInput((body.variant_id as string) || '', 100);
   const quantity = Math.max(1, Math.round(Number(body.quantity) || 1));
@@ -271,12 +274,13 @@ export async function handleUpdateCartItem(
   const clientId = await resolveClientId(env, auth);
   if (!clientId) return noClient();
 
-  let body: Record<string, unknown>;
-  try {
-    body = (await request.json()) as Record<string, unknown>;
-  } catch {
-    return json({ error: 'Requête invalide' }, 400);
-  }
+  // S4 M2 — validation d'entrée AVANT la logique (early-return additif,
+  // remplace la double-lecture try/catch). Le gate multi-tenant (404 cart)
+  // reste APRÈS, prioritaire et intact.
+  const parsed = await request.json().catch(() => null);
+  const vq = validate(updateCartItemSchema, parsed);
+  if (!vq.success) return validationError(vq.error);
+  const body = vq.data as Record<string, unknown>;
 
   const cart = (await env.DB.prepare(
     `SELECT c.id, c.client_id, c.customer_id, c.token, c.status

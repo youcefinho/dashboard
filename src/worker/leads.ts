@@ -3,6 +3,8 @@ import type { Env } from './types';
 import { sanitizeInput, json, audit, corsHeaders, createNotification } from './helpers';
 import { applyLeadMapping } from './lead-mapping';
 import { resolveDedup, mergeIntoLead, type DedupStrategy } from './lead-dedup';
+import { validate, createLeadSchema, patchLeadSchemaS3, bulkLeadsSchemaS3, webhookLeadIngestSchema } from '../lib/schemas';
+import { validationError } from './lib/validate-response';
 
 // Référence externe (injectée par le routeur principal)
 let autoEnrollFn: ((env: Env, workflowId: string, leadId: string) => Promise<void>) | null = null;
@@ -86,12 +88,46 @@ export async function handleGetClientLeads(
     params.push(`%${cleanSearch}%`, `%${cleanSearch}%`, `%${cleanSearch}%`);
   }
 
-  query += ' ORDER BY created_at DESC LIMIT 200';
+  // ── Pagination opt-in additive (Sprint S9 M1) ──────────────────────────────
+  // RÉTRO-COMPAT STRICTE : si `limit`/`offset` ABSENTS → comportement ACTUEL
+  // byte-identique (`ORDER BY created_at DESC LIMIT 200`, pas d'offset, réponse
+  // `{ data }` seule). Si fournis → on borne et on expose total/limit/offset
+  // EN PLUS de `data` (jamais à la place). Pattern parsePaging répliqué
+  // localement (cf ecommerce-orders.ts:81 — pas d'import cross-module).
+  const MAX_LIMIT = 200; // préserve le cap historique dur de 200.
+  const DEFAULT_LIMIT = 200;
+  const rawLimitParam = url.searchParams.get('limit');
+  const rawOffsetParam = url.searchParams.get('offset');
+  const paginated = rawLimitParam !== null || rawOffsetParam !== null;
 
+  if (!paginated) {
+    // Chemin historique INCHANGÉ (byte-identique).
+    query += ' ORDER BY created_at DESC LIMIT 200';
+    const stmt = env.DB.prepare(query);
+    const { results } = await stmt.bind(...params).all();
+    return json({ data: results || [] });
+  }
+
+  const rawLimit = parseInt(rawLimitParam || '', 10);
+  const rawOffset = parseInt(rawOffsetParam || '', 10);
+  const limit = Number.isFinite(rawLimit)
+    ? Math.min(Math.max(rawLimit, 1), MAX_LIMIT)
+    : DEFAULT_LIMIT;
+  const offset = Number.isFinite(rawOffset) && rawOffset > 0 ? rawOffset : 0;
+
+  // total = nombre de lignes correspondant aux filtres (avant LIMIT/OFFSET).
+  const countStmt = env.DB.prepare(
+    `SELECT COUNT(*) as cnt FROM (${query})`
+  );
+  const { results: countRows } = await countStmt.bind(...params).all();
+  const total = Number((countRows?.[0] as { cnt?: number } | undefined)?.cnt ?? 0);
+
+  query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+  const pageParams = [...params, limit, offset];
   const stmt = env.DB.prepare(query);
-  const { results } = await stmt.bind(...params).all();
+  const { results } = await stmt.bind(...pageParams).all();
 
-  return json({ data: results || [] });
+  return json({ data: results || [], total, limit, offset });
 }
 
 export async function handleGetLeads(env: Env, auth: { role: string; clientId?: string }, url: URL): Promise<Response> {
@@ -172,7 +208,10 @@ export async function handlePatchLead(
     return json({ error: 'Accès réservé aux administrateurs' }, 403);
   }
 
-  const body = await request.json() as Record<string, unknown>;
+  const rawBody = await request.json().catch(() => null);
+  const v = validate(patchLeadSchemaS3, rawBody);
+  if (!v.success) return validationError(v.error);
+  const body = v.data as Record<string, unknown>;
   const oldLead = await env.DB.prepare('SELECT pipeline_id, stage_id FROM leads WHERE id = ?').bind(leadId).first() as { pipeline_id: string | null; stage_id: string | null } | null;
   if (!oldLead) return json({ error: 'Lead introuvable' }, 404);
   const updates: string[] = [];
@@ -387,7 +426,10 @@ export async function handleBulkLeads(
     return json({ error: 'Accès réservé aux administrateurs' }, 403);
   }
 
-  const body = await request.json() as {
+  const rawBody = await request.json().catch(() => null);
+  const v = validate(bulkLeadsSchemaS3, rawBody);
+  if (!v.success) return validationError(v.error);
+  const body = v.data as {
     ids?: string[];
     action?: string;
     value?: string;
@@ -472,7 +514,10 @@ export async function handleCreateLead(
     return json({ error: 'Accès réservé aux administrateurs' }, 403);
   }
 
-  const body = await request.json() as Record<string, unknown>;
+  const rawBody = await request.json().catch(() => null);
+  const v = validate(createLeadSchema, rawBody);
+  if (!v.success) return validationError(v.error);
+  const body = v.data as Record<string, unknown>;
   const clientId = sanitizeInput(body.client_id as string, 100);
   const name = sanitizeInput(body.name as string, 100);
   const email = sanitizeInput((body.email as string) || '', 200).toLowerCase();
@@ -751,6 +796,14 @@ export async function ingestLead(
   } = opts;
 
   const m = applyLeadMapping(body, mappingJson);
+
+  // S4 M2 — validation POST-mapping (early-return additif). Le mapping
+  // est appliqué EN PREMIER (préservé) ; on valide ensuite l'objet mappé.
+  // Permissif (schéma webhook figé S3, .passthrough()). La logique
+  // ingest/dedup/scoring reste INCHANGÉE sous ce point.
+  const vi = validate(webhookLeadIngestSchema, m as unknown as Record<string, unknown>);
+  if (!vi.success) return validationError(vi.error);
+
   if (!m.name || !m.email) {
     return json({ error: 'name and email are required (vérifiez le mapping)' }, 400);
   }

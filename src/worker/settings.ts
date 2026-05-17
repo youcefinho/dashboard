@@ -1,5 +1,12 @@
 import type { Env } from './types';
-import { json, sanitizeInput } from './helpers';
+import { json, sanitizeInput, audit } from './helpers';
+
+// S4 M3 — acteur de l'audit dérivé du header X-User-Id (convention de ce fichier),
+// fallback 'system'. Purement additif : ne change ni la logique métier ni les réponses.
+// ⚠ Loi 25 : `details` ne contient JAMAIS de secret brut (clé API / whsec / hash).
+function auditActor(request: Request): string {
+  return request.headers.get('X-User-Id') || 'system';
+}
 
 // ── User Preferences ────────────────────────────────────────
 
@@ -67,6 +74,12 @@ export async function handleUpdateClientCompliance(request: Request, env: Env, a
     'UPDATE clients SET amf_certificate = ?, amf_disclaimer_required = ?, updated_at = datetime("now") WHERE id = ?'
   ).bind(amf_certificate, amf_disclaimer_required, targetClientId).run();
 
+  // Traçabilité conformité AMF (config courtier, non-régulé paiement E4/E6).
+  // Pas de valeur de certificat dans details — métadonnée booléenne seulement.
+  await audit(env, auditActor(request), 'compliance.update', 'client', targetClientId, {
+    amf_disclaimer_required,
+    has_certificate: !!amf_certificate,
+  });
   return json({ data: { success: true } });
 }
 
@@ -135,6 +148,8 @@ export async function handleCreateApiKey(request: Request, env: Env): Promise<Re
     'INSERT INTO api_keys (id, client_id, user_id, name, key_hash, scopes) VALUES (?, ?, ?, ?, ?, ?)'
   ).bind(id, client_id, user_id, name, keyHash, scopes).run();
 
+  // Audit : id/label/scope seulement — JAMAIS rawKey ni keyHash (Loi 25).
+  await audit(env, auditActor(request), 'apikey.create', 'api_key', id, { name, scopes, client_id });
   // Ne retourne la rawKey qu'une seule fois !
   return json({ data: { id, name, key: rawKey, scopes } }, 201);
 }
@@ -144,6 +159,7 @@ export async function handleRevokeApiKey(request: Request, env: Env): Promise<Re
   const keyId = url.pathname.split('/').pop() || '';
   
   await env.DB.prepare('DELETE FROM api_keys WHERE id = ?').bind(keyId).run();
+  await audit(env, auditActor(request), 'apikey.revoke', 'api_key', keyId);
   return json({ data: { success: true } });
 }
 
@@ -174,14 +190,17 @@ export async function handleCreateWebhook(request: Request, env: Env): Promise<R
     'INSERT INTO webhook_subscriptions (id, client_id, url, events, secret) VALUES (?, ?, ?, ?, ?)'
   ).bind(id, client_id, url, events, secret).run();
 
+  // Audit : url/events/id seulement — JAMAIS le secret whsec_ (Loi 25).
+  await audit(env, auditActor(request), 'webhook.create', 'webhook', id, { url, events, client_id });
   return json({ data: { id, url, events, secret } }, 201);
 }
 
 export async function handleDeleteWebhook(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
   const webhookId = url.pathname.split('/').pop() || '';
-  
+
   await env.DB.prepare('DELETE FROM webhook_subscriptions WHERE id = ?').bind(webhookId).run();
+  await audit(env, auditActor(request), 'webhook.delete', 'webhook', webhookId);
   return json({ data: { success: true } });
 }
 
@@ -226,10 +245,13 @@ export async function handlePublicCreateWebhook(request: Request, env: Env, clie
     'INSERT INTO webhook_subscriptions (id, client_id, url, events, secret) VALUES (?, ?, ?, ?, ?)'
   ).bind(id, clientId, url, events, secret).run();
 
+  // Acteur = clientId authentifié (API publique Zapier). Pas de secret dans details.
+  await audit(env, clientId, 'webhook.create', 'webhook', id, { url, events, source: 'public_api' });
   return json({ data: { id, url, events, secret } }, 201);
 }
 
 export async function handlePublicDeleteWebhook(env: Env, clientId: string, webhookId: string): Promise<Response> {
   await env.DB.prepare('DELETE FROM webhook_subscriptions WHERE id = ? AND client_id = ?').bind(webhookId, clientId).run();
+  await audit(env, clientId, 'webhook.delete', 'webhook', webhookId, { source: 'public_api' });
   return json({ data: { success: true } });
 }

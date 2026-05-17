@@ -40,6 +40,9 @@ function noClient(): Response {
 async function fetchMerchant(
   env: Env, clientId: string,
 ): Promise<{ name: string | null; email: string | null; gst_number: string | null; qst_number: string | null }> {
+  // [S2 multi-tenant] tenant-scoped OK : clientId est le tenant courant résolu
+  // via getClientModules(auth.userId) — WHERE id = ? lit la fiche du tenant
+  // lui-même (pas de fuite : un user ne résout que son propre clientId).
   // Base sûre : colonnes connues du schéma clients.
   let base: { name: string | null; email: string | null } = { name: null, email: null };
   try {
@@ -88,14 +91,24 @@ export async function handleGetOrderInvoice(
   const clientId = await resolveClientId(env, auth);
   if (!clientId) return noClient();
 
+  // [S2 multi-tenant] tenant-scoped OK : WHERE id = ? AND client_id = ?.
+  // Ce gate est le SEUL point d'isolation pour la facture — order_items n'a
+  // PAS de colonne client_id (schéma E1 ~l.195-207), son scope tenant dérive
+  // exclusivement de cet order validé. Plaquer un client_id sur order_items
+  // casserait (no such column).
   const order = (await env.DB.prepare(
     'SELECT * FROM orders WHERE id = ? AND client_id = ?',
   ).bind(orderId, clientId).first()) as Record<string, unknown> | null;
   if (!order) return json({ error: 'Commande introuvable' }, 404);
 
+  // [S2 multi-tenant] défense en profondeur : on ne lit les items QUE si
+  // l'order vérifié ci-dessus appartient bien au tenant. order.id provient de
+  // la ligne déjà filtrée par client_id — on relie order_items sur cet id
+  // prouvé tenant (jamais l'orderId brut de l'URL non re-validé).
+  const verifiedOrderId = String(order.id ?? orderId);
   const { results: itemRows } = await env.DB.prepare(
     'SELECT * FROM order_items WHERE order_id = ? ORDER BY created_at ASC',
-  ).bind(orderId).all();
+  ).bind(verifiedOrderId).all();
   const items = (itemRows || []).map((r) => {
     const it = r as Record<string, unknown>;
     return {
@@ -109,6 +122,8 @@ export async function handleGetOrderInvoice(
     };
   });
 
+  // [S2 multi-tenant] tenant-scoped OK : WHERE id = ? AND client_id = ?
+  // (customers a un client_id propre — double garde id + tenant).
   let customer: unknown = null;
   if (order.customer_id) {
     customer = await env.DB.prepare(

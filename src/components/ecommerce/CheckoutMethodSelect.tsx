@@ -14,7 +14,7 @@
 // Stripe SUBTLE, FR québécois, a11y (radiogroup + clavier), reduced-motion.
 
 import type { PaymentMethod, SupportedCurrency } from '@/lib/types';
-import { Icon } from '@/components/ui';
+import { Icon, Skeleton } from '@/components/ui';
 import { t } from '@/lib/i18n';
 import { CreditCard, Truck, Landmark } from 'lucide-react';
 
@@ -41,6 +41,12 @@ interface CheckoutMethodSelectProps {
   value: PaymentMethod | null;
   onChange: (m: PaymentMethod) => void;
   disabled?: boolean;
+  /**
+   * S6 M1.2 — état chargement visuel pur (commande pas encore résolue).
+   * Défaut `false` ⇒ iso-comportement pour les appelants existants.
+   * N'affecte EN RIEN le filtrage devise/PCI `methodsForCurrency`.
+   */
+  loading?: boolean;
 }
 
 export function CheckoutMethodSelect({
@@ -48,7 +54,20 @@ export function CheckoutMethodSelect({
   value,
   onChange,
   disabled,
+  loading = false,
 }: CheckoutMethodSelectProps) {
+  // S6 M1.2 — fallback chargement : devise pas encore connue ⇒ skeleton
+  // (jamais d'écran vide ni d'état partiel). Logique PCI intouchée.
+  if (loading || !currency) {
+    return (
+      <div className="flex flex-col gap-2" aria-busy="true" aria-live="polite">
+        {[1, 2, 3].map((i) => (
+          <Skeleton key={i} className="h-[58px] w-full rounded-[var(--radius-md)]" />
+        ))}
+      </div>
+    );
+  }
+
   const methods = methodsForCurrency(currency);
 
   if (methods.length === 0) {

@@ -13,6 +13,7 @@
 
 import type { Env } from './types';
 import { json } from './helpers';
+import { createSecretStore } from './lib/secret-store';
 import {
   loadChannel,
   loadChannelByIdOnly,
@@ -174,16 +175,18 @@ export async function shopifyCallback(
     return json({ error: 'Échange OAuth échoué', message: 'Token Shopify non obtenu.' }, 502);
   }
 
-  // ⚠️ SÉCURITÉ : on NE stocke JAMAIS le token clair en DB. On le dépose
-  // dans le STATE_STORE/KV sous une RÉFÉRENCE, et config_ref pointe cette réf.
-  // TODO secret store : idéalement un secret store dédié (Workers Secrets /
-  // Vault) ; ici KV chiffré au repos fait office de coffre minimal.
+  // ⚠️ SÉCURITÉ S7 : token chiffré AES-GCM en D1 via le secret store typé
+  // (UNIQUE(channel_id,kind), multi-tenant : client_id = channel.client_id
+  // résolu depuis le canal chargé, jamais en dur). Remplace l'ancien
+  // STATE_STORE.put('shopify_token:'+id, accessToken) EN CLAIR.
   const configRef = `shopify:${channel.id}`;
-  if (env.STATE_STORE) {
-    try {
-      await env.STATE_STORE.put(`shopify_token:${channel.id}`, accessToken);
-    } catch { /* best-effort */ }
-  }
+  await createSecretStore(env).putIntegrationToken(
+    env,
+    channel.client_id,
+    channel.id,
+    'shopify_token',
+    accessToken,
+  );
   // Persiste UNIQUEMENT la RÉFÉRENCE + domaine, jamais le token.
   await env.DB.prepare(
     `UPDATE sales_channels
@@ -254,18 +257,22 @@ export async function handleShopifyWebhook(
 /**
  * Construit le callback de push stock vers Shopify (REST inventory_levels).
  * Le moteur M2.3 (syncProductOut) gère l'anti-echo + la quantité ; ici on
- * effectue uniquement l'appel HTTP avec le token (lu via la RÉFÉRENCE KV).
+ * effectue uniquement l'appel HTTP avec le token (déchiffré via secret store).
  */
 export async function shopifyPushFn(
   env: Env,
   channel: ChannelRow,
 ): Promise<(externalId: string, qty: number) => Promise<boolean>> {
-  let token = '';
-  if (env.STATE_STORE) {
-    try {
-      token = (await env.STATE_STORE.get(`shopify_token:${channel.id}`)) || '';
-    } catch { /* best-effort */ }
-  }
+  // S7 : lecture du token déchiffré via le secret store (multi-tenant strict :
+  // client_id ET channel_id résolus depuis le canal chargé). null si absent /
+  // révoqué / mauvais tenant ⇒ no-op silencieux préservé (parité KV-absent).
+  const token =
+    (await createSecretStore(env).getIntegrationToken(
+      env,
+      channel.client_id,
+      channel.id,
+      'shopify_token',
+    )) || '';
   const shop = channel.shop_domain || '';
   return async (externalId: string, qty: number): Promise<boolean> => {
     if (!token || !shop) return false; // pas d'infra secret → no-op silencieux

@@ -101,6 +101,12 @@ export async function handleUpdateDashboard(
     binds.push(JSON.stringify(body.config));
   }
   if (sets.length === 0) return json({ data: { success: true, noop: true } });
+  // [S2] conforme : unixepoch entier-vs-entier cohérent, pas de câblage dbTime
+  // (cf docs/TIMESTAMP-CONSISTENCY-MAP). `dashboards.updated_at` est créé INTEGER
+  // (migration-sprint46 DEFAULT (unixepoch())). On y ÉCRIT un entier epoch-s via
+  // `unixepoch()` → écriture homogène avec la colonne. Aucune LECTURE/comparaison
+  // cross-format : `created_at`/`updated_at` sont seulement renvoyés tels quels au
+  // client (SELECT, pas de WHERE/JOIN cross-format). Ne RIEN modifier (S1 verdict).
   sets.push('updated_at = (unixepoch())');
   binds.push(id, userId);
 
@@ -130,6 +136,9 @@ export async function handleShareDashboard(env: Env, auth: Auth, id: string): Pr
   let token = row.share_token as string | null;
   if (!token) {
     token = genToken();
+    // [S2] conforme : idem L+~30 — écriture entier `unixepoch()` dans colonne
+    // INTEGER `updated_at` (migration-sprint46). Pas de comparaison cross-format,
+    // pas de câblage dbTime requis (cf docs/TIMESTAMP-CONSISTENCY-MAP).
     await env.DB.prepare(
       `UPDATE dashboards SET share_token = ?, updated_at = (unixepoch()) WHERE id = ?`
     ).bind(token, id).run();

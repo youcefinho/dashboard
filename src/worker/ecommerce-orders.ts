@@ -29,6 +29,14 @@ import { getClientModules } from './modules';
 import { reserveStock, releaseStock, commitSale } from './ecommerce-inventory';
 import { computeTax, type TaxRegime } from './ecommerce-tax-engine';
 import type { OrderStatus, FinancialStatus, FulfillmentStatus } from '../lib/types';
+// S3 M2 — validation d'entrée (schémas M1 figés, import only).
+import {
+  validate,
+  createOrderSchema,
+  createManualOrderSchema,
+  updateOrderStatusSchema,
+} from '../lib/schemas';
+import { validationError } from './lib/validate-response';
 
 type Auth = { userId: string; role: string };
 
@@ -376,22 +384,20 @@ export async function handleCreateOrder(
   const clientId = await resolveClientId(env, auth);
   if (!clientId) return noClient();
 
-  let body: Record<string, unknown>;
-  try {
-    body = (await request.json()) as Record<string, unknown>;
-  } catch {
-    return json({ error: 'Requête invalide' }, 400);
-  }
+  // S3 M2 — validation d'entrée AVANT la logique (early-return additif).
+  const body = await request.json().catch(() => null);
+  const v = validate(createOrderSchema, body);
+  if (!v.success) return validationError(v.error);
 
   try {
     const result = await createOrderCore(env, clientId, {
-      customer_id: (body.customer_id as string) || null,
-      email: (body.email as string) || '',
-      items: (body.items as CreateOrderInput['items']) || [],
-      shipping_cents: body.shipping_cents as number,
-      discount_cents: body.discount_cents as number,
-      note: body.note as string,
-      source: (body.source as string) || 'web',
+      customer_id: (v.data.customer_id as string) || null,
+      email: (v.data.email as string) || '',
+      items: (v.data.items as CreateOrderInput['items']) || [],
+      shipping_cents: v.data.shipping_cents as number,
+      discount_cents: v.data.discount_cents as number,
+      note: v.data.note as string,
+      source: (v.data.source as string) || 'web',
     }, auth.userId);
     return json({ data: result }, 201);
   } catch (e) {
@@ -410,21 +416,19 @@ export async function handleCreateManualOrder(
   const clientId = await resolveClientId(env, auth);
   if (!clientId) return noClient();
 
-  let body: Record<string, unknown>;
-  try {
-    body = (await request.json()) as Record<string, unknown>;
-  } catch {
-    return json({ error: 'Requête invalide' }, 400);
-  }
+  // S3 M2 — validation d'entrée AVANT la logique (early-return additif).
+  const body = await request.json().catch(() => null);
+  const v = validate(createManualOrderSchema, body);
+  if (!v.success) return validationError(v.error);
 
   try {
     const result = await createOrderCore(env, clientId, {
-      customer_id: (body.customer_id as string) || null,
-      email: (body.email as string) || '',
-      items: (body.items as CreateOrderInput['items']) || [],
-      shipping_cents: body.shipping_cents as number,
-      discount_cents: body.discount_cents as number,
-      note: body.note as string,
+      customer_id: (v.data.customer_id as string) || null,
+      email: (v.data.email as string) || '',
+      items: (v.data.items as CreateOrderInput['items']) || [],
+      shipping_cents: v.data.shipping_cents as number,
+      discount_cents: v.data.discount_cents as number,
+      note: v.data.note as string,
       source: 'manual',
     }, auth.userId);
     return json({ data: result }, 201);
@@ -471,20 +475,14 @@ export async function handleUpdateOrderStatus(
   const clientId = await resolveClientId(env, auth);
   if (!clientId) return noClient();
 
-  let body: Record<string, unknown>;
-  try {
-    body = (await request.json()) as Record<string, unknown>;
-  } catch {
-    return json({ error: 'Requête invalide' }, 400);
-  }
+  // S3 M2 — validation d'entrée AVANT la logique (early-return additif).
+  // updateOrderStatusSchema (M1) valide déjà status ∈ machine à états ;
+  // la suite métier (transitions/hooks stock/timestamps) reste INCHANGÉE.
+  const body = await request.json().catch(() => null);
+  const v = validate(updateOrderStatusSchema, body);
+  if (!v.success) return validationError(v.error);
 
-  const next = body.status as OrderStatus;
-  const allValid: OrderStatus[] = [
-    'pending', 'paid', 'preparing', 'shipped', 'delivered', 'cancelled', 'refunded',
-  ];
-  if (!allValid.includes(next)) {
-    return json({ error: 'Statut invalide', message: 'Statut de commande inconnu.' }, 400);
-  }
+  const next = v.data.status as OrderStatus;
 
   const order = (await env.DB.prepare(
     'SELECT id, status, paid_at, cancelled_at FROM orders WHERE id = ? AND client_id = ?',

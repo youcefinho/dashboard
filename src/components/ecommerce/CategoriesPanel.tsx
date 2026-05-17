@@ -3,7 +3,7 @@
 // non) → input sort_order + select parent. Wiré endpoints M1.
 
 import { useEffect, useState } from 'react';
-import { SlidePanel, Input, Select, Button, Icon, useToast, useConfirm } from '@/components/ui';
+import { SlidePanel, Input, Select, Button, Icon, Skeleton, EmptyState, useToast, useConfirm } from '@/components/ui';
 import {
   getEcommerceCategories, createEcommerceCategory,
   updateEcommerceCategory, deleteEcommerceCategory,
@@ -109,9 +109,18 @@ export function CategoriesPanel({ open, onOpenChange, onChanged }: CategoriesPan
 
         {/* Liste */}
         {loading ? (
-          <p className="text-[12px] text-[var(--text-muted)]">…</p>
+          <div className="flex flex-col gap-2" aria-busy="true" aria-live="polite">
+            {[1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} className="h-[46px] w-full rounded-lg" />
+            ))}
+          </div>
         ) : cats.length === 0 ? (
-          <p className="text-[13px] text-[var(--text-muted)]">{t('shop.no_category')}</p>
+          <EmptyState
+            variant="compact"
+            icon={<FolderTree size={32} strokeWidth={1.8} />}
+            title={t('shop.no_category')}
+            description="Crée ta première catégorie ci-dessus pour organiser ton catalogue."
+          />
         ) : (
           <div className="flex flex-col gap-2">
             {cats.map((c) => {

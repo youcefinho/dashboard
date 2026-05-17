@@ -21,6 +21,11 @@
 import type { Env } from './types';
 import { json, sanitizeInput, audit, createNotification } from './helpers';
 import { getClientModules } from './modules';
+// S3 M2 — validation d'entrée (schéma M1 figé, import only). S'ajoute APRÈS
+// le gate multi-tenant S2 (resolveVariant) : validation d'entrée puis garde
+// tenant — additif, ordre logique préservé.
+import { validate, adjustInventorySchema } from '../lib/schemas';
+import { validationError } from './lib/validate-response';
 
 type Auth = { userId: string; role: string };
 
@@ -60,6 +65,13 @@ interface VariantContext {
 /**
  * Vérifie que la variante existe ET appartient à un produit du tenant courant.
  * Retourne le contexte produit (titre/sku) utile aux notifications, ou null.
+ *
+ * [S2 multi-tenant] CŒUR de l'isolation de ce module. `inventory` et
+ * `inventory_movements` N'ONT PAS de colonne `client_id` (schéma E1 ~l.100-125)
+ * — l'isolation tenant passe EXCLUSIVEMENT par cette chaîne de jointure
+ * `product_variants v → products p WHERE p.client_id = ?`. Plaquer un
+ * `WHERE client_id = ?` sur inventory casserait (no such column). Tout handler
+ * public DOIT passer ce gate AVANT toute lecture/écriture inventory.
  */
 async function resolveVariant(
   env: Env, clientId: string, variantId: string,
@@ -81,6 +93,21 @@ async function resolveVariant(
   };
 }
 
+/**
+ * [S2 multi-tenant] Assertion défensive (défense en profondeur) : la variante
+ * appartient-elle bien à un produit du tenant `clientId` ? Réutilise la chaîne
+ * de jointure validée `resolveVariant`. Sémantique inchangée pour les appels
+ * légitimes (le tenant possède sa variante → true). Utilisée par les helpers
+ * stock exposés à E3 (reserveStock/releaseStock/commitSale) pour garantir
+ * qu'aucun appelant ne contourne le gate, même si l'upstream oubliait de le
+ * faire. Ne sur-restreint AUCUN cas légitime.
+ */
+async function assertVariantTenant(
+  env: Env, clientId: string, variantId: string,
+): Promise<boolean> {
+  return (await resolveVariant(env, clientId, variantId)) !== null;
+}
+
 interface InventoryRow {
   id: string;
   variant_id: string;
@@ -100,6 +127,9 @@ interface InventoryRow {
  * pas (variant_id est UNIQUE → INSERT OR IGNORE). Retourne la ligne fraîche.
  */
 async function ensureInventory(env: Env, variantId: string): Promise<InventoryRow> {
+  // [S2 multi-tenant] tenant-scoped via le gate resolveVariant exécuté par
+  // chaque handler appelant AVANT cet appel (variantId déjà prouvé du tenant).
+  // inventory n'a pas de client_id : scoping par variant_id (déjà validé).
   await env.DB.prepare(
     `INSERT OR IGNORE INTO inventory (id, variant_id, quantity, reserved)
      VALUES (?, ?, 0, 0)`,
@@ -197,6 +227,8 @@ export async function handleSetInventory(
   if (sets.length === 0) return json({ error: 'Aucun champ à mettre à jour' }, 400);
 
   params.push(variantId);
+  // [S2 multi-tenant] déjà couvert upstream L159 (resolveVariant) — variantId
+  // prouvé appartenir au tenant clientId. inventory sans client_id : scope OK.
   await env.DB.prepare(
     `UPDATE inventory SET ${sets.join(', ')}, updated_at = datetime('now')
        WHERE variant_id = ?`,
@@ -204,6 +236,8 @@ export async function handleSetInventory(
 
   // Si on a modifié la quantité, on trace le mouvement (audit trail intègre).
   if (quantityDelta !== 0) {
+    // [S2 multi-tenant] déjà couvert upstream L159 (resolveVariant). Le
+    // mouvement hérite du scope tenant de la variante validée.
     await env.DB.prepare(
       `INSERT INTO inventory_movements
          (id, variant_id, delta, reason, note, created_by)
@@ -218,6 +252,7 @@ export async function handleSetInventory(
     productId: ctx.productId,
   });
 
+  // [S2 multi-tenant] déjà couvert upstream L159 (resolveVariant).
   const fresh = await env.DB.prepare(
     'SELECT * FROM inventory WHERE variant_id = ?',
   ).bind(variantId).first() as InventoryRow;
@@ -245,15 +280,16 @@ export async function handleAdjustInventory(
 ): Promise<Response> {
   const clientId = await resolveClientId(env, auth);
   if (!clientId) return noClient();
+  // [S2 multi-tenant] gate PRÉSERVÉ AVANT toute écriture inventory.
   const ctx = await resolveVariant(env, clientId, variantId);
   if (!ctx) return json({ error: 'Variante introuvable' }, 404);
 
-  let body: Record<string, unknown>;
-  try {
-    body = (await request.json()) as Record<string, unknown>;
-  } catch {
-    return json({ error: 'Requête invalide' }, 400);
-  }
+  // S3 M2 — validation d'entrée (early-return additif), APRÈS le gate tenant
+  // S2 ci-dessus, AVANT la logique d'ajustement (inchangée).
+  const parsed = await request.json().catch(() => null);
+  const vi = validate(adjustInventorySchema, parsed);
+  if (!vi.success) return validationError(vi.error);
+  const body = vi.data as Record<string, unknown>;
 
   if (!Number.isFinite(body.delta as number) || Math.round(body.delta as number) === 0) {
     return json(
@@ -287,6 +323,8 @@ export async function handleAdjustInventory(
   }
 
   // Transaction logique : update stock + trace le mouvement ensemble.
+  // [S2 multi-tenant] déjà couvert upstream L249 (resolveVariant) — variantId
+  // prouvé du tenant clientId. inventory/_movements sans client_id : scope OK.
   await env.DB.prepare(
     `UPDATE inventory SET quantity = ?, updated_at = datetime('now')
        WHERE variant_id = ?`,
@@ -304,6 +342,7 @@ export async function handleAdjustInventory(
     delta, reason, productId: ctx.productId,
   });
 
+  // [S2 multi-tenant] déjà couvert upstream L249 (resolveVariant).
   const fresh = await env.DB.prepare(
     'SELECT * FROM inventory WHERE variant_id = ?',
   ).bind(variantId).first() as InventoryRow;
@@ -328,6 +367,9 @@ export async function handleListMovements(
 
   const { limit, offset } = parsePaging(url);
 
+  // [S2 multi-tenant] déjà couvert upstream L327 (resolveVariant) — variantId
+  // prouvé du tenant clientId. inventory_movements sans client_id : on ne lit
+  // QUE les mouvements de la variante validée (scope tenant hérité).
   const countRow = await env.DB.prepare(
     'SELECT COUNT(*) AS n FROM inventory_movements WHERE variant_id = ?',
   ).bind(variantId).first() as { n: number } | null;
@@ -355,6 +397,10 @@ export async function handleListLowStock(
   if (!clientId) return noClient();
   const { limit, offset } = parsePaging(url);
 
+  // [S2 multi-tenant] tenant-scoped OK via la chaîne
+  // inventory i → product_variants v → products p WHERE p.client_id = ?.
+  // Filtrage tenant explicite dans la clause (pas de client_id sur inventory :
+  // c'est le pattern correct, défense déjà en profondeur ici).
   const baseFrom = `
     FROM inventory i
     JOIN product_variants v ON v.id = i.variant_id
@@ -406,6 +452,8 @@ async function maybeNotifyLowStock(
       (inv.track_inventory ?? 1) === 1 &&
       available <= (inv.low_stock_threshold ?? 5);
 
+    // [S2 multi-tenant] ctx provient de resolveVariant (déjà validé tenant
+    // par le handler appelant) — ctx.variantId est prouvé du tenant clientId.
     if (!isLow) {
       // Repassé au-dessus du seuil → réarme l'alerte pour la prochaine fois.
       if (inv.last_low_stock_alert_at) {
@@ -445,10 +493,33 @@ async function maybeNotifyLowStock(
 
 export interface StockOpResult {
   ok: boolean;
-  reason?: 'not_found' | 'insufficient';
+  reason?: 'not_found' | 'insufficient' | 'tenant_mismatch';
   available?: number;
   quantity?: number;
   reserved?: number;
+}
+
+/**
+ * [S2 multi-tenant] Référence optionnelle vers le tenant pour les helpers stock
+ * exposés à E3. `clientId` est OPTIONNEL et purement RÉTRO-COMPATIBLE : s'il est
+ * fourni, on ajoute une assertion défensive (la variante doit appartenir au
+ * tenant) — sinon comportement strictement inchangé (E3 a déjà validé l'ordre
+ * et ses lignes upstream). Aucun appel légitime n'est cassé ni sur-restreint.
+ */
+type StockRef = { type?: string; id?: string; by?: string; clientId?: string };
+
+/**
+ * [S2 multi-tenant] Garde commune des helpers stock exposés. Si `ref.clientId`
+ * est fourni : refuse (sans effet de bord) si la variante n'appartient pas au
+ * tenant — défense en profondeur contre un appelant E3 qui aurait sauté le
+ * gate. Si absent : passe (rétro-compat, scope assuré par l'appelant). Ne
+ * sur-restreint JAMAIS un appel légitime du tenant propriétaire.
+ */
+async function guardStockTenant(
+  env: Env, variantId: string, ref?: StockRef,
+): Promise<boolean> {
+  if (!ref?.clientId) return true; // rétro-compat : scope upstream (E3)
+  return assertVariantTenant(env, ref.clientId, variantId);
 }
 
 /**
@@ -459,10 +530,15 @@ export interface StockOpResult {
  */
 export async function reserveStock(
   env: Env, variantId: string, qty: number,
-  ref?: { type?: string; id?: string; by?: string },
+  ref?: StockRef,
 ): Promise<StockOpResult> {
   const n = Math.max(0, Math.round(qty));
   if (n === 0) return { ok: true };
+  // [S2 multi-tenant] défense en profondeur : si clientId fourni par E3, la
+  // variante doit lui appartenir (chaîne products.client_id). Sinon rétro-compat.
+  if (!(await guardStockTenant(env, variantId, ref))) {
+    return { ok: false, reason: 'tenant_mismatch' };
+  }
   const inv = await ensureInventory(env, variantId);
   const available = (inv.quantity ?? 0) - (inv.reserved ?? 0);
 
@@ -497,10 +573,14 @@ export async function reserveStock(
  */
 export async function releaseStock(
   env: Env, variantId: string, qty: number,
-  ref?: { type?: string; id?: string; by?: string },
+  ref?: StockRef,
 ): Promise<StockOpResult> {
   const n = Math.max(0, Math.round(qty));
   if (n === 0) return { ok: true };
+  // [S2 multi-tenant] défense en profondeur (idem reserveStock).
+  if (!(await guardStockTenant(env, variantId, ref))) {
+    return { ok: false, reason: 'tenant_mismatch' };
+  }
   const inv = await ensureInventory(env, variantId);
   const release = Math.min(n, inv.reserved ?? 0);
   if (release === 0) return { ok: true, reserved: inv.reserved ?? 0 };
@@ -528,10 +608,14 @@ export async function releaseStock(
  */
 export async function commitSale(
   env: Env, variantId: string, qty: number,
-  ref?: { type?: string; id?: string; by?: string },
+  ref?: StockRef,
 ): Promise<StockOpResult> {
   const n = Math.max(0, Math.round(qty));
   if (n === 0) return { ok: true };
+  // [S2 multi-tenant] défense en profondeur (idem reserveStock).
+  if (!(await guardStockTenant(env, variantId, ref))) {
+    return { ok: false, reason: 'tenant_mismatch' };
+  }
   const inv = await ensureInventory(env, variantId);
   const newQty = (inv.quantity ?? 0) - n;
 

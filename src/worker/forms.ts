@@ -2,6 +2,8 @@
 import type { Env } from './types';
 import { sanitizeInput, json, audit } from './helpers';
 import { autoEnrollForTrigger } from './workflows';
+import { validate, publicFormSubmitSchema, createFormSchema } from '../lib/schemas';
+import { validationError } from './lib/validate-response';
 
 export async function handlePublicFormGet(env: Env, url: URL): Promise<Response> {
   const slug = url.pathname.replace('/api/form/', '');
@@ -12,7 +14,10 @@ export async function handlePublicFormGet(env: Env, url: URL): Promise<Response>
 }
 
 export async function handlePublicFormSubmit(request: Request, env: Env): Promise<Response> {
-  const body = await request.json() as { form_id?: string; data?: Record<string, unknown> };
+  const rawBody = await request.json().catch(() => null);
+  const v = validate(publicFormSubmitSchema, rawBody);
+  if (!v.success) return validationError(v.error);
+  const body = v.data as { form_id?: string; data?: Record<string, unknown> };
   if (!body.form_id || !body.data) return json({ error: 'form_id et data requis' }, 400);
   const form = await env.DB.prepare('SELECT * FROM forms WHERE id = ? AND is_active = 1')
     .bind(body.form_id).first() as Record<string, unknown> | null;
@@ -211,7 +216,10 @@ export async function handleGetForm(env: Env, auth: { role: string }, formId: st
 
 export async function handleCreateForm(request: Request, env: Env, auth: { role: string; userId: string }): Promise<Response> {
   if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
-  const body = await request.json() as Record<string, unknown>;
+  const rawBody = await request.json().catch(() => null);
+  const v = validate(createFormSchema, rawBody);
+  if (!v.success) return validationError(v.error);
+  const body = v.data as Record<string, unknown>;
   if (!body.client_id || !body.name || !body.slug) return json({ error: 'client_id, name et slug requis' }, 400);
   const id = crypto.randomUUID();
   const formType = (body.form_type || 'form') as string;

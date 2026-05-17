@@ -3,12 +3,11 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, EmptyState, Skeleton, PageHero, KpiStrip, type KpiItem } from '@/components/ui';
+import { Card, Button, EmptyState, Skeleton, PageHero } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { getClients, createClient, getLeads } from '@/lib/api';
 import type { Client, Lead } from '@/lib/types';
-
 
 // Type étendu pour les clients avec compteurs
 interface ClientWithCounts extends Client {
@@ -73,15 +72,25 @@ export function ClientsPage() {
         highlight="Clients"
         description="Vos sous-comptes : agences, équipes ou entreprises gérées. Chaque client = environnement isolé."
       />
-      {/* KPI Strip — Sprint 23 wave 17 (unified GHL pattern) */}
-      <KpiStrip
-        items={[
-          { label: 'Sous-comptes', value: clients.length, color: 'brand' },
-          { label: 'Leads total', value: totalLeads, color: 'info' },
-          { label: 'Gagnés', value: totalWon, color: 'success' },
-          { label: 'Pipeline $', value: `${(totalPipeline / 1000).toFixed(1)}K`, color: 'warning' },
-        ] satisfies KpiItem[]}
-      />
+      {/* KPIs */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+        <Card className="p-3 text-center">
+          <p className="text-2xl font-bold text-[var(--brand-primary)]">{clients.length}</p>
+          <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider">Sous-comptes</p>
+        </Card>
+        <Card className="p-3 text-center">
+          <p className="text-2xl font-bold text-[var(--info)]">{totalLeads}</p>
+          <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider">Leads total</p>
+        </Card>
+        <Card className="p-3 text-center">
+          <p className="text-2xl font-bold text-[var(--success)]">{totalWon}</p>
+          <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider">Gagnés</p>
+        </Card>
+        <Card className="p-3 text-center">
+          <p className="text-2xl font-bold text-[var(--warning)]">{totalPipeline.toLocaleString('fr-CA')} $</p>
+          <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider">Pipeline total</p>
+        </Card>
+      </div>
 
       {/* Actions bar */}
       <div className="flex items-center justify-between mb-4 gap-3">
@@ -89,7 +98,7 @@ export function ClientsPage() {
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
           placeholder="Rechercher un compte..."
-          containerClassName="max-w-xs"
+          className="max-w-xs"
         />
         <div className="flex items-center gap-2">
           <p className="text-xs text-[var(--text-muted)] hidden sm:block">
@@ -101,46 +110,16 @@ export function ClientsPage() {
 
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Card key={i} className="p-4">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <Skeleton className="h-11 w-11 rounded-full shrink-0" />
-                  <div className="space-y-1.5">
-                    <Skeleton className="h-3.5 w-28 rounded" />
-                    <Skeleton className="h-2.5 w-20 rounded" />
-                  </div>
-                </div>
-                <Skeleton className="h-3 w-12 rounded-full" />
-              </div>
-              <div className="grid grid-cols-3 gap-2 pt-3 border-t border-[var(--border-subtle)]">
-                {[1,2,3].map(c => (
-                  <div key={c} className="space-y-1.5 flex flex-col items-center">
-                    <Skeleton className="h-5 w-10 rounded" />
-                    <Skeleton className="h-2.5 w-12 rounded" />
-                  </div>
-                ))}
-              </div>
-              <Skeleton className="h-1.5 w-full rounded-full mt-3" />
-            </Card>
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Card key={i}><Skeleton className="h-40 w-full" /></Card>
           ))}
         </div>
       ) : filteredClients.length === 0 ? (
-        searchQuery ? (
-          <EmptyState
-            variant="filtered"
-            title="Aucun résultat"
-            description={`Aucun compte ne correspond à « ${searchQuery} »`}
-            action={<Button variant="secondary" onClick={() => setSearchQuery('')}>Effacer la recherche</Button>}
-          />
-        ) : (
-          <EmptyState
-            variant="first-time"
-            title="Aucun client encore"
-            description="Ajoute ton premier compte client pour commencer."
-            action={<Button variant="primary" onClick={() => setShowModal(true)}>Ajouter un client</Button>}
-          />
-        )
+        <EmptyState
+          title={searchQuery ? 'Aucun résultat' : 'Aucun client'}
+          description={searchQuery ? `Aucun compte ne correspond à « ${searchQuery} »` : 'Ajoutez votre premier compte pour commencer.'}
+          action={!searchQuery ? <Button onClick={() => setShowModal(true)}>Ajouter un client</Button> : undefined}
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredClients.map((client) => {
@@ -153,7 +132,7 @@ export function ClientsPage() {
               >
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[var(--primary)] to-[var(--info)] flex items-center justify-center text-base font-bold text-white shadow-md">
+                    <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[var(--brand-primary)] to-[var(--info)] flex items-center justify-center text-base font-bold text-white shadow-md">
                       {client.name.charAt(0).toUpperCase()}
                     </div>
                     <div>
@@ -185,7 +164,7 @@ export function ClientsPage() {
                     <p className="text-[10px] text-[var(--text-muted)]">Conv.</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-lg font-bold text-[var(--primary)]">{(m?.pipelineValue || 0).toLocaleString('fr-CA')} $</p>
+                    <p className="text-lg font-bold text-[var(--brand-primary)]">{(m?.pipelineValue || 0).toLocaleString('fr-CA')} $</p>
                     <p className="text-[10px] text-[var(--text-muted)]">Pipeline</p>
                   </div>
                 </div>
@@ -194,7 +173,7 @@ export function ClientsPage() {
                 {m && m.total > 0 && (
                   <div className="mt-2">
                     <div className="h-1.5 rounded-full bg-[var(--bg-subtle)] overflow-hidden">
-                      <div className="h-full rounded-full bg-gradient-to-r from-[var(--primary)] to-[var(--success)] transition-all" style={{ width: `${Math.max(m.convRate, 5)}%` }} />
+                      <div className="h-full rounded-full bg-gradient-to-r from-[var(--brand-primary)] to-[var(--success)] transition-all" style={{ width: `${Math.max(m.convRate, 5)}%` }} />
                     </div>
                   </div>
                 )}
@@ -203,7 +182,7 @@ export function ClientsPage() {
                 {(client.email || client.site_url) && (
                   <div className="flex items-center gap-3 mt-2.5 text-[10px] text-[var(--text-muted)]">
                     {client.email && <span className="truncate">📧 {client.email}</span>}
-                    {client.site_url && <a href={client.site_url} target="_blank" rel="noreferrer" className="hover:text-[var(--primary)] transition-colors" onClick={e => e.stopPropagation()}>🌐 Site</a>}
+                    {client.site_url && <a href={client.site_url} target="_blank" rel="noreferrer" className="hover:text-[var(--brand-primary)] transition-colors" onClick={e => e.stopPropagation()}>🌐 Site</a>}
                   </div>
                 )}
               </Card>

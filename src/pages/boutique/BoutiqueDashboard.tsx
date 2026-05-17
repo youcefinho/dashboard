@@ -46,6 +46,9 @@ export function BoutiqueDashboardPage() {
   const [lowStock, setLowStock] = useState<LowStockRow[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  // S6 M1.1 — erreur réseau : évite l'écran "catalogue vide" trompeur
+  // quand le chargement KPI/produits échoue (state visuel pur).
+  const [loadError, setLoadError] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
   // Devise par défaut de la boutique (config région M2) — KPI agrégés.
   const [cur, setCur] = useState('CAD');
@@ -63,21 +66,30 @@ export function BoutiqueDashboardPage() {
   const navigate = useNavigate();
   const { success, error: toastError } = useToast();
 
+  // S6 M1.1 — chargement principal extrait pour permettre "Réessayer"
+  // (iso-comportement : même séquence d'appels qu'au mount).
+  const loadCore = async () => {
+    setLoading(true);
+    setLoadError(false);
+    try {
+      const [prods, low, ords] = await Promise.all([
+        getEcommerceProducts({ sort: 'created_desc', limit: 100 }).then((r) => r.data || []),
+        getLowStock().then((r) => r.data || []).catch(() => []),
+        getEcommerceOrders({ limit: 100 }).then((r) => r.data || []).catch(() => []),
+      ]);
+      setProducts(prods as ProductRow[]);
+      setLowStock(low as LowStockRow[]);
+      setOrders(ords as Order[]);
+    } catch {
+      /* silencieux : pas de donnée fictive — état d'erreur visuel honnête */
+      setLoadError(true);
+    }
+    setLoading(false);
+  };
+
   useEffect(() => {
     let cancelled = false;
-    Promise.all([
-      getEcommerceProducts({ sort: 'created_desc', limit: 100 }).then((r) => r.data || []),
-      getLowStock().then((r) => r.data || []).catch(() => []),
-      getEcommerceOrders({ limit: 100 }).then((r) => r.data || []).catch(() => []),
-    ])
-      .then(([prods, low, ords]) => {
-        if (cancelled) return;
-        setProducts(prods as ProductRow[]);
-        setLowStock(low as LowStockRow[]);
-        setOrders(ords as Order[]);
-      })
-      .catch(() => { /* silencieux : pas de donnée fictive */ })
-      .finally(() => { if (!cancelled) setLoading(false); });
+    void loadCore();
     // Devise contextuelle de la boutique (config région M2).
     getEcommerceRegion()
       .then((r) => { if (!cancelled && r.data?.currency) setCur(r.data.currency); })
@@ -235,6 +247,21 @@ export function BoutiqueDashboardPage() {
           <Skeleton className="h-56 w-full rounded-lg" />
           <Skeleton className="h-56 w-full rounded-lg" />
         </div>
+      ) : loadError ? (
+        <Card className="p-0 overflow-hidden">
+          <EmptyState
+            variant="compact"
+            icon={<AlertTriangle size={32} strokeWidth={1.8} />}
+            meta={t('shop.nav')}
+            title="Impossible de charger le tableau de bord"
+            description="Une erreur réseau est survenue. Vérifie ta connexion puis réessaie."
+            action={
+              <Button onClick={() => void loadCore()} leftIcon={<RefreshCw size={14} />}>
+                Réessayer
+              </Button>
+            }
+          />
+        </Card>
       ) : products.length === 0 ? (
         <Card className="p-0 overflow-hidden">
           <EmptyState

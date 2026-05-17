@@ -18,6 +18,9 @@
 import type { Env } from './types';
 import { json, sanitizeInput, audit } from './helpers';
 import { getClientModules } from './modules';
+// S3 M2 — validation d'entrée (schémas M1 figés, import only).
+import { validate, createProductSchema, updateProductSchema } from '../lib/schemas';
+import { validationError } from './lib/validate-response';
 
 type Auth = { userId: string; role: string };
 
@@ -230,12 +233,11 @@ export async function handleCreateProduct(
   const clientId = await resolveClientId(env, auth);
   if (!clientId) return noClient();
 
-  let body: Record<string, unknown>;
-  try {
-    body = (await request.json()) as Record<string, unknown>;
-  } catch {
-    return json({ error: 'Requête invalide' }, 400);
-  }
+  // S3 M2 — validation d'entrée AVANT la logique (early-return additif).
+  const parsed = await request.json().catch(() => null);
+  const vp = validate(createProductSchema, parsed);
+  if (!vp.success) return validationError(vp.error);
+  const body = vp.data as Record<string, unknown>;
 
   const title = sanitizeInput(body.title as string, 200);
   if (!title) return json({ error: 'Le titre du produit est requis' }, 400);
@@ -333,12 +335,12 @@ export async function handleUpdateProduct(
   ).bind(id, clientId).first() as { id: string; title: string } | null;
   if (!existing) return json({ error: 'Produit introuvable' }, 404);
 
-  let body: Record<string, unknown>;
-  try {
-    body = (await request.json()) as Record<string, unknown>;
-  } catch {
-    return json({ error: 'Requête invalide' }, 400);
-  }
+  // S3 M2 — validation d'entrée AVANT la logique (early-return additif).
+  // 404 produit-introuvable conservé en amont (comportement existant).
+  const parsed = await request.json().catch(() => null);
+  const vu = validate(updateProductSchema, parsed);
+  if (!vu.success) return validationError(vu.error);
+  const body = vu.data as Record<string, unknown>;
 
   const sets: string[] = [];
   const params: unknown[] = [];

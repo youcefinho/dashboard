@@ -3,6 +3,9 @@
 import type { Env } from './types';
 import { sanitizeInput, json } from './helpers';
 import { autoEnrollForTrigger } from './workflows';
+// S4 M2 — validation d'entrée (schémas additifs, import only).
+import { validate, createLeadNoteSchema, updateLeadNoteSchema } from '../lib/schemas';
+import { validationError } from './lib/validate-response';
 
 // ── Handlers ────────────────────────────────────────────────
 
@@ -25,11 +28,11 @@ export async function handleGetLeadNotes(
 export async function handleCreateLeadNote(
   request: Request, env: Env, auth: { role: string; userId: string }, leadId: string
 ): Promise<Response> {
-  const body = await request.json() as {
-    body?: string;
-    category?: string;
-    is_pinned?: boolean;
-  };
+  // S4 M2 — validation d'entrée AVANT la logique (early-return additif).
+  const parsed = await request.json().catch(() => null);
+  const vc = validate(createLeadNoteSchema, parsed);
+  if (!vc.success) return validationError(vc.error);
+  const body = vc.data as { body?: string; category?: string; is_pinned?: boolean };
 
   if (!body.body?.trim()) return json({ error: 'Le contenu de la note est requis' }, 400);
 
@@ -62,11 +65,11 @@ export async function handleUpdateLeadNote(
   request: Request, env: Env, _auth: { role: string; userId: string },
   _leadId: string, noteId: string
 ): Promise<Response> {
-  const body = await request.json() as {
-    body?: string;
-    category?: string;
-    is_pinned?: boolean;
-  };
+  // S4 M2 — validation d'entrée AVANT la logique (early-return additif).
+  const parsed = await request.json().catch(() => null);
+  const vu = validate(updateLeadNoteSchema, parsed);
+  if (!vu.success) return validationError(vu.error);
+  const body = vu.data as { body?: string; category?: string; is_pinned?: boolean };
 
   const updates: string[] = [];
   const params: unknown[] = [];

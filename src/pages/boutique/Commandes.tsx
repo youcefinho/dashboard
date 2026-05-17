@@ -23,7 +23,7 @@ import {
   financialLabel, fulfillmentLabel,
 } from '@/components/ecommerce/OrderDetailPanel';
 import { ManualOrderModal } from '@/components/ecommerce/ManualOrderModal';
-import { ShoppingCart, Plus, Search, RefreshCw } from 'lucide-react';
+import { ShoppingCart, Plus, Search, RefreshCw, AlertTriangle } from 'lucide-react';
 
 const PAGE_SIZE = 25;
 
@@ -32,6 +32,9 @@ export function CommandesPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  // S6 M1.1 — erreur réseau : évite l'écran "première commande" trompeur
+  // quand l'API échoue (state visuel pur, logique inchangée).
+  const [loadError, setLoadError] = useState(false);
 
   // Filtres
   const [search, setSearch] = useState('');
@@ -55,6 +58,7 @@ export function CommandesPage() {
 
   const load = async () => {
     setIsLoading(true);
+    setLoadError(false);
     try {
       const res = await getEcommerceOrders({
         status: statusFilter || undefined,
@@ -64,7 +68,8 @@ export function CommandesPage() {
       setOrders((res.data as Order[]) || []);
       setTotal(res.total ?? (res.data?.length ?? 0));
     } catch {
-      /* silencieux : pas de donnée fictive */
+      /* silencieux : pas de donnée fictive — état d'erreur visuel honnête */
+      setLoadError(true);
     }
     setIsLoading(false);
   };
@@ -176,6 +181,21 @@ export function CommandesPage() {
                 </div>
               ))}
             </div>
+          </Card>
+        ) : loadError ? (
+          <Card className="p-0 overflow-hidden">
+            <EmptyState
+              variant="compact"
+              icon={<AlertTriangle size={32} strokeWidth={1.8} />}
+              meta={t('shop.nav')}
+              title="Impossible de charger les commandes"
+              description="Une erreur réseau est survenue. Vérifie ta connexion puis réessaie."
+              action={
+                <Button onClick={() => void load()} leftIcon={<RefreshCw size={14} />}>
+                  Réessayer
+                </Button>
+              }
+            />
           </Card>
         ) : visible.length === 0 ? (
           <Card className="p-0 overflow-hidden">

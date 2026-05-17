@@ -25,7 +25,7 @@ import { enqueueOutbound, subscribeOutbox, retryOutboxItem } from '@/lib/message
 import type { OutboxMessage } from '@/lib/offline/db';
 // Sprint 48 M3.1 — Intl.PluralRules locale-aware
 import { plural } from '@/lib/i18n/plural';
-import { getLocale } from '@/lib/i18n';
+import { getLocale, t } from '@/lib/i18n';
 import {
   DropdownMenuRoot,
   DropdownMenuTrigger,
@@ -86,7 +86,7 @@ export function InboxPage() {
   // Handler retry manuel d'un message en outbox 'failed'
   const handleRetryOutbox = useCallback(async (outboxId: string) => {
     await retryOutboxItem(outboxId);
-    toast.info('Message remis en file d\'attente');
+    toast.info(t('inbox.toast.requeued'));
   }, [toast]);
 
   // ── Sprint 41 M3.3 — Track previous count for new-message announce SR ──
@@ -148,7 +148,7 @@ export function InboxPage() {
     setConversations(prev => prev.map(c => ids.includes(c.id) ? { ...c, unread_count: 0 } : c));
     for (const id of ids) await markConversationRead(id);
     clearConvSelection();
-    toast.success(plural(getLocale(), n, { one: 'Conversation marquée comme lue', other: '# conversations marquées comme lues' }));
+    toast.success(plural(getLocale(), n, { one: t('inbox.bulk.read_one'), other: t('inbox.bulk.read_other') }));
   };
   const bulkArchive = async () => {
     const ids = Array.from(selectedConvIds);
@@ -156,7 +156,7 @@ export function InboxPage() {
     for (const id of ids) await updateConversation(id, { status: 'closed' });
     clearConvSelection();
     void loadConversations();
-    toast.info(plural(getLocale(), n, { one: 'Conversation archivée', other: '# conversations archivées' }));
+    toast.info(plural(getLocale(), n, { one: t('inbox.bulk.archived_one'), other: t('inbox.bulk.archived_other') }));
   };
   const bulkSnooze = async () => {
     const ids = Array.from(selectedConvIds);
@@ -164,7 +164,7 @@ export function InboxPage() {
     for (const id of ids) await updateConversation(id, { status: 'snoozed' });
     clearConvSelection();
     void loadConversations();
-    toast.info(plural(getLocale(), n, { one: 'Conversation mise en pause', other: '# conversations en pause' }));
+    toast.info(plural(getLocale(), n, { one: t('inbox.bulk.snoozed_one'), other: t('inbox.bulk.snoozed_other') }));
   };
   const bulkDelete = async () => {
     const ids = Array.from(selectedConvIds);
@@ -174,7 +174,7 @@ export function InboxPage() {
     for (const id of ids) await updateConversation(id, { status: 'closed' });
     clearConvSelection();
     void loadConversations();
-    toast.warning(plural(getLocale(), n, { one: 'Conversation supprimée', other: '# conversations supprimées' }));
+    toast.warning(plural(getLocale(), n, { one: t('inbox.bulk.deleted_one'), other: t('inbox.bulk.deleted_other') }));
   };
 
   // Reset le résumé quand on change de conversation
@@ -319,13 +319,13 @@ export function InboxPage() {
   const applySuggestedConvTag = useCallback(async (tag: ConversationTag) => {
     const leadId = activeConv?.lead_id;
     if (!leadId) {
-      toast.warning('Aucun lead lié à cette conversation — tag non appliqué.');
+      toast.warning(t('inbox.tag.no_lead'));
       return;
     }
     setSuggestedConvTags(prev => prev.filter(t => t !== tag));
     const res = await addTag(leadId, tag);
-    if (res.error) toast.error(`Erreur d'application du tag : ${res.error}`);
-    else toast.success(`Tag « ${CONVERSATION_TAG_LABELS[tag]} » appliqué au lead`);
+    if (res.error) toast.error(t('inbox.tag.apply_error', { err: res.error }));
+    else toast.success(t('inbox.tag.applied', { tag: CONVERSATION_TAG_LABELS[tag] }));
   }, [activeConv?.lead_id, toast]);
 
   const dismissSuggestedConvTag = useCallback((tag: ConversationTag) => {
@@ -413,7 +413,7 @@ export function InboxPage() {
         external_id: '',
         metadata: '',
         created_at: new Date(o.created_at).toISOString(),
-        sender_name: 'Vous',
+        sender_name: t('inbox.you'),
       }));
     return [...augmented, ...orphanOutbox];
   }, [activeConv, wsMessages, outboxMessages]);
@@ -494,7 +494,7 @@ export function InboxPage() {
       external_id: '',
       metadata: '',
       created_at: new Date().toISOString(),
-      sender_name: 'Vous',
+      sender_name: t('inbox.you'),
     };
     // Affichage instantané + clear composer (uniquement si saisi par user, pas en retry)
     setActiveConv(prev => prev ? { ...prev, messages: [...(prev.messages || []), optimisticMsg] } : prev);
@@ -545,8 +545,8 @@ export function InboxPage() {
           });
           // On laisse le message optimistic visible avec status 'sending' → mapping
           // visuel "En attente d'envoi" via outboxMessages state (rendu plus bas).
-          toast.info('Message en attente', {
-            message: 'Sera envoyé au retour de la connexion.',
+          toast.info(t('inbox.toast.queued_title'), {
+            message: t('inbox.toast.queued_body'),
           });
         } catch {
           // Si IndexedDB casse → fail explicite
@@ -554,8 +554,8 @@ export function InboxPage() {
             ...prev,
             messages: (prev.messages || []).map(m => m.id === tmpId ? { ...m, status: 'failed' as Message['status'] } : m)
           } : prev);
-          toast.error('Stockage local indisponible', {
-            action: { label: 'Réessayer', onClick: () => void handleSend(text) },
+          toast.error(t('inbox.toast.storage_error'), {
+            action: { label: t('inbox.toast.retry'), onClick: () => void handleSend(text) },
           });
         }
         setIsSending(false);
@@ -575,8 +575,8 @@ export function InboxPage() {
               body: text,
               tmpMessageId: tmpId,
             });
-            toast.info('Message en attente', {
-              message: 'Sera envoyé au retour de la connexion.',
+            toast.info(t('inbox.toast.queued_title'), {
+              message: t('inbox.toast.queued_body'),
             });
             setIsSending(false);
             return;
@@ -588,8 +588,8 @@ export function InboxPage() {
           messages: (prev.messages || []).map(m => m.id === tmpId ? { ...m, status: 'failed' as Message['status'] } : m)
         } : prev);
         // Sprint 41 M3.3 — Toast échec + CTA Réessayer
-        toast.error('Échec envoi · Réessayer', {
-          action: { label: 'Réessayer', onClick: () => void handleSend(text) },
+        toast.error(t('inbox.toast.send_error'), {
+          action: { label: t('inbox.toast.retry'), onClick: () => void handleSend(text) },
         });
       } else {
         // Recharger la conversation pour récupérer l'ID réel du message et le statut serveur
@@ -600,7 +600,7 @@ export function InboxPage() {
         }
         void loadConversations();
         // Sprint 41 M3.3 — Toast succès envoi (info subtle, ne pas spammer)
-        toast.success('Message envoyé');
+        toast.success(t('inbox.toast.sent'));
       }
     }
 
@@ -648,9 +648,9 @@ export function InboxPage() {
     await updateConversation(id, { status: 'closed' });
     setConversations(prev => prev.filter(c => c.id !== id));
     setSelectedConvId(null);
-    toast.info('Conversation archivée', {
+    toast.info(t('inbox.bulk.archived_one'), {
       action: {
-        label: 'Annuler',
+        label: t('inbox.action.undo'),
         onClick: () => {
           void updateConversation(id, { status: 'open' });
           void loadConversations();
@@ -711,8 +711,8 @@ export function InboxPage() {
     if (len > prevMessagesLenRef.current && prevMessagesLenRef.current > 0) {
       const last = combinedMessages[len - 1];
       if (last && last.direction === 'inbound') {
-        const sender = last.sender_name || activeConv?.lead_name || 'Contact';
-        announceSR(`Nouveau message de ${sender}`, 'polite');
+        const sender = last.sender_name || activeConv?.lead_name || t('inbox.sender_fallback');
+        announceSR(t('inbox.sr.new_message', { sender }), 'polite');
       }
     }
     prevMessagesLenRef.current = len;
@@ -721,7 +721,7 @@ export function InboxPage() {
   // Sprint 41 M3.4 — announce changement de conv (SR feedback)
   useEffect(() => {
     if (activeConv?.lead_name) {
-      announceSR(`Conversation avec ${activeConv.lead_name} ouverte`, 'polite');
+      announceSR(t('inbox.sr.conv_opened', { name: activeConv.lead_name }), 'polite');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeConv?.id]);
@@ -730,14 +730,14 @@ export function InboxPage() {
   useEffect(() => {
     const total = conversations.reduce((sum, c) => sum + (c.unread_count || 0), 0);
     if (total > prevUnreadTotalRef.current && prevUnreadTotalRef.current > 0) {
-      announceSR(`${total} conversation${total > 1 ? 's' : ''} non lue${total > 1 ? 's' : ''}`, 'polite');
+      announceSR(plural(getLocale(), total, { one: t('inbox.sr.unread_one', { n: total }), other: t('inbox.sr.unread_other', { n: total }) }), 'polite');
     }
     prevUnreadTotalRef.current = total;
   }, [conversations]);
 
   // ── Render ────────────────────────────────────────────────
   return (
-    <AppLayout title="Conversations">
+    <AppLayout title={t('inbox.page.title')}>
       <div className="flex h-[calc(100vh-64px)] -m-6 overflow-hidden">
         <div ref={listWrapperRef} className={`flex flex-col shrink-0 ${selectedConvId || isComposingNew ? 'hidden md:flex md:w-80' : 'flex-1 md:w-80 md:flex-none'}`}>
           {/* Sprint 24 vague 1B — BulkActionBar conversations (Gmail) */}
@@ -746,10 +746,10 @@ export function InboxPage() {
               selectedCount={selectedConvIds.size}
               onClear={clearConvSelection}
               actions={[
-                { id: 'read', label: 'Marquer lu', icon: <CheckCheck size={13} />, onClick: () => void bulkMarkRead() },
-                { id: 'archive', label: 'Archiver', icon: <Icon as={Archive} size={13} />, onClick: () => void bulkArchive() },
-                { id: 'snooze', label: 'Snoozer', icon: <Clock size={13} />, onClick: () => void bulkSnooze() },
-                { id: 'delete', label: 'Supprimer', icon: <Trash2 size={13} />, variant: 'danger', onClick: () => void bulkDelete() },
+                { id: 'read', label: t('inbox.bulk.mark_read'), icon: <CheckCheck size={13} />, onClick: () => void bulkMarkRead() },
+                { id: 'archive', label: t('inbox.bulk.archive'), icon: <Icon as={Archive} size={13} />, onClick: () => void bulkArchive() },
+                { id: 'snooze', label: t('inbox.bulk.snooze'), icon: <Clock size={13} />, onClick: () => void bulkSnooze() },
+                { id: 'delete', label: t('inbox.bulk.delete'), icon: <Trash2 size={13} />, variant: 'danger', onClick: () => void bulkDelete() },
               ]}
             />
           )}
@@ -760,13 +760,13 @@ export function InboxPage() {
                 filters={[
                   ...(statusFilter !== 'open' ? [{
                     id: 'status',
-                    label: 'Statut',
-                    value: statusFilter === 'all' ? 'Toutes' : CONVERSATION_STATUS_LABELS[statusFilter as ConversationStatus] || statusFilter,
+                    label: t('inbox.filter.status'),
+                    value: statusFilter === 'all' ? t('inbox.filter.all') : CONVERSATION_STATUS_LABELS[statusFilter as ConversationStatus] || statusFilter,
                     onRemove: () => setStatusFilter('open'),
                   } as FilterDescriptor] : []),
                   ...(channelFilter !== '' ? [{
                     id: 'channel',
-                    label: 'Canal',
+                    label: t('inbox.filter.channel'),
                     value: CHANNEL_LABELS[channelFilter as MessageChannel] || channelFilter,
                     onRemove: () => setChannelFilter(''),
                   } as FilterDescriptor] : []),
@@ -818,19 +818,19 @@ export function InboxPage() {
               />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" side="bottom" sideOffset={4}>
-              <DropdownMenuLabel>Conversation</DropdownMenuLabel>
+              <DropdownMenuLabel>{t('inbox.ctx.conversation')}</DropdownMenuLabel>
               <DropdownMenuItem leftIcon={<Archive size={14} />} onSelect={() => void handleCtxArchive()}>
-                Archiver
+                {t('inbox.ctx.archive')}
               </DropdownMenuItem>
               <DropdownMenuItem leftIcon={<MailOpen size={14} />} onSelect={() => void handleCtxMarkUnread()}>
-                Marquer non-lu
+                {t('inbox.ctx.mark_unread')}
               </DropdownMenuItem>
               <DropdownMenuItem leftIcon={<Ban size={14} />} onSelect={() => void handleCtxMarkSpam()}>
-                Marquer comme spam
+                {t('inbox.ctx.mark_spam')}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem variant="danger" leftIcon={<Trash2 size={14} />} onSelect={() => void handleCtxDelete()}>
-                Supprimer
+                {t('inbox.ctx.delete')}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenuRoot>
@@ -907,21 +907,21 @@ export function InboxPage() {
                 </div>
                 {conversations.length === 0 ? (
                   <>
-                    <h3 className="inbox-empty-title">Aucune conversation</h3>
-                    <p className="inbox-empty-body">Les messages clients apparaîtront ici. Démarre une discussion pour commencer.</p>
+                    <h3 className="inbox-empty-title">{t('inbox.empty.none_title')}</h3>
+                    <p className="inbox-empty-body">{t('inbox.empty.none_body')}</p>
                     <button
                       type="button"
                       onClick={() => { setSelectedConvId(null); setIsComposingNew(true); }}
                       className="inbox-empty-cta"
                     >
                       <Plus size={14} strokeWidth={2} />
-                      <span>Nouveau message</span>
+                      <span>{t('inbox.empty.new_message')}</span>
                     </button>
                   </>
                 ) : (
                   <>
-                    <h3 className="inbox-empty-title">Sélectionne une conversation</h3>
-                    <p className="inbox-empty-body">Choisis un fil à gauche pour commencer à répondre.</p>
+                    <h3 className="inbox-empty-title">{t('inbox.empty.select_title')}</h3>
+                    <p className="inbox-empty-body">{t('inbox.empty.select_body')}</p>
                   </>
                 )}
               </div>
@@ -934,25 +934,25 @@ export function InboxPage() {
                   <button
                     className="md:hidden p-1.5 -ml-2 text-[var(--text-muted)] hover:bg-[var(--bg-subtle)] rounded-lg transition-colors cursor-pointer shrink-0"
                     onClick={() => setSelectedConvId(null)}
-                    aria-label="Retour à la liste des conversations"
+                    aria-label={t('inbox.aria.back_to_list')}
                   >
                     <Icon as={ArrowLeft} size={18} />
                   </button>
                   <Avatar name={activeConv.lead_name || '?'} size="sm" />
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5">
-                      <h3 className="text-sm font-semibold truncate max-w-[120px] sm:max-w-xs">{activeConv.lead_name || 'Inconnu'}</h3>
+                      <h3 className="text-sm font-semibold truncate max-w-[120px] sm:max-w-xs">{activeConv.lead_name || t('inbox.unknown')}</h3>
                       <Tag dot size="xs" color={CONVERSATION_STATUS_COLORS[activeConv.status as ConversationStatus] || 'var(--text-muted)'} className="shrink-0">
                         {CONVERSATION_STATUS_LABELS[activeConv.status as ConversationStatus] || activeConv.status}
                       </Tag>
-                      <span className="text-[9px] text-[var(--text-muted)]">via {CHANNEL_LABELS[activeConv.channel as MessageChannel] || activeConv.channel}</span>
+                      <span className="text-[9px] text-[var(--text-muted)]">{t('inbox.via', { channel: CHANNEL_LABELS[activeConv.channel as MessageChannel] || activeConv.channel })}</span>
                       {activeConv.channel === 'webchat' && wsStatus !== 'idle' && (() => {
                         const wsColor = wsStatus === 'connected'
                           ? 'var(--success)'
                           : wsStatus === 'closed'
                             ? 'var(--danger)'
                             : 'var(--warning)';
-                        const wsLabel = wsStatus === 'connected' ? 'Live' : wsStatus === 'connecting' ? 'Connexion...' : wsStatus === 'reconnecting' ? 'Reconnexion...' : 'Déconnecté';
+                        const wsLabel = wsStatus === 'connected' ? t('inbox.ws.live') : wsStatus === 'connecting' ? t('inbox.ws.connecting') : wsStatus === 'reconnecting' ? t('inbox.ws.reconnecting') : t('inbox.ws.disconnected');
                         return (
                           <Tag size="xs" color={wsColor} dot className="shrink-0">
                             {wsLabel}
@@ -967,38 +967,38 @@ export function InboxPage() {
                   {/* Sprint 41 M1.4 — Summarize button Stripe-clean (primary solid, no gradient brand) */}
                   <button onClick={() => void handleSummarize()} disabled={isSummarizing}
                     className="inbox-summarize-btn"
-                    title="Résumer la conversation avec l'AI"
-                    aria-label={isSummarizing ? 'Résumé en cours' : 'Résumer la conversation avec l\'AI'}>
+                    title={t('inbox.summarize.tooltip')}
+                    aria-label={isSummarizing ? t('inbox.summarize.in_progress') : t('inbox.summarize.tooltip')}>
                     {isSummarizing ? <Loader2 size={12} className="animate-spin" aria-hidden="true" /> : <Sparkles size={12} aria-hidden="true" />}
-                    <span className="hidden sm:inline">{isSummarizing ? 'Résumé…' : 'Résumer'}</span>
+                    <span className="hidden sm:inline">{isSummarizing ? t('inbox.summarize.summarizing') : t('inbox.summarize.label')}</span>
                   </button>
                   {/* Sprint 49 M3.1 — Classifier (tags suggérés, suggestion only) */}
                   <button onClick={() => void handleClassifyConv()} disabled={isClassifyingConv}
                     className="inbox-summarize-btn"
-                    title="Suggérer des tags pour cette conversation (IA)"
-                    aria-label={isClassifyingConv ? 'Analyse en cours' : 'Suggérer des tags avec l\'AI'}>
+                    title={t('inbox.classify.tooltip')}
+                    aria-label={isClassifyingConv ? t('inbox.classify.in_progress') : t('inbox.classify.aria')}>
                     {isClassifyingConv ? <Loader2 size={12} className="animate-spin" aria-hidden="true" /> : <Sparkles size={12} aria-hidden="true" />}
-                    <span className="hidden sm:inline">{isClassifyingConv ? 'Tags…' : 'Tags IA'}</span>
+                    <span className="hidden sm:inline">{isClassifyingConv ? t('inbox.classify.classifying') : t('inbox.classify.label')}</span>
                   </button>
                   {activeConv.status !== 'closed' && (
-                    <button onClick={() => void changeStatus('closed')} className="p-1.5 rounded-lg text-[var(--text-muted)] hover:bg-[var(--bg-subtle)] cursor-pointer" title="Fermer" aria-label="Fermer la conversation">
+                    <button onClick={() => void changeStatus('closed')} className="p-1.5 rounded-lg text-[var(--text-muted)] hover:bg-[var(--bg-subtle)] cursor-pointer" title={t('inbox.close')} aria-label={t('inbox.aria.close_conv')}>
                       <CheckCircle2 size={15} />
                     </button>
                   )}
                   {activeConv.status === 'closed' && (
-                    <button onClick={() => void changeStatus('open')} className="p-1.5 rounded-lg text-[var(--text-muted)] hover:bg-[var(--bg-subtle)] cursor-pointer" title="Rouvrir" aria-label="Rouvrir la conversation">
+                    <button onClick={() => void changeStatus('open')} className="p-1.5 rounded-lg text-[var(--text-muted)] hover:bg-[var(--bg-subtle)] cursor-pointer" title={t('inbox.reopen')} aria-label={t('inbox.aria.reopen_conv')}>
                       <Icon as={Inbox} size={15} />
                     </button>
                   )}
                   {activeConv.status === 'open' && (
-                    <button onClick={() => void changeStatus('snoozed')} className="p-1.5 rounded-lg text-[var(--text-muted)] hover:bg-[var(--bg-subtle)] cursor-pointer" title="Mettre en pause" aria-label="Mettre la conversation en pause">
+                    <button onClick={() => void changeStatus('snoozed')} className="p-1.5 rounded-lg text-[var(--text-muted)] hover:bg-[var(--bg-subtle)] cursor-pointer" title={t('inbox.snooze')} aria-label={t('inbox.aria.snooze_conv')}>
                       <Pause size={15} />
                     </button>
                   )}
                   <button
                     onClick={(e) => void toggleStar(activeConv, e)}
                     className="p-1.5 rounded-lg text-[var(--text-muted)] hover:bg-[var(--bg-subtle)] cursor-pointer"
-                    aria-label={activeConv.is_starred ? 'Retirer le marquage étoilé' : 'Marquer comme étoilée'}
+                    aria-label={activeConv.is_starred ? t('inbox.aria.unstar') : t('inbox.aria.star')}
                     aria-pressed={activeConv.is_starred ? 'true' : 'false'}
                   >
                     {activeConv.is_starred ? <Star size={15} className="text-[var(--warning)] fill-[var(--warning)]" /> : <StarOff size={15} />}
@@ -1006,7 +1006,7 @@ export function InboxPage() {
                   <button
                     onClick={() => setShowRightPanel(!showRightPanel)}
                     className="p-1.5 rounded-lg text-[var(--text-muted)] hover:bg-[var(--bg-subtle)] cursor-pointer"
-                    aria-label={showRightPanel ? 'Fermer le panneau de détails' : 'Ouvrir le panneau de détails'}
+                    aria-label={showRightPanel ? t('inbox.aria.close_panel') : t('inbox.aria.open_panel')}
                     aria-expanded={showRightPanel ? 'true' : 'false'}
                   >
                     {showRightPanel ? <PanelRightClose size={15} /> : <PanelRightOpen size={15} />}
@@ -1020,9 +1020,9 @@ export function InboxPage() {
                   <div className="inbox-ai-summary-head">
                     <div className="inbox-ai-summary-title">
                       <Sparkles size={12} />
-                      <span>Résumé AI</span>
+                      <span>{t('inbox.ai_summary.title')}</span>
                     </div>
-                    <button onClick={() => setAiSummary(null)} className="inbox-ai-summary-close" aria-label="Fermer le résumé">
+                    <button onClick={() => setAiSummary(null)} className="inbox-ai-summary-close" aria-label={t('inbox.ai_summary.close')}>
                       <XIcon size={12} />
                     </button>
                   </div>
@@ -1034,17 +1034,17 @@ export function InboxPage() {
                       </li>
                     ))}
                   </ul>
-                  <p className="inbox-ai-summary-footer">Généré par Claude Haiku 4.5</p>
+                  <p className="inbox-ai-summary-footer">{t('inbox.ai_summary.footer')}</p>
                 </div>
               )}
 
               {/* Sprint 49 M3.1 — Tags suggérés par IA (suggestion only — Loi 25 :
                   l'IA propose, l'utilisateur confirme ; chips dismissibles) */}
               {suggestedConvTags.length > 0 && (
-                <div className="conv-ai-tags animate-in fade-in-0 slide-in-from-top-1" role="group" aria-label="Tags suggérés par l'IA">
+                <div className="conv-ai-tags animate-in fade-in-0 slide-in-from-top-1" role="group" aria-label={t('inbox.ai_tags.group')}>
                   <span className="conv-ai-tags-label">
                     <Sparkles size={11} aria-hidden="true" />
-                    Tags suggérés
+                    {t('inbox.ai_tags.label')}
                   </span>
                   {suggestedConvTags.map(tag => (
                     <span key={tag} className="conv-ai-tag-chip">
@@ -1052,8 +1052,8 @@ export function InboxPage() {
                         type="button"
                         className="conv-ai-tag-apply"
                         onClick={() => void applySuggestedConvTag(tag)}
-                        title="Appliquer ce tag au lead"
-                        aria-label={`Appliquer le tag ${CONVERSATION_TAG_LABELS[tag]}`}
+                        title={t('inbox.ai_tags.apply_title')}
+                        aria-label={t('inbox.ai_tags.apply_aria', { tag: CONVERSATION_TAG_LABELS[tag] })}
                       >
                         + {CONVERSATION_TAG_LABELS[tag]}
                       </button>
@@ -1061,8 +1061,8 @@ export function InboxPage() {
                         type="button"
                         className="conv-ai-tag-dismiss"
                         onClick={() => dismissSuggestedConvTag(tag)}
-                        title="Ignorer cette suggestion"
-                        aria-label={`Ignorer la suggestion ${CONVERSATION_TAG_LABELS[tag]}`}
+                        title={t('inbox.ai_tags.dismiss_title')}
+                        aria-label={t('inbox.ai_tags.dismiss_aria', { tag: CONVERSATION_TAG_LABELS[tag] })}
                       >
                         <XIcon size={10} aria-hidden="true" />
                       </button>
@@ -1079,7 +1079,7 @@ export function InboxPage() {
                   onRetry={handleRetry}
                   // Sprint 44 M3.1 — swipe-to-reply : active le reply mode du composer
                   onReply={(msg) => {
-                    const name = msg.sender_name || activeConv.lead_name || 'expéditeur';
+                    const name = msg.sender_name || activeConv.lead_name || t('inbox.reply_fallback');
                     const preview = (msg.body || '').slice(0, 120);
                     setReplyTo({ messageId: msg.id, name, preview });
                     triggerHaptic('light');

@@ -140,6 +140,37 @@ export function isAuthenticated(): boolean {
   return !!getToken();
 }
 
+// ── Onboarding unifié CRM + e-commerce (Sprint S8) ──────────
+// État d'onboarding persistant côté serveur (table onboarding_state,
+// migration seq 76). Permet la reprise multi-appareil. Le front Sprint 45
+// garde son fallback localStorage : ces appels sont best-effort.
+
+export interface OnboardingState {
+  /** Index de l'étape courante (0-based). */
+  currentStep: number;
+  /** Identifiants des étapes complétées (ex: 'profile','industry'). */
+  completedSteps: string[];
+  /** Opt-in module e-commerce (n'active AUCUN paiement). */
+  ecommerceOptedIn: boolean;
+  /** Timestamp ISO de complétion, ou null si non terminé. */
+  completedAt: string | null;
+  /** Echo libre du payload onboarding (best-effort), ou null. */
+  payload: Record<string, unknown> | null;
+}
+
+export async function getOnboardingState(): Promise<ApiResponse<OnboardingState>> {
+  return apiFetch<OnboardingState>('/onboarding/state');
+}
+
+export async function putOnboardingState(
+  patch: Partial<OnboardingState>,
+): Promise<ApiResponse<OnboardingState>> {
+  return apiFetch<OnboardingState>('/onboarding/state', {
+    method: 'PUT',
+    body: JSON.stringify(patch),
+  });
+}
+
 export async function changePassword(current: string, next: string): Promise<ApiResponse<{ success: boolean }>> {
   return apiFetch<{ success: boolean }>('/auth/change-password', {
     method: 'POST',
@@ -707,17 +738,44 @@ export async function getLeads(params?: {
   return result;
 }
 
+// ── Sprint S9 (Manager C) — pagination opt-in additive ──────
+// Contrat figé docs/PERF-S9.md §6.2 / §7.1 :
+//   - `limit`/`offset` ABSENTS → réponse historique `{ data: Lead[] }`
+//     byte-identique (PAS de total/limit/offset). Rétro-compat absolue :
+//     le seul appelant existant (ClientLeads.tsx) ne lit que `.data`.
+//   - `limit`/`offset` présents → le worker renvoie aussi `total/limit/offset`
+//     dans le JSON brut. Le type de retour de base reste `ApiResponse<Lead[]>`
+//     (lecture `.data` inchangée) ; les champs additifs sont exposés via la
+//     variante typée optionnelle `PaginatedLeadsResponse` pour les appelants
+//     qui en ont besoin, SANS casser le contrat `.data` par défaut.
+export interface PaginatedLeadsResponse extends ApiResponse<Lead[]> {
+  /** Total filtré (présent uniquement si limit/offset envoyés). */
+  total?: number;
+  /** Limit effective appliquée par le worker (clampée [1..200]). */
+  limit?: number;
+  /** Offset effectif appliqué par le worker (>= 0). */
+  offset?: number;
+}
+
 export async function getClientLeads(clientId: string, params?: {
   status?: string;
   type?: string;
   search?: string;
-}): Promise<ApiResponse<Lead[]>> {
+  limit?: number;
+  offset?: number;
+}): Promise<PaginatedLeadsResponse> {
   const searchParams = new URLSearchParams();
   if (params?.status) searchParams.set('status', params.status);
   if (params?.type) searchParams.set('type', params.type);
   if (params?.search) searchParams.set('search', params.search);
+  // Additif : on n'émet limit/offset QUE s'ils sont fournis explicitement.
+  // Absents → query historique → réponse `{ data }` seule (byte-identique).
+  if (params?.limit !== undefined) searchParams.set('limit', String(params.limit));
+  if (params?.offset !== undefined) searchParams.set('offset', String(params.offset));
   const qs = searchParams.toString();
-  return apiFetch<Lead[]>(`/clients/${clientId}/leads${qs ? `?${qs}` : ''}`);
+  // apiFetch renvoie le JSON brut typé : `data` toujours lu par défaut
+  // (rétro-compat), `total/limit/offset` traversent et sont typés optionnels.
+  return apiFetch<Lead[]>(`/clients/${clientId}/leads${qs ? `?${qs}` : ''}`) as Promise<PaginatedLeadsResponse>;
 }
 
 // ── Lead détail ─────────────────────────────────────────────

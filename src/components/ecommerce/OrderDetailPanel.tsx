@@ -32,99 +32,30 @@ import { formatMoneyCents } from '@/lib/i18n/number';
 import { formatDate } from '@/lib/i18n/datetime';
 import type { Order, OrderStatus, PaymentMethod } from '@/lib/types';
 import {
-  Package, FileText, CheckCircle2, Truck, XCircle, RotateCcw, Clock,
+  FileText, CheckCircle2, Truck, RotateCcw,
   CreditCard, Undo2, ShieldAlert, ScrollText,
 } from 'lucide-react';
 
-// ── Helpers statut (inline — pas de fichier partagé) ────────────────────────
-export function orderStatusLabel(s?: string): string {
-  switch (s) {
-    case 'pending': return t('shop.order.st_pending');
-    case 'paid': return t('shop.order.st_paid');
-    case 'preparing': return t('shop.order.st_preparing');
-    case 'shipped': return t('shop.order.st_shipped');
-    case 'delivered': return t('shop.order.st_delivered');
-    case 'cancelled': return t('shop.order.st_cancelled');
-    case 'refunded': return t('shop.order.st_refunded');
-    default: return s || '—';
-  }
-}
-export function orderStatusVariant(s?: string): 'success' | 'warning' | 'neutral' | 'danger' | 'info' {
-  switch (s) {
-    case 'delivered': case 'paid': return 'success';
-    case 'shipped': case 'preparing': return 'info';
-    case 'pending': return 'warning';
-    case 'cancelled': case 'refunded': return 'danger';
-    default: return 'neutral';
-  }
-}
-export function financialLabel(s?: string): string {
-  switch (s) {
-    case 'unpaid': return t('shop.order.fin_unpaid');
-    case 'paid': return t('shop.order.fin_paid');
-    case 'partially_refunded': return t('shop.order.fin_partially_refunded');
-    case 'refunded': return t('shop.order.fin_refunded');
-    default: return s || '—';
-  }
-}
-export function fulfillmentLabel(s?: string): string {
-  switch (s) {
-    case 'unfulfilled': return t('shop.order.ful_unfulfilled');
-    case 'partial': return t('shop.order.ful_partial');
-    case 'fulfilled': return t('shop.order.ful_fulfilled');
-    default: return s || '—';
-  }
-}
+// ── Sprint S9 (Manager B) — split iso-rendu : helpers + sous-composants ──────
+// Helpers statut déplacés vers orderDetail/orderStatusHelpers (corps IDENTIQUE)
+// puis RE-EXPORTÉS ici pour préserver les imports externes existants
+// (BoutiqueDashboard / Commandes importent ces 4 helpers depuis ce module).
+import {
+  orderStatusLabel, orderStatusVariant, financialLabel, fulfillmentLabel,
+  allowedTransitions, parseAddress,
+} from './orderDetail/orderStatusHelpers';
+import { OrderStatusTags } from './orderDetail/OrderStatusTags';
+import { OrderItemsSection } from './orderDetail/OrderItemsSection';
+import { OrderTotalsSection } from './orderDetail/OrderTotalsSection';
+import { OrderCustomerSection } from './orderDetail/OrderCustomerSection';
+import { OrderTimelineSection } from './orderDetail/OrderTimelineSection';
+import { OrderInvoicePrint } from './orderDetail/OrderInvoicePrint';
+import { OrderDeliverySlipPrint } from './orderDetail/OrderDeliverySlipPrint';
+import { OrderCreditNotePrint } from './orderDetail/OrderCreditNotePrint';
 
-// Machine à états : transitions autorisées par statut courant.
-function allowedTransitions(s: OrderStatus): Array<{
-  to: OrderStatus; labelKey: string; icon: typeof CheckCircle2; danger?: boolean;
-}> {
-  switch (s) {
-    case 'pending':
-      return [
-        { to: 'paid', labelKey: 'shop.order.act_mark_paid', icon: CheckCircle2 },
-        { to: 'cancelled', labelKey: 'shop.order.act_cancel', icon: XCircle, danger: true },
-      ];
-    case 'paid':
-      return [
-        { to: 'preparing', labelKey: 'shop.order.act_prepare', icon: Package },
-        { to: 'refunded', labelKey: 'shop.order.act_refund', icon: RotateCcw, danger: true },
-        { to: 'cancelled', labelKey: 'shop.order.act_cancel', icon: XCircle, danger: true },
-      ];
-    case 'preparing':
-      return [
-        { to: 'shipped', labelKey: 'shop.order.act_ship', icon: Truck },
-        { to: 'cancelled', labelKey: 'shop.order.act_cancel', icon: XCircle, danger: true },
-      ];
-    case 'shipped':
-      return [
-        { to: 'delivered', labelKey: 'shop.order.act_deliver', icon: CheckCircle2 },
-      ];
-    case 'delivered':
-      return [
-        { to: 'refunded', labelKey: 'shop.order.act_refund', icon: RotateCcw, danger: true },
-      ];
-    default:
-      return []; // cancelled / refunded = terminal
-  }
-}
-
-function parseAddress(json: string | null): string | null {
-  if (!json) return null;
-  try {
-    const a = JSON.parse(json);
-    const parts = [
-      a.line1 || a.address1 || a.street,
-      a.line2 || a.address2,
-      [a.city, a.province || a.state, a.postal_code || a.zip].filter(Boolean).join(', '),
-      a.country,
-    ].filter(Boolean);
-    return parts.length ? parts.join('\n') : null;
-  } catch {
-    return null;
-  }
-}
+export {
+  orderStatusLabel, orderStatusVariant, financialLabel, fulfillmentLabel,
+};
 
 interface OrderDetailPanelProps {
   orderId: string | null;
@@ -438,158 +369,20 @@ export function OrderDetailPanel({ orderId, open, onOpenChange, onChanged }: Ord
         </div>
       ) : (
         <div className="flex flex-col gap-6">
-          {/* Statut courant */}
-          <div className="flex flex-wrap items-center gap-2">
-            <Tag dot size="sm" variant={orderStatusVariant(order.status)}>
-              {orderStatusLabel(order.status)}
-            </Tag>
-            <Tag size="sm" variant="neutral">
-              {t('shop.order.financial')} · {financialLabel(order.financial_status)}
-            </Tag>
-            <Tag size="sm" variant="neutral">
-              {t('shop.order.fulfillment')} · {fulfillmentLabel(order.fulfillment_status)}
-            </Tag>
-          </div>
+          {/* Statut courant — split S9 (iso-rendu) */}
+          <OrderStatusTags order={order} />
 
-          {/* Articles */}
-          <section>
-            <h3 className="t-h3 mb-3">{t('shop.order.items')}</h3>
-            <div className="border border-[var(--border-subtle)] rounded-[var(--radius-md)] overflow-hidden divide-y divide-[var(--border-subtle)]">
-              {(order.items || []).length === 0 ? (
-                <p className="text-[13px] text-[var(--text-muted)] px-3 py-4">—</p>
-              ) : (order.items || []).map((it) => (
-                <div key={it.id} className="flex items-start gap-3 px-3 py-2.5">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[13px] font-medium">{it.product_title_snapshot}</p>
-                    <p className="text-[11px] text-[var(--text-muted)]">
-                      {[it.variant_title_snapshot, it.sku_snapshot].filter(Boolean).join(' · ') || '—'}
-                    </p>
-                  </div>
-                  <span className="text-[12px] text-[var(--text-secondary)] t-mono-num whitespace-nowrap">
-                    {it.quantity} × {formatMoneyCents(it.unit_price_cents, locale, cur)}
-                  </span>
-                  <span className="text-[13px] font-semibold t-mono-num w-24 text-right">
-                    {formatMoneyCents(it.total_cents, locale, cur)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </section>
+          {/* Articles — split S9 (iso-rendu) */}
+          <OrderItemsSection order={order} locale={locale} cur={cur} />
 
-          {/* Récap totaux — breakdown TPS + TVQ 14,975 % QC lisible */}
-          <section>
-            <h3 className="t-h3 mb-3">{t('shop.order.total')}</h3>
-            <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-subtle)] p-4 flex flex-col gap-1.5 text-[13px]">
-              <div className="flex justify-between">
-                <span className="text-[var(--text-secondary)]">{t('shop.order.subtotal')}</span>
-                <span className="t-mono-num">{formatMoneyCents(order.subtotal_cents, locale, cur)}</span>
-              </div>
-              {order.discount_cents > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-[var(--text-secondary)]">{t('shop.order.discount')}</span>
-                  <span className="t-mono-num">-{formatMoneyCents(order.discount_cents, locale, cur)}</span>
-                </div>
-              )}
-              <div className="flex justify-between">
-                <span className="text-[var(--text-secondary)]">{t('shop.order.tps')}</span>
-                <span className="t-mono-num">{formatMoneyCents(order.tps_cents, locale, cur)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[var(--text-secondary)]">{t('shop.order.tvq')}</span>
-                <span className="t-mono-num">{formatMoneyCents(order.tvq_cents, locale, cur)}</span>
-              </div>
-              {order.shipping_cents > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-[var(--text-secondary)]">{t('shop.order.shipping')}</span>
-                  <span className="t-mono-num">{formatMoneyCents(order.shipping_cents, locale, cur)}</span>
-                </div>
-              )}
-              <div className="flex justify-between pt-2 mt-1 border-t border-[var(--border-subtle)] font-semibold text-[14px]">
-                <span>{t('shop.order.total')}</span>
-                <span className="t-mono-num" style={{ color: 'var(--primary)' }}>
-                  {formatMoneyCents(order.total_cents, locale, cur)}
-                </span>
-              </div>
-            </div>
-          </section>
+          {/* Récap totaux — breakdown TPS + TVQ 14,975 % QC — split S9 */}
+          <OrderTotalsSection order={order} locale={locale} cur={cur} />
 
-          {/* Client + adresses */}
-          <section>
-            <h3 className="t-h3 mb-3">{t('shop.order.customer')}</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-[13px]">
-              <div>
-                <p className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">
-                  {t('shop.order.email')}
-                </p>
-                <p>
-                  {order.customer
-                    ? `${order.customer.first_name} ${order.customer.last_name}`.trim() || order.email
-                    : order.email || '—'}
-                </p>
-                {order.customer?.email && order.customer.email !== order.email && (
-                  <p className="text-[var(--text-muted)]">{order.customer.email}</p>
-                )}
-                {order.email && (
-                  <p className="text-[var(--text-muted)]">{order.email}</p>
-                )}
-              </div>
-              <div>
-                <p className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">
-                  {t('shop.order.shipping_address')}
-                </p>
-                <p className="whitespace-pre-line text-[var(--text-secondary)]">
-                  {shipAddr || t('shop.order.no_address')}
-                </p>
-              </div>
-              {billAddr && billAddr !== shipAddr && (
-                <div>
-                  <p className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">
-                    {t('shop.order.billing_address')}
-                  </p>
-                  <p className="whitespace-pre-line text-[var(--text-secondary)]">{billAddr}</p>
-                </div>
-              )}
-            </div>
-            {order.note && (
-              <div className="mt-3">
-                <p className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">
-                  {t('shop.order.note')}
-                </p>
-                <p className="text-[13px] text-[var(--text-secondary)] whitespace-pre-line">{order.note}</p>
-              </div>
-            )}
-          </section>
+          {/* Client + adresses — split S9 (iso-rendu) */}
+          <OrderCustomerSection order={order} shipAddr={shipAddr} billAddr={billAddr} />
 
-          {/* Timeline */}
-          <section>
-            <h3 className="t-h3 mb-3">{t('shop.order.timeline')}</h3>
-            <ul className="flex flex-col gap-2.5">
-              {([
-                ['placed', order.placed_at, t('shop.order.placed')],
-                ['paid', order.paid_at, t('shop.order.paid_at')],
-                ['shipped', order.shipped_at, t('shop.order.shipped_at')],
-                ['cancelled', order.cancelled_at, t('shop.order.cancelled_at')],
-              ] as const)
-                .filter(([, ts]) => Boolean(ts))
-                .map(([k, ts, label]) => (
-                  <li key={k} className="flex items-center gap-2.5 text-[13px]">
-                    <span
-                      className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[var(--bg-subtle)] text-[var(--text-muted)] shrink-0"
-                      aria-hidden
-                    >
-                      <Icon as={Clock} size="xs" />
-                    </span>
-                    <span className="text-[var(--text-secondary)]">{label}</span>
-                    <span className="ml-auto t-mono-num text-[12px] text-[var(--text-muted)]">
-                      {formatDate(ts as string, locale, {
-                        year: 'numeric', month: 'short', day: 'numeric',
-                        hour: '2-digit', minute: '2-digit',
-                      })}
-                    </span>
-                  </li>
-                ))}
-            </ul>
-          </section>
+          {/* Timeline — split S9 (iso-rendu) */}
+          <OrderTimelineSection order={order} locale={locale} />
 
           {/* Paiement — Sprint E4 M3.3 (additif, non destructif). ⚠️ RÉGULÉ */}
           <section>
@@ -1023,73 +816,7 @@ export function OrderDetailPanel({ orderId, open, onOpenChange, onChanged }: Ord
               garantir qu'un seul document est en DOM au window.print(). Le
               comportement facture E3 est INCHANGÉ (pdfDoc défaut = 'invoice'). */}
           {invoice && invoice !== (false as unknown as OrderInvoiceData) && pdfDoc === 'invoice' && (
-            <div className="order-invoice-print" aria-hidden="true">
-              <div className="pdf-cover-accent-bar" />
-              <div className="pdf-cover-logo">Intralys</div>
-              <h1 className="pdf-cover-title">
-                {t('shop.order.invoice_pdf')} — {order.order_number || `#${order.id.slice(0, 8)}`}
-              </h1>
-              <p className="pdf-cover-subtitle">
-                {invoice.client.name || ''}
-                {invoice.client.tax_note ? ` · ${invoice.client.tax_note}` : ''}
-              </p>
-              <table className="order-invoice-table" style={{ width: '100%', marginTop: 24, borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr>
-                    <th style={{ textAlign: 'left', borderBottom: '1px solid #e5e7eb', padding: '6px 4px' }}>
-                      {t('shop.order.item')}
-                    </th>
-                    <th style={{ textAlign: 'right', borderBottom: '1px solid #e5e7eb', padding: '6px 4px' }}>
-                      {t('shop.order.qty')}
-                    </th>
-                    <th style={{ textAlign: 'right', borderBottom: '1px solid #e5e7eb', padding: '6px 4px' }}>
-                      {t('shop.order.unit_price')}
-                    </th>
-                    <th style={{ textAlign: 'right', borderBottom: '1px solid #e5e7eb', padding: '6px 4px' }}>
-                      {t('shop.order.line_total')}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {invoice.items.map((it, i) => (
-                    <tr key={i}>
-                      <td style={{ padding: '6px 4px', borderBottom: '1px solid #f3f4f6' }}>
-                        {it.product_title}
-                        {it.variant_title ? ` — ${it.variant_title}` : ''}
-                        {it.sku ? ` (${it.sku})` : ''}
-                      </td>
-                      <td style={{ textAlign: 'right', padding: '6px 4px', borderBottom: '1px solid #f3f4f6' }}>
-                        {it.quantity}
-                      </td>
-                      <td style={{ textAlign: 'right', padding: '6px 4px', borderBottom: '1px solid #f3f4f6' }}>
-                        {formatMoneyCents(it.unit_price_cents, locale, cur)}
-                      </td>
-                      <td style={{ textAlign: 'right', padding: '6px 4px', borderBottom: '1px solid #f3f4f6' }}>
-                        {formatMoneyCents(it.total_cents, locale, cur)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <div style={{ marginTop: 16, marginLeft: 'auto', maxWidth: 280 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0' }}>
-                  <span>{t('shop.order.subtotal')}</span>
-                  <span>{formatMoneyCents(invoice.totals.subtotal_cents, locale, cur)}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0' }}>
-                  <span>{t('shop.order.tps')}</span>
-                  <span>{formatMoneyCents(invoice.totals.tps_cents, locale, cur)}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0' }}>
-                  <span>{t('shop.order.tvq')}</span>
-                  <span>{formatMoneyCents(invoice.totals.tvq_cents, locale, cur)}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderTop: '1px solid #e5e7eb', fontWeight: 700, marginTop: 4 }}>
-                  <span>{t('shop.order.total')}</span>
-                  <span>{formatMoneyCents(invoice.totals.total_cents, locale, cur)}</span>
-                </div>
-              </div>
-            </div>
+            <OrderInvoicePrint invoice={invoice} order={order} locale={locale} cur={cur} />
           )}
 
           {/* Bon de livraison imprimable — Sprint E5 M3.3. Bloc DISTINCT du
@@ -1097,84 +824,7 @@ export function OrderDetailPanel({ orderId, open, onOpenChange, onChanged }: Ord
               quand pdfDoc==='delivery' → réutilise body.pdf-mode-invoice
               (mode figé, AUCUNE extension PdfMode). SANS prix ni montants. */}
           {pdfDoc === 'delivery' && (
-            <div className="delivery-slip-print" aria-hidden="true">
-              <div className="pdf-cover-accent-bar" />
-              <div className="pdf-cover-logo">Intralys</div>
-              <h1 className="pdf-cover-title">
-                {t('shop.shipment.delivery_slip')} —{' '}
-                {order.order_number || `#${order.id.slice(0, 8)}`}
-              </h1>
-              <p className="pdf-cover-subtitle">
-                {order.placed_at ? formatDate(order.placed_at, locale) : ''}
-              </p>
-
-              <div className="delivery-slip-meta">
-                <div>
-                  <p className="delivery-slip-label">{t('shop.order.customer')}</p>
-                  <p>
-                    {order.customer
-                      ? `${order.customer.first_name} ${order.customer.last_name}`.trim()
-                        || order.email
-                      : order.email || '—'}
-                  </p>
-                </div>
-                <div>
-                  <p className="delivery-slip-label">
-                    {t('shop.order.shipping_address')}
-                  </p>
-                  <p style={{ whiteSpace: 'pre-line' }}>
-                    {shipAddr || t('shop.order.no_address')}
-                  </p>
-                </div>
-              </div>
-
-              <table
-                className="delivery-slip-table"
-                style={{ width: '100%', marginTop: 24, borderCollapse: 'collapse' }}
-              >
-                <thead>
-                  <tr>
-                    <th style={{ textAlign: 'left', borderBottom: '1px solid #e5e7eb', padding: '6px 4px' }}>
-                      {t('shop.order.item')}
-                    </th>
-                    <th style={{ textAlign: 'left', borderBottom: '1px solid #e5e7eb', padding: '6px 4px' }}>
-                      {t('shop.shipment.sku')}
-                    </th>
-                    <th style={{ textAlign: 'right', borderBottom: '1px solid #e5e7eb', padding: '6px 4px' }}>
-                      {t('shop.shipment.qty')}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(order.items || []).map((it) => (
-                    <tr key={it.id}>
-                      <td style={{ padding: '6px 4px', borderBottom: '1px solid #f3f4f6' }}>
-                        {it.product_title_snapshot}
-                        {it.variant_title_snapshot
-                          ? ` — ${it.variant_title_snapshot}`
-                          : ''}
-                      </td>
-                      <td style={{ padding: '6px 4px', borderBottom: '1px solid #f3f4f6' }}>
-                        {it.sku_snapshot || '—'}
-                      </td>
-                      <td style={{ textAlign: 'right', padding: '6px 4px', borderBottom: '1px solid #f3f4f6' }}>
-                        {it.quantity}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-
-              {order.note && (
-                <p style={{ marginTop: 16, whiteSpace: 'pre-line', fontSize: 12, color: '#374151' }}>
-                  {t('shop.order.note')} : {order.note}
-                </p>
-              )}
-
-              <p className="delivery-slip-footer">
-                {t('shop.shipment.delivery_slip_footer')}
-              </p>
-            </div>
+            <OrderDeliverySlipPrint order={order} shipAddr={shipAddr} locale={locale} />
           )}
 
           {/* Note de crédit imprimable — Sprint E6 M3.4. Bloc DISTINCT
@@ -1183,86 +833,15 @@ export function OrderDetailPanel({ orderId, open, onOpenChange, onChanged }: Ord
               body.pdf-mode-invoice (mode figé, AUCUNE extension PdfMode).
               Montants NÉGATIFS (remboursement), taxes au prorata. */}
           {pdfDoc === 'credit' && refunds.length > 0 && (
-            <div className="credit-note-print" aria-hidden="true">
-              <div className="pdf-cover-accent-bar" />
-              <div className="pdf-cover-logo">Intralys</div>
-              <h1 className="pdf-cover-title">
-                {t('shop.creditnote.title')} —{' '}
-                {order.order_number || `#${order.id.slice(0, 8)}`}
-              </h1>
-              <p className="pdf-cover-subtitle">
-                {order.placed_at ? formatDate(order.placed_at, locale) : ''}
-                {invoice && invoice !== (false as unknown as OrderInvoiceData) && invoice.client.tax_note
-                  ? ` · ${invoice.client.tax_note}` : ''}
-              </p>
-
-              <div className="credit-note-meta">
-                <div>
-                  <p className="credit-note-label">{t('shop.order.customer')}</p>
-                  <p>
-                    {order.customer
-                      ? `${order.customer.first_name} ${order.customer.last_name}`.trim()
-                        || order.email
-                      : order.email || '—'}
-                  </p>
-                </div>
-                <div>
-                  <p className="credit-note-label">{t('shop.policy.region')}</p>
-                  <p>{policy?.region || '—'}</p>
-                </div>
-              </div>
-
-              <p className="credit-note-label" style={{ marginTop: 20 }}>
-                {t('shop.creditnote.refunded_items')}
-              </p>
-              <table
-                className="credit-note-table"
-                style={{ width: '100%', marginTop: 8, borderCollapse: 'collapse' }}
-              >
-                <thead>
-                  <tr>
-                    <th style={{ textAlign: 'left', borderBottom: '1px solid #e5e7eb', padding: '6px 4px' }}>
-                      {t('shop.refund.list_title')}
-                    </th>
-                    <th style={{ textAlign: 'left', borderBottom: '1px solid #e5e7eb', padding: '6px 4px' }}>
-                      {t('shop.refund.reason')}
-                    </th>
-                    <th style={{ textAlign: 'right', borderBottom: '1px solid #e5e7eb', padding: '6px 4px' }}>
-                      {t('shop.creditnote.amount_refunded')}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {refunds.map((r) => (
-                    <tr key={r.id}>
-                      <td style={{ padding: '6px 4px', borderBottom: '1px solid #f3f4f6' }}>
-                        {t(refundStatusKey(r.status))}
-                      </td>
-                      <td style={{ padding: '6px 4px', borderBottom: '1px solid #f3f4f6' }}>
-                        {r.reason || '—'}
-                      </td>
-                      <td style={{ textAlign: 'right', padding: '6px 4px', borderBottom: '1px solid #f3f4f6' }}>
-                        -{formatMoneyCents(r.amount_cents, locale, r.currency || cur)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-
-              <div style={{ marginTop: 16, marginLeft: 'auto', maxWidth: 280 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderTop: '1px solid #e5e7eb', fontWeight: 700 }}>
-                  <span>{t('shop.creditnote.amount_refunded')}</span>
-                  <span>-{formatMoneyCents(refundedCents, locale, cur)}</span>
-                </div>
-              </div>
-
-              <p style={{ marginTop: 14, fontSize: 11, color: '#6b7280' }}>
-                {t('shop.creditnote.tax_note')}
-              </p>
-              <p className="credit-note-footer">
-                {t('shop.creditnote.footer')}
-              </p>
-            </div>
+            <OrderCreditNotePrint
+              order={order}
+              refunds={refunds}
+              refundedCents={refundedCents}
+              invoice={invoice}
+              policy={policy}
+              locale={locale}
+              cur={cur}
+            />
           )}
         </div>
       )}

@@ -22,8 +22,12 @@ import { Icon } from '@/components/ui/Icon';
 import {
   Check, ChevronRight, User, Users, Briefcase, Plug, UserPlus, Sparkles, X,
   BookOpen, // Sprint 47 M3.4 — Item "Explorer la documentation"
+  // ── Sprint S8 — items e-commerce conditionnels (module Boutique) ──
+  Package, ShoppingBag, Store,
 } from 'lucide-react';
 import { getLeads } from '@/lib/api';
+import { useHasModule } from '@/components/ecommerce/ModuleGuard';
+import { t } from '@/lib/i18n';
 import { cn } from '@/lib/cn';
 
 interface ChecklistItem {
@@ -61,6 +65,17 @@ export function OnboardingProgressChip({ collapsed = false }: OnboardingProgress
   const integrationDone = readFlag('integration_connected');
   const leadsDone = (leadsCount ?? 0) >= 5;
 
+  // ── Sprint S8 — items e-commerce VISIBLES uniquement si module Boutique actif.
+  // Réutilise le hook projet useHasModule (cache /api/modules partagé, pas de
+  // re-fetch). Statut 'loading'|'enabled'|'disabled' — on n'ajoute les items que
+  // si 'enabled' (le dénominateur d'auto-hide n'inclut donc les items e-comm que
+  // si le module est réellement actif pour le tenant).
+  const ecommerceStatus = useHasModule('ecommerce');
+  const ecommerceActive = ecommerceStatus === 'enabled';
+  const ecomCatalogDone = readFlag('ecommerce_catalog_created');
+  const ecomProductDone = readFlag('ecommerce_first_product');
+  const ecomChannelDone = readFlag('ecommerce_channel_connected');
+
   // Refresh leads count
   const refreshLeads = useCallback(async () => {
     try {
@@ -83,7 +98,12 @@ export function OnboardingProgressChip({ collapsed = false }: OnboardingProgress
   useEffect(() => {
     const handler = (e: StorageEvent) => {
       if (!e.key) return;
-      const watched = ['profile_completed', 'pipeline_configured', 'team_invited', 'integration_connected', DISMISSED_KEY];
+      const watched = [
+        'profile_completed', 'pipeline_configured', 'team_invited', 'integration_connected',
+        // Sprint S8 — flags e-commerce (set par les pages Boutique)
+        'ecommerce_catalog_created', 'ecommerce_first_product', 'ecommerce_channel_connected',
+        DISMISSED_KEY,
+      ];
       if (watched.includes(e.key)) {
         setTick((t) => t + 1);
         if (e.key === DISMISSED_KEY) setDismissed(readFlag(DISMISSED_KEY));
@@ -145,6 +165,39 @@ export function OnboardingProgressChip({ collapsed = false }: OnboardingProgress
       done: readFlag('docs_visited'),
       to: '/help',
     },
+    // ── Sprint S8 — items e-commerce (uniquement si module Boutique actif) ──
+    // Mécanisme STRICTEMENT identique aux items CRM : flag localStorage +
+    // pattern checklist existant. Libellés via t('onboarding.checklist.*').
+    // Le spread conditionnel garantit que ces items (et donc le dénominateur
+    // de l'auto-hide 100%) n'existent que si ecommerceActive === true.
+    ...(ecommerceActive
+      ? ([
+          {
+            id: 'ecommerce_catalog',
+            label: t('onboarding.checklist.ecommerce_catalog'),
+            description: t('onboarding.checklist.ecommerce_catalog_desc'),
+            icon: Store,
+            done: ecomCatalogDone,
+            to: '/boutique/produits',
+          },
+          {
+            id: 'ecommerce_product',
+            label: t('onboarding.checklist.ecommerce_first_product'),
+            description: t('onboarding.checklist.ecommerce_first_product_desc'),
+            icon: Package,
+            done: ecomProductDone,
+            to: '/boutique/produits',
+          },
+          {
+            id: 'ecommerce_channel',
+            label: t('onboarding.checklist.ecommerce_channel'),
+            description: t('onboarding.checklist.ecommerce_channel_desc'),
+            icon: ShoppingBag,
+            done: ecomChannelDone,
+            to: '/boutique',
+          },
+        ] satisfies ChecklistItem[])
+      : []),
   ];
 
   // tick reference (silence unused-but-needed-for-reactivity)

@@ -2,6 +2,8 @@
 import type { Env } from './types';
 import { sanitizeInput, json, audit } from './helpers';
 import { autoEnrollForTrigger } from './workflows';
+import { validate, createTaskSchemaS3, patchTaskSchema } from '../lib/schemas';
+import { validationError } from './lib/validate-response';
 
 export async function handleGetTasks(env: Env, auth: { userId: string; role: string }, url: URL): Promise<Response> {
   const status = url.searchParams.get('status');
@@ -44,7 +46,10 @@ export async function handleGetTask(env: Env, auth: { userId: string; role: stri
 }
 
 export async function handleCreateTask(request: Request, env: Env, auth: { userId: string; role: string }): Promise<Response> {
-  const body = await request.json() as Record<string, unknown>;
+  const rawBody = await request.json().catch(() => null);
+  const v = validate(createTaskSchemaS3, rawBody);
+  if (!v.success) return validationError(v.error);
+  const body = v.data as Record<string, unknown>;
   const title = sanitizeInput(body.title as string, 200);
   if (!title) return json({ error: 'Titre requis' }, 400);
 
@@ -85,7 +90,10 @@ export async function handleCreateTask(request: Request, env: Env, auth: { userI
 
 export async function handlePatchTask(request: Request, env: Env, _auth: { userId: string; role: string }, taskId: string): Promise<Response> {
   const oldTask = await env.DB.prepare('SELECT status, lead_id FROM tasks WHERE id = ?').bind(taskId).first() as { status: string; lead_id: string | null } | null;
-  const body = await request.json() as Record<string, unknown>;
+  const rawBody = await request.json().catch(() => null);
+  const v = validate(patchTaskSchema, rawBody);
+  if (!v.success) return validationError(v.error);
+  const body = v.data as Record<string, unknown>;
   const updates: string[] = [];
   const params: (string | number | null)[] = [];
   if (body.title) { updates.push('title = ?'); params.push(sanitizeInput(body.title as string, 200)); }

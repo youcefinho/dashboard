@@ -9,6 +9,9 @@
 
 import type { Env } from './types';
 import { json } from './helpers';
+// Import relatif (cohérent avec le reste de src/worker/* qui n'utilise pas
+// l'alias @ — wrangler/esbuild compile le worker sans le paths-mapping TS).
+import { toIsoSql } from '../lib/dbTime';
 
 const ADMIN_ROLES = new Set(['admin', 'owner']);
 
@@ -44,14 +47,28 @@ export async function handleAdminOverview(
     totalUsers = usersRow?.c ?? 0;
   } catch { /* table inexistante → 0 */ }
   try {
-    const startMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime() / 1000;
+    // [S2] CÂBLAGE DÉFENSIF (risque cross-format RÉEL prouvé) :
+    // `leads.created_at` est TEXT `datetime('now')` → `'YYYY-MM-DD HH:MM:SS'`
+    // (schema.sql : `created_at TEXT DEFAULT (datetime('now'))`), PAS un entier
+    // epoch. L'ancien code bindait `Math.floor(startMonth)` (entier epoch-s)
+    // contre une colonne TEXTE via `>=`, et `COALESCE(created_at, 0)` mélangeait
+    // TEXT et INTEGER 0 → comparaison SQLite silencieusement FAUSSE (affinité
+    // incohérente texte↔entier). Ce cas N'était PAS dans la map S1 (S1 couvrait
+    // les usages `unixepoch` internes ; cette comparaison leads.created_at
+    // texte-vs-bind-entier est un risque distinct découvert en S2).
+    // Fix : normaliser la borne au format texte SQL canonique du projet via
+    // toIsoSql() et comparer texte-vs-texte (lexicographique, correct car
+    // 'YYYY-MM-DD HH:MM:SS' est lexicographiquement ordonné). Logique métier
+    // INCHANGÉE : on compte toujours les leads créés depuis le 1er du mois.
+    const startMonthEpoch = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime() / 1000;
+    const startMonthSql = toIsoSql(Math.floor(startMonthEpoch)) ?? '1970-01-01 00:00:00';
     const leadsRow = await env.DB.prepare(
-      'SELECT COUNT(*) as c FROM leads WHERE COALESCE(created_at, 0) >= ?'
-    ).bind(Math.floor(startMonth)).first<{ c: number }>();
+      'SELECT COUNT(*) as c FROM leads WHERE created_at >= ?'
+    ).bind(startMonthSql).first<{ c: number }>();
     leadsThisMonth = leadsRow?.c ?? 0;
     const wonRow = await env.DB.prepare(
-      `SELECT COUNT(*) as c FROM leads WHERE status = 'won' AND COALESCE(created_at, 0) >= ?`
-    ).bind(Math.floor(startMonth)).first<{ c: number }>();
+      `SELECT COUNT(*) as c FROM leads WHERE status = 'won' AND created_at >= ?`
+    ).bind(startMonthSql).first<{ c: number }>();
     const wonCount = wonRow?.c ?? 0;
     if (leadsThisMonth > 0) conversionRate = wonCount / leadsThisMonth;
   } catch { /* fallback mock */ }
@@ -109,6 +126,12 @@ export async function handleAdminActivityHeatmap(
     const period = (url.searchParams.get('period') || '7d').toLowerCase();
     const daysBack = period === '30d' ? 30 : period === '90d' ? 90 : 7;
     const since = Math.floor(Date.now() / 1000) - daysBack * 86400;
+    // [S2] conforme : unixepoch entier-vs-entier cohérent, pas de câblage dbTime
+    // (cf docs/TIMESTAMP-CONSISTENCY-MAP). `feature_events.event_time` est INTEGER
+    // epoch-secondes (migration-sprint46-m2 DEFAULT (unixepoch())). `since` ci-dessus
+    // est aussi un entier epoch-secondes → la comparaison `event_time >= ?` (L+6)
+    // et les modificateurs strftime(..., 'unixepoch') sont homogènes. Aucune
+    // comparaison cross-format texte↔entier ici : ne RIEN modifier (S1 verdict).
     // strftime : %w (0=Sun..6=Sat), %H (00-23). On normalise %w pour Lun=0.
     const rows = await env.DB.prepare(
       `SELECT
@@ -213,6 +236,10 @@ export async function handleAdminFeaturesUsage(
       if (r && r.sessions > 0) {
         sessions = Number(r.sessions);
         uniqueUsers = Number(r.unique_users);
+        // [S2] conforme : `last_ts` = MAX(event_time) entier epoch-secondes
+        // (même colonne INTEGER unixepoch que ci-dessus). `*1000` ramène en ms
+        // pour `new Date(...)` JS — conversion correcte s→ms, pas une comparaison
+        // cross-format. Pas de câblage dbTime requis (cf TIMESTAMP-CONSISTENCY-MAP).
         if (r.last_ts) lastUsedAt = new Date(Number(r.last_ts) * 1000).toISOString();
       }
     } catch { /* fallback mock */ }

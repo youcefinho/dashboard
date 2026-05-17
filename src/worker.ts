@@ -5,6 +5,7 @@
 
 import type { Env } from './worker/types';
 import { setRequestContext, corsHeaders, json, requireAuth } from './worker/helpers';
+import { errorResponse } from './worker/lib/error-response';
 
 const START_TIME = Date.now();
 
@@ -111,7 +112,7 @@ import { handleDemoReset } from './worker/admin';
 import {
   handleAdminOverview, handleAdminActivityHeatmap, handleAdminFeaturesUsage,
 } from './worker/admin-analytics';
-import { handleCompleteOnboarding, handleWelcomeOnboarding } from './worker/onboarding';
+import { handleCompleteOnboarding, handleWelcomeOnboarding, handleGetOnboardingState, handlePutOnboardingState } from './worker/onboarding';
 import { handleRegisterDevice, handleUnregisterDevice, handleSendPush } from './worker/push';
 
 // Export Durable Objects pour Cloudflare
@@ -330,6 +331,12 @@ export default {
         return await handleHealth(env, uptime);
       }
 
+      // Sprint S9 M1 — Beacon Web Vitals (non authentifié, best-effort, jamais bloquant).
+      if (path === '/api/telemetry/web-vitals' && method === 'POST') {
+        const { handlePostWebVitals } = await import('./worker/telemetry');
+        return await handlePostWebVitals(request, env);
+      }
+
       if (path === '/api/webhook/sms' && method === 'POST') return await handleInboundSms(request, env);
       if (path === '/api/webhook/email' && method === 'POST') return await handleInboundEmail(request, env);
       if (path === '/api/webhook/meta' && (method === 'GET' || method === 'POST')) {
@@ -522,8 +529,7 @@ export default {
         return await handleRoadmapVote(request, env, roadmapVoteMatch[1]!);
       }
     } catch (err) {
-      console.error('Erreur route publique:', err);
-      return json({ error: 'Erreur serveur' }, 500);
+      return errorResponse(err, env, path);
     }
 
     // ── Migration GHL Callback ──────────────────────────────────
@@ -557,8 +563,7 @@ export default {
     try {
       return await routeProtected(request, env, ctx, url, path, method, auth);
     } catch (err) {
-      console.error('Erreur API:', err);
-      return json({ error: 'Erreur serveur interne' }, 500);
+      return errorResponse(err, env, path);
     }
   },
 
@@ -1278,6 +1283,9 @@ async function routeProtected(
   if (path === '/api/auth/onboarding' && method === 'POST') return handleCompleteOnboarding(request, env, auth);
   // Sprint 45 M1.1 — Welcome wizard 4 steps personnalisé
   if (path === '/api/onboarding' && method === 'POST') return handleWelcomeOnboarding(request, env, auth);
+  // Sprint S8 — État onboarding persistant (reprise multi-appareil)
+  if (path === '/api/onboarding/state' && method === 'GET') return handleGetOnboardingState(env, auth);
+  if (path === '/api/onboarding/state' && method === 'PUT') return handlePutOnboardingState(request, env, auth);
   if (path === '/api/admin/demo-reset' && method === 'POST') return handleDemoReset(request, env, auth);
   // Sprint 46 M2 — Admin analytics endpoints (admin/owner only)
   if (path === '/api/admin/overview' && method === 'GET') return handleAdminOverview(request, env, auth);
@@ -1722,6 +1730,52 @@ async function routeProtected(
           ORDER BY created_at DESC LIMIT 100`,
       ).bind(chSyncLogMatch[1]!, clientId).all();
       return json({ data: results || [] });
+    }
+    // ── S7 M-C — Rotation / révocation du secret d'un canal ──────────────
+    // Routes SPÉCIFIQUES placées AVANT le générique /channels/:id (sinon
+    // capturées). Même pattern d'auth + résolution tenant que connect/sync :
+    // admin only, clientId résolu via getClientModules, canal chargé via
+    // loadChannel (404 + multi-tenant strict). Anti-fuite Loi 25 : on ne
+    // logue jamais le token/secret ; rotation.ts gère le secret-store.
+    const chRotateMatch = path.match(/^\/api\/ecommerce\/channels\/([^/]+)\/rotate$/);
+    if (chRotateMatch && method === 'POST') {
+      if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
+      const sync = await import('./worker/ecommerce-channel-sync');
+      const { getClientModules } = await import('./worker/modules');
+      const { clientId } = await getClientModules(env, auth.userId);
+      if (!clientId) return json({ error: 'Client introuvable' }, 400);
+      const channel = await sync.loadChannel(env, clientId, chRotateMatch[1]!);
+      if (!channel) return json({ error: 'Canal introuvable' }, 404);
+      let rbody: { kind?: string };
+      try { rbody = await request.json() as { kind?: string }; }
+      catch { return json({ error: 'JSON invalide' }, 400); }
+      const kind = String(rbody.kind || '');
+      if (kind !== 'shopify_token' && kind !== 'woo_creds')
+        return json({ error: "kind doit être 'shopify_token' ou 'woo_creds'" }, 400);
+      const { rotateChannelSecret } = await import('./worker/ecommerce-channel-rotation');
+      const r = await rotateChannelSecret(env, clientId, channel.id, kind);
+      if (!r.ok) return json({ error: r.error || 'Rotation échouée' }, 400);
+      return json({ ok: true });
+    }
+    const chRevokeMatch = path.match(/^\/api\/ecommerce\/channels\/([^/]+)\/revoke$/);
+    if (chRevokeMatch && method === 'POST') {
+      if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
+      const sync = await import('./worker/ecommerce-channel-sync');
+      const { getClientModules } = await import('./worker/modules');
+      const { clientId } = await getClientModules(env, auth.userId);
+      if (!clientId) return json({ error: 'Client introuvable' }, 400);
+      const channel = await sync.loadChannel(env, clientId, chRevokeMatch[1]!);
+      if (!channel) return json({ error: 'Canal introuvable' }, 404);
+      let rbody: { kind?: string };
+      try { rbody = await request.json() as { kind?: string }; }
+      catch { return json({ error: 'JSON invalide' }, 400); }
+      const kind = String(rbody.kind || '');
+      if (kind !== 'shopify_token' && kind !== 'woo_creds')
+        return json({ error: "kind doit être 'shopify_token' ou 'woo_creds'" }, 400);
+      const { revokeChannelSecret } = await import('./worker/ecommerce-channel-rotation');
+      const r = await revokeChannelSecret(env, clientId, channel.id, kind);
+      if (!r.ok) return json({ error: r.error || 'Révocation échouée' }, 400);
+      return json({ ok: true });
     }
     const chMatch = path.match(/^\/api\/ecommerce\/channels\/([^/]+)$/);
     if (chMatch && method === 'PATCH')

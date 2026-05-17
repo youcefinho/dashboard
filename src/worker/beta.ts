@@ -22,6 +22,27 @@ import { json } from './helpers';
 const MAGIC_TTL_MS = 15 * 60 * 1000; // 15 min
 const SESSION_DURATION_HOURS = 72;   // aligné sur worker/auth.ts
 
+// ── [S2] DETTE LATENTE TIMESTAMP — documentée, comportement PRÉSERVÉ ──────────
+// `magic_tokens.expires_at` et `magic_tokens.used_at` sont stockés en
+// MILLISECONDES (`Date.now()` + `MAGIC_TTL_MS` à L~177 ; `Date.now()` à L~205)
+// dans des colonnes INTEGER, alors que `magic_tokens.created_at` (et tous les
+// autres `created_at` de ce fichier) sont en epoch-SECONDES (`unixepoch()`).
+// Le standard projet est par ailleurs le TEXTE `datetime('now')`.
+//
+// ⚠️ Pourquoi NE PAS « fixer » ms→s ici (S1+S2 verdict) :
+//   La seule comparaison active est `Date.now() > mt.expires_at` (handleMagicVerify,
+//   L~201) : ms (JS) vs ms (colonne) → INTERNE-COHÉRENT et CORRECT. Convertir
+//   expires_at/used_at en secondes CASSERAIT cette comparaison ms-vs-ms qui marche.
+//   `created_at` (secondes) n'est JAMAIS comparé à `expires_at`/`used_at` (ms)
+//   nulle part dans le code → aucune comparaison cross-format FAUSSE active.
+//   Donc : aucun câblage dbTime, aucun changement de comportement.
+//
+// 🔮 Risque latent (si futur dev) : tout JOIN/WHERE croisant `created_at` (s)
+//   avec `expires_at`/`used_at` (ms) — ou comparant `expires_at` (ms) à un
+//   `unixepoch()` SQL (s) — serait silencieusement FAUX (facteur 1000). À
+//   normaliser via src/lib/dbTime.toEpoch() le jour où une telle comparaison
+//   est introduite. Suivi : docs/TIMESTAMP-CONSISTENCY-MAP.md §4.
+
 // ── Bootstrap idempotent des tables (best-effort, no-op si déjà présentes) ──
 let schemaReady = false;
 async function ensureSchema(env: Env): Promise<void> {
@@ -173,6 +194,8 @@ export async function handleMagicLinkRequest(request: Request, env: Env): Promis
     // Réponse identique que l'email soit invité ou non (anti-énumération).
     if (row) {
       const token = crypto.randomUUID() + crypto.randomUUID().replace(/-/g, '');
+      // [S2] dette latente ms documentée (cf en-tête fichier) — expires_at en
+      // MILLISECONDES, comportement ms-vs-ms cohérent préservé (NE PAS « fixer »).
       const expiresAt = Date.now() + MAGIC_TTL_MS;
       await env.DB.prepare(
         'INSERT INTO magic_tokens (token, email, expires_at) VALUES (?, ?, ?)'
@@ -198,9 +221,13 @@ export async function handleMagicVerify(request: Request, env: Env, url: URL): P
 
     if (!mt) return json({ error: 'Lien invalide ou inexistant' }, 401);
     if (mt.used_at) return json({ error: 'Ce lien a déjà été utilisé' }, 401);
+    // [S2] comparaison ms-vs-ms CORRECTE et cohérente : Date.now() (ms JS) vs
+    // expires_at (ms colonne). Pas de câblage dbTime — la « normaliser » en
+    // secondes casserait ce check qui fonctionne (cf en-tête fichier, S1 verdict).
     if (Date.now() > mt.expires_at) return json({ error: 'Ce lien a expiré (15 min)' }, 401);
 
-    // Marque le token consommé (single-use).
+    // Marque le token consommé (single-use) — used_at en ms, cohérent avec
+    // expires_at ms. [S2] dette latente documentée, comportement préservé.
     await env.DB.prepare('UPDATE magic_tokens SET used_at = ? WHERE token = ?')
       .bind(Date.now(), token).run();
 

@@ -2,6 +2,9 @@
 import type { Env } from './types';
 import { sanitizeInput, json, audit } from './helpers';
 import { compileBlocksToHtml, type EmailBlock } from './email-blocks';
+// S4 M2 — validation d'entrée (schémas additifs, import only).
+import { validate, createTemplateSchemaS4, updateTemplateSchemaS4 } from '../lib/schemas';
+import { validationError } from './lib/validate-response';
 
 export async function handleGetTemplates(
   env: Env,
@@ -33,7 +36,12 @@ export async function handleCreateTemplate(
 ): Promise<Response> {
   if (auth.role !== 'admin') return json({ error: 'Accès réservé aux administrateurs' }, 403);
 
-  const body = await request.json() as Record<string, unknown>;
+  // S4 M2 — validation d'entrée AVANT la logique (early-return additif).
+  // Auth-check admin reste AVANT validation (préservé).
+  const parsed = await request.json().catch(() => null);
+  const vt = validate(createTemplateSchemaS4, parsed);
+  if (!vt.success) return validationError(vt.error);
+  const body = vt.data as Record<string, unknown>;
   const name = sanitizeInput(body.name as string, 100);
   const subject = sanitizeInput(body.subject as string, 200);
   const bodyHtml = sanitizeInput(body.body_html as string, 50000);
@@ -73,7 +81,11 @@ export async function handleUpdateTemplate(
 ): Promise<Response> {
   if (auth.role !== 'admin') return json({ error: 'Accès réservé aux administrateurs' }, 403);
 
-  const body = await request.json() as Record<string, unknown>;
+  // S4 M2 — validation d'entrée AVANT la logique (early-return additif).
+  const parsed = await request.json().catch(() => null);
+  const vt = validate(updateTemplateSchemaS4, parsed);
+  if (!vt.success) return validationError(vt.error);
+  const body = vt.data as Record<string, unknown>;
   const updates: string[] = [];
   const params: (string | number | null)[] = [];
 

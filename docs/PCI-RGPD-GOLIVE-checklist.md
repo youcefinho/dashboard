@@ -113,3 +113,37 @@ zéro donnée carte stockée ou transitée dans le code Intralys.**
 - [ ] Test E2E commande → paiement (sandbox) → remboursement (sandbox).
 - [ ] Workflows e-comm du pack restent `is_active = 0` jusqu'à validation
       consentement par le client.
+
+---
+
+## 5. Conditions de levée `payments_live_enabled`
+
+> Section ajoutée Sprint S10 (Manager C, additif — aucune ligne existante
+> modifiée). Le flag `payments_live_enabled` est mentionné en §1 (`:33`) et §4
+> (`:105-106`) ; cette section regroupe **les conditions cumulatives**
+> autorisant son passage de `0` à `1`. VM VMware : rien exécuté ici — décision
+> et activation par Rochdi sur la machine hôte.
+
+`payments_live_enabled` passe de `0` à `1` **uniquement si TOUTES** les
+conditions suivantes sont remplies, dans l'ordre, sans exception :
+
+1. **Revue PCI (SAQ-A) signée** — SAQ-A confirmé applicable avec l'acquéreur /
+   le fournisseur (cf §1) ; aucune donnée carte stockée/transitée côté Intralys.
+2. **Revue légale / RGPD / Loi 25 E4 + E6 signée** — chemins paiement E4 et
+   remboursement/litige E6 audités et validés juridiquement (cf §1, §2, §4
+   « Revue finale »).
+3. **`STRIPE_*` configurés** — `STRIPE_SECRET_KEY` et `STRIPE_WEBHOOK_SECRET`
+   fournis **via `wrangler secret put <NAME>`** (jamais en repo ni en base),
+   cf `docs/BINDINGS-SECRETS-S10.md` § 4 « Régulé NON configuré (E4/E6) ».
+   Tant que la levée n'est pas décidée, ces secrets restent **non configurés**.
+4. **Tests sandbox verts** — suites `ecommerce-payments-sandbox` et
+   `refunds-sandbox` exécutées et vertes (E2E commande → paiement sandbox →
+   remboursement sandbox, cf §4 « Revue finale »).
+5. **Décision explicite Rochdi tracée** — accord nominal et daté de Rochdi
+   consigné (qui décide, quand), conditions 1-4 attestées remplies.
+
+> ⚠️ `payments_live_enabled` n'est **JAMAIS** activé tant que ces conditions ne
+> sont pas **TOUTES** remplies. Un seul item manquant = flag reste à `0`. E9
+> n'altère pas ce flag (cf §4). Cette levée est hors scope S10 (doc only) et ne
+> dispense pas du préalable 🔴 sprint R ni des 5 gates Rochdi (cf
+> `docs/GOLIVE-S10.md`).

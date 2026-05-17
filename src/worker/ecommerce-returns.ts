@@ -26,6 +26,11 @@
 import type { Env } from './types';
 import { json, audit } from './helpers';
 import { getClientModules } from './modules';
+// S3 M2 — validation d'entrée sur la CRÉATION de demande de retour
+// (handleCreateReturn, statut 'pending', AUCUN refund). Schéma M1 figé,
+// import only. handleUpdateReturn (zone refund régulée) NON touché.
+import { validate, createReturnSchema } from '../lib/schemas';
+import { validationError } from './lib/validate-response';
 // RÉUTILISE la logique refund M1 (handler figé) — JAMAIS dupliquée. À
 // `received`, on déclenche le remboursement via ce handler (idempotent,
 // anti double-remboursement, anti double-restock côté M1).
@@ -146,12 +151,13 @@ export async function handleCreateReturn(
   const clientId = await resolveClientId(env, auth);
   if (!clientId) return noClient();
 
-  let body: Record<string, unknown>;
-  try {
-    body = (await request.json()) as Record<string, unknown>;
-  } catch {
-    return json({ error: 'Requête invalide' }, 400);
-  }
+  // S3 M2 — validation d'entrée AVANT la logique (early-return additif).
+  // La validation fine ligne-à-ligne (order_item_id/quantity/restock + garde
+  // anti-abus « article livré ») reste côté handler, INCHANGÉE.
+  const parsed = await request.json().catch(() => null);
+  const vr = validate(createReturnSchema, parsed);
+  if (!vr.success) return validationError(vr.error);
+  const body = vr.data as Record<string, unknown>;
 
   const orderId = String(body.order_id || '').trim();
   if (!orderId) {

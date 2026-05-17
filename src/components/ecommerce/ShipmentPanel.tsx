@@ -12,7 +12,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Modal, Button, Tag, Input, Textarea, Skeleton, Icon, useToast,
+  Modal, Button, Tag, Input, Textarea, Skeleton, EmptyState, Icon, useToast,
 } from '@/components/ui';
 import {
   getOrderShipments, createShipment, updateShipmentStatus,
@@ -227,22 +227,16 @@ export function ShipmentPanel({ order, onChanged }: ShipmentPanelProps) {
           <Skeleton className="h-20 w-full rounded" />
         </div>
       ) : (shipments || []).length === 0 ? (
-        <div className="rounded-[var(--radius-md)] border border-dashed border-[var(--border-subtle)] bg-[var(--bg-subtle)] px-4 py-6 text-center">
-          <Icon
-            as={Truck}
-            size="md"
-            className="text-[var(--text-muted)] mx-auto mb-2"
-            aria-hidden
-          />
-          <p className="text-[13px] text-[var(--text-secondary)]">
-            {t('shop.shipment.empty')}
-          </p>
-          {shippableItems.length === 0 && (
-            <p className="text-[11px] text-[var(--text-muted)] mt-1">
-              {t('shop.shipment.all_shipped')}
-            </p>
-          )}
-        </div>
+        <EmptyState
+          variant="compact"
+          icon={<Truck size={32} strokeWidth={1.8} />}
+          title={t('shop.shipment.empty')}
+          description={
+            shippableItems.length === 0
+              ? t('shop.shipment.all_shipped')
+              : undefined
+          }
+        />
       ) : (
         <div className="flex flex-col gap-3">
           {(shipments || []).map((sh) => {

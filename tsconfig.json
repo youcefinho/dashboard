@@ -22,5 +22,5 @@
     "types": ["vite/client"]
   },
   "include": ["src"],
-  "exclude": ["src/worker/_v2-backlog", "src/worker/__tests__"]
+  "exclude": ["src/worker/_v2-backlog", "src/**/__tests__"]
 }

@@ -1,6 +1,8 @@
 // ── Module Pipelines — Intralys CRM ─────────────────────────
 import type { Env } from './types';
 import { sanitizeInput, json, audit } from './helpers';
+import { validate, createPipelineSchema, createPipelineStageSchema } from '../lib/schemas';
+import { validationError } from './lib/validate-response';
 
 // ── PIPELINES ───────────────────────────────────────────────
 
@@ -35,8 +37,11 @@ export async function handleGetPipelines(env: Env, auth: { role: string; userId:
 export async function handleCreatePipeline(
   request: Request, env: Env, auth: { role: string; userId: string }
 ): Promise<Response> {
-  const body = await request.json() as { name?: string; client_id?: string; color?: string; is_default?: boolean };
-  
+  const rawBody = await request.json().catch(() => null);
+  const v = validate(createPipelineSchema, rawBody);
+  if (!v.success) return validationError(v.error);
+  const body = v.data as { name?: string; client_id?: string; color?: string; is_default?: boolean };
+
   let targetClientId = body.client_id;
   if (auth.role !== 'admin') {
     const user = await env.DB.prepare('SELECT client_id FROM users WHERE id = ?').bind(auth.userId).first() as { client_id: string } | null;
@@ -106,7 +111,10 @@ export async function handleGetPipelineStages(
 export async function handleCreatePipelineStage(
   request: Request, env: Env, auth: { role: string; userId: string }, pipelineId: string
 ): Promise<Response> {
-  const body = await request.json() as { name?: string; color?: string; probability?: number; wip_limit?: number; sla_days?: number };
+  const rawBody = await request.json().catch(() => null);
+  const v = validate(createPipelineStageSchema, rawBody);
+  if (!v.success) return validationError(v.error);
+  const body = v.data as { name?: string; color?: string; probability?: number; wip_limit?: number; sla_days?: number };
   if (!body.name) return json({ error: 'Nom requis' }, 400);
 
   const id = crypto.randomUUID();

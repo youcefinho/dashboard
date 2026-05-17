@@ -1,5 +1,11 @@
 import type { Env } from './types';
-import { json, sanitizeInput } from './helpers';
+import { json, sanitizeInput, audit } from './helpers';
+
+// S4 M3 — acteur de l'audit dérivé du header X-User-Id (convention de ce fichier),
+// fallback 'system'. Purement additif : ne change ni la logique métier ni les réponses.
+function auditActor(request: Request): string {
+  return request.headers.get('X-User-Id') || 'system';
+}
 
 export async function handleGetUsers(_request: Request, env: Env): Promise<Response> {
   // Dans un vrai système, on filtrerait par agence ou client_id.
@@ -33,6 +39,7 @@ export async function handleInviteUser(request: Request, env: Env): Promise<Resp
   // Mock envoi d'email via Resend
   console.log(`[Resend Mock] Invitation envoyée à ${email} pour le rôle ${role}`);
 
+  await audit(env, auditActor(request), 'user.invite', 'user', id, { role, email });
   return json({ data: { success: true, message: 'Invitation envoyée avec succès' } }, 201);
 }
 
@@ -45,6 +52,7 @@ export async function handleUpdateUserRole(request: Request, env: Env): Promise<
   if (!newRole) return json({ error: 'Rôle manquant' }, 400);
 
   await env.DB.prepare('UPDATE users SET role = ? WHERE id = ?').bind(newRole, userId).run();
+  await audit(env, auditActor(request), 'user.role_change', 'user', userId, { role: newRole });
   return json({ data: { success: true } });
 }
 
@@ -54,6 +62,7 @@ export async function handleDeleteUser(request: Request, env: Env): Promise<Resp
   
   // Hard delete pour le MVP.
   await env.DB.prepare('DELETE FROM users WHERE id = ?').bind(userId).run();
+  await audit(env, auditActor(request), 'user.remove', 'user', userId);
   return json({ data: { success: true } });
 }
 

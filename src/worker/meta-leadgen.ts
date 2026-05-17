@@ -6,25 +6,71 @@
 import type { Env } from './types';
 import { sanitizeInput, json, audit, createNotification } from './helpers';
 
+// ── S7 — Audit forensic non-bloquant sur rejet de signature ─────
+// Anti-fuite Loi 25 : on n'enregistre QUE des métadonnées non sensibles
+// (jamais le body, le secret ni la signature). Best-effort : audit() avale
+// déjà ses propres erreurs, on ne casse jamais le flux d'appel.
+async function auditSignatureReject(env: Env, reason: string): Promise<void> {
+  try {
+    await audit(
+      env,
+      'system',
+      'webhook.signature_reject',
+      'meta_webhook',
+      'unknown',
+      { reason }
+    );
+  } catch { /* non critique — jamais bloquer la vérif */ }
+}
+
 // ── Vérification signature HMAC SHA-256 (Meta X-Hub-Signature-256) ──
 // Timing-safe via crypto.subtle.verify. Si secret absent → null (caller
 // décide de logger un warn et continuer pour ne pas casser le flow legacy).
+// S7 : gardes d'entrée additives + audit forensic à chaque rejet. La logique
+// crypto (constant-time) reste INCHANGÉE — on ne fait que la blinder en amont.
 export async function verifyMetaSignature(
   env: Env,
   rawBody: string,
   signatureHeader: string | null
 ): Promise<boolean | null> {
   const secret = env.META_APP_SECRET;
+  // Comportement legacy intentionnel PRÉSERVÉ : secret absent → null (le
+  // caller log un warn et continue). On n'émet PAS d'audit de rejet ici car
+  // ce n'est pas un rejet de signature mais une absence de configuration.
   if (!secret) return null; // pas de secret configuré → vérif impossible
-  if (!signatureHeader || !signatureHeader.startsWith('sha256=')) return false;
+
+  // S7 garde (a) : corps vide/absent → rejet propre AVANT tout appel crypto.
+  // Un webhook signé légitime a toujours un corps ; un body vide est suspect.
+  if (typeof rawBody !== 'string' || rawBody.length === 0) {
+    await auditSignatureReject(env, 'empty_body');
+    return false;
+  }
+
+  if (!signatureHeader || !signatureHeader.startsWith('sha256=')) {
+    await auditSignatureReject(env, 'missing_or_malformed_header');
+    return false;
+  }
 
   const expectedHex = signatureHeader.slice('sha256='.length).trim();
-  // hex → Uint8Array
-  if (expectedHex.length % 2 !== 0) return false;
+  // S7 garde (b) : longueur/format hex stricts AVANT décodage. SHA-256 = 32
+  // octets = exactement 64 caractères hex. Tout le reste est rejeté net.
+  if (
+    expectedHex.length === 0 ||
+    expectedHex.length % 2 !== 0 ||
+    expectedHex.length !== 64 ||
+    !/^[0-9a-fA-F]+$/.test(expectedHex)
+  ) {
+    await auditSignatureReject(env, 'bad_signature_format');
+    return false;
+  }
+
   const sigBytes = new Uint8Array(expectedHex.length / 2);
   for (let i = 0; i < sigBytes.length; i++) {
     const byte = parseInt(expectedHex.substr(i * 2, 2), 16);
-    if (Number.isNaN(byte)) return false;
+    if (Number.isNaN(byte)) {
+      await auditSignatureReject(env, 'bad_signature_format');
+      return false;
+    }
     sigBytes[i] = byte;
   }
 
@@ -37,7 +83,9 @@ export async function verifyMetaSignature(
     ['verify']
   );
   // crypto.subtle.verify est constant-time → safe contre timing attacks
-  return crypto.subtle.verify('HMAC', key, sigBytes, enc.encode(rawBody));
+  const ok = await crypto.subtle.verify('HMAC', key, sigBytes, enc.encode(rawBody));
+  if (!ok) await auditSignatureReject(env, 'bad_signature');
+  return ok;
 }
 
 // ── Helper canonique d'ingestion d'un lead externe ──────────────

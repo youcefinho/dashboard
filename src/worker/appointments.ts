@@ -2,6 +2,9 @@
 import type { Env } from './types';
 import { sanitizeInput, json } from './helpers';
 import { autoEnrollForTrigger } from './workflows';
+// S4 M2 — validation d'entrée (schémas additifs, import only).
+import { validate, createAppointmentSchemaS4, updateAppointmentSchemaS4 } from '../lib/schemas';
+import { validationError } from './lib/validate-response';
 
 export async function handleGetAppointments(
   env: Env,
@@ -36,7 +39,11 @@ export async function handleCreateAppointment(
   env: Env,
   auth: { userId: string; role: string }
 ): Promise<Response> {
-  const body = await request.json() as Record<string, unknown>;
+  // S4 M2 — validation d'entrée AVANT la logique (early-return additif).
+  const parsed = await request.json().catch(() => null);
+  const va = validate(createAppointmentSchemaS4, parsed);
+  if (!va.success) return validationError(va.error);
+  const body = va.data as Record<string, unknown>;
   const title = sanitizeInput(body.title as string, 200);
   const description = sanitizeInput(body.description as string, 1000) || '';
   const startTime = sanitizeInput(body.start_time as string, 30);
@@ -106,7 +113,11 @@ export async function handleUpdateAppointment(
   auth: { userId: string; role: string },
   appointmentId: string
 ): Promise<Response> {
-  const body = await request.json() as Record<string, unknown>;
+  // S4 M2 — validation d'entrée AVANT la logique (early-return additif).
+  const parsed = await request.json().catch(() => null);
+  const va = validate(updateAppointmentSchemaS4, parsed);
+  if (!va.success) return validationError(va.error);
+  const body = va.data as Record<string, unknown>;
   const updates: string[] = [];
   const params: (string | null)[] = [];
 

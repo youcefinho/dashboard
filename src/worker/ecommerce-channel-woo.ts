@@ -13,6 +13,7 @@
 
 import type { Env } from './types';
 import { json } from './helpers';
+import { createSecretStore } from './lib/secret-store';
 import {
   loadChannel,
   loadChannelByIdOnly,
@@ -132,17 +133,18 @@ export async function wooCallback(
     );
   }
 
-  // ⚠️ SÉCURITÉ : clés stockées par RÉFÉRENCE (KV), JAMAIS en clair en DB.
-  // TODO secret store : remplacer KV par un secret store dédié si dispo.
+  // ⚠️ SÉCURITÉ S7 : clés Woo chiffrées AES-GCM en D1 via le secret store typé.
+  // Format de sérialisation INCHANGÉ ({ck,cs}) pour ne rien casser côté
+  // consommateur (wooPushFn). Multi-tenant : client_id = channel.client_id
+  // résolu depuis le canal chargé. Remplace STATE_STORE.put('woo_creds:'+id).
   const configRef = `woo:${channel.id}`;
-  if (env.STATE_STORE) {
-    try {
-      await env.STATE_STORE.put(
-        `woo_creds:${channel.id}`,
-        JSON.stringify({ ck: consumerKey, cs: consumerSecret }),
-      );
-    } catch { /* best-effort */ }
-  }
+  await createSecretStore(env).putIntegrationToken(
+    env,
+    channel.client_id,
+    channel.id,
+    'woo_creds',
+    JSON.stringify({ ck: consumerKey, cs: consumerSecret }),
+  );
   await env.DB.prepare(
     `UPDATE sales_channels
         SET config_ref = ?, active = 1, updated_at = datetime('now')
@@ -207,24 +209,30 @@ export async function handleWooWebhook(
 
 /**
  * Construit le callback de push stock vers Woo (PUT /wp-json/wc/v3/products).
- * Auth Basic consumer_key/secret (lus via la RÉFÉRENCE KV). Le moteur M2.3
+ * Auth Basic consumer_key/secret (déchiffrés via secret store). Le moteur M2.3
  * (syncProductOut) gère anti-echo + quantité ; ici uniquement l'appel HTTP.
  */
 export async function wooPushFn(
   env: Env,
   channel: ChannelRow,
 ): Promise<(externalId: string, qty: number) => Promise<boolean>> {
+  // S7 : creds déchiffrées via le secret store (multi-tenant strict :
+  // client_id ET channel_id depuis le canal chargé). null / révoqué /
+  // mauvais tenant / JSON corrompu ⇒ no-op silencieux préservé.
   let ck = '';
   let cs = '';
-  if (env.STATE_STORE) {
+  const rawCreds = await createSecretStore(env).getIntegrationToken(
+    env,
+    channel.client_id,
+    channel.id,
+    'woo_creds',
+  );
+  if (rawCreds) {
     try {
-      const raw = await env.STATE_STORE.get(`woo_creds:${channel.id}`);
-      if (raw) {
-        const c = JSON.parse(raw) as { ck?: string; cs?: string };
-        ck = c.ck || '';
-        cs = c.cs || '';
-      }
-    } catch { /* best-effort */ }
+      const c = JSON.parse(rawCreds) as { ck?: string; cs?: string };
+      ck = c.ck || '';
+      cs = c.cs || '';
+    } catch { /* JSON corrompu → no-op (ck/cs restent vides) */ }
   }
   const shop = (channel.shop_domain || '').replace(/^https?:\/\//, '');
   return async (externalId: string, qty: number): Promise<boolean> => {

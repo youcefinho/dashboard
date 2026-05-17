@@ -23,7 +23,9 @@ import { OnboardingWizard } from '../onboarding/OnboardingWizard';
 import { WelcomeWizard } from '../onboarding/WelcomeWizard';
 // Sprint 45 M1.3 — First lead tour (coachmark 3 steps)
 import { FirstLeadTour, shouldShowFirstLeadTour } from '../onboarding/FirstLeadTour';
-import { getLeads } from '@/lib/api';
+// Sprint S8 — getOnboardingState/putOnboardingState : reprise multi-appareil
+// de l'onboarding (best-effort, additif — fallback localStorage conservé).
+import { getLeads, getOnboardingState, putOnboardingState, type OnboardingState } from '@/lib/api';
 import { FeedbackWidget } from '../feedback/FeedbackWidget';
 import { NpsModal } from '../feedback/NpsModal';
 // Sprint 50 M3.3/M3.4 — Beta onboarding orchestration + feedback widget
@@ -210,6 +212,41 @@ export function AppLayout({ children, title }: AppLayoutProps) {
       setShowWelcome(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Sprint S8 — Hydratation reprise multi-appareil de l'onboarding ─────────
+  // GET /onboarding/state au montage : si l'user a un état serveur non terminé
+  // (currentStep>0 && !completedAt), on passe initialState au WelcomeWizard
+  // pour reprendre là où il en était. Best-effort : GET ne faille jamais
+  // (défaut neutre), et le localStorage reste le fallback Sprint 45.
+  const [onbInitialState, setOnbInitialState] = useState<OnboardingState | undefined>(undefined);
+  const [onbStateLoaded, setOnbStateLoaded] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    // On n'hydrate que si le WelcomeWizard est susceptible de s'afficher.
+    if (!showWelcome) { setOnbStateLoaded(true); return; }
+    (async () => {
+      try {
+        const res = await getOnboardingState();
+        if (cancelled) return;
+        const st = res.data;
+        if (st && !st.completedAt && st.currentStep > 0) {
+          setOnbInitialState(st);
+        }
+      } catch {
+        /* best-effort — fallback localStorage Sprint 45 conservé */
+      } finally {
+        if (!cancelled) setOnbStateLoaded(true);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Sprint S8 — persistance serveur best-effort des transitions (PUT). Ne
+  // bloque jamais l'avancement : le WelcomeWizard appelle ça en fire-and-forget.
+  const persistOnboardingState = useCallback((patch: Partial<OnboardingState>) => {
+    void putOnboardingState(patch).catch(() => { /* best-effort */ });
   }, []);
 
   // Sprint 45 M1.3 — FirstLeadTour : déclenché quand 0 leads ET pas encore montré.
@@ -753,12 +790,25 @@ export function AppLayout({ children, title }: AppLayoutProps) {
         localStorage.setItem('intralys_onboarding_dismissed', '1');
         setShowOnboarding(false);
       }} />}
-      {/* Sprint 45 M1.1 — Welcome wizard 4 steps personnalisé (Stripe-clean) */}
-      {showWelcome && !showOnboarding && (
+      {/* Sprint 45 M1.1 — Welcome wizard personnalisé (Stripe-clean).
+          Sprint S8 — DOUBLE-ONBOARDING NEUTRALISÉ (additif, legacy intact) :
+          (1) `!showOnboarding` ⇒ WelcomeWizard ne monte JAMAIS pendant que le
+              legacy <OnboardingWizard> (Sprint 23/24) est affiché ;
+          (2) l'initialiseur `showWelcome` (plus haut) backfill silencieusement
+              `onboarding_completed=1` si le legacy a été dismissé OU si le
+              backend dit l'onboarding déjà fait (`onboarding_step !== 0`),
+              ⇒ un compte existant ne revoit pas l'onboarding.
+          Le fichier legacy OnboardingWizard.tsx N'EST PAS supprimé/modifié.
+          Sprint S8 — on attend la résolution du GET /onboarding/state
+          (`onbStateLoaded`) avant de monter, pour pouvoir hydrater la reprise
+          multi-appareil sans flash de l'étape 1. */}
+      {showWelcome && !showOnboarding && onbStateLoaded && (
         <WelcomeWizard
           open
           initialName={user?.name || ''}
           initialEmail={user?.email || ''}
+          initialState={onbInitialState}
+          onPersist={persistOnboardingState}
           onComplete={() => {
             setShowWelcome(false);
             // Sprint 50 M3.3 — parcours beta : enchaîne DiscoverAppTour après
