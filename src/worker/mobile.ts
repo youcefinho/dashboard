@@ -87,19 +87,69 @@ export async function handleRegisterDevice(
   env: Env,
   auth: { userId: string; role: string; clientId?: string }
 ): Promise<Response> {
-  const body = await request.json() as { token: string; platform?: string };
+  // ── Sprint 27 — body enrichi seq124 (additif, optionnel) ────────────────
+  // Le contrat S20 d'origine n'attendait que { token, platform? }. seq124
+  // ajoute 2 champs optionnels (app_version, device_label) + la maintenance
+  // serveur de last_seen_at + enabled. La signature publique du handler
+  // reste INCHANGÉE — purement additif côté body input + extension du
+  // statement INSERT pour upsert idempotent via ON CONFLICT(token) qui
+  // remplace le DELETE+INSERT préalable (rafraîchit last_seen_at + permet
+  // au device physique de mettre à jour app_version / device_label sans
+  // créer de doublon d'id et sans perdre la relation device→user).
+  const body = (await request.json().catch(() => ({}))) as {
+    token?: string;
+    platform?: string;
+    app_version?: string;
+    device_label?: string;
+  };
   const token = sanitizeInput(body.token, 500);
   const platform = sanitizeInput(body.platform || 'web', 20);
+  const appVersionRaw = sanitizeInput(body.app_version, 64);
+  const deviceLabelRaw = sanitizeInput(body.device_label, 120);
+  const appVersion = appVersionRaw || null;
+  const deviceLabel = deviceLabelRaw || null;
 
   if (!token) return json({ error: 'Token requis' }, 400);
 
   const id = `dt_${crypto.randomUUID()}`;
 
-  // Upsert : supprimer l'ancien token de cet appareil s'il existe
-  await env.DB.prepare('DELETE FROM device_tokens WHERE token = ?').bind(token).run();
-  await env.DB.prepare(
-    'INSERT INTO device_tokens (id, user_id, token, platform) VALUES (?, ?, ?, ?)'
-  ).bind(id, auth.userId, token, platform).run();
+  // INSERT 8-col seq124 d'abord avec ON CONFLICT(token) DO UPDATE pour
+  // rafraîchir last_seen_at + champs enrichis sur ré-enregistrement. Si la
+  // migration seq124 n'a pas été jouée (colonnes app_version / device_label
+  // / last_seen_at / enabled manquantes) ⇒ fallback rétro-compat seq20 :
+  // DELETE+INSERT 4-col (id, user_id, token, platform) — le pattern legacy
+  // préservé bit-pour-bit pour les déploiements n'ayant pas encore appliqué
+  // la migration.
+  try {
+    await env.DB.prepare(
+      `INSERT INTO device_tokens
+         (id, user_id, token, platform, app_version, device_label, last_seen_at, enabled)
+       VALUES (?, ?, ?, ?, ?, ?, datetime('now'), 1)
+       ON CONFLICT(token) DO UPDATE SET
+         user_id = excluded.user_id,
+         platform = excluded.platform,
+         app_version = excluded.app_version,
+         device_label = excluded.device_label,
+         last_seen_at = datetime('now'),
+         enabled = 1`
+    )
+      .bind(id, auth.userId, token, platform, appVersion, deviceLabel)
+      .run();
+  } catch (e: any) {
+    const msg = String(e?.message || e || '').toLowerCase();
+    if (msg.includes('no such column') || msg.includes('has no column')) {
+      // Fallback rétro-compat seq20 strict (4 colonnes uniquement) — calque
+      // exact du comportement d'origine (DELETE puis INSERT minimal).
+      await env.DB.prepare('DELETE FROM device_tokens WHERE token = ?').bind(token).run();
+      await env.DB.prepare(
+        'INSERT INTO device_tokens (id, user_id, token, platform) VALUES (?, ?, ?, ?)'
+      )
+        .bind(id, auth.userId, token, platform)
+        .run();
+    } else {
+      throw e;
+    }
+  }
 
   return json({ data: { id } }, 201);
 }

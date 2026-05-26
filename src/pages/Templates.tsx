@@ -37,6 +37,7 @@ export function TemplatesPage() {
   const confirm = useConfirm();
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [showEditor, setShowEditor] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [previewId, setPreviewId] = useState<string | null>(null);
@@ -57,8 +58,14 @@ export function TemplatesPage() {
 
   const loadTemplates = useCallback(async () => {
     setIsLoading(true);
-    const result = await getTemplates(categoryFilter || undefined);
-    if (result.data) setTemplates(result.data);
+    setLoadError(null);
+    try {
+      const result = await getTemplates(categoryFilter || undefined);
+      if (result.data) setTemplates(result.data);
+      else if (result.error) setLoadError(result.error);
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : tb('tpl.error.load'));
+    }
     setIsLoading(false);
   }, [categoryFilter]);
 
@@ -164,8 +171,8 @@ export function TemplatesPage() {
         </div>
         <div className="flex items-center gap-2">
           <div className="segmented-control segmented-control--icon">
-            <button onClick={() => setViewMode('grid')} className={viewMode === 'grid' ? 'is-active' : ''} aria-label="Vue grille">▦</button>
-            <button onClick={() => setViewMode('list')} className={viewMode === 'list' ? 'is-active' : ''} aria-label="Vue liste">☰</button>
+            <button onClick={() => setViewMode('grid')} className={viewMode === 'grid' ? 'is-active' : ''} aria-label={tb('templates.view_grid')}>▦</button>
+            <button onClick={() => setViewMode('list')} className={viewMode === 'list' ? 'is-active' : ''} aria-label={tb('templates.view_list')}>☰</button>
           </div>
         </div>
       </div>
@@ -188,9 +195,22 @@ export function TemplatesPage() {
         </div>
       </div>
 
+      {loadError && !isLoading && (
+        <div
+          role="alert"
+          aria-live="polite"
+          className="mb-4 flex items-center justify-between gap-3 px-4 py-3 rounded-lg bg-[var(--danger)]/10 border border-[var(--danger)]/30 text-[var(--danger)]"
+        >
+          <span className="text-sm">{loadError}</span>
+          <Button size="sm" variant="secondary" onClick={() => void loadTemplates()} aria-label={tb('action.retry')}>
+            {tb('action.retry')}
+          </Button>
+        </div>
+      )}
+
       {/* Liste */}
       {isLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3" aria-busy="true" aria-live="polite">
           {Array.from({ length: 6 }).map((_, i) => (
             <Card key={i} className="p-4">
               <div className="flex items-start justify-between mb-3">
@@ -272,7 +292,7 @@ export function TemplatesPage() {
                     <button onClick={() => openEditTemplate(tpl)} className="text-xs text-[var(--primary)] hover:underline cursor-pointer">✏️ {tb('tpl.grid.edit')}</button>
                     <button onClick={() => duplicateTemplate(tpl)} className="text-xs text-[var(--text-muted)] hover:underline cursor-pointer">📋 {tb('tpl.grid.duplicate')}</button>
                     {!tpl.id.startsWith('tpl-') && (
-                      <button onClick={() => void handleDelete(tpl.id)} className="text-xs text-[var(--danger)] hover:underline cursor-pointer ml-auto">🗑️</button>
+                      <button onClick={() => void handleDelete(tpl.id)} aria-label={tb('common.delete')} className="text-xs text-[var(--danger)] hover:underline cursor-pointer ml-auto">🗑️</button>
                     )}
                   </div>
                 </div>
@@ -301,7 +321,7 @@ export function TemplatesPage() {
                   // usage_count / last_used_at potentiellement absents du type — accès défensif
                   const usage = (tpl as unknown as { usage_count?: number }).usage_count ?? 0;
                   const lastUsedRaw = (tpl as unknown as { last_used_at?: string }).last_used_at;
-                  const lastUsedLabel = lastUsedRaw ? new Date(lastUsedRaw).toLocaleDateString('fr-CA', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Jamais utilisé';
+                  const lastUsedLabel = lastUsedRaw ? new Date(lastUsedRaw).toLocaleDateString('fr-CA', { day: 'numeric', month: 'short', year: 'numeric' }) : tb('tpl.list.never_used');
                   const bodyPreview = tpl.body_html.replace(/<[^>]+>/g, '').replace(/&[^;]+;/g, ' ').slice(0, 280);
                   return (
                     <React.Fragment key={tpl.id}>
@@ -312,7 +332,7 @@ export function TemplatesPage() {
                               type="button"
                               className={`table-expand-trigger ${isExpanded ? 'is-expanded' : ''}`}
                               onClick={() => setExpandedId(isExpanded ? null : tpl.id)}
-                              aria-label={isExpanded ? 'Réduire' : 'Afficher les détails'}
+                              aria-label={isExpanded ? tb('templates.row_collapse') : tb('templates.row_expand')}
                               aria-expanded={isExpanded}
                             >
                               <ChevronRight size={14} />
@@ -377,7 +397,7 @@ export function TemplatesPage() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">{tb('tpl.modal.name')}</label>
-              <Input value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="Bienvenue nouveau lead" />
+              <Input value={formName} onChange={(e) => setFormName(e.target.value)} placeholder={tb('templates.name_placeholder')} />
             </div>
             <div>
               <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">{tb('tpl.modal.category')}</label>
@@ -390,14 +410,14 @@ export function TemplatesPage() {
 
           <div>
             <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
-              Sujet <span className="text-[var(--text-muted)]">(variables : {`{{nom}}, {{user_name}}`})</span>
+              {tb('tpl.modal.subject_label')} <span className="text-[var(--text-muted)]">{tb('tpl.modal.variables_hint')}</span>
             </label>
-            <Input value={formSubject} onChange={(e) => setFormSubject(e.target.value)} placeholder="Merci {{nom}} !" />
+            <Input value={formSubject} onChange={(e) => setFormSubject(e.target.value)} placeholder={tb('templates.subject_placeholder')} />
           </div>
 
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-medium text-[var(--text-secondary)]">Contenu</label>
+              <label className="text-xs font-medium text-[var(--text-secondary)]">{tb('tpl.modal.content_label')}</label>
               <div className="flex items-center gap-2">
                 <div className="relative group/ai">
                   <Button variant="ghost" size="sm" onClick={async () => {
@@ -427,25 +447,25 @@ export function TemplatesPage() {
                   </Button>
                 </div>
                 <div className="flex bg-[var(--bg-subtle)] rounded p-0.5">
-                  <button onClick={() => setEditorTab('code')} className={`px-2 py-0.5 text-[10px] rounded cursor-pointer ${editorTab === 'code' ? 'bg-[var(--primary)] text-white' : 'text-[var(--text-muted)]'}`}>{'</>'}Code</button>
-                  <button onClick={() => setEditorTab('preview')} className={`px-2 py-0.5 text-[10px] rounded cursor-pointer ${editorTab === 'preview' ? 'bg-[var(--primary)] text-white' : 'text-[var(--text-muted)]'}`}>👁️ Aperçu</button>
+                  <button onClick={() => setEditorTab('code')} aria-pressed={editorTab === 'code'} aria-label={tb('tpl.modal.code_tab')} className={`px-2 py-0.5 text-[10px] rounded cursor-pointer ${editorTab === 'code' ? 'bg-[var(--primary)] text-white' : 'text-[var(--text-muted)]'}`}>{'</>'}{tb('tpl.modal.code_tab')}</button>
+                  <button onClick={() => setEditorTab('preview')} aria-pressed={editorTab === 'preview'} aria-label={tb('tpl.modal.preview_tab')} className={`px-2 py-0.5 text-[10px] rounded cursor-pointer ${editorTab === 'preview' ? 'bg-[var(--primary)] text-white' : 'text-[var(--text-muted)]'}`}>{tb('tpl.modal.preview_tab_icon')}</button>
                 </div>
               </div>
             </div>
             {editorTab === 'code' ? (
               <textarea value={formBody} onChange={(e) => setFormBody(e.target.value)} rows={10}
-                placeholder="<h2>Bonjour {{nom}},</h2><p>Merci pour votre intérêt...</p>"
+                placeholder={tb('templates.body_placeholder')}
                 className="w-full px-3 py-2 bg-[var(--bg-subtle)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--primary)] resize-none font-mono text-xs" />
             ) : (
               <div className="bg-white text-gray-900 p-4 rounded-[var(--radius-md)] text-sm min-h-[200px] border border-[var(--border-subtle)]"
-                dangerouslySetInnerHTML={{ __html: formBody || '<p style="color:#999">Aperçu du contenu...</p>' }} />
+                dangerouslySetInnerHTML={{ __html: formBody || tb('templates.preview_placeholder') }} />
             )}
           </div>
 
           {/* Variables détectées */}
           {formBody && extractVariables(formSubject + formBody).length > 0 && (
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[10px] text-[var(--text-muted)]">Variables :</span>
+              <span className="text-[10px] text-[var(--text-muted)]">{tb('tpl.modal.variables_detected_label')}</span>
               {extractVariables(formSubject + formBody).map(v => (
                 <span key={v} className="text-[10px] px-1.5 py-0.5 bg-[var(--primary)]/10 text-[var(--primary)] rounded font-mono">{`{{${v}}}`}</span>
               ))}
@@ -454,7 +474,7 @@ export function TemplatesPage() {
 
           <div className="flex gap-2 justify-end">
             <Button variant="secondary" onClick={() => { setShowEditor(false); resetForm(); }}>{tb('tpl.modal.cancel')}</Button>
-            <Button onClick={() => void handleSave()} disabled={isSaving || !formName.trim() || !formSubject.trim() || !formBody.trim()}>
+            <Button onClick={() => void handleSave()} disabled={isSaving || !formName.trim() || !formSubject.trim() || !formBody.trim()} aria-busy={isSaving}>
               {isSaving ? tb('tpl.modal.saving') : editingId ? tb('tpl.modal.update') : tb('tpl.modal.create')}
             </Button>
           </div>
@@ -462,21 +482,21 @@ export function TemplatesPage() {
       </Modal>
 
       {/* Modal aperçu enrichi */}
-      <Modal open={!!previewId} onOpenChange={() => setPreviewId(null)} title={previewTemplate ? `Aperçu : ${previewTemplate.name}` : 'Aperçu'}>
+      <Modal open={!!previewId} onOpenChange={() => setPreviewId(null)} title={previewTemplate ? tb('templates.preview_title').replace('{name}', previewTemplate.name) : tb('templates.preview_fallback')}>
         {previewTemplate && (
           <div className="space-y-4">
             {/* En-tête email simulé */}
             <div className="bg-[var(--bg-subtle)] rounded-[var(--radius-md)] p-3 space-y-1.5">
               <div className="flex items-center gap-2 text-xs">
-                <span className="text-[var(--text-muted)] w-8">De :</span>
+                <span className="text-[var(--text-muted)] w-8">{tb('tpl.preview.from')}</span>
                 <span className="font-medium">contact@intralys.com</span>
               </div>
               <div className="flex items-center gap-2 text-xs">
-                <span className="text-[var(--text-muted)] w-8">À :</span>
+                <span className="text-[var(--text-muted)] w-8">{tb('tpl.preview.to')}</span>
                 <span className="font-medium text-[var(--primary)]">{'{{email}}'}</span>
               </div>
               <div className="flex items-center gap-2 text-xs">
-                <span className="text-[var(--text-muted)] w-8">Obj :</span>
+                <span className="text-[var(--text-muted)] w-8">{tb('tpl.preview.subject')}</span>
                 <span className="font-semibold">{previewTemplate.subject}</span>
               </div>
             </div>

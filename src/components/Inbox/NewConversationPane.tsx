@@ -3,6 +3,7 @@ import { Button, Input, Icon } from '@/components/ui';
 import { X, Mail, Phone, Search } from 'lucide-react';
 import type { Lead, MessageChannel } from '@/lib/types';
 import { apiFetch } from '@/lib/api';
+import { t } from '@/lib/i18n';
 import { MessageComposer } from './MessageComposer';
 
 interface Props {
@@ -77,7 +78,7 @@ export function NewConversationPane({ onCancel, onSent, snippets = [], templates
   return (
     <div className={`flex-1 flex flex-col min-w-0 bg-[var(--bg-canvas)] relative ${className}`}>
       <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]">
-        <h3 className="text-sm font-semibold">Nouvelle Conversation</h3>
+        <h3 className="text-sm font-semibold">{t('inbox.new_conversation_title')}</h3>
         <button onClick={onCancel} className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer" aria-label="Fermer">
           <Icon as={X} size="md" />
         </button>
@@ -175,7 +176,7 @@ export function NewConversationPane({ onCancel, onSent, snippets = [], templates
                   type="text"
                   value={subject}
                   onChange={e => setSubject(e.target.value)}
-                  placeholder="Sujet du message..."
+                  placeholder={t('inbox.new_subject_placeholder')}
                 />
               </div>
             )}

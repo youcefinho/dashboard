@@ -17,12 +17,12 @@ export function ResetPasswordPage() {
     setError('');
     
     if (!token) {
-      setError('Jeton de réinitialisation manquant');
+      setError(t('auth.reset.token_missing'));
       return;
     }
 
     if (password.length < 8) {
-      setError('Le mot de passe doit contenir au moins 8 caractères');
+      setError(t('auth.reset.too_short'));
       return;
     }
 
@@ -35,7 +35,7 @@ export function ResetPasswordPage() {
         setSuccess(true);
       }
     } catch (err: any) {
-      setError(err.message || 'Une erreur est survenue');
+      setError(err.message || t('auth.reset.generic_error'));
     } finally {
       setLoading(false);
     }
@@ -76,26 +76,43 @@ export function ResetPasswordPage() {
             boxShadow: '0 1px 2px rgba(15,23,42,0.04), 0 24px 64px -12px rgba(0,157,219,0.18)',
           }}>
           {success ? (
-            <div className="text-center py-4">
-              <div className="w-12 h-12 rounded-full bg-[var(--success-subtle)] text-[var(--success)] flex items-center justify-center mx-auto mb-4">
+            <div
+              className="text-center py-4"
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+              aria-label={t('auth.reset.aria.success')}
+            >
+              <div className="w-12 h-12 rounded-full bg-[var(--success-subtle)] text-[var(--success)] flex items-center justify-center mx-auto mb-4" aria-hidden="true">
                 ✓
               </div>
-              <h3 className="text-lg font-medium text-[var(--text-primary)] mb-2">Mot de passe modifié</h3>
+              <h3 className="text-lg font-medium text-[var(--text-primary)] mb-2">{t('auth.reset.success_title')}</h3>
               <p className="text-sm text-[var(--text-secondary)] mb-6">
-                Votre mot de passe a été mis à jour avec succès. Vous pouvez maintenant vous connecter.
+                {t('auth.reset.success_desc')}
               </p>
               <Link to="/login" className="block w-full">
-                <Button className="w-full">Se connecter</Button>
+                <Button className="w-full">{t('auth.reset.signin')}</Button>
               </Link>
             </div>
           ) : (
-            <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
+            <form
+              onSubmit={(e) => void handleSubmit(e)}
+              className="space-y-4"
+              noValidate
+              aria-busy={loading || undefined}
+            >
               {error && (
-                <div className="p-3 text-sm text-[var(--danger)] bg-[var(--danger-subtle)] border border-[var(--danger-border)] rounded-lg">
+                <div
+                  className="p-3 text-sm text-[var(--danger)] bg-[var(--danger-subtle)] border border-[var(--danger-border)] rounded-lg"
+                  role="alert"
+                  aria-live="assertive"
+                  aria-atomic="true"
+                  aria-label={t('auth.reset.aria.error')}
+                >
                   {error}
                 </div>
               )}
-              
+
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">
                   {t('auth.reset.new')}
@@ -105,10 +122,15 @@ export function ResetPasswordPage() {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Minimum 8 caractères"
+                  placeholder={t('auth.reset.placeholder')}
                   autoComplete="new-password"
                   required
+                  minLength={8}
+                  aria-describedby="reset-password-hint"
                 />
+                <p id="reset-password-hint" className="text-xs text-[var(--text-muted)] mt-1.5">
+                  {t('auth.reset.placeholder')}
+                </p>
               </div>
 
               <Button type="submit" variant="premium" className="w-full mt-2" disabled={loading || !token}>

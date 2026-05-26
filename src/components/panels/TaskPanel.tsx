@@ -67,6 +67,7 @@ import {
   Clock,
 } from 'lucide-react';
 import { LeadLink } from './LeadLink';
+import { t } from '@/lib/i18n';
 
 interface TaskPanelProps {
   id: string;
@@ -105,8 +106,8 @@ function getDueInfo(due_date?: string | null): { label: string; variant: Semanti
   const diffMs = dueDay.getTime() - today.getTime();
   const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
   if (diffDays < 0) return { label: `⚠ ${Math.abs(diffDays)}j`, variant: 'danger', overdue: true };
-  if (diffDays === 0) return { label: "Aujourd'hui", variant: 'warning', overdue: false };
-  if (diffDays === 1) return { label: 'Demain', variant: 'warning', overdue: false };
+  if (diffDays === 0) return { label: t('panels.task_due_today'), variant: 'warning', overdue: false };
+  if (diffDays === 1) return { label: t('panels.task_due_tomorrow'), variant: 'warning', overdue: false };
   if (diffDays <= 7) return { label: `J+${diffDays}`, variant: 'info', overdue: false };
   return { label: `J+${diffDays}`, variant: 'neutral', overdue: false };
 }
@@ -159,13 +160,13 @@ export function TaskPanel({ id, stackLevel }: TaskPanelProps) {
   // Auto-clear highlight après l'animation (1500ms safe)
   useEffect(() => {
     if (!highlightedSubtaskId) return;
-    const t = setTimeout(() => setHighlightedSubtaskId(null), 1500);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setHighlightedSubtaskId(null), 1500);
+    return () => clearTimeout(timer);
   }, [highlightedSubtaskId]);
   useEffect(() => {
     if (!highlightedCommentId) return;
-    const t = setTimeout(() => setHighlightedCommentId(null), 1500);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setHighlightedCommentId(null), 1500);
+    return () => clearTimeout(timer);
   }, [highlightedCommentId]);
 
   // ── Mutations optimistes ──────────────────────────────────────────────────
@@ -174,7 +175,7 @@ export function TaskPanel({ id, stackLevel }: TaskPanelProps) {
     const prev = task;
     setTask({ ...task, status });
     const res = await updateTask(id, { status });
-    if (res.error) { setTask(prev); toastError(`Erreur : ${res.error}`); }
+    if (res.error) { setTask(prev); toastError(t('panels.task_err').replace('{msg}', res.error)); }
   };
 
   const changePriority = async (priority: TaskPriority) => {
@@ -182,7 +183,7 @@ export function TaskPanel({ id, stackLevel }: TaskPanelProps) {
     const prev = task;
     setTask({ ...task, priority });
     const res = await updateTask(id, { priority });
-    if (res.error) { setTask(prev); toastError(`Erreur : ${res.error}`); }
+    if (res.error) { setTask(prev); toastError(t('panels.task_err').replace('{msg}', res.error)); }
   };
 
   const saveDescription = async () => {
@@ -191,7 +192,7 @@ export function TaskPanel({ id, stackLevel }: TaskPanelProps) {
     setTask({ ...task, description: editDesc });
     setIsEditingDesc(false);
     const res = await updateTask(id, { description: editDesc });
-    if (res.error) { setTask(prev); toastError(`Erreur : ${res.error}`); }
+    if (res.error) { setTask(prev); toastError(t('panels.task_err').replace('{msg}', res.error)); }
   };
 
   const toggleSubtask = async (s: Subtask) => {
@@ -200,7 +201,7 @@ export function TaskPanel({ id, stackLevel }: TaskPanelProps) {
     const res = await updateSubtask(s.id, nextDone === 1);
     if (res.error) {
       setSubtasks(prev => prev.map(p => p.id === s.id ? s : p));
-      toastError(`Erreur : ${res.error}`);
+      toastError(t('panels.task_err').replace('{msg}', res.error));
     }
   };
 
@@ -215,7 +216,7 @@ export function TaskPanel({ id, stackLevel }: TaskPanelProps) {
       if (r.data) setSubtasks(r.data);
       setHighlightedSubtaskId(newId);
     } else {
-      toastError(`Erreur création sous-tâche : ${res.error || 'inconnue'}`);
+      toastError(t('panels.task_subtask_err').replace('{msg}', res.error || t('panels.task_err_unknown')));
     }
   };
 
@@ -223,7 +224,7 @@ export function TaskPanel({ id, stackLevel }: TaskPanelProps) {
     const prev = subtasks;
     setSubtasks(prev.filter(s => s.id !== subtaskId));
     const res = await deleteSubtask(subtaskId);
-    if (res.error) { setSubtasks(prev); toastError(`Erreur : ${res.error}`); }
+    if (res.error) { setSubtasks(prev); toastError(t('panels.task_err').replace('{msg}', res.error)); }
   };
 
   const addComment = async () => {
@@ -237,7 +238,7 @@ export function TaskPanel({ id, stackLevel }: TaskPanelProps) {
       if (r.data) setComments(r.data);
       setHighlightedCommentId(newId);
     } else {
-      toastError(`Erreur ajout commentaire : ${res.error || 'inconnue'}`);
+      toastError(t('panels.task_comment_err').replace('{msg}', res.error || t('panels.task_err_unknown')));
     }
   };
 
@@ -245,14 +246,14 @@ export function TaskPanel({ id, stackLevel }: TaskPanelProps) {
     const prev = comments;
     setComments(prev.filter(c => c.id !== commentId));
     const res = await deleteTaskComment(commentId);
-    if (res.error) { setComments(prev); toastError(`Erreur : ${res.error}`); }
+    if (res.error) { setComments(prev); toastError(t('panels.task_err').replace('{msg}', res.error)); }
   };
 
   const handleDeleteTask = async () => {
     if (!task) return;
     const res = await deleteTask(id);
-    if (res.error) { toastError(`Erreur : ${res.error}`); return; }
-    success('Tâche supprimée');
+    if (res.error) { toastError(t('panels.task_err').replace('{msg}', res.error)); return; }
+    success(t('panels.task_deleted'));
     closeTopPanel();
   };
 
@@ -267,25 +268,25 @@ export function TaskPanel({ id, stackLevel }: TaskPanelProps) {
     const priorityColor = PRIORITY_VARIANT[task.priority] as KpiItem['color'];
     return [
       {
-        label: 'Statut',
+        label: t('panels.task_kpi_status'),
         value: TASK_STATUS_LABELS[task.status],
         color: statusColor,
         icon: <StatusIcon status={task.status} size={11} />,
       },
       {
-        label: 'Priorité',
+        label: t('panels.task_kpi_priority'),
         value: TASK_PRIORITY_LABELS[task.priority],
         color: priorityColor,
         icon: <Flag size={11} />,
       },
       {
-        label: 'Échéance',
+        label: t('panels.task_kpi_due'),
         value: dueInfo.label,
         color: dueInfo.variant as KpiItem['color'],
         icon: <Calendar size={11} />,
       },
       {
-        label: 'Sous-tâches',
+        label: t('panels.task_kpi_subtasks'),
         value: subtaskTotal > 0 ? `${subtaskDone}/${subtaskTotal}` : '—',
         color: subtaskTotal > 0 && subtaskDone === subtaskTotal ? 'success' : 'brand',
         icon: <CheckSquare size={11} />,
@@ -298,16 +299,16 @@ export function TaskPanel({ id, stackLevel }: TaskPanelProps) {
     <SlidePanel
       open={true}
       onOpenChange={(o) => { if (!o) closeTopPanel(); }}
-      title={task?.title || 'Tâche'}
+      title={task?.title || t('panels.task_fallback_title')}
       size="md"
       stackLevel={stackLevel}
       headerActions={
         task ? (
-          <Tooltip content="Supprimer la tâche" variant="danger" delay={400}>
+          <Tooltip content={t('panels.task_delete_tip')} variant="danger" delay={400}>
             <button
               onClick={() => void handleDeleteTask()}
               className="p-1.5 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:bg-[var(--danger-soft)] hover:text-[var(--danger)] transition-colors cursor-pointer"
-              aria-label="Supprimer la tâche"
+              aria-label={t('panels.task_delete_aria')}
             >
               <Icon as={Trash2} size="sm" />
             </button>
@@ -323,7 +324,7 @@ export function TaskPanel({ id, stackLevel }: TaskPanelProps) {
       ) : !task ? (
         <div className="text-center py-8 text-[var(--text-muted)]">
           <Icon as={AlertTriangle} size={32} className="mx-auto mb-2 opacity-40" />
-          <p className="text-sm">Tâche introuvable.</p>
+          <p className="text-sm">{t('panels.task_not_found')}</p>
         </div>
       ) : (
         <div className="space-y-5">
@@ -339,7 +340,7 @@ export function TaskPanel({ id, stackLevel }: TaskPanelProps) {
                 <button
                   type="button"
                   className="action-chip"
-                  aria-label="Changer le statut"
+                  aria-label={t('panels.task_change_status')}
                 >
                   <span className="action-chip-icon">
                     <StatusIcon status={task.status} size={12} />
@@ -349,7 +350,7 @@ export function TaskPanel({ id, stackLevel }: TaskPanelProps) {
                 </button>
               }
             >
-              <DropdownMenuLabel>Statut</DropdownMenuLabel>
+              <DropdownMenuLabel>{t('panels.task_status_label')}</DropdownMenuLabel>
               <DropdownMenuSeparator />
               {(['todo', 'in_progress', 'done'] as TaskStatus[]).map((s) => (
                 <DropdownMenuItem
@@ -372,7 +373,7 @@ export function TaskPanel({ id, stackLevel }: TaskPanelProps) {
                 <button
                   type="button"
                   className="action-chip action-chip--accent"
-                  aria-label="Changer la priorité"
+                  aria-label={t('panels.task_change_priority')}
                 >
                   <span className="action-chip-icon">
                     <Flag size={12} />
@@ -382,7 +383,7 @@ export function TaskPanel({ id, stackLevel }: TaskPanelProps) {
                 </button>
               }
             >
-              <DropdownMenuLabel>Priorité</DropdownMenuLabel>
+              <DropdownMenuLabel>{t('panels.task_priority_label')}</DropdownMenuLabel>
               <DropdownMenuSeparator />
               {(['high', 'medium', 'low'] as TaskPriority[]).map((p) => (
                 <DropdownMenuItem
@@ -401,7 +402,7 @@ export function TaskPanel({ id, stackLevel }: TaskPanelProps) {
             {/* Échéance affichée comme chip non-cliquable (édition future) */}
             {task.due_date && (
               <Tooltip
-                title="Échéance"
+                title={t('panels.task_due_tip')}
                 description={new Date(task.due_date).toLocaleDateString('fr-CA', {
                   weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
                 })}
@@ -423,12 +424,12 @@ export function TaskPanel({ id, stackLevel }: TaskPanelProps) {
           {/* Lead lié — click ouvre LeadPanel par-dessus */}
           {task.lead_id && (
             <div className="text-xs flex items-center gap-1.5">
-              <span className="text-[var(--text-muted)]">Lead lié :</span>
+              <span className="text-[var(--text-muted)]">{t('panels.task_linked_lead')}</span>
               <LeadLink
                 leadId={task.lead_id}
                 className="text-[var(--primary)] hover:underline font-medium"
               >
-                {(task as Task & { lead_name?: string }).lead_name || 'Voir lead'}
+                {(task as Task & { lead_name?: string }).lead_name || t('panels.task_see_lead')}
               </LeadLink>
             </div>
           )}
@@ -437,14 +438,14 @@ export function TaskPanel({ id, stackLevel }: TaskPanelProps) {
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <span className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">
-                Description
+                {t('panels.task_description')}
               </span>
               {!isEditingDesc && (
                 <button
                   onClick={() => setIsEditingDesc(true)}
                   className="text-[10px] text-[var(--primary)] hover:underline cursor-pointer font-semibold"
                 >
-                  Modifier
+                  {t('panels.task_edit')}
                 </button>
               )}
             </div>
@@ -457,7 +458,7 @@ export function TaskPanel({ id, stackLevel }: TaskPanelProps) {
                     rows={4}
                     resize="vertical"
                     className="pr-10"
-                    placeholder="Décris cette tâche..."
+                    placeholder={t('panels.task_desc_ph')}
                   />
                   <AiSparkles
                     value={editDesc}
@@ -467,7 +468,7 @@ export function TaskPanel({ id, stackLevel }: TaskPanelProps) {
                 </div>
                 <div className="flex gap-2">
                   <Button size="sm" variant="premium" onClick={() => void saveDescription()}>
-                    Enregistrer
+                    {t('panels.task_save')}
                   </Button>
                   <Button
                     size="sm"
@@ -477,7 +478,7 @@ export function TaskPanel({ id, stackLevel }: TaskPanelProps) {
                       setEditDesc(task.description || '');
                     }}
                   >
-                    Annuler
+                    {t('panels.task_cancel')}
                   </Button>
                 </div>
               </div>
@@ -493,7 +494,7 @@ export function TaskPanel({ id, stackLevel }: TaskPanelProps) {
               >
                 {task.description || (
                   <span className="italic text-[var(--text-muted)]">
-                    Aucune description — clique pour ajouter
+                    {t('panels.task_no_desc')}
                   </span>
                 )}
               </p>
@@ -505,7 +506,7 @@ export function TaskPanel({ id, stackLevel }: TaskPanelProps) {
             <div className="flex items-center justify-between mb-2">
               <h4 className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider flex items-center gap-1.5">
                 <CheckSquare size={11} />
-                Sous-tâches
+                {t('panels.task_subtasks')}
                 <span className="text-[var(--text-muted)] font-normal">
                   ({subtaskDone}/{subtaskTotal})
                 </span>
@@ -545,7 +546,7 @@ export function TaskPanel({ id, stackLevel }: TaskPanelProps) {
                     {/* Custom premium checkbox */}
                     <button
                       onClick={() => void toggleSubtask(s)}
-                      aria-label={s.is_done === 1 ? 'Marquer non-fait' : 'Marquer fait'}
+                      aria-label={s.is_done === 1 ? t('panels.task_subtask_undone_aria') : t('panels.task_subtask_done_aria')}
                       className="w-[18px] h-[18px] rounded-[6px] shrink-0 cursor-pointer relative inline-flex items-center justify-center transition-all duration-200"
                       style={
                         s.is_done === 1
@@ -591,7 +592,7 @@ export function TaskPanel({ id, stackLevel }: TaskPanelProps) {
                     <button
                       onClick={() => void removeSubtask(s.id)}
                       className="opacity-0 group-hover:opacity-100 text-[var(--text-muted)] hover:text-[var(--danger)] cursor-pointer transition-all p-1 -mr-1"
-                      aria-label="Supprimer sous-tâche"
+                      aria-label={t('panels.task_subtask_del_aria')}
                     >
                       <Trash2 size={11} />
                     </button>
@@ -606,7 +607,7 @@ export function TaskPanel({ id, stackLevel }: TaskPanelProps) {
                 value={newSubtask}
                 onChange={(e) => setNewSubtask(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') void addSubtask(); }}
-                placeholder="Nouvelle sous-tâche..."
+                placeholder={t('panels.task_subtask_ph')}
                 className="flex-1 px-3 py-1.5 text-xs rounded-[10px] bg-[var(--bg-surface)] border border-[var(--border-default)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] transition-all hover:border-[oklch(0.85_0.02_220)] focus:border-[var(--primary)] focus:outline-none focus:shadow-[0_0_0_4px_rgba(0,157,219,0.15),0_0_20px_-4px_rgba(0,157,219,0.35)]"
               />
               <button
@@ -614,12 +615,12 @@ export function TaskPanel({ id, stackLevel }: TaskPanelProps) {
                 onClick={() => void addSubtask()}
                 disabled={!newSubtask.trim()}
                 className="action-chip disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0"
-                aria-label="Ajouter sous-tâche"
+                aria-label={t('panels.task_subtask_add_aria')}
               >
                 <span className="action-chip-icon">
                   <Plus size={12} />
                 </span>
-                <span>Ajouter</span>
+                <span>{t('panels.task_add')}</span>
               </button>
             </div>
           </div>
@@ -628,7 +629,7 @@ export function TaskPanel({ id, stackLevel }: TaskPanelProps) {
           <div>
             <h4 className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2 flex items-center gap-1.5">
               <MessageSquare size={11} />
-              Commentaires
+              {t('panels.task_comments')}
               <span className="text-[var(--text-muted)] font-normal">
                 ({comments.length})
               </span>
@@ -642,13 +643,13 @@ export function TaskPanel({ id, stackLevel }: TaskPanelProps) {
                     className="mx-auto mb-1.5 opacity-30 text-[var(--text-muted)]"
                   />
                   <p className="text-[11px] text-[var(--text-muted)] italic">
-                    Aucun commentaire pour l'instant.
+                    {t('panels.task_no_comments')}
                   </p>
                 </div>
               ) : (
                 comments.map((c, idx) => {
                   const isHighlighted = highlightedCommentId === c.id;
-                  const author = c.user_id || 'Système';
+                  const author = c.user_id || t('panels.task_author_system');
                   return (
                     <div
                       key={c.id}
@@ -689,7 +690,7 @@ export function TaskPanel({ id, stackLevel }: TaskPanelProps) {
                       <button
                         onClick={() => void removeComment(c.id)}
                         className="opacity-0 group-hover:opacity-100 text-[var(--text-muted)] hover:text-[var(--danger)] cursor-pointer transition-all p-1 -mt-0.5 -mr-0.5 shrink-0"
-                        aria-label="Supprimer commentaire"
+                        aria-label={t('panels.task_comment_del_aria')}
                       >
                         <Trash2 size={11} />
                       </button>
@@ -704,7 +705,7 @@ export function TaskPanel({ id, stackLevel }: TaskPanelProps) {
               <Textarea
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
-                placeholder="Ajouter un commentaire..."
+                placeholder={t('panels.task_comment_ph')}
                 rows={2}
                 resize="vertical"
                 maxLength={1000}
@@ -725,7 +726,7 @@ export function TaskPanel({ id, stackLevel }: TaskPanelProps) {
                 disabled={!newComment.trim()}
                 leftIcon={<Plus size={11} />}
               >
-                Commenter
+                {t('panels.task_comment_btn')}
               </Button>
             </div>
           </div>

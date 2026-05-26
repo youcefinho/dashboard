@@ -2,6 +2,15 @@
 // CRUD conversations first-class + messages paginés
 import type { Env } from './types';
 import { sanitizeInput, json } from './helpers';
+import {
+  isValidChannel as engineIsValidChannel,
+  validateThreadStatus,
+  validateSnoozeUntil,
+  clampLimit,
+  parseCursor,
+  clampPreview,
+  CONVERSATION_ERROR_CODES,
+} from './lib/conversation-engine';
 
 // ── Lister les conversations ────────────────────────────────
 
@@ -14,7 +23,7 @@ export async function handleGetConversations(
   const status = url.searchParams.get('status') || 'open';
   const search = url.searchParams.get('search');
   const assigned = url.searchParams.get('assigned');
-  const limit = Math.min(parseInt(url.searchParams.get('limit') || '50'), 200);
+  const limit = clampLimit(url.searchParams.get('limit')).limit;
 
   let query = `SELECT c.*, l.name as lead_name, l.email as lead_email, l.phone as lead_phone, l.avatar_url as lead_avatar, u.name as assigned_name
     FROM conversations c
@@ -90,9 +99,11 @@ export async function handleGetConversationDetail(
 
   if (!conv) return json({ error: 'Conversation introuvable' }, 404);
 
-  // Messages paginés
-  const cursor = url.searchParams.get('cursor');
-  const limit = Math.min(parseInt(url.searchParams.get('limit') || '50'), 200);
+  // Messages paginés (cursor opaque + limit cappé via conversation-engine)
+  const rawCursor = url.searchParams.get('cursor');
+  const cursorRes = parseCursor(rawCursor);
+  if (!cursorRes.ok) return json({ error: 'cursor invalide', error_code: cursorRes.error }, 400);
+  const limit = clampLimit(url.searchParams.get('limit')).limit;
 
   let msgQuery = `SELECT m.*, u.name as sender_name
     FROM messages m
@@ -100,9 +111,9 @@ export async function handleGetConversationDetail(
     WHERE m.conversation_id = ?`;
   const msgParams: (string | number)[] = [conversationId];
 
-  if (cursor) {
+  if (cursorRes.cursor) {
     msgQuery += ' AND m.created_at < ?';
-    msgParams.push(cursor);
+    msgParams.push(cursorRes.cursor);
   }
 
   msgQuery += ' ORDER BY m.created_at DESC LIMIT ?';
@@ -137,8 +148,9 @@ export async function handleCreateConversation(
 
   if (!leadId) return json({ error: 'lead_id requis' }, 400);
 
-  const allowedChannels = ['email', 'sms', 'webchat', 'facebook_messenger', 'instagram_dm', 'internal_note'];
-  if (!allowedChannels.includes(channel)) return json({ error: 'Canal invalide' }, 400);
+  if (!engineIsValidChannel(channel)) {
+    return json({ error: 'Canal invalide', error_code: CONVERSATION_ERROR_CODES.INVALID_CHANNEL }, 400);
+  }
 
   // Récupérer le lead
   const lead = await env.DB.prepare('SELECT id, client_id FROM leads WHERE id = ?').bind(leadId).first() as { id: string; client_id: string } | null;
@@ -209,8 +221,8 @@ export async function handleSendConversationMessage(
     conversationId, channel, subject || '', messageBody, status, auth.userId
   ).run();
 
-  // Mettre à jour la conversation
-  const preview = messageBody.substring(0, 120);
+  // Mettre à jour la conversation (preview cleanup via clampPreview helper pur)
+  const preview = clampPreview(messageBody);
   await env.DB.prepare(
     `UPDATE conversations SET last_message_at = datetime('now'), last_message_preview = ?, updated_at = datetime('now')
      WHERE id = ?`
@@ -249,8 +261,10 @@ export async function handleUpdateConversation(
   const params: (string | number)[] = [];
 
   if (body.status !== undefined) {
-    const allowed = ['open', 'closed', 'snoozed'];
-    if (!allowed.includes(body.status as string)) return json({ error: 'Statut invalide' }, 400);
+    const statusRes = validateThreadStatus(body.status);
+    if (!statusRes.ok) {
+      return json({ error: 'Statut invalide', error_code: statusRes.error }, 400);
+    }
     updates.push('status = ?');
     params.push(body.status as string);
   }
@@ -266,6 +280,10 @@ export async function handleUpdateConversation(
   }
 
   if (body.snoozed_until !== undefined) {
+    const snoozeRes = validateSnoozeUntil(body.snoozed_until);
+    if (!snoozeRes.ok) {
+      return json({ error: 'snoozed_until invalide', error_code: snoozeRes.error }, 400);
+    }
     updates.push('snoozed_until = ?');
     params.push(body.snoozed_until as string);
   }

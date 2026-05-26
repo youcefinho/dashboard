@@ -8,13 +8,15 @@ import { useState } from 'react';
 import { MessageCircleQuestion, X, Send, Loader2, Camera, Check } from 'lucide-react';
 import { Textarea, Icon } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
+import { t } from '@/lib/i18n';
 
 type FbType = 'bug' | 'idea' | 'question';
 
-const TYPES: Array<{ key: FbType; label: string }> = [
-  { key: 'bug', label: 'Bug' },
-  { key: 'idea', label: 'Idée' },
-  { key: 'question', label: 'Question' },
+// LOT C — label résolu AU RENDER via t('feedback.beta_type_<key>')
+const TYPES: Array<{ key: FbType; labelKey: string }> = [
+  { key: 'bug', labelKey: 'feedback.beta_type_bug' },
+  { key: 'idea', labelKey: 'feedback.beta_type_idea' },
+  { key: 'question', labelKey: 'feedback.beta_type_question' },
 ];
 
 export function BetaFeedbackWidget() {
@@ -42,7 +44,7 @@ export function BetaFeedbackWidget() {
       const mod = await import(/* @vite-ignore */ lib).catch(() => null);
       const fn = mod && (mod.default || mod);
       if (!fn || typeof fn !== 'function') {
-        toast.error('Capture non disponible sur cet appareil.');
+        toast.error(t('feedback.beta_capture_unavail'));
         return;
       }
       const canvas = await (fn as any)(document.body, {
@@ -52,7 +54,7 @@ export function BetaFeedbackWidget() {
       });
       setShot(canvas.toDataURL('image/jpeg', 0.6));
     } catch {
-      toast.error('La capture a échoué.');
+      toast.error(t('feedback.beta_capture_failed'));
     } finally {
       setShotBusy(false);
     }
@@ -62,7 +64,7 @@ export function BetaFeedbackWidget() {
     e.preventDefault();
     if (submitting) return;
     if (!message.trim()) {
-      toast.error('Écris un petit message avant d\'envoyer.');
+      toast.error(t('feedback.beta_write_msg'));
       return;
     }
     setSubmitting(true);
@@ -81,14 +83,14 @@ export function BetaFeedbackWidget() {
         }),
       });
       if (res.ok) {
-        toast.success('Merci pour ton retour !', { title: 'Bien reçu' });
+        toast.success(t('feedback.beta_thanks'), { title: t('feedback.beta_thanks_title') });
         reset();
         setOpen(false);
       } else {
-        toast.error('Envoi impossible, réessaye dans un instant.');
+        toast.error(t('feedback.beta_send_impossible'));
       }
     } catch {
-      toast.error('Vérifie ta connexion et réessaye.');
+      toast.error(t('feedback.beta_check_conn'));
     } finally {
       setSubmitting(false);
     }
@@ -97,31 +99,31 @@ export function BetaFeedbackWidget() {
   return (
     <div className="beta-fb">
       {open ? (
-        <div className="beta-fb__panel" role="dialog" aria-label="Donner un retour">
+        <div className="beta-fb__panel" role="dialog" aria-label={t('feedback.beta_dialog_aria')}>
           <header className="beta-fb__head">
-            <h3 className="beta-fb__title">Un retour à partager ?</h3>
+            <h3 className="beta-fb__title">{t('feedback.beta_panel_title')}</h3>
             <button
               type="button"
               className="beta-fb__close"
               onClick={() => setOpen(false)}
-              aria-label="Fermer"
+              aria-label={t('feedback.beta_close')}
             >
               <Icon as={X} size={16} aria-hidden />
             </button>
           </header>
 
           <form className="beta-fb__form" onSubmit={handleSubmit}>
-            <div className="beta-fb__seg" role="radiogroup" aria-label="Type de retour">
-              {TYPES.map((t) => (
+            <div className="beta-fb__seg" role="radiogroup" aria-label={t('feedback.beta_type_aria')}>
+              {TYPES.map((opt) => (
                 <button
-                  key={t.key}
+                  key={opt.key}
                   type="button"
                   role="radio"
-                  aria-checked={type === t.key}
-                  className={`beta-fb__seg-btn ${type === t.key ? 'is-active' : ''}`}
-                  onClick={() => setType(t.key)}
+                  aria-checked={type === opt.key}
+                  className={`beta-fb__seg-btn ${type === opt.key ? 'is-active' : ''}`}
+                  onClick={() => setType(opt.key)}
                 >
-                  {t.label}
+                  {t(opt.labelKey)}
                 </button>
               ))}
             </div>
@@ -129,11 +131,11 @@ export function BetaFeedbackWidget() {
             <Textarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              placeholder="Dis-nous ce que tu as en tête…"
+              placeholder={t('feedback.beta_msg_ph')}
               rows={4}
               maxLength={2000}
               resize="none"
-              aria-label="Ton message"
+              aria-label={t('feedback.beta_msg_aria')}
             />
 
             <div className="beta-fb__actions">
@@ -150,7 +152,7 @@ export function BetaFeedbackWidget() {
                 ) : (
                   <Icon as={Camera} size={14} aria-hidden />
                 )}
-                {shot ? 'Capture jointe' : shotBusy ? 'Capture…' : 'Joindre une capture'}
+                {shot ? t('feedback.beta_shot_attached') : shotBusy ? t('feedback.beta_shot_busy') : t('feedback.beta_shot_attach')}
               </button>
 
               <button
@@ -163,7 +165,7 @@ export function BetaFeedbackWidget() {
                 ) : (
                   <Icon as={Send} size={14} aria-hidden />
                 )}
-                {submitting ? 'Envoi…' : 'Envoyer'}
+                {submitting ? t('feedback.beta_sending') : t('feedback.beta_send')}
               </button>
             </div>
           </form>
@@ -173,7 +175,7 @@ export function BetaFeedbackWidget() {
           type="button"
           className="beta-fb__fab"
           onClick={() => setOpen(true)}
-          aria-label="Donner un retour"
+          aria-label={t('feedback.beta_fab_aria')}
         >
           <Icon as={MessageCircleQuestion} size={20} aria-hidden />
         </button>

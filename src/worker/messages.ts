@@ -4,6 +4,13 @@ import type { Env } from './types';
 import { sanitizeInput, json, audit, sendSms, createNotification, isLeadDnd } from './helpers';
 import { findOrCreateConversation } from './conversations';
 import { isUnsubscribed, generateCaslFooter, generateAmfDisclaimer, generateUnsubscribeToken } from './compliance';
+import {
+  sanitizeBody as engineSanitizeBody,
+  computeMessageBodyCapForChannel,
+  MESSAGE_ERROR_CODES,
+} from './lib/messaging-engine';
+import { detectStopKeyword } from './twilio-verify';
+import { tLead } from './i18n-server';
 import type { DndChannel } from './helpers';
 
 export function wrapEmailWithTracking(html: string, messageId: string, domain: string): string {
@@ -46,15 +53,26 @@ export async function handleSendMessage(
   const body = await request.json() as Record<string, unknown>;
   const channel = sanitizeInput(body.channel as string, 20);
   const subject = sanitizeInput(body.subject as string, 200);
-  const messageBody = sanitizeInput(body.body as string, 5000);
+  // Sanitize via engine (XSS strip) puis cap selon channel (SMS 1600, autre 5000).
+  // engineSanitizeBody est ADDITIF : il strip script/iframe/event handlers en plus
+  // du sanitizeInput existant. cap_legacy=5000 préservé (max au-dessus du SMS cap).
+  const rawBody = sanitizeInput(body.body as string, 5000);
+  const messageBody = engineSanitizeBody(rawBody).trim();
 
   if (!channel || !messageBody) {
-    return json({ error: 'Canal et contenu requis' }, 400);
+    return json({ error: 'Canal et contenu requis', error_code: MESSAGE_ERROR_CODES.EMPTY_BODY }, 400);
   }
 
   const allowedChannels = ['email', 'sms', 'internal_note'];
   if (!allowedChannels.includes(channel)) {
-    return json({ error: 'Canal invalide' }, 400);
+    return json({ error: 'Canal invalide', error_code: MESSAGE_ERROR_CODES.INVALID_CHANNEL }, 400);
+  }
+
+  // Cap channel-aware (SMS = 1600). Cap legacy 5000 déjà appliqué en amont via
+  // sanitizeInput pour les autres channels — ici on rejette explicitement SMS > 1600.
+  const cap = computeMessageBodyCapForChannel(channel);
+  if (messageBody.length > cap) {
+    return json({ error: `Message trop long pour ${channel}`, error_code: MESSAGE_ERROR_CODES.BODY_TOO_LONG }, 400);
   }
 
   // Récupérer le lead
@@ -138,7 +156,14 @@ export async function handleSendMessage(
       externalId = mockResult.sid;
       status = 'mock-sent';
     } else {
-      status = 'sent';
+      const smsTo = String(lead.phone || '');
+      if (!smsTo) {
+        status = 'failed';
+      } else {
+        const r = await sendSms(env, smsTo, messageBody);
+        status = r.success ? 'sent' : 'failed';
+        externalId = r.sid || '';
+      }
     }
   } else if (channel === 'internal_note') {
     status = 'delivered';
@@ -234,6 +259,12 @@ export async function handleSendSms(
 
   if (!to) return json({ error: 'Numéro de téléphone requis' }, 400);
 
+  // LOT SMS/WHATSAPP §6.H — refus AVANT envoi si le contact a fait STOP/opt-out
+  // CASL (lookup par téléphone, channel 'sms'). best-effort : table absente ⇒
+  // isUnsubscribed renvoie false ⇒ envoi normal (rétro-compat).
+  const smsUnsub = await isUnsubscribed(env, '', to, 'sms');
+  if (smsUnsub) return json({ error: 'Envoi bloqué (CASL) : contact désabonné pour sms' }, 403);
+
   const result = await sendSms(env, to, sanitizeInput(body.message, 1600));
   if (!result.success) return json({ error: result.error || 'Échec envoi SMS' }, 500);
 
@@ -264,8 +295,52 @@ export async function handleInboundSms(request: Request, env: Env): Promise<Resp
   // Chercher le lead par téléphone
   const cleanPhone = from.replace(/\D/g, '').slice(-10);
   const lead = await env.DB.prepare(
-    "SELECT id, client_id, name FROM leads WHERE REPLACE(REPLACE(REPLACE(phone, '-', ''), ' ', ''), '+', '') LIKE ?"
-  ).bind(`%${cleanPhone}`).first() as { id: string; client_id: string; name: string } | null;
+    "SELECT id, client_id, name, preferred_language FROM leads WHERE REPLACE(REPLACE(REPLACE(phone, '-', ''), ' ', ''), '+', '') LIKE ?"
+  ).bind(`%${cleanPhone}`).first() as { id: string; client_id: string; name: string; preferred_language?: string | null } | null;
+
+  // ── STOP / opt-out CASL (LOT SMS/WHATSAPP seq 104, §6.H) ────────────────────
+  // detectStopKeyword (posé Phase A, ./twilio-verify) : si le body est un
+  // mot-clé STOP/désabonnement → on enregistre l'opt-out (BLOQUANT LÉGAL CASL),
+  // on journalise le consentement retiré, puis on renvoie un auto-reply TwiML de
+  // confirmation. On COURT-CIRCUITE ici : un STOP ne crée PAS de message/
+  // conversation inbound « normal ». best-effort : aucune écriture ne doit jamais
+  // faire échouer la réponse 200 vers Twilio.
+  if (detectStopKeyword(body)) {
+    try {
+      // INSERT unsubscribes (colonnes RÉELLES migration-phase8.sql :
+      //   id, email, phone, channel CHECK('email','sms','all'), reason,
+      //   client_id, unsubscribed_at). On pose channel='sms' (valeur autorisée
+      //   par le CHECK). Idempotent : on n'insère pas un doublon sms/all déjà
+      //   présent pour ce téléphone.
+      const already = await env.DB.prepare(
+        "SELECT id FROM unsubscribes WHERE phone = ? AND (channel = 'sms' OR channel = 'all')"
+      ).bind(from).first();
+      if (!already) {
+        await env.DB.prepare(
+          "INSERT INTO unsubscribes (id, email, phone, channel, reason, client_id) VALUES (?, '', ?, 'sms', 'STOP SMS entrant', ?)"
+        ).bind(crypto.randomUUID(), from, lead?.client_id || '').run();
+      }
+      // Journal de consentement retiré (calque compliance.handleLogConsent :
+      //   consent_type='marketing_sms', granted=0). consent_log.lead_id est NOT
+      //   NULL → on ne journalise QUE si on a retrouvé le lead par téléphone.
+      if (lead) {
+        const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+        const ua = request.headers.get('User-Agent') || '';
+        await env.DB.prepare(
+          "INSERT INTO consent_log (id, lead_id, consent_type, granted, ip, user_agent) VALUES (?, ?, 'marketing_sms', 0, ?, ?)"
+        ).bind(crypto.randomUUID(), lead.id, ip, ua).run();
+      }
+    } catch (e) {
+      console.error('Inbound SMS STOP opt-out error:', e);
+    }
+    // Auto-reply TwiML de confirmation, localisé selon la langue du lead
+    // (preferred_language NULL/absent ⇒ tLead retombe sur fr-CA par défaut).
+    const confirm = tLead(lead?.preferred_language ?? null, 'system.sms_unsubscribe_confirm');
+    return new Response(
+      `<Response><Message>${sanitizeInput(confirm, 1600)}</Message></Response>`,
+      { headers: { 'Content-Type': 'text/xml' } }
+    );
+  }
 
   if (lead) {
     // Trouver ou créer la conversation
@@ -398,4 +473,41 @@ export async function handleInboundEmail(request: Request, env: Env): Promise<Re
   }
 
   return json({ received: true });
+}
+
+// ── LOT SMS/WHATSAPP seq 104 — STUB Phase A (corps réel = Manager-B) ─────────
+//
+// ⚠ RÈGLE DE NON-COLLISION (docs/LOT-SMS-WHATSAPP.md §6.H) : messages.ts est
+//   OWNED par Manager-B en Phase B. Phase A (Manager-A) N'A AJOUTÉ QUE ce stub
+//   `handleSmsStatusCallback` EN FIN DE FICHIER + un commentaire repère dans
+//   handleInboundSms ; tout le reste (durcissement handleInboundSms : STOP →
+//   INSERT unsubscribes + auto-reply TwiML + log consent ; corps réel du
+//   status-callback ; check isUnsubscribed dans handleSendSmsRoute) = Manager-B.
+//   Cela évite une double-écriture sur ce fichier partagé.
+//
+// handleSmsStatusCallback — delivery receipt SMS (Twilio status-callback,
+// POST /api/webhook/sms/status, PUBLIC). Twilio envoie MessageSid +
+// MessageStatus (queued|sent|delivered|undelivered|failed). PUBLIC : pas d'auth
+// applicative (corrélation par MessageSid → messages.external_id du tenant).
+// Réponse 200 TOUJOURS (jamais de 500 vers Twilio).
+export async function handleSmsStatusCallback(request: Request, env: Env): Promise<Response> {
+  // Corps réel — Twilio envoie en application/x-www-form-urlencoded :
+  //   MessageSid + MessageStatus (queued|sent|delivered|undelivered|failed).
+  // Corrélation par MessageSid → messages.external_id : le SID Twilio sortant
+  // est stocké dans messages.external_id (cf. handleSendSms l.251-253 +
+  // handleSendMessage l.158-165). delivery_status = colonne seq 104 (DISTINCT
+  // de status). Best-effort : jamais de throw, réponse 200 TOUJOURS (Twilio).
+  try {
+    const formData = await request.formData();
+    const sid = formData.get('MessageSid') as string || '';
+    const status = formData.get('MessageStatus') as string || '';
+    if (sid && status) {
+      await env.DB.prepare(
+        'UPDATE messages SET delivery_status = ? WHERE external_id = ?'
+      ).bind(status, sid).run();
+    }
+  } catch (e) {
+    console.error('SMS status callback error:', e);
+  }
+  return new Response('', { status: 200 });
 }

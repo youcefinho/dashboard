@@ -5,11 +5,11 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { Phone, MessageSquare, Mail, StickyNote, Camera, ChevronLeft, CheckCircle, Circle, Star, Zap, MapPin, Clock } from 'lucide-react';
 import { takePhoto } from '@/lib/camera';
-import { Textarea, KpiStrip, type KpiItem, Icon } from '@/components/ui';
+import { Textarea, KpiStrip, type KpiItem, Icon, useConfirm } from '@/components/ui';
 // Sprint 48 M3 — Intl currency + date
 import { formatMoneyCAD } from '@/lib/i18n/number';
 import { formatDate } from '@/lib/i18n/datetime';
-import { getLocale } from '@/lib/i18n';
+import { getLocale, t } from '@/lib/i18n';
 
 interface Lead {
   id: string;
@@ -28,29 +28,31 @@ interface Lead {
 
 interface ChecklistItem {
   id: string;
-  label: string;
+  labelKey: string;
   done: boolean;
 }
 
 const DEFAULT_CHECKLIST: ChecklistItem[] = [
-  { id: '1', label: 'Confirmer les coordonnées du contact', done: false },
-  { id: '2', label: 'Présenter nos services', done: false },
-  { id: '3', label: 'Identifier les besoins spécifiques', done: false },
-  { id: '4', label: 'Prendre des photos si pertinent', done: false },
-  { id: '5', label: 'Confirmer les prochaines étapes', done: false },
-  { id: '6', label: 'Envoyer le suivi post-visite', done: false },
+  { id: '1', labelKey: 'visit.checklist.item.contact', done: false },
+  { id: '2', labelKey: 'visit.checklist.item.services', done: false },
+  { id: '3', labelKey: 'visit.checklist.item.needs', done: false },
+  { id: '4', labelKey: 'visit.checklist.item.photos', done: false },
+  { id: '5', labelKey: 'visit.checklist.item.next_steps', done: false },
+  { id: '6', labelKey: 'visit.checklist.item.followup', done: false },
 ];
 
-const STATUS_LABELS: Record<string, string> = {
-  new: 'Nouveau', contacted: 'Contacté', qualified: 'Qualifié',
-  inbound: 'Entrant', customer: 'Client', won: 'Gagné', lost: 'Perdu',
+const STATUS_KEYS: Record<string, string> = {
+  new: 'visit.status.new', contacted: 'visit.status.contacted', qualified: 'visit.status.qualified',
+  inbound: 'visit.status.inbound', customer: 'visit.status.customer', won: 'visit.status.won', lost: 'visit.status.lost',
 };
 
 export function VisitModePage() {
   const { leadId } = useParams({ from: '/visit/$leadId' });
   const navigate = useNavigate();
+  const confirm = useConfirm();
   const [lead, setLead] = useState<Lead | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [checklist, setChecklist] = useState<ChecklistItem[]>(() => {
     try {
       const saved = localStorage.getItem(`visit_checklist_${leadId}`);
@@ -59,26 +61,37 @@ export function VisitModePage() {
   });
   const [note, setNote] = useState('');
   const [isSavingNote, setIsSavingNote] = useState(false);
+  const [noteError, setNoteError] = useState<string | null>(null);
   const [photos, setPhotos] = useState<string[]>([]);
   const [status, setStatus] = useState('');
   const [showNoteInput, setShowNoteInput] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Charger le lead
-  useEffect(() => {
-    async function load() {
-      setIsLoading(true);
-      try {
-        const res = await fetch(`/api/leads/${leadId}`);
-        const json = await res.json() as { data?: Lead };
-        if (json.data) {
-          setLead(json.data);
-          setStatus(json.data.status);
-        }
-      } catch { /* silencieux */ }
-      setIsLoading(false);
+  const loadLead = async () => {
+    setIsLoading(true);
+    setLoadError(null);
+    try {
+      const res = await fetch(`/api/leads/${leadId}`);
+      if (!res.ok) {
+        setLoadError(t('visit.error_load'));
+        setIsLoading(false);
+        return;
+      }
+      const json = await res.json() as { data?: Lead };
+      if (json.data) {
+        setLead(json.data);
+        setStatus(json.data.status);
+      }
+    } catch {
+      setLoadError(t('visit.error_load'));
     }
-    void load();
+    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    void loadLead();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leadId]);
 
   // Persister checklist
@@ -98,16 +111,36 @@ export function VisitModePage() {
   const saveNote = async () => {
     if (!note.trim() || !lead) return;
     setIsSavingNote(true);
+    setNoteError(null);
     try {
-      await fetch(`/api/leads/${leadId}/notes`, {
+      const res = await fetch(`/api/leads/${leadId}/notes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: note, note_type: 'visit' }),
       });
-      setNote('');
-      setShowNoteInput(false);
-    } catch { /* silencieux */ }
+      if (!res.ok) {
+        setNoteError(t('visit.error_save_note'));
+      } else {
+        setNote('');
+        setShowNoteInput(false);
+      }
+    } catch {
+      setNoteError(t('visit.error_save_note'));
+    }
     setIsSavingNote(false);
+  };
+
+  const handleFinish = async () => {
+    if (completedCount < checklist.length) {
+      const ok = await confirm({
+        title: t('visit.finish.confirm_title'),
+        description: t('visit.finish.confirm_desc', { done: completedCount, total: checklist.length }),
+        confirmLabel: t('visit.finish.confirm_cta'),
+        danger: false,
+      });
+      if (!ok) return;
+    }
+    void navigate({ to: '/leads' });
   };
 
   const handlePhotoCapture = async () => {
@@ -140,8 +173,34 @@ export function VisitModePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+      <div
+        className="min-h-screen bg-gray-950 flex items-center justify-center"
+        role="status"
+        aria-busy="true"
+        aria-live="polite"
+        aria-label={t('visit.loading')}
+      >
         <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+        <span className="sr-only">{t('visit.loading')}</span>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center gap-4 p-6" role="alert">
+        <p className="text-white text-lg">{loadError}</p>
+        <div className="flex gap-3">
+          <button
+            onClick={() => void loadLead()}
+            className="px-4 py-2 rounded-lg text-sm font-semibold text-white bg-indigo-600 active:scale-95"
+          >
+            {t('visit.error_retry')}
+          </button>
+          <button onClick={() => void navigate({ to: '/leads' })} className="text-indigo-400 underline">
+            {t('visit.back_to_leads')}
+          </button>
+        </div>
       </div>
     );
   }
@@ -149,9 +208,9 @@ export function VisitModePage() {
   if (!lead) {
     return (
       <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center gap-4 p-6">
-        <p className="text-white text-lg">Lead introuvable</p>
+        <p className="text-white text-lg">{t('visit.not_found')}</p>
         <button onClick={() => void navigate({ to: '/leads' })} className="text-indigo-400 underline">
-          Retour aux leads
+          {t('visit.back_to_leads')}
         </button>
       </div>
     );
@@ -162,16 +221,22 @@ export function VisitModePage() {
       {/* Header */}
       <div className="sticky top-0 z-20 bg-gray-900/95 backdrop-blur border-b border-gray-800 px-4 py-3">
         <div className="flex items-center gap-3">
-          <button onClick={() => void navigate({ to: '/leads' })}
-            className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 active:scale-95 transition-all">
+          <button
+            onClick={() => void navigate({ to: '/leads' })}
+            className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 active:scale-95 transition-all"
+            aria-label={t('visit.back_to_leads')}
+          >
             <Icon as={ChevronLeft} size={22} />
           </button>
           <div className="flex-1 min-w-0">
             <h1 className="font-bold text-lg truncate">{lead.name}</h1>
-            <p className="text-xs text-gray-400 truncate">{lead.client_name || 'Mode visite'}</p>
+            <p className="text-xs text-gray-400 truncate">{lead.client_name || t('visit.page.title')}</p>
           </div>
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold"
-            style={{ background: scoreColor(lead.score) + '20', color: scoreColor(lead.score) }}>
+          <div
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold"
+            style={{ background: scoreColor(lead.score) + '20', color: scoreColor(lead.score) }}
+            aria-label={t('visit.score_aria', { score: lead.score })}
+          >
             <Icon as={Zap} size="xs" />
             {lead.score}
           </div>
@@ -183,9 +248,9 @@ export function VisitModePage() {
         <div className="px-3 pt-3">
           <KpiStrip
             items={[
-              { label: 'Checklist', value: `${completedCount}/${checklist.length}`, color: 'brand' },
-              { label: 'Photos', value: photos.length, color: 'accent' },
-              { label: 'Progrès', value: `${progress}%`, color: progress >= 80 ? 'success' : 'warning' },
+              { label: t('visit.kpi.checklist'), value: `${completedCount}/${checklist.length}`, color: 'brand' },
+              { label: t('visit.kpi.photos'), value: photos.length, color: 'accent' },
+              { label: t('visit.kpi.progress'), value: `${progress}%`, color: progress >= 80 ? 'success' : 'warning' },
             ] as KpiItem[]}
           />
         </div>
@@ -219,39 +284,46 @@ export function VisitModePage() {
           {/* Timestamp */}
           <p className="text-xs text-gray-500 flex items-center gap-1">
             <Icon as={Clock} size={10} />
-            Créé {formatDate(lead.created_at, getLocale(), { day: 'numeric', month: 'short', year: 'numeric' })}
+            {t('visit.created_on', { date: formatDate(lead.created_at, getLocale(), { day: 'numeric', month: 'short', year: 'numeric' }) })}
           </p>
         </div>
 
         {/* Quick Actions */}
         <div className="px-4 py-4 border-b border-gray-800">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Actions rapides</p>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">{t('visit.actions.section')}</p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3" role="group" aria-label={t('visit.actions.section')}>
             {lead.phone && (
               <a href={`tel:${lead.phone}`}
+                aria-label={t('visit.actions.call_aria', { phone: lead.phone })}
                 className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-green-500/10 border border-green-500/20 active:scale-95 transition-all">
                 <Phone size={22} className="text-green-400" />
-                <span className="text-[10px] text-green-400 font-medium">Appeler</span>
+                <span className="text-[10px] text-green-400 font-medium">{t('visit.actions.call')}</span>
               </a>
             )}
             {lead.phone && (
               <a href={`sms:${lead.phone}`}
+                aria-label={t('visit.actions.sms_aria', { phone: lead.phone })}
                 className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 active:scale-95 transition-all">
                 <MessageSquare size={22} className="text-blue-400" />
-                <span className="text-[10px] text-blue-400 font-medium">SMS</span>
+                <span className="text-[10px] text-blue-400 font-medium">{t('visit.actions.sms')}</span>
               </a>
             )}
             {lead.email && (
               <a href={`mailto:${lead.email}`}
+                aria-label={t('visit.actions.email_aria', { email: lead.email })}
                 className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 active:scale-95 transition-all">
                 <Mail size={22} className="text-purple-400" />
-                <span className="text-[10px] text-purple-400 font-medium">Email</span>
+                <span className="text-[10px] text-purple-400 font-medium">{t('visit.actions.email')}</span>
               </a>
             )}
-            <button onClick={() => setShowNoteInput(p => !p)}
-              className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-orange-500/10 border border-orange-500/20 active:scale-95 transition-all">
+            <button
+              onClick={() => setShowNoteInput(p => !p)}
+              aria-expanded={showNoteInput}
+              aria-label={t('visit.actions.note_aria')}
+              className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-orange-500/10 border border-orange-500/20 active:scale-95 transition-all"
+            >
               <StickyNote size={22} className="text-orange-400" />
-              <span className="text-[10px] text-orange-400 font-medium">Note</span>
+              <span className="text-[10px] text-orange-400 font-medium">{t('visit.actions.note')}</span>
             </button>
           </div>
         </div>
@@ -262,23 +334,30 @@ export function VisitModePage() {
             <Textarea
               value={note}
               onChange={e => setNote(e.target.value)}
-              placeholder="Note de visite..."
+              placeholder={t('visit.note.placeholder')}
               rows={3}
               autoFocus
               maxLength={500}
               showCounter
               resize="none"
+              aria-label={t('visit.note.placeholder')}
               className="!bg-gray-800 !border-gray-700 !text-white placeholder:!text-gray-500"
             />
+            {noteError && (
+              <p role="alert" aria-live="assertive" className="mt-2 text-xs text-red-400">
+                {noteError}
+              </p>
+            )}
             <div className="flex gap-2 mt-2">
-              <button onClick={() => { setShowNoteInput(false); setNote(''); }}
+              <button onClick={() => { setShowNoteInput(false); setNote(''); setNoteError(null); }}
                 className="flex-1 py-2 rounded-lg text-sm text-gray-400 bg-gray-800 active:scale-95">
-                Annuler
+                {t('visit.note.cancel')}
               </button>
               <button onClick={() => void saveNote()} disabled={!note.trim() || isSavingNote}
+                aria-label={t('visit.note.save')}
                 className="flex-1 py-2 rounded-lg text-sm font-semibold text-white active:scale-95 disabled:opacity-50"
                 style={{ background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)', boxShadow: '0 4px 12px rgba(0,157,219,0.4)' }}>
-                {isSavingNote ? '...' : 'Enregistrer'}
+                {isSavingNote ? t('visit.note.saving') : t('visit.note.save')}
               </button>
             </div>
           </div>
@@ -288,20 +367,27 @@ export function VisitModePage() {
         <div className="px-4 py-4 border-b border-gray-800">
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Checklist visite
+              {t('visit.checklist.title')}
             </p>
-            <span className="text-xs text-indigo-400 font-semibold">{completedCount}/{checklist.length}</span>
+            <span className="text-xs text-indigo-400 font-semibold" aria-label={t('visit.checklist.progress_aria', { done: completedCount, total: checklist.length })}>
+              {completedCount}/{checklist.length}
+            </span>
           </div>
           {/* Barre de progression */}
           <div className="h-1.5 rounded-full bg-gray-800 overflow-hidden mb-4">
             <div className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-500"
               style={{ width: `${progress}%` }} />
           </div>
-          <div className="space-y-2">
-            {checklist.map((item, idx) => (
+          <div className="space-y-2" role="list">
+            {checklist.map((item, idx) => {
+              const label = t(item.labelKey);
+              return (
               <button
                 key={item.id}
                 onClick={() => toggleCheck(item.id)}
+                role="listitem"
+                aria-pressed={item.done}
+                aria-label={label}
                 className={`list-item-enter w-full flex items-center gap-3 p-3 rounded-xl border transition-all active:scale-[0.98] text-left min-h-[52px] ${
                   item.done
                     ? 'border-[rgba(0,157,219,0.40)] bg-[rgba(0,157,219,0.10)]'
@@ -329,21 +415,23 @@ export function VisitModePage() {
                   {!item.done && <Circle size={0} className="opacity-0" />}
                 </span>
                 <span className={`text-sm flex-1 ${item.done ? 'text-cyan-100 line-through opacity-70' : 'text-white'}`}>
-                  {item.label}
+                  {label}
                 </span>
               </button>
-            ))}
+              );
+            })}
           </div>
         </div>
 
         {/* Photos */}
         <div className="px-4 py-4 border-b border-gray-800">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Photos</p>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('visit.photos.title')}</p>
             <button onClick={() => void handlePhotoCapture()}
+              aria-label={t('visit.photos.add_aria')}
               className="flex items-center gap-1.5 text-xs text-indigo-400 font-medium active:scale-95">
               <Camera size={14} />
-              Ajouter
+              {t('visit.photos.add')}
             </button>
           </div>
           <input
@@ -353,12 +441,14 @@ export function VisitModePage() {
             capture="environment"
             className="hidden"
             onChange={handleFileInput}
+            aria-label={t('visit.photos.add_aria')}
           />
           {photos.length === 0 ? (
             <button onClick={() => void handlePhotoCapture()}
+              aria-label={t('visit.photos.empty')}
               className="w-full border-2 border-dashed border-gray-700 rounded-xl py-8 flex flex-col items-center gap-2 text-gray-500 active:scale-98">
               <Camera size={28} />
-              <span className="text-sm">Prendre ou importer une photo</span>
+              <span className="text-sm">{t('visit.photos.empty')}</span>
             </button>
           ) : (
             <div className="grid grid-cols-3 gap-2">
@@ -366,12 +456,13 @@ export function VisitModePage() {
                 <img
                   key={i}
                   src={url}
-                  alt={`Photo ${i + 1}`}
+                  alt={t('visit.photos.alt', { n: i + 1 })}
                   className="list-item-enter w-full aspect-square object-cover rounded-lg"
                   style={{ animationDelay: `${Math.min(i, 20) * 30}ms` }}
                 />
               ))}
               <button onClick={() => fileInputRef.current?.click()}
+                aria-label={t('visit.photos.add_aria')}
                 className="aspect-square border-2 border-dashed border-gray-700 rounded-lg flex items-center justify-center text-gray-500 active:scale-95 hover:border-cyan-400 transition-colors">
                 <Camera size={20} />
               </button>
@@ -383,9 +474,10 @@ export function VisitModePage() {
       {/* Sticky Bottom Bar — segmented-control mobile XL touch */}
       <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-gray-900/95 backdrop-blur border-t border-gray-800 px-3 py-3 z-20">
         {/* Status segmented-control horizontal scroll (touch XL ≥44px) */}
-        <div className="flex gap-1.5 overflow-x-auto -mx-1 px-1 pb-2 mb-2 no-scrollbar">
-          {Object.entries(STATUS_LABELS).map(([k, v]) => {
+        <div className="flex gap-1.5 overflow-x-auto -mx-1 px-1 pb-2 mb-2 no-scrollbar" role="group" aria-label={t('visit.status.section_aria')}>
+          {Object.entries(STATUS_KEYS).map(([k, labelKey]) => {
             const isActive = status === k;
+            const label = t(labelKey);
             return (
               <button
                 key={k}
@@ -402,8 +494,9 @@ export function VisitModePage() {
                     : undefined
                 }
                 aria-pressed={isActive}
+                aria-label={t('visit.status.set_aria', { status: label })}
               >
-                {v}
+                {label}
               </button>
             );
           })}
@@ -411,21 +504,29 @@ export function VisitModePage() {
         <div className="flex items-center gap-3">
           {/* Progress mini */}
           <div className="flex-1 flex items-center gap-2">
-            <div className="flex-1 h-1.5 rounded-full bg-gray-800 overflow-hidden">
+            <div
+              className="flex-1 h-1.5 rounded-full bg-gray-800 overflow-hidden"
+              role="progressbar"
+              aria-valuenow={progress}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label={t('visit.kpi.progress')}
+            >
               <div className="h-full rounded-full transition-all"
                 style={{ width: `${progress}%`, background: 'linear-gradient(90deg, #009DDB, #D96E27)' }} />
             </div>
             <span className="text-[10px] text-gray-500 tabular-nums w-9 text-right">{progress}%</span>
           </div>
           <button
-            onClick={() => void navigate({ to: '/leads' })}
+            onClick={() => void handleFinish()}
+            aria-label={t('visit.finish.cta_aria')}
             className="px-4 py-2.5 min-h-[44px] rounded-xl text-sm font-semibold text-white active:scale-95 transition-all whitespace-nowrap"
             style={{
               background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
               boxShadow: '0 4px 14px -2px rgba(0,157,219,0.50)',
             }}
           >
-            Terminer ✓
+            {t('visit.finish.cta')}
           </button>
         </div>
       </div>

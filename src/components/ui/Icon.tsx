@@ -38,12 +38,34 @@ export interface IconProps extends Omit<SVGAttributes<SVGSVGElement>, 'children'
   strokeWidth?: number;
 }
 
-/** Icon primitive — stroke 1.75 unifié + sizes normalisées. Sprint 25 vague 3A. */
-export function Icon({ as: As, size = 'md', strokeWidth = 1.75, ...rest }: IconProps) {
+/** Icon primitive — stroke 1.75 unifié + sizes normalisées. Sprint 25 vague 3A.
+ *  Sprint 29 a11y AAA : aria-hidden="true" par défaut (décoratif). Si l'appelant
+ *  fournit `aria-label`, l'icône devient sémantique (aria-hidden="false") sauf
+ *  override explicite via `aria-hidden={...}`. Permet aux SR de skip les icônes
+ *  pures décoration sans casser les usages icon-only-button avec label. */
+export function Icon({
+  as: As,
+  size = 'md',
+  strokeWidth = 1.75,
+  'aria-label': ariaLabel,
+  'aria-hidden': ariaHiddenProp,
+  ...rest
+}: IconProps) {
   const px = typeof size === 'number' ? size : ICON_SIZES[size];
   // Lisibilité : sous 14px, stroke 1.75 devient flou. Force 2.
   const finalStroke = px < 14 ? 2 : strokeWidth;
-  return <As size={px} strokeWidth={finalStroke} absoluteStrokeWidth {...rest} />;
+  // a11y AAA : decorative par défaut, sémantique si label, override possible.
+  const finalAriaHidden = ariaHiddenProp ?? (ariaLabel ? false : true);
+  return (
+    <As
+      size={px}
+      strokeWidth={finalStroke}
+      absoluteStrokeWidth
+      aria-label={ariaLabel}
+      aria-hidden={finalAriaHidden}
+      {...rest}
+    />
+  );
 }
 
 /** Retourne la valeur px d'un IconSize symbolique. Utile pour custom layouts. */

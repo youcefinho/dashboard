@@ -3,6 +3,8 @@
 import { createRouter, createRoute, createRootRoute, RouterProvider, Navigate, Outlet } from '@tanstack/react-router';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { LoginPage } from '@/pages/Login';
+import { SignupPage } from '@/pages/Signup';
+import { AcceptInvitationPage } from '@/pages/AcceptInvitation';
 import { DashboardPage } from '@/pages/Dashboard';
 import { Suspense, lazy, type ReactNode } from 'react';
 import { PanelStackProvider, ViewTransition } from '@/components/ui';
@@ -18,9 +20,16 @@ const LeadsPage = lazy(() => import('@/pages/Leads').then(m => ({ default: m.Lea
 const LeadDetailPage = lazy(() => import('@/pages/LeadDetail').then(m => ({ default: m.LeadDetailPage })));
 const PipelinePage = lazy(() => import('@/pages/Pipeline').then(m => ({ default: m.PipelinePage })));
 const SettingsPage = lazy(() => import('@/pages/Settings').then(m => ({ default: m.SettingsPage })));
+// Sprint 21 — Onboarding durci : page dédiée /getting-started (checklist enrichie)
+const GettingStartedPage = lazy(() => import('@/pages/GettingStarted').then(m => ({ default: m.GettingStartedPage })));
 const InboxPage = lazy(() => import('@/pages/Inbox').then(m => ({ default: m.InboxPage })));
 const TemplatesPage = lazy(() => import('@/pages/Templates').then(m => ({ default: m.TemplatesPage })));
 const WorkflowsPage = lazy(() => import('@/pages/Workflows').then(m => ({ default: m.WorkflowsPage })));
+// Sprint 5 — Email marketing & séquences (stubs Phase A → corps Phase C)
+const SequencesPage = lazy(() => import('@/pages/Sequences').then(m => ({ default: m.SequencesPage })));
+const CampaignsPage = lazy(() => import('@/pages/Campaigns').then(m => ({ default: m.CampaignsPage })));
+// LOT G6 — Segments de leads dynamiques (stub Phase A → corps Phase C)
+const SegmentsPage = lazy(() => import('@/pages/Segments').then(m => ({ default: m.SegmentsPage })));
 const WorkflowDetailPage = lazy(() => import('@/pages/WorkflowDetail').then(m => ({ default: m.WorkflowDetailPage })));
 const WorkflowBuilderPage = lazy(() => import('@/pages/WorkflowBuilder').then(m => ({ default: m.WorkflowBuilderPage })));
 const CalendarPage = lazy(() => import('@/pages/Calendar').then(m => ({ default: m.CalendarPage })));
@@ -34,24 +43,117 @@ const DocumentsPage = lazy(() => import('@/pages/Documents').then(m => ({ defaul
 const DocumentTemplatesPage = lazy(() => import('@/pages/DocumentTemplates').then(m => ({ default: m.DocumentTemplatesPage })));
 const SignDocumentPage = lazy(() => import('@/pages/SignDocument').then(m => ({ default: m.SignDocumentPage })));
 const ReviewsPage = lazy(() => import('@/pages/Reviews').then(m => ({ default: m.ReviewsPage })));
+// ── LOT TELEPHONY-DISPOSITION (Sprint 16) — journal d'appels global ──
+const TelephoniePage = lazy(() => import('@/pages/Telephonie').then(m => ({ default: m.TelephoniePage })));
+// ── LOT SOCIAL PLANNER (Sprint 9) — composer + calendrier de planification ──
+const SocialPage = lazy(() => import('@/pages/Social').then(m => ({ default: m.SocialPage })));
+const SocialCalendarPage = lazy(() => import('@/pages/SocialCalendar').then(m => ({ default: m.SocialCalendarPage })));
 const InvoicesPage = lazy(() => import('@/pages/Invoices').then(m => ({ default: m.InvoicesPage })));
+const QuotesPage = lazy(() => import('@/pages/Quotes').then(m => ({ default: m.QuotesPage })));
+// ── Sprint 18 CATALOGUE DE SERVICES — page de gestion du catalogue (Manager-C) ──
+const CatalogPage = lazy(() => import('@/pages/Catalog').then(m => ({ default: m.CatalogPage })));
 const AgenciesPage = lazy(() => import('@/pages/Agencies').then(m => ({ default: m.AgenciesPage })));
 const TrashPage = lazy(() => import('@/pages/Trash').then(m => ({ default: m.TrashPage })));
+// Sprint 35 (Agent B4) — Snapshots GHL-style (page standalone /snapshots)
+const SnapshotsPage = lazy(() => import('@/pages/SnapshotsPage').then(m => ({ default: m.SnapshotsPage })));
+// Sprint 39 (Agent B4) — Multi-currency + tax regions (page standalone /settings/currency-multi)
+const CurrencyMultiSettingsPage = lazy(() => import('@/pages/settings/CurrencyMultiSettingsPage').then(m => ({ default: m.CurrencyMultiSettingsPage })));
+// Sprint 41 (Agent B1) — AI Voice Agent (page standalone /settings/voice-agent)
+const VoiceAgentPage = lazy(() => import('@/pages/settings/VoiceAgentPage').then(m => ({ default: m.VoiceAgentPage })));
+// Sprint 43 (Agent B2) — Courses LMS member-facing UI (page standalone /lms)
+const CoursesLMSPage = lazy(() => import('@/pages/lms/CoursesLMSPage').then(m => ({ default: m.CoursesLMSPage })));
+// Sprint 45 (Agent B2) — Community forum (LOT COMMUNITY S45, /community)
+const CommunityPage = lazy(() => import('@/pages/community/CommunityPage').then(m => ({ default: m.CommunityPage })));
+// Sprint 47 (Agent B2) — Multi-warehouse + Dropshipping (page standalone /warehouse)
+const WarehousePage = lazy(() => import('@/pages/warehouse/WarehousePage').then(m => ({ default: m.WarehousePage })));
+// Sprint 48 (Agent B2) — B2B wholesale + Bundles + Pre-orders (page standalone /b2b)
+const B2BPage = lazy(() => import('@/pages/b2b/B2BPage').then(m => ({ default: m.B2BPage })));
+// Sprint 42 (Agent B1) — AI Chat Agent (page standalone /settings/chat-bot)
+const ChatBotPage = lazy(() => import('@/pages/settings/ChatBotPage').then(m => ({ default: m.ChatBotPage })));
+// Sprint 36 (Agent B2) — Live chat inbox (page standalone /chat-inbox)
+const ChatInbox = lazy(() => import('@/pages/ChatInbox').then(m => ({ default: m.ChatInbox })));
+// Sprint 36 (Agent B4) — Live chat widgets manager (page standalone /chat-widgets)
+const ChatWidgetsPage = lazy(() => import('@/pages/ChatWidgetsPage').then(m => ({ default: m.ChatWidgetsPage })));
 const VisitModePage = lazy(() => import('@/pages/VisitMode').then(m => ({ default: m.VisitModePage })));
 const EmailBuilderPage = lazy(() => import('@/pages/EmailBuilder').then(m => ({ default: m.EmailBuilderPage })));
 const FormBuilderPage = lazy(() => import('@/pages/FormBuilder').then(m => ({ default: m.FormBuilderPage })));
+const FormsPage = lazy(() => import('@/pages/Forms').then(m => ({ default: m.FormsPage })));
 const TriggerLinksPage = lazy(() => import('@/pages/TriggerLinks').then(m => ({ default: m.TriggerLinksPage })));
 const PublicFormPage = lazy(() => import('@/pages/PublicForm').then(m => ({ default: m.PublicFormPage })));
+// ── LOT FUNNEL — builder landing pages / funnels. Pages = stubs lazy Phase A,
+//    corps réels Phase C Manager-C (FunnelsPage / FunnelBuilder / PublicFunnel).
+// Sprint 44 (Agent B2) — route `/funnels` repointée vers la page Sprint 44
+// (Tabs Entonnoirs + Analytique). L'ancienne page `@/pages/Funnels` (Sprint 1)
+// reste sur disque mais n'est plus routée.
+const FunnelsPage = lazy(() => import('@/pages/funnels/FunnelsPage').then(m => ({ default: m.FunnelsPage })));
+const FunnelBuilderPage = lazy(() => import('@/pages/FunnelBuilder').then(m => ({ default: m.FunnelBuilderPage })));
+const PublicFunnelPage = lazy(() => import('@/pages/PublicFunnel').then(m => ({ default: m.PublicFunnelPage })));
+// ── LOT SITE BUILDER (Sprint 10) — site multi-pages réutilisant le moteur funnel.
+//    Pages = stubs lazy Phase A, corps réels Phase C Manager-C (SitesPage /
+//    SiteBuilderPage / PublicSitePage). Exports nommés FIGÉS (App.tsx GELÉ les
+//    lazy-importe). PublicSitePage hors LazyGuard/auth (calque PublicFunnelPage).
+const SitesPage = lazy(() => import('@/pages/Sites').then(m => ({ default: m.SitesPage })));
+const SiteBuilderPage = lazy(() => import('@/pages/SiteBuilder').then(m => ({ default: m.SiteBuilderPage })));
+const PublicSitePage = lazy(() => import('@/pages/PublicSite').then(m => ({ default: m.PublicSitePage })));
+// ── LOT G7 MARKETPLACE — templates partageables cross-tenant. Page = stub lazy
+//    Phase A, corps réel Phase C Manager-C (MarketplacePage). ──────────────────
+const MarketplacePage = lazy(() => import('@/pages/Marketplace').then(m => ({ default: m.MarketplacePage })));
+// ── SPRINT 12 — IA contenu : atelier centralisé. Page = stub lazy Phase A,
+//    corps réel Phase C Manager-C (AiContentPage). Export nommé FIGÉ. ──────────
+const AiContentPage = lazy(() => import('@/pages/AiContent').then(m => ({ default: m.AiContentPage })));
+// ── LOT G1 HELPDESK — tickets de support & base de connaissances (Phase A
+//    fige le dispatch ; corps réels Phase C Manager-C : Tickets / KBAdmin /
+//    PublicTicketForm / KBPublic). ───────────────────────────────────────────
+const TicketsPage = lazy(() => import('@/pages/Tickets').then(m => ({ default: m.TicketsPage })));
+const KBAdminPage = lazy(() => import('@/pages/KBAdmin').then(m => ({ default: m.KBAdminPage })));
+const PublicTicketFormPage = lazy(() => import('@/pages/PublicTicketForm').then(m => ({ default: m.PublicTicketFormPage })));
+const KBPublicPage = lazy(() => import('@/pages/KBPublic').then(m => ({ default: m.KBPublicPage })));
+// ── LOT G2 AFFILIATION — programme d'affiliation natif (Phase A fige le
+//    dispatch ; corps réel Phase C Manager-C : AffiliatesPage 3 onglets). Le
+//    redirect public /r/:code est 100% worker (302), AUCUNE page React. ────────
+const AffiliatesPage = lazy(() => import('@/pages/affiliates/AffiliatesPage').then(m => ({ default: m.AffiliatesPage })));
+// ── LOT BOOKING — moteur de réservation client pro. Pages = stubs lazy
+//    Phase A, corps réels Phase C Manager-C (BookingSettings / PublicBooking).
+const BookingSettingsPage = lazy(() => import('@/pages/BookingSettings').then(m => ({ default: m.BookingSettingsPage })));
+const PublicBookingPage = lazy(() => import('@/pages/PublicBooking').then(m => ({ default: m.PublicBookingPage })));
+// ── LOT STOREFRONT CHECKOUT (Sprint 7) — pages PUBLIQUES (NEUVES Phase C
+//    Manager-C). Hors AuthGuard/ModuleGuard (calque PublicBookingPage /
+//    PublicFunnelPage). Exports nommés FIGÉS (App.tsx GELÉ les lazy-importe). ──
+const PublicStorePage = lazy(() => import('@/pages/PublicStore').then(m => ({ default: m.PublicStorePage })));
+const PublicCheckoutPage = lazy(() => import('@/pages/PublicCheckout').then(m => ({ default: m.PublicCheckoutPage })));
+// ── LOT REPUTATION (Sprint 8) — page PUBLIQUE de dépôt d'avis 1st-party (NEUVE
+//    Phase C Manager-C). Hors AuthGuard/ModuleGuard (calque PublicBookingPage /
+//    PublicFunnelPage). Export nommé FIGÉ (App.tsx GELÉ le lazy-importe). ───────
+const PublicReviewPage = lazy(() => import('@/pages/PublicReview').then(m => ({ default: m.PublicReviewPage })));
+// ── LOT MEMBERSHIPS — espace membre public + gestion PRO cours ──
+const MemberSpacePage = lazy(() => import('@/pages/MemberSpace').then(m => ({ default: m.MemberSpacePage })));
+const CoursesAdminPage = lazy(() => import('@/pages/CoursesAdmin').then(m => ({ default: m.CoursesAdminPage })));
+// ── LOT PORTAL-E — portail client public (/portal/$slug, hors LazyGuard) +
+//    config PRO (/portal-settings, sous LazyGuard). ──
+const PortalSpacePage = lazy(() => import('@/pages/PortalSpace').then(m => ({ default: m.PortalSpacePage })));
+const PortalSettingsPage = lazy(() => import('@/pages/PortalSettings').then(m => ({ default: m.PortalSettingsPage })));
 const PropertiesPage = lazy(() => import('@/pages/Properties').then(m => ({ default: m.PropertiesPage })));
 // ── Sprint E1 M3.3 — Module Boutique (e-commerce B2), gated <ModuleGuard> ──
 const BoutiqueDashboardPage = lazy(() => import('@/pages/boutique/BoutiqueDashboard').then(m => ({ default: m.BoutiqueDashboardPage })));
 const BoutiqueProduitsPage = lazy(() => import('@/pages/boutique/Produits').then(m => ({ default: m.ProduitsPage })));
 const BoutiqueCommandesPage = lazy(() => import('@/pages/boutique/Commandes').then(m => ({ default: m.CommandesPage })));
 const BoutiqueClientsPage = lazy(() => import('@/pages/boutique/Clients').then(m => ({ default: m.BoutiqueClientsPage })));
+// Sprint 4 — Coupons/promos + Abonnements produit (stubs lazy Phase A,
+// corps réel Phase B/C). Pattern identique aux pages boutique ci-dessus.
+const BoutiqueCouponsPage = lazy(() => import('@/pages/boutique/Coupons').then(m => ({ default: m.CouponsPage })));
+const BoutiqueAbonnementsPage = lazy(() => import('@/pages/boutique/Abonnements').then(m => ({ default: m.AbonnementsPage })));
+// Sprint 37 (Agent B1) — POS retail (caisse) /boutique/pos
+const BoutiquePOSPage = lazy(() => import('@/pages/boutique/POS').then(m => ({ default: m.POSPage })));
+// Sprint 38 (Agent B4) — Gift cards + Loyalty /boutique/giftcards-loyalty
+const BoutiqueGiftCardsLoyaltyPage = lazy(() => import('@/pages/boutique/GiftCardsLoyaltyPage').then(m => ({ default: m.GiftCardsLoyaltyPage })));
+// Sprint 40 (Agent B4) — Recovery workflow editor (séquence multi-touch) /boutique/recovery-workflow
+const BoutiqueRecoveryWorkflowPage = lazy(() => import('@/pages/boutique/RecoveryWorkflow').then(m => ({ default: m.RecoveryWorkflowPage })));
 const ForgotPasswordPage = lazy(() => import('@/pages/ForgotPassword').then(m => ({ default: m.ForgotPasswordPage })));
 const ResetPasswordPage = lazy(() => import('@/pages/ResetPassword').then(m => ({ default: m.ResetPasswordPage })));
 // ── Sprint 46 M2 — Admin analytics (org-wide dashboard) ─────
 const AdminOverviewPage = lazy(() => import('@/pages/admin/AdminOverview').then(m => ({ default: m.AdminOverviewPage })));
+// ── Sprint 24 — Observabilité (admin/owner only, lazy + AdminGuard) ─────
+const ObservabilityPanelPage = lazy(() => import('@/pages/admin/ObservabilityPanel').then(m => ({ default: m.ObservabilityPanel })));
 import { AdminGuard } from '@/components/admin/AdminGuard';
 // Sprint E1 M3.3 — gate des pages Boutique (module e-commerce B2)
 import { ModuleGuard } from '@/components/ecommerce/ModuleGuard';
@@ -81,6 +183,9 @@ const MarketingPrivacyPage = lazy(() => import('@/pages/marketing/legal/PrivacyP
 const MarketingCookiesPage = lazy(() => import('@/pages/marketing/legal/CookiePolicy').then(m => ({ default: m.CookiePolicyPage })));
 const MarketingLoi25Page = lazy(() => import('@/pages/marketing/legal/Loi25Compliance').then(m => ({ default: m.Loi25CompliancePage })));
 const MarketingCaslPage = lazy(() => import('@/pages/marketing/legal/CaslCompliance').then(m => ({ default: m.CaslCompliancePage })));
+
+// Sprint 50 (Agent B2) — Surveys & DNS page (tab Surveys + NPS Analytics + Domains)
+const SurveysAndDnsPage = lazy(() => import('@/pages/surveys/SurveysAndDnsPage').then(m => ({ default: m.SurveysAndDnsPage })));
 
 // ── Sprint 50 M3 — Beta invite flow (signup + magic link + roadmap) ──────────
 const BetaSignupPage = lazy(() => import('@/pages/marketing/BetaSignup').then(m => ({ default: m.BetaSignupPage })));
@@ -141,6 +246,21 @@ const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/login',
   component: LoginPage,
+});
+
+// SaaS Lot 4 §6.20 — route /signup PUBLIQUE (calque loginRoute, hors guard)
+const signupRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/signup',
+  component: SignupPage,
+});
+
+// LOT TEAM A (Phase B / M2) — route /invite/accept PUBLIQUE
+// (calque signupRoute, hors AuthGuard). Token lu côté page via querystring.
+const acceptInvitationRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/invite/accept',
+  component: AcceptInvitationPage,
 });
 
 const forgotPasswordRoute = createRoute({
@@ -205,6 +325,14 @@ const settingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/settings',
   component: () => (<LazyGuard><SettingsPage /></LazyGuard>),
+});
+
+// Sprint 21 — Onboarding durci : page dédiée /getting-started (sous LazyGuard,
+// calque settingsRoute). Contenu = <OnboardingChecklistPanel variant="page">.
+const gettingStartedRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/getting-started',
+  component: () => (<LazyGuard><GettingStartedPage /></LazyGuard>),
 });
 
 const indexRoute = createRoute({
@@ -517,6 +645,26 @@ const workflowsRoute = createRoute({
   component: () => (<LazyGuard><WorkflowsPage /></LazyGuard>),
 });
 
+// Sprint 5 — Séquences drip + Campagnes courriel (stubs Phase A → Phase C)
+const sequencesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/sequences',
+  component: () => (<LazyGuard><SequencesPage /></LazyGuard>),
+});
+
+const campaignsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/campaigns',
+  component: () => (<LazyGuard><CampaignsPage /></LazyGuard>),
+});
+
+// LOT G6 — Segments de leads dynamiques (stub Phase A → corps Phase C)
+const segmentsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/segments',
+  component: () => (<LazyGuard><SegmentsPage /></LazyGuard>),
+});
+
 const publicFormRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/f/$slug',
@@ -536,6 +684,15 @@ const workflowDetailRoute = createRoute({
 const workflowNewRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/workflows/new',
+  component: () => (<LazyGuard><WorkflowBuilderPage /></LazyGuard>),
+});
+
+// LOT AUTOMATION BUILDER seq 105 (Sprint 4) — route ÉDITION figée Phase A.
+// Calque workflowNewRoute / workflowDetailRoute. Manager-C rendra
+// WorkflowBuilder edit-aware (charge via getWorkflow, sauve via updateWorkflow).
+const workflowEditRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/workflows/$workflowId/edit',
   component: () => (<LazyGuard><WorkflowBuilderPage /></LazyGuard>),
 });
 
@@ -608,10 +765,276 @@ const reviewsRoute = createRoute({
   component: () => (<LazyGuard><ReviewsPage /></LazyGuard>),
 });
 
+// ── LOT TELEPHONY-DISPOSITION (Sprint 16) — route protégée (calque reviewsRoute) ──
+const telephonieRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/telephonie',
+  component: () => (<LazyGuard><TelephoniePage /></LazyGuard>),
+});
+
+// ── LOT SOCIAL PLANNER (Sprint 9) — routes PROTÉGÉES (calque reviewsRoute) ───
+const socialRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/social',
+  component: () => (<LazyGuard><SocialPage /></LazyGuard>),
+});
+
+const socialCalendarRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/social/calendar',
+  component: () => (<LazyGuard><SocialCalendarPage /></LazyGuard>),
+});
+
+// ── SPRINT 12 — IA contenu : route PROTÉGÉE (calque socialRoute / LazyGuard) ─
+const aiContentRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/ai-content',
+  component: () => (<LazyGuard><AiContentPage /></LazyGuard>),
+});
+
 const invoicesRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/invoices',
   component: () => (<LazyGuard><InvoicesPage /></LazyGuard>),
+});
+
+const quotesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/quotes',
+  component: () => (<LazyGuard><QuotesPage /></LazyGuard>),
+});
+
+// ── Sprint 18 CATALOGUE DE SERVICES — route protégée (calque quotesRoute) ────
+const catalogRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/catalog',
+  component: () => (<LazyGuard><CatalogPage /></LazyGuard>),
+});
+
+// ── LOT FUNNEL — routes (calque invoicesRoute protégé + publicFormRoute) ────
+const funnelsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/funnels',
+  component: () => (<LazyGuard><FunnelsPage /></LazyGuard>),
+});
+
+const funnelBuilderRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/funnels/$funnelId',
+  component: () => (<LazyGuard><FunnelBuilderPage /></LazyGuard>),
+});
+
+// Page publiée — hors LazyGuard/auth (calque EXACT publicFormRoute /f/$slug).
+const publicFunnelRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/p/$slug',
+  component: () => (
+    <Suspense fallback={<PageLoader />}>
+      <PublicFunnelPage />
+    </Suspense>
+  ),
+});
+
+// ── LOT SITE BUILDER — routes (PRO sous LazyGuard calque funnelsRoute /
+//    funnelBuilderRoute ; pages publiques hors LazyGuard/auth calque EXACT
+//    publicFunnelRoute /p/$slug). ⚠ /site/$slug/$page (page interne) déclarée
+//    AVANT /site/$slug n'est PAS requis en TanStack Router (matching exact par
+//    path), mais on conserve l'ordre par convention. ────────────────────────
+const sitesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/sites',
+  component: () => (<LazyGuard><SitesPage /></LazyGuard>),
+});
+
+const siteBuilderRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/sites/$siteId',
+  component: () => (<LazyGuard><SiteBuilderPage /></LazyGuard>),
+});
+
+// Site publié — page d'accueil. Hors LazyGuard/auth (calque EXACT publicFunnelRoute).
+const publicSiteRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/site/$slug',
+  component: () => (
+    <Suspense fallback={<PageLoader />}>
+      <PublicSitePage />
+    </Suspense>
+  ),
+});
+
+// Site publié — page interne adressable `/site/:slug/:page` (calque publicSiteRoute).
+const publicSitePageRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/site/$slug/$page',
+  component: () => (
+    <Suspense fallback={<PageLoader />}>
+      <PublicSitePage />
+    </Suspense>
+  ),
+});
+
+// ── LOT G7 MARKETPLACE — route (PRO sous LazyGuard calque funnelsRoute) ─────
+const marketplaceRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/marketplace',
+  component: () => (<LazyGuard><MarketplacePage /></LazyGuard>),
+});
+
+// ── LOT G1 HELPDESK — routes (PRO sous LazyGuard calque invoicesRoute ;
+//    pages publiques hors LazyGuard/auth calque EXACT publicFunnelRoute) ─────
+const ticketsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/tickets',
+  component: () => (<LazyGuard><TicketsPage /></LazyGuard>),
+});
+
+// Détail ticket = même panneau slide-over intégré à TicketsPage (pas de page
+// séparée — calque LeadDetail). La route ouvre simplement le panneau.
+const ticketDetailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/tickets/$ticketId',
+  component: () => (<LazyGuard><TicketsPage /></LazyGuard>),
+});
+
+const kbAdminRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/kb',
+  component: () => (<LazyGuard><KBAdminPage /></LazyGuard>),
+});
+
+const kbArticleEditRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/kb/$articleId',
+  component: () => (<LazyGuard><KBAdminPage /></LazyGuard>),
+});
+
+// Formulaire public d'ouverture de ticket — hors LazyGuard/auth (calque EXACT
+// publicFunnelRoute /p/$slug).
+const publicTicketFormRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/support/$slug',
+  component: () => (
+    <Suspense fallback={<PageLoader />}>
+      <PublicTicketFormPage />
+    </Suspense>
+  ),
+});
+
+// Article KB public — hors LazyGuard/auth (calque EXACT publicFunnelRoute).
+// Path /help-center/$slug : /help/$slug est déjà pris par helpArticleRoute
+// (Sprint 47 marketing) — namespace distinct pour éviter la collision.
+const kbPublicRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/help-center/$slug',
+  component: () => (
+    <Suspense fallback={<PageLoader />}>
+      <KBPublicPage />
+    </Suspense>
+  ),
+});
+
+// ── LOT G2 AFFILIATION — route PRO (calque invoicesRoute sous LazyGuard). Le
+//    redirect public /r/:code est 100% worker (302) — AUCUNE route React. ──────
+const affiliatesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/affiliates',
+  component: () => (<LazyGuard><AffiliatesPage /></LazyGuard>),
+});
+
+// ── LOT BOOKING — routes (réglages PROTÉGÉ calque settingsRoute +
+//    page publique hors LazyGuard/auth calque EXACT publicFunnelRoute) ──────
+const bookingSettingsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/booking-settings',
+  component: () => (<LazyGuard><BookingSettingsPage /></LazyGuard>),
+});
+
+// Page de réservation publique — hors LazyGuard/auth (calque EXACT
+// publicFunnelRoute /p/$slug).
+const publicBookingRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/book/$slug',
+  component: () => (
+    <Suspense fallback={<PageLoader />}>
+      <PublicBookingPage />
+    </Suspense>
+  ),
+});
+
+// ── LOT STOREFRONT CHECKOUT (Sprint 7) — vitrine + checkout PUBLICS, hors
+//    LazyGuard/auth (calque EXACT publicBookingRoute / publicFunnelRoute
+//    /p/$slug). Le panier est anonyme (token localStorage), paiement MOCK. ─────
+const publicStoreRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/store/$slug',
+  component: () => (
+    <Suspense fallback={<PageLoader />}>
+      <PublicStorePage />
+    </Suspense>
+  ),
+});
+
+const publicCheckoutRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/store/$slug/checkout',
+  component: () => (
+    <Suspense fallback={<PageLoader />}>
+      <PublicCheckoutPage />
+    </Suspense>
+  ),
+});
+
+// ── LOT REPUTATION (Sprint 8) — page PUBLIQUE de dépôt d'avis 1st-party, hors
+//    LazyGuard/auth (calque EXACT publicBookingRoute / publicFunnelRoute
+//    /p/$slug). Invitation résolue par token ; après submit, le worker route
+//    public (redirection Google/FB) ou privé (écran remerciement). ─────────────
+const publicReviewRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/r/$token',
+  component: () => (
+    <Suspense fallback={<PageLoader />}>
+      <PublicReviewPage />
+    </Suspense>
+  ),
+});
+
+// ── LOT MEMBERSHIPS — routes (espace membre PUBLIC hors LazyGuard/auth
+//    calque EXACT publicFunnelRoute /p/$slug + gestion PRO sous LazyGuard
+//    calque settingsRoute). Corps réels Phase C Manager-C. ─────────────────
+const memberSpaceRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/m/$slug',
+  component: () => (
+    <Suspense fallback={<PageLoader />}>
+      <MemberSpacePage />
+    </Suspense>
+  ),
+});
+
+const coursesAdminRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/courses-admin',
+  component: () => (<LazyGuard><CoursesAdminPage /></LazyGuard>),
+});
+
+// ── LOT PORTAL-E — portail client PUBLIC (hors LazyGuard/auth, calque EXACT
+//    memberSpaceRoute /m/$slug — collision /portal vérifiée libre) + config PRO
+//    sous LazyGuard (calque coursesAdminRoute). Corps réels Phase C Manager-C. ──
+const portalSpaceRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/portal/$slug',
+  component: () => (
+    <Suspense fallback={<PageLoader />}>
+      <PortalSpacePage />
+    </Suspense>
+  ),
+});
+
+const portalSettingsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/portal-settings',
+  component: () => (<LazyGuard><PortalSettingsPage /></LazyGuard>),
 });
 
 const agenciesRoute = createRoute({
@@ -624,6 +1047,83 @@ const trashRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/trash',
   component: () => (<LazyGuard><TrashPage /></LazyGuard>),
+});
+
+// Sprint 35 (Agent B4) — Snapshots GHL-style (calque trashRoute sous LazyGuard)
+const snapshotsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/snapshots',
+  component: () => (<LazyGuard><SnapshotsPage /></LazyGuard>),
+});
+
+// Sprint 39 (Agent B4) — Multi-currency + tax regions (calque snapshotsRoute)
+const currencyMultiSettingsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/settings/currency-multi',
+  component: () => (<LazyGuard><CurrencyMultiSettingsPage /></LazyGuard>),
+});
+
+// Sprint 41 (Agent B1) — AI Voice Agent (calque currencyMultiSettingsRoute)
+const voiceAgentRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/settings/voice-agent',
+  component: () => (<LazyGuard><VoiceAgentPage /></LazyGuard>),
+});
+
+// Sprint 43 (Agent B2) — Courses LMS member-facing UI (calque voiceAgentRoute)
+const coursesLMSRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/lms',
+  component: () => (<LazyGuard><CoursesLMSPage /></LazyGuard>),
+});
+
+// Sprint 45 (Agent B2) — Community forum (calque coursesLMSRoute sous LazyGuard)
+const communityRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/community',
+  component: () => (<LazyGuard><CommunityPage /></LazyGuard>),
+});
+
+// Sprint 47 (Agent B2) — Multi-warehouse + Dropshipping (calque communityRoute sous LazyGuard)
+const warehouseRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/warehouse',
+  component: () => (<LazyGuard><WarehousePage /></LazyGuard>),
+});
+
+// Sprint 48 (Agent B2) — B2B wholesale + Bundles + Pre-orders (calque warehouseRoute)
+const b2bRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/b2b',
+  component: () => (<LazyGuard><B2BPage /></LazyGuard>),
+});
+
+// Sprint 42 (Agent B1) — AI Chat Agent (calque voiceAgentRoute)
+const chatBotRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/settings/chat-bot',
+  component: () => (<LazyGuard><ChatBotPage /></LazyGuard>),
+});
+
+// Sprint 50 (Agent B2) — Surveys & DNS (calque chatBotRoute sous LazyGuard)
+const surveysAndDnsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/settings/surveys-and-dns',
+  component: () => (<LazyGuard><SurveysAndDnsPage /></LazyGuard>),
+});
+
+// Sprint 36 (Agent B2) — Live chat inbox (page standalone /chat-inbox)
+const chatInboxRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/chat-inbox',
+  component: () => (<LazyGuard><ChatInbox /></LazyGuard>),
+});
+
+// Sprint 36 (Agent B4) — Live chat widgets manager (page standalone /chat-widgets)
+const chatWidgetsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/chat-widgets',
+  component: () => (<LazyGuard><ChatWidgetsPage /></LazyGuard>),
 });
 
 const visitModeRoute = createRoute({
@@ -640,6 +1140,12 @@ const emailBuilderRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/templates/builder/$templateId',
   component: () => (<LazyGuard><EmailBuilderPage /></LazyGuard>),
+});
+
+const formsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/forms',
+  component: () => (<LazyGuard><FormsPage /></LazyGuard>),
 });
 
 const formBuilderRoute = createRoute({
@@ -685,6 +1191,35 @@ const boutiqueClientsRoute = createRoute({
   path: '/boutique/clients',
   component: () => (<LazyGuard><ModuleGuard module="ecommerce"><BoutiqueClientsPage /></ModuleGuard></LazyGuard>),
 });
+// Sprint 4 — Coupons/promos + Abonnements produit (gated <ModuleGuard>).
+const boutiqueCouponsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/boutique/coupons',
+  component: () => (<LazyGuard><ModuleGuard module="ecommerce"><BoutiqueCouponsPage /></ModuleGuard></LazyGuard>),
+});
+const boutiqueAbonnementsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/boutique/abonnements',
+  component: () => (<LazyGuard><ModuleGuard module="ecommerce"><BoutiqueAbonnementsPage /></ModuleGuard></LazyGuard>),
+});
+// Sprint 37 (Agent B1) — POS retail caisse (ModuleGuard "ecommerce" appliqué dans la page)
+const boutiquePOSRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/boutique/pos',
+  component: () => (<LazyGuard><BoutiquePOSPage /></LazyGuard>),
+});
+// Sprint 38 (Agent B4) — Gift cards + Loyalty (ModuleGuard "ecommerce" appliqué dans la page)
+const boutiqueGiftCardsLoyaltyRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/boutique/giftcards-loyalty',
+  component: () => (<LazyGuard><BoutiqueGiftCardsLoyaltyPage /></LazyGuard>),
+});
+// Sprint 40 (Agent B4) — Recovery workflow editor (ModuleGuard "ecommerce" appliqué dans la page)
+const boutiqueRecoveryWorkflowRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/boutique/recovery-workflow',
+  component: () => (<LazyGuard><BoutiqueRecoveryWorkflowPage /></LazyGuard>),
+});
 
 // ── Sprint 46 M2.1 — Admin routes (wrapped by AdminGuard) ───
 const adminOverviewRoute = createRoute({
@@ -700,9 +1235,18 @@ const adminIndexRoute = createRoute({
   component: () => (<LazyGuard><AdminGuard><Navigate to="/admin/overview" /></AdminGuard></LazyGuard>),
 });
 
+// ── Sprint 24 — Observabilité : page admin santé/perf/alertes ─────────────
+const adminObservabilityRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/admin/observability',
+  component: () => (<LazyGuard><AdminGuard><ObservabilityPanelPage /></AdminGuard></LazyGuard>),
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
+  signupRoute,
+  acceptInvitationRoute,
   forgotPasswordRoute,
   resetPasswordRoute,
   dashboardRoute,
@@ -714,8 +1258,12 @@ const routeTree = rootRoute.addChildren([
   inboxRoute,
   templatesRoute,
   workflowNewRoute,
+  workflowEditRoute,
   workflowDetailRoute,
   workflowsRoute,
+  sequencesRoute,
+  campaignsRoute,
+  segmentsRoute,
   calendarRoute,
   integrationsRoute,
   reportsRoute,
@@ -723,15 +1271,84 @@ const routeTree = rootRoute.addChildren([
   tasksRoute,
   changePasswordRoute,
   settingsRoute,
+  // Sprint 21 — Onboarding durci : page dédiée /getting-started
+  gettingStartedRoute,
   documentsRoute,
   documentTemplatesRoute,
   signDocumentRoute,
   reviewsRoute,
+  // ── LOT TELEPHONY-DISPOSITION (Sprint 16) — journal d'appels global ──
+  telephonieRoute,
+  // ── LOT SOCIAL PLANNER (Sprint 9) — /social/calendar AVANT /social ──
+  socialCalendarRoute,
+  socialRoute,
+  // ── SPRINT 12 — IA contenu : atelier centralisé ──
+  aiContentRoute,
   invoicesRoute,
+  quotesRoute,
+  // ── Sprint 18 CATALOGUE DE SERVICES ──
+  catalogRoute,
+  // ── LOT FUNNEL ──
+  funnelsRoute,
+  funnelBuilderRoute,
+  publicFunnelRoute,
+  // ── LOT SITE BUILDER (Sprint 10) — sites multi-pages ──
+  sitesRoute,
+  siteBuilderRoute,
+  publicSitePageRoute,
+  publicSiteRoute,
+  // ── LOT G7 MARKETPLACE ──
+  marketplaceRoute,
+  // ── LOT G1 HELPDESK ──
+  ticketsRoute,
+  ticketDetailRoute,
+  kbAdminRoute,
+  kbArticleEditRoute,
+  publicTicketFormRoute,
+  kbPublicRoute,
+  // ── LOT G2 AFFILIATION ──
+  affiliatesRoute,
+  // ── LOT BOOKING ──
+  bookingSettingsRoute,
+  publicBookingRoute,
+  // ── LOT STOREFRONT CHECKOUT (Sprint 7) — vitrine + checkout publics ──
+  publicStoreRoute,
+  publicCheckoutRoute,
+  // ── LOT REPUTATION (Sprint 8) — page publique de dépôt d'avis 1st-party ──
+  publicReviewRoute,
+  // ── LOT MEMBERSHIPS ──
+  memberSpaceRoute,
+  coursesAdminRoute,
+  // ── LOT PORTAL-E ──
+  portalSpaceRoute,
+  portalSettingsRoute,
   agenciesRoute,
   trashRoute,
+  // Sprint 35 (Agent B4) — Snapshots GHL-style
+  snapshotsRoute,
+  // Sprint 39 (Agent B4) — Multi-currency + tax regions
+  currencyMultiSettingsRoute,
+  // Sprint 41 (Agent B1) — AI Voice Agent
+  voiceAgentRoute,
+  // Sprint 43 (Agent B2) — Courses LMS member-facing UI
+  coursesLMSRoute,
+  // Sprint 45 (Agent B2) — Community forum
+  communityRoute,
+  // Sprint 47 (Agent B2) — Multi-warehouse + Dropshipping
+  warehouseRoute,
+  // Sprint 48 (Agent B2) — B2B wholesale + Bundles + Pre-orders
+  b2bRoute,
+  // Sprint 42 (Agent B1) — AI Chat Agent
+  chatBotRoute,
+  // Sprint 50 (Agent B2) — Surveys & DNS
+  surveysAndDnsRoute,
+  // Sprint 36 (Agent B2) — Live chat inbox
+  chatInboxRoute,
+  // Sprint 36 (Agent B4) — Live chat widgets manager
+  chatWidgetsRoute,
   visitModeRoute,
   emailBuilderRoute,
+  formsRoute,
   formBuilderRoute,
   triggerLinksRoute,
   publicFormRoute,
@@ -741,8 +1358,19 @@ const routeTree = rootRoute.addChildren([
   boutiqueProduitsRoute,
   boutiqueCommandesRoute,
   boutiqueClientsRoute,
+  // ── Sprint 4 — Coupons/promos + Abonnements produit ──
+  boutiqueCouponsRoute,
+  boutiqueAbonnementsRoute,
+  // Sprint 37 (Agent B1) — POS retail caisse
+  boutiquePOSRoute,
+  // Sprint 38 (Agent B4) — Gift cards + Loyalty
+  boutiqueGiftCardsLoyaltyRoute,
+  // Sprint 40 (Agent B4) — Recovery workflow editor
+  boutiqueRecoveryWorkflowRoute,
   adminIndexRoute,
   adminOverviewRoute,
+  // Sprint 24 — Observabilité
+  adminObservabilityRoute,
   pricingRoute,
   demoRoute,
   aboutRoute,
@@ -791,6 +1419,8 @@ const router = createRouter({
 // ── App Root ────────────────────────────────────────────────
 
 import { ToastProvider, ConfirmProvider, AppBootScreen } from '@/components/ui';
+// ── Sprint 23 — Sécurité / conformité : banner cookies global (Loi 25 + RGPD) ──
+import { CookiesBanner } from '@/components/CookiesBanner';
 
 export default function App() {
   return (
@@ -803,6 +1433,8 @@ export default function App() {
             <Suspense fallback={<AppBootScreen />}>
               <RouterProvider router={router} />
             </Suspense>
+            {/* Sprint 23 — Cookies banner global (frère du RouterProvider). */}
+            <CookiesBanner />
           </AuthProvider>
         </ConfirmProvider>
       </ToastProvider>

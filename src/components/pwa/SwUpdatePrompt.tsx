@@ -11,6 +11,7 @@
 import { useEffect, useRef } from 'react';
 import { useSwUpdate } from '@/hooks/useSwUpdate';
 import { useToast } from '@/components/ui/Toast';
+import { t } from '@/lib/i18n';
 
 export function SwUpdatePrompt() {
   const toast = useToast();
@@ -21,11 +22,11 @@ export function SwUpdatePrompt() {
     if (!hasUpdate || shownRef.current) return;
     shownRef.current = true;
 
-    toast.info('Une nouvelle version d\'Intralys est prête.', {
-      title: 'Mise à jour disponible',
+    toast.info(t('sw_update.description'), {
+      title: t('sw_update.title'),
       duration: 0, // persistant — pas d'auto-dismiss
       action: {
-        label: 'Recharger',
+        label: t('sw_update.cta_reload'),
         onClick: () => {
           applyUpdate();
         },

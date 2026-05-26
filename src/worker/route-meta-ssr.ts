@@ -223,3 +223,92 @@ function escapeHtml(s: string): string {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 }
+
+// ── LOT FUNNEL — snapshot crawler méta/OG-only pour `/p/:slug` ──────────────
+//
+// MÊME contrat que maybeServeSsrMeta : ne sert un snapshot QUE si UA = crawler
+// connu (CRAWLER_PATTERNS) ET le slug résout une publication active. Sinon
+// renvoie null ⇒ la requête traverse vers le SPA hydraté (route /p/$slug).
+// PAS de SSR React : on ne rend QUE les meta/OG (titre/description/image SEO)
+// depuis funnel_publications + funnel_pages.seo_* (verdict figé §6.E).
+//
+// best-effort : toute panne D1 / table absente (seq 83 non jouée) ⇒ catch ⇒
+// null (le SPA prend le relais). NE THROW JAMAIS. async (lookup D1).
+//
+// `env` est typé `unknown` ici pour ne PAS coupler ce module au type Env
+// (route-meta-ssr.ts est volontairement sans dépendance worker) ; l'appelant
+// (worker.ts) passe son `env`. Accès D1 défensif via cast local.
+export async function maybeServeFunnelSsr(
+  request: Request,
+  env: unknown,
+): Promise<Response | null> {
+  if (request.method !== 'GET') return null;
+
+  const ua = request.headers.get('user-agent') || '';
+  const isCrawler = CRAWLER_PATTERNS.some((re) => re.test(ua));
+  if (!isCrawler) return null;
+
+  const url = new URL(request.url);
+  const m = url.pathname.match(/^\/p\/([^/]+)$/);
+  if (!m) return null;
+  const slug = m[1]!;
+
+  try {
+    const db = (env as { DB?: { prepare: (q: string) => unknown } }).DB;
+    if (!db) return null;
+
+    const pub = (await (
+      db.prepare(
+        'SELECT funnel_id FROM funnel_publications WHERE slug = ? AND is_active = 1',
+      ) as {
+        bind: (...a: unknown[]) => { first: () => Promise<unknown> };
+      }
+    )
+      .bind(slug)
+      .first()) as { funnel_id: string } | null;
+    if (!pub) return null;
+
+    const fn = (await (
+      db.prepare('SELECT name, description FROM funnels WHERE id = ?') as {
+        bind: (...a: unknown[]) => { first: () => Promise<unknown> };
+      }
+    )
+      .bind(pub.funnel_id)
+      .first()) as { name: string | null; description: string | null } | null;
+
+    const page = (await (
+      db.prepare(
+        'SELECT seo_title, seo_description, seo_image FROM funnel_pages WHERE funnel_id = ? ORDER BY created_at ASC LIMIT 1',
+      ) as {
+        bind: (...a: unknown[]) => { first: () => Promise<unknown> };
+      }
+    )
+      .bind(pub.funnel_id)
+      .first()) as {
+      seo_title: string | null;
+      seo_description: string | null;
+      seo_image: string | null;
+    } | null;
+
+    const title = page?.seo_title || fn?.name || 'Intralys';
+    const description =
+      page?.seo_description || fn?.description || 'Page propulsée par Intralys.';
+    const image = page?.seo_image || DEFAULT_OG_IMAGE;
+    const fullUrl = SITE_URL + url.pathname;
+
+    const html = renderSnapshotHtml(
+      { title, description, path: url.pathname, image },
+      fullUrl,
+    );
+    return new Response(html, {
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'public, max-age=600, s-maxage=3600',
+        'X-Robots-Tag': 'index, follow',
+      },
+    });
+  } catch {
+    // Table seq 83 absente / panne D1 : laisse traverser au SPA.
+    return null;
+  }
+}

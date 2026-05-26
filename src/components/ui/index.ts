@@ -198,3 +198,11 @@ export type {
   NotificationItemProps,
   NotificationItemType,
 } from './NotificationItem';
+
+// ── LOT RÉEL (Manager B) — LoadMore pagination primitive ──
+export { LoadMore } from './LoadMore';
+export type { LoadMoreProps } from './LoadMore';
+
+// ── Sprint 29 — a11y AAA — SkipToContent (pages publiques hors AppLayout) ──
+export { SkipToContent } from './SkipToContent';
+export type { SkipToContentProps } from './SkipToContent';

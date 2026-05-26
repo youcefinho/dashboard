@@ -1,13 +1,14 @@
 // ── ConversationPanel — Historique et envoi de messages dans la fiche lead ──
 
 import { useState, useEffect, useCallback } from 'react';
-import { getLeadMessages, sendMessage, getTemplates } from '@/lib/api';
-import { Button, Tag, Skeleton, AiSparkles, Input, Select, Textarea } from '@/components/ui';
+import { getLeadMessages, sendMessage, getTemplates, getUnsubscribes } from '@/lib/api';
+import { Button, Tag, Skeleton, AiSparkles, Input, Select, Textarea, Icon } from '@/components/ui';
+import { Ban } from 'lucide-react';
 import type { Message, EmailTemplate } from '@/lib/types';
 import { CHANNEL_ICONS, MESSAGE_STATUS_LABELS } from '@/lib/types';
 // Sprint 48 M3.2 — Intl relative time + locale-aware date
 import { formatRelativeTime } from '@/lib/i18n/datetime';
-import { getLocale } from '@/lib/i18n';
+import { getLocale, t } from '@/lib/i18n';
 
 interface ConversationPanelProps {
   leadId: string;
@@ -27,6 +28,11 @@ export function ConversationPanel({ leadId, leadName, leadEmail, leadPhone }: Co
   const [body, setBody] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState('');
   const [sendResult, setSendResult] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  // LOT SMS/WHATSAPP seq 104 (Phase C) — opt-out SMS du lead. Détecté via la
+  // liste globale des désabonnements (channel 'sms') en comparant le téléphone
+  // normalisé (chiffres seuls). Info dispo côté front via getUnsubscribes() ;
+  // pas de flag opt-out par lead dans le type Lead (signalé au rapport).
+  const [smsOptedOut, setSmsOptedOut] = useState(false);
 
   const loadMessages = useCallback(async () => {
     setIsLoading(true);
@@ -44,10 +50,25 @@ export function ConversationPanel({ leadId, leadName, leadEmail, leadPhone }: Co
     }
   }, []);
 
+  // LOT SMS/WHATSAPP seq 104 — vérifie l'opt-out SMS du lead (best-effort).
+  const loadOptOut = useCallback(async () => {
+    const digits = (leadPhone || '').replace(/\D/g, '');
+    if (!digits) { setSmsOptedOut(false); return; }
+    const res = await getUnsubscribes();
+    if (!res.data) return;
+    const optedOut = res.data.some((u) => {
+      const ch = String((u as { channel?: unknown }).channel ?? '');
+      const ph = String((u as { phone?: unknown }).phone ?? '').replace(/\D/g, '');
+      return ch === 'sms' && ph.length > 0 && ph === digits;
+    });
+    setSmsOptedOut(optedOut);
+  }, [leadPhone]);
+
   useEffect(() => {
     void loadMessages();
     void loadTemplates();
-  }, [loadMessages, loadTemplates]);
+    void loadOptOut();
+  }, [loadMessages, loadTemplates, loadOptOut]);
 
   // Appliquer un template
   const applyTemplate = (templateId: string) => {
@@ -98,6 +119,14 @@ export function ConversationPanel({ leadId, leadName, leadEmail, leadPhone }: Co
 
   return (
     <div className="space-y-4">
+      {/* LOT SMS/WHATSAPP seq 104 — indicateur « désabonné SMS » (opt-out). */}
+      {smsOptedOut && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-[var(--radius-md)] bg-[var(--danger)]/10 text-[var(--danger)]">
+          <Icon as={Ban} size="sm" />
+          <span className="text-xs font-medium">Désabonné SMS</span>
+        </div>
+      )}
+
       {/* Tabs — segmented-control premium */}
       <div className="segmented-control" role="tablist" aria-label="Conversations">
         <button
@@ -132,7 +161,7 @@ export function ConversationPanel({ leadId, leadName, leadEmail, leadPhone }: Co
           ) : messages.length === 0 ? (
             <div className="text-center py-8 text-[var(--text-muted)]">
               <p className="text-2xl mb-2">💬</p>
-              <p className="text-sm">Aucune conversation</p>
+              <p className="text-sm">{t('conversations.empty_state')}</p>
               <p className="text-xs mt-1">Envoyez le premier message !</p>
             </div>
           ) : (
@@ -225,7 +254,7 @@ export function ConversationPanel({ leadId, leadName, leadEmail, leadPhone }: Co
           {channel === 'email' && (
             <Input
               type="text"
-              placeholder="Sujet de l'email..."
+              placeholder={t('conversations.email_subject_placeholder')}
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
             />
@@ -260,7 +289,7 @@ export function ConversationPanel({ leadId, leadName, leadEmail, leadPhone }: Co
           {/* Bouton envoi */}
           <Button
             onClick={() => void handleSend()}
-            disabled={isSending || !body.trim() || (channel === 'email' && !leadEmail) || (channel === 'sms' && !leadPhone)}
+            disabled={isSending || !body.trim() || (channel === 'email' && !leadEmail) || (channel === 'sms' && (!leadPhone || smsOptedOut))}
             className="w-full"
           >
             {isSending ? 'Envoi en cours...' : channel === 'email' ? '📧 Envoyer l\'email' : channel === 'sms' ? '💬 Envoyer le SMS' : '📝 Ajouter la note'}

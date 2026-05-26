@@ -34,6 +34,7 @@ beforeEach(() => {
   fsState.files = {};
   vi.spyOn(console, 'warn').mockImplementation(() => {});
   vi.spyOn(console, 'log').mockImplementation(() => {});
+  vi.spyOn(console, 'error').mockImplementation(() => {});
 });
 
 describe('getOrderedMigrations — manifest présent', () => {
@@ -87,15 +88,15 @@ describe('getOrderedMigrations — manifest présent', () => {
     expect(console.warn).toHaveBeenCalled();
   });
 
-  it('warn (pas crash) si un fichier disque est absent du manifest', () => {
+  it('ERREUR DURE (retour []) si un fichier disque est absent du manifest (§2-D trou 1)', () => {
     fsState.files[MANIFEST_PATH] = manifest([{ seq: 1, file: 'migration-phase1.sql' }]);
     const allFiles = ['migration-phase1.sql', 'migration-orphelin.sql'];
 
     const ordered = getOrderedMigrations(allFiles, ROOT);
 
-    expect(ordered).toEqual(['migration-phase1.sql']);
-    expect(ordered).not.toContain('migration-orphelin.sql');
-    expect(console.warn).toHaveBeenCalled();
+    // Durcissement S2 : retour vide = STOP (plus un warn silencieux)
+    expect(ordered).toEqual([]);
+    expect(console.error).toHaveBeenCalled();
   });
 });
 

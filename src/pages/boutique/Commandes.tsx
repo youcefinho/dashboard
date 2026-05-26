@@ -122,7 +122,7 @@ export function CommandesPage() {
           meta={t('shop.nav')}
           title={t('shop.orders')}
           highlight={t('shop.orders')}
-          description="Toutes les commandes de ta boutique : statut, paiement, préparation et total."
+          description={t('shop.order.page_description')}
           actions={
             <Button className="gap-2" onClick={() => setManualOpen(true)}>
               <Icon as={Plus} size="md" /> {t('shop.order.create')}
@@ -135,6 +135,7 @@ export function CommandesPage() {
           <div className="relative w-full md:w-80">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={16} />
             <Input className="pl-9" placeholder={t('shop.order.search')}
+              aria-label={t('shop.order.search')}
               value={search} onChange={(e: any) => setSearch(e.target.value)} />
           </div>
           <Select className="md:w-52" value={statusFilter}
@@ -157,7 +158,7 @@ export function CommandesPage() {
             <option value="fulfilled">{t('shop.order.ful_fulfilled')}</option>
           </Select>
           <Select className="md:w-52" value={sort}
-            onChange={(e: any) => setSort(e.target.value)} aria-label="Tri">
+            onChange={(e: any) => setSort(e.target.value)} aria-label={t('shop.order.sort_aria')}>
             <option value="recent">{t('shop.order.sort_recent')}</option>
             <option value="oldest">{t('shop.order.sort_oldest')}</option>
             <option value="total_desc">{t('shop.order.sort_total_desc')}</option>
@@ -166,7 +167,12 @@ export function CommandesPage() {
         </div>
 
         {isLoading ? (
-          <Card className="p-0 overflow-hidden">
+          <Card
+            className="p-0 overflow-hidden"
+            aria-busy="true"
+            aria-live="polite"
+            role="status"
+          >
             <div className="px-4 py-3 border-b border-[var(--border-subtle)] bg-[var(--bg-subtle)] flex items-center gap-6">
               {[1, 2, 3, 4, 5, 6].map((i) => <Skeleton key={i} className="h-3 w-20 rounded" />)}
             </div>
@@ -183,16 +189,20 @@ export function CommandesPage() {
             </div>
           </Card>
         ) : loadError ? (
-          <Card className="p-0 overflow-hidden">
+          <Card
+            className="p-0 overflow-hidden"
+            role="alert"
+            aria-live="assertive"
+          >
             <EmptyState
               variant="compact"
               icon={<AlertTriangle size={32} strokeWidth={1.8} />}
               meta={t('shop.nav')}
-              title="Impossible de charger les commandes"
-              description="Une erreur réseau est survenue. Vérifie ta connexion puis réessaie."
+              title={t('shop.order.error_title')}
+              description={t('shop.order.error_desc')}
               action={
-                <Button onClick={() => void load()} leftIcon={<RefreshCw size={14} />}>
-                  Réessayer
+                <Button onClick={() => void load()} leftIcon={<RefreshCw size={14} />} aria-label={t('shop.order.retry')}>
+                  {t('shop.order.retry')}
                 </Button>
               }
             />
@@ -297,21 +307,26 @@ export function CommandesPage() {
 
             {/* Pagination (serveur — par statut/offset) */}
             {!debouncedSearch && totalPages > 1 && (
-              <div className="flex items-center justify-between gap-3 px-4 py-3 border-t border-[var(--border-subtle)] text-[12px]">
+              <nav
+                className="flex items-center justify-between gap-3 px-4 py-3 border-t border-[var(--border-subtle)] text-[12px]"
+                aria-label={t('shop.order.pagination_aria')}
+              >
                 <span className="text-[var(--text-muted)]">
                   {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, total)} / {total}
                 </span>
                 <div className="flex gap-2">
                   <Button variant="ghost" size="sm" disabled={page === 0}
+                    aria-label={t('shop.order.previous')}
                     onClick={() => setPage((p) => Math.max(0, p - 1))}>
-                    ← Précédent
+                    {t('shop.order.previous')}
                   </Button>
                   <Button variant="ghost" size="sm" disabled={page >= totalPages - 1}
+                    aria-label={t('shop.order.next')}
                     onClick={() => setPage((p) => p + 1)}>
-                    Suivant →
+                    {t('shop.order.next')}
                   </Button>
                 </div>
-              </div>
+              </nav>
             )}
           </Card>
         )}

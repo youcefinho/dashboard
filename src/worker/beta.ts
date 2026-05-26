@@ -18,6 +18,7 @@
 
 import type { Env } from './types';
 import { json } from './helpers';
+import { provisionAgencyTenant } from './provisioning';
 
 const MAGIC_TTL_MS = 15 * 60 * 1000; // 15 min
 const SESSION_DURATION_HOURS = 72;   // aligné sur worker/auth.ts
@@ -89,6 +90,26 @@ async function ensureSchema(env: Env): Promise<void> {
       )`),
     ]);
     await seedRoadmap(env);
+    // ── Sprint 30 — câblage codes BETA-CODES.md (table dupliquée seq125 pour
+    // sécuriser bootstrap si migration pas encore jouée). Seed des 5 codes
+    // documentés dans BETA-CODES.md racine. INSERT OR IGNORE = idempotent.
+    await env.DB.prepare(
+      `CREATE TABLE IF NOT EXISTS beta_invite_codes (
+        code         TEXT PRIMARY KEY,
+        max_uses     INTEGER NOT NULL DEFAULT 1,
+        used_count   INTEGER NOT NULL DEFAULT 0,
+        expires_at   TEXT,
+        created_at   TEXT DEFAULT (datetime('now'))
+      )`
+    ).run();
+    await env.DB.prepare(
+      `INSERT OR IGNORE INTO beta_invite_codes (code) VALUES
+        ('BETA-INTRALYS-2026-X7K9'),
+        ('BETA-INTRALYS-2026-M4P2'),
+        ('BETA-INTRALYS-2026-L8V5'),
+        ('BETA-INTRALYS-2026-R3N1'),
+        ('BETA-INTRALYS-2026-Q9J4')`
+    ).run();
     schemaReady = true;
   } catch (err) {
     // Ne bloque pas la requête si le bootstrap échoue (table déjà créée via
@@ -125,12 +146,17 @@ async function seedRoadmap(env: Env): Promise<void> {
 }
 
 // ── M3.1 — Beta signup ─────────────────────────────────────────────────────
+// Sprint 30 — extension `code?` optionnelle : si un code valide est fourni dans
+// `beta_invite_codes` (non expiré + used_count < max_uses), le signup passe
+// `status='invited'` ET incrémente used_count. Sinon → status='pending' (comportement
+// historique préservé). Signature publique INCHANGÉE — body étendu rétro-compatible.
 export async function handleBetaSignup(request: Request, env: Env): Promise<Response> {
   await ensureSchema(env);
   try {
     const b = await request.json().catch(() => ({})) as {
       email?: string; company?: string; industry?: string;
       teamSize?: string; useCase?: string; consent?: boolean;
+      code?: string;
     };
     const email = (b.email || '').trim().toLowerCase();
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -140,17 +166,46 @@ export async function handleBetaSignup(request: Request, env: Env): Promise<Resp
     if (b.consent !== true) {
       return json({ error: 'Le consentement est requis pour rejoindre la liste.' }, 400);
     }
+    // ── Sprint 30 : validation code invite optionnel (best-effort) ──────────
+    const code = b.code ? String(b.code).trim().toUpperCase() : null;
+    let status: 'pending' | 'invited' = 'pending';
+    if (code) {
+      try {
+        const codeRow = await env.DB.prepare(
+          `SELECT code, max_uses, used_count, expires_at FROM beta_invite_codes WHERE code = ? LIMIT 1`
+        ).bind(code).first() as {
+          code: string; max_uses: number; used_count: number; expires_at: string | null;
+        } | null;
+        if (codeRow) {
+          const notExpired = !codeRow.expires_at || new Date(codeRow.expires_at) > new Date();
+          const stillAvailable = Number(codeRow.used_count) < Number(codeRow.max_uses);
+          if (notExpired && stillAvailable) {
+            status = 'invited';
+            // Incrémente used_count — best-effort, ne bloque pas le signup.
+            try {
+              await env.DB.prepare(
+                `UPDATE beta_invite_codes SET used_count = used_count + 1 WHERE code = ?`
+              ).bind(code).run();
+            } catch { /* silencieux */ }
+          }
+        }
+      } catch {
+        // Table absente ou erreur D1 → status reste 'pending', signup OK.
+      }
+    }
     await env.DB.prepare(
       `INSERT INTO beta_signups (email, company, industry, team_size, use_case, consent, status)
-       VALUES (?, ?, ?, ?, ?, 1, 'pending')
+       VALUES (?, ?, ?, ?, ?, 1, ?)
        ON CONFLICT(email) DO UPDATE SET
          company = excluded.company, industry = excluded.industry,
-         team_size = excluded.team_size, use_case = excluded.use_case, consent = 1`
+         team_size = excluded.team_size, use_case = excluded.use_case, consent = 1,
+         status = CASE WHEN beta_signups.status = 'invited' THEN beta_signups.status ELSE excluded.status END`
     ).bind(
       email, (b.company || '').trim() || null, b.industry || null,
-      b.teamSize || null, (b.useCase || '').trim().slice(0, 1000) || null
+      b.teamSize || null, (b.useCase || '').trim().slice(0, 1000) || null,
+      status
     ).run();
-    return json({ data: { success: true } }, 201);
+    return json({ data: { success: true, status } }, 201);
   } catch (err: any) {
     return json({ error: err?.message || 'beta-signup-failed' }, 500);
   }
@@ -237,16 +292,19 @@ export async function handleMagicVerify(request: Request, env: Env, url: URL): P
     ).bind(mt.email).first() as { id: string; name: string; role: string; email: string } | null;
 
     if (!user) {
-      const userId = crypto.randomUUID();
       const company = await env.DB.prepare('SELECT company FROM beta_signups WHERE email = ?')
         .bind(mt.email).first() as { company: string | null } | null;
       const name = company?.company || mt.email.split('@')[0] || 'Membre beta';
-      // password_hash placeholder non-loginable (le magic link n'utilise jamais
-      // verifyPassword ; le password auth reste inchangé pour les autres users).
-      await env.DB.prepare(
-        "INSERT INTO users (id, email, password_hash, name, role) VALUES (?, ?, 'magic-link-only', ?, 'admin')"
-      ).bind(userId, mt.email, name).run();
-      user = { id: userId, name, role: 'admin', email: mt.email };
+      // [LOT1 §6.4] Provisionne un tenant COMPLET (agence + client + user +
+      // jonction sous-compte + subscription 'free') au lieu d'un user orphelin.
+      // password_hash placeholder non-loginable : le magic link n'utilise
+      // jamais verifyPassword ; le password auth des autres users est inchangé.
+      const provisioned = await provisionAgencyTenant(env, {
+        email: mt.email,
+        name,
+        passwordHash: 'magic-link-only',
+      });
+      user = { id: provisioned.userId, name, role: 'admin', email: mt.email };
     }
 
     // Crée une session — MÊME table + format que finishLogin() (worker/auth.ts).

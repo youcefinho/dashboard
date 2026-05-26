@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouterState } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Tag, Skeleton, Button, useToast, PageHero, KpiStrip, type KpiItem, CellHoverInfo, Icon, EmptyState, EmptyStateIllustration } from '@/components/ui';
+import { Card, Tag, Skeleton, Button, useToast, useConfirm, PageHero, KpiStrip, type KpiItem, CellHoverInfo, Icon, EmptyState, EmptyStateIllustration } from '@/components/ui';
 import { getLeads, getClients } from '@/lib/api';
 import type { Lead, Client } from '@/lib/types';
 import { STATUS_LABELS, STATUS_COLORS, SOURCE_LABELS } from '@/lib/types';
@@ -37,27 +37,51 @@ import {
   shareDashboard, type DashboardRecord,
 } from '@/lib/api';
 import { LayoutGrid as LayoutIcon, Share2, Copy as CopyIcon, Trash2 } from 'lucide-react';
+// LOT SCHEDREPORT Sprint A — Phase B Manager-C : onglet « Planifiés »
+import { ScheduledReportsPanel } from '@/components/reports/ScheduledReportsPanel';
+// LOT REPORT-TEMPLATES (Sprint 15) — Phase B Manager-C : onglet « Modèles »
+import { ReportTemplatesGallery } from '@/components/reports/ReportTemplatesGallery';
+// LOT ATTRIBUTION-D Sprint D — Phase B Manager-C : attribution multi-touch + cohortes
+import { AttributionPanel } from '@/components/reports/AttributionPanel';
+import { CohortHeatmap } from '@/components/reports/CohortHeatmap';
 
-type ReportTab = 'sales' | 'funnel' | 'sources' | 'performance' | 'trends' | 'activity' | 'workflow' | 'email' | 'sms' | 'calendar' | 'forms' | 'reviews' | 'builder';
+type ReportTab = 'sales' | 'funnel' | 'sources' | 'performance' | 'trends' | 'activity' | 'workflow' | 'email' | 'sms' | 'calendar' | 'forms' | 'reviews' | 'builder' | 'scheduled' | 'templates' | 'attribution' | 'cohorts';
 
-const TABS: { id: ReportTab; icon: typeof BarChart3; label: string; group: string }[] = [
-  // Sprint 46 M1 — Dashboards builder en tête (CTA principal nouveau)
-  { id: 'builder', icon: LayoutIcon, label: 'Mes dashboards', group: 'BUILDER' },
-  { id: 'sales', icon: DollarSign, label: 'Ventes & ROI', group: 'BUSINESS' },
-  { id: 'funnel', icon: BarChart3, label: 'Funnel', group: 'BUSINESS' },
-  { id: 'sources', icon: Target, label: 'Sources', group: 'BUSINESS' },
-  { id: 'trends', icon: TrendingUp, label: 'Tendances', group: 'BUSINESS' },
-  { id: 'performance', icon: Trophy, label: 'Sous-comptes', group: 'AGENCE' },
-  { id: 'activity', icon: Activity, label: 'Activité', group: 'ÉQUIPE' },
-  { id: 'calendar', icon: CalendarIcon, label: 'Rendez-vous', group: 'ÉQUIPE' },
-  { id: 'workflow', icon: Workflow, label: 'Workflows', group: 'MARKETING' },
-  { id: 'email', icon: Mail, label: 'Emails', group: 'MARKETING' },
-  { id: 'sms', icon: MessageSquare, label: 'SMS', group: 'MARKETING' },
-  { id: 'forms', icon: CheckSquare, label: 'Formulaires', group: 'MARKETING' },
-  { id: 'reviews', icon: Star, label: 'Réputation', group: 'MARKETING' },
-];
+// Sprint LOT 1-3 — TABS via factory pour relire t() au runtime (i18n parité 4 catalogues)
+function buildTabs(): { id: ReportTab; icon: typeof BarChart3; label: string; group: string }[] {
+  const G_BUILDER = t('reports.group.builder');
+  const G_BUSINESS = t('reports.group.business');
+  const G_AGENCE = t('reports.group.agence');
+  const G_EQUIPE = t('reports.group.equipe');
+  const G_MARKETING = t('reports.group.marketing');
+  return [
+    // Sprint 46 M1 — Dashboards builder en tête (CTA principal nouveau)
+    { id: 'builder', icon: LayoutIcon, label: t('reports.tab.builder'), group: G_BUILDER },
+    // LOT SCHEDREPORT Sprint A — rapports envoyés automatiquement par courriel
+    { id: 'scheduled', icon: Mail, label: t('reports.scheduled.tab'), group: G_BUILDER },
+    // LOT REPORT-TEMPLATES (Sprint 15) — galerie de modèles de dashboard clonables
+    { id: 'templates', icon: LayoutIcon, label: t('reports.templates.title'), group: G_BUILDER },
+    { id: 'sales', icon: DollarSign, label: t('reports.tab.sales'), group: G_BUSINESS },
+    { id: 'funnel', icon: BarChart3, label: t('reports.tab.funnel'), group: G_BUSINESS },
+    { id: 'sources', icon: Target, label: t('reports.tab.sources'), group: G_BUSINESS },
+    { id: 'trends', icon: TrendingUp, label: t('reports.tab.trends'), group: G_BUSINESS },
+    // LOT ATTRIBUTION-D — cohortes de leads (rétention par mois d'acquisition)
+    { id: 'cohorts', icon: Users, label: t('cohort.tab'), group: G_BUSINESS },
+    { id: 'performance', icon: Trophy, label: t('reports.tab.performance'), group: G_AGENCE },
+    { id: 'activity', icon: Activity, label: t('reports.tab.activity'), group: G_EQUIPE },
+    { id: 'calendar', icon: CalendarIcon, label: t('reports.tab.calendar'), group: G_EQUIPE },
+    { id: 'workflow', icon: Workflow, label: t('reports.tab.workflow'), group: G_MARKETING },
+    { id: 'email', icon: Mail, label: t('reports.tab.email'), group: G_MARKETING },
+    { id: 'sms', icon: MessageSquare, label: t('reports.tab.sms'), group: G_MARKETING },
+    { id: 'forms', icon: CheckSquare, label: t('reports.tab.forms'), group: G_MARKETING },
+    { id: 'reviews', icon: Star, label: t('reports.tab.reviews'), group: G_MARKETING },
+    // LOT ATTRIBUTION-D — attribution multi-touch (first/last/linéaire/time-decay)
+    { id: 'attribution', icon: Percent, label: t('attribution.tab'), group: G_MARKETING },
+  ];
+}
+const TABS = buildTabs();
 
-const VALID_TABS = new Set<ReportTab>(['sales', 'funnel', 'sources', 'performance', 'trends', 'activity', 'workflow', 'email', 'sms', 'calendar', 'forms', 'reviews', 'builder']);
+const VALID_TABS = new Set<ReportTab>(['sales', 'funnel', 'sources', 'performance', 'trends', 'activity', 'workflow', 'email', 'sms', 'calendar', 'forms', 'reviews', 'builder', 'scheduled', 'templates', 'attribution', 'cohorts']);
 const VALID_PERIODS = new Set<'30d' | '90d' | '12m'>(['30d', '90d', '12m']);
 
 // ── Sprint 30 vague 30-1C — Read URL params (?view=funnel&period=90d) ──
@@ -76,9 +100,13 @@ function readUrlState(): { view: ReportTab | null; period: '30d' | '90d' | '12m'
 
 export function ReportsPage() {
   const { success, error: toastError } = useToast();
+  // LOT D Phase B Manager-C — modal confirm avant partage public d'un dashboard
+  const confirm = useConfirm();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  // Sprint LOT 1-3 — Error state inline + retry (gap audit Reports)
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Sprint 30 vague 30-1C — hydrate depuis URL params au mount
   const initialUrlState = useMemo(() => readUrlState(), []);
@@ -131,10 +159,20 @@ export function ReportsPage() {
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
-    const [leadsRes, clientsRes] = await Promise.all([getLeads(), getClients()]);
-    if (leadsRes.data) setLeads(leadsRes.data);
-    if (clientsRes.data) setClients(clientsRes.data);
-    setIsLoading(false);
+    setLoadError(null);
+    try {
+      const [leadsRes, clientsRes] = await Promise.all([getLeads(), getClients()]);
+      if (leadsRes.data) setLeads(leadsRes.data);
+      if (clientsRes.data) setClients(clientsRes.data);
+      // Si les deux endpoints renvoient une erreur, on remonte celle des leads (source principale).
+      if (!leadsRes.data && !clientsRes.data) {
+        setLoadError(leadsRes.error || clientsRes.error || t('reports.error.load_failed'));
+      }
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : t('reports.error.load_failed'));
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
   useEffect(() => { void loadData(); }, [loadData]);
@@ -215,6 +253,16 @@ export function ReportsPage() {
   };
 
   const handleShareDashboard = async (id: number) => {
+    // LOT D Phase B Manager-C — modal confirm i18n avant exposition publique.
+    // Avertit explicitement le user que le lien public expose les données du
+    // périmètre actuel (sous-compte ou agence) — voir reports.share.scope_warning.
+    const confirmed = await confirm({
+      title: t('reports.share.confirm_public'),
+      description: t('reports.share.scope_warning'),
+      confirmLabel: t('reports.builder.share'),
+      // Pas `danger` : c'est une action volontaire d'exposition, pas une destruction.
+    });
+    if (!confirmed) return;
     const res = await shareDashboard(id);
     if (res.data?.share_token) {
       const url = `${window.location.origin}/dashboards/shared/${res.data.share_token}`;
@@ -226,7 +274,16 @@ export function ReportsPage() {
       }
       void loadDashboards();
     } else {
-      toastError(t('reports.toast.link_error'));
+      // Si le backend renvoie une erreur capability (mode-agence + viewer),
+      // string-match sur res.error (ApiResponse jamais `code` — gelé LOT B).
+      const errStr = (res.error || '').toLowerCase();
+      if (errStr.includes('forbidden') || errStr.includes('capability') || errStr.includes('manage')) {
+        toastError(t('reports.cap.required_manage'));
+      } else if (errStr.includes('scope') || errStr.includes('tenant')) {
+        toastError(t('reports.toast.scope_locked'));
+      } else {
+        toastError(t('reports.toast.link_error'));
+      }
     }
   };
 
@@ -318,7 +375,8 @@ export function ReportsPage() {
   if (isLoading) {
     return (
       <AppLayout title={t('reports.page.title')}>
-        <div className="space-y-4">
+        {/* Sprint LOT 1-3 — aria-busy + aria-live pour SR pendant chargement */}
+        <div className="space-y-4" aria-busy="true" aria-live="polite">
           {/* Hero placeholder */}
           <Skeleton className="h-28 w-full rounded-2xl" />
           {/* KPI strip 4 cards */}
@@ -383,14 +441,15 @@ export function ReportsPage() {
                         <Button variant="secondary" onClick={() => handleOpenDashboard(d)} className="text-xs">
                           {t('reports.builder.open')}
                         </Button>
+                        {/* Sprint LOT 1-3 — aria-label + title via i18n (3 actions builder) */}
                         <button
                           type="button"
                           className="db-list-card__icon-btn"
                           onClick={() => handleShareDashboard(d.id)}
-                          aria-label="Partager"
-                          title="Partager"
+                          aria-label={`${t('reports.action.share')} : ${d.name}`}
+                          title={t('reports.action.share')}
                         >
-                          <Icon as={Share2} size={14} />
+                          <Icon as={Share2} size={14} aria-hidden="true" />
                         </button>
                         {d.share_token && (
                           <button
@@ -401,20 +460,20 @@ export function ReportsPage() {
                               try { await navigator.clipboard.writeText(url); success(t('reports.toast.link_copied')); }
                               catch { success(`Lien : ${url}`); }
                             }}
-                            aria-label="Copier lien public"
-                            title="Copier lien public"
+                            aria-label={t('reports.action.copy_public')}
+                            title={t('reports.action.copy_public')}
                           >
-                            <Icon as={CopyIcon} size={14} />
+                            <Icon as={CopyIcon} size={14} aria-hidden="true" />
                           </button>
                         )}
                         <button
                           type="button"
                           className="db-list-card__icon-btn db-list-card__icon-btn--danger"
                           onClick={() => handleDeleteDashboard(d.id)}
-                          aria-label="Supprimer"
-                          title="Supprimer"
+                          aria-label={`${t('reports.action.delete')} : ${d.name}`}
+                          title={t('reports.action.delete')}
                         >
-                          <Icon as={Trash2} size={14} />
+                          <Icon as={Trash2} size={14} aria-hidden="true" />
                         </button>
                       </div>
                     </Card>
@@ -453,6 +512,16 @@ export function ReportsPage() {
             <DashboardBuilder
               value={builderValue}
               onChange={handleBuilderChange}
+              scope={(() => {
+                // LOT D Phase B Manager-C — scope best-effort (dégradation gracieuse).
+                // Le backend Manager-B peut exposer scope via getDashboard (via
+                // `dashboard_scopes` compagnon seq 88). Tant que ce n'est pas
+                // câblé, on regarde dans config.scope (additif) ; sinon undefined
+                // → pas de badge (rétro-compat Sprint 46 préservée).
+                const s = (current?.config as any)?.scope;
+                if (s === 'client' || s === 'agency' || s === 'legacy') return s;
+                return undefined;
+              })()}
             />
           </div>
         );
@@ -509,19 +578,19 @@ export function ReportsPage() {
                     <Bar dataKey="revenue" fill="var(--success)" radius={[0, 6, 6, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
-                ) : <p className="text-xs text-[var(--text-muted)] text-center py-10">Aucun revenu pour la période</p>}
+                ) : <p className="text-xs text-[var(--text-muted)] text-center py-10">{t('reports.no_revenue')}</p>}
               </Card>
               
               <Card className="p-5">
-                <h3 className="text-sm font-semibold mb-4 flex items-center gap-2"><Icon as={Target} size={16} className="text-[var(--primary)]" /> Coût d'Acquisition (CAC) estimé</h3>
+                <h3 className="text-sm font-semibold mb-4 flex items-center gap-2"><Icon as={Target} size={16} className="text-[var(--primary)]" /> {t('reports.cac_title')}</h3>
                 <div className="table-premium-container print-data-table">
                   <table className="table-premium w-full text-left">
                     <thead>
                       <tr>
-                        <th>Source</th>
-                        <th className="text-right">Dépenses</th>
-                        <th className="text-center">Gagnés</th>
-                        <th className="text-right">CAC</th>
+                        <th>{t('reports.col_source')}</th>
+                        <th className="text-right">{t('reports.col_spend')}</th>
+                        <th className="text-center">{t('reports.col_won')}</th>
+                        <th className="text-right">{t('reports.col_cac')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -620,7 +689,7 @@ export function ReportsPage() {
               </p>
             </Card>
             <Card className="p-5">
-              <h3 className="text-sm font-semibold mb-4">📋 Répartition par type</h3>
+              <h3 className="text-sm font-semibold mb-4">{t('reports.split_by_type')}</h3>
               <ResponsiveContainer width="100%" height={250}>
                 <PieChart>
                   <Pie data={[{ name: 'Entrants', value: typeCounts.inbound }, { name: 'Clients', value: typeCounts.customer }]}
@@ -652,7 +721,7 @@ export function ReportsPage() {
               </ResponsiveContainer>
             </Card>
             <Card className="p-5">
-              <h3 className="text-sm font-semibold mb-4">📊 Détail par source</h3>
+              <h3 className="text-sm font-semibold mb-4">{t('reports.detail_by_source')}</h3>
               <div className="space-y-3">
                 {Object.entries(sourceCounts).sort(([, a], [, b]) => b - a).map(([source, count], i) => {
                     const pct = Math.round((count / totalLeads) * 100);
@@ -728,11 +797,11 @@ export function ReportsPage() {
                 <table className="table-premium w-full">
                   <thead>
                     <tr>
-                      <th className="text-left">Sous-compte</th>
-                      <th className="text-right">Leads</th>
-                      <th className="text-right">Gagnés</th>
-                      <th className="text-right">Conv.</th>
-                      <th className="text-right">Pipeline</th>
+                      <th className="text-left">{t('reports.col_subaccount')}</th>
+                      <th className="text-right">{t('reports.col_leads')}</th>
+                      <th className="text-right">{t('reports.col_won')}</th>
+                      <th className="text-right">{t('reports.col_conv')}</th>
+                      <th className="text-right">{t('reports.col_pipeline')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -835,6 +904,10 @@ export function ReportsPage() {
           </div>
         </TrendsReports>
       );
+      // LOT SCHEDREPORT Sprint A — Phase B Manager-C : rapports planifiés
+      case 'scheduled': return <ScheduledReportsPanel />;
+      // LOT REPORT-TEMPLATES (Sprint 15) — Phase B Manager-C : galerie de modèles
+      case 'templates': return <ReportTemplatesGallery />;
       case 'activity': return <ActivityReports />;
       case 'workflow': return <WorkflowReports />;
       case 'email': return <EmailReports />;
@@ -842,6 +915,11 @@ export function ReportsPage() {
       case 'calendar': return <CalendarReports />;
       case 'forms': return <FormsReports />;
       case 'reviews': return <ReviewsReports />;
+      // LOT ATTRIBUTION-D Sprint D — Phase B Manager-C : charts recharts câblés
+      // (modèles d'attribution multi-touch + heatmap cohortes). Panels
+      // autonomes qui fetchent via getReportsAttribution / getLeadCohorts.
+      case 'attribution': return <AttributionPanel />;
+      case 'cohorts': return <CohortHeatmap />;
       default: return null;
     }
   };
@@ -959,9 +1037,20 @@ export function ReportsPage() {
 
         {/* Content */}
         <div className="flex-1 min-w-0 h-[calc(100vh-160px)] overflow-y-auto pb-10 pr-2">
-          {/* Sprint 46 M1 — Le builder reste accessible même sans leads (l'user
-             peut créer un dashboard avant d'avoir de la donnée). */}
-          {leads.length === 0 && activeTab !== 'builder' ? (
+          {/* Sprint LOT 1-3 — Error state inline + retry (gap audit Reports) */}
+          {loadError ? (
+            <Card className="p-6 border border-[var(--danger)]/30" role="alert" aria-live="assertive">
+              <p className="text-sm font-semibold text-[var(--danger)] mb-1">
+                {t('reports.error.load_failed')}
+              </p>
+              <p className="text-xs text-[var(--text-muted)] mb-3 break-all">{loadError}</p>
+              <Button variant="secondary" onClick={() => void loadData()}>
+                {t('action.retry')}
+              </Button>
+            </Card>
+          ) : /* Sprint 46 M1 — Le builder reste accessible même sans leads (l'user
+             peut créer un dashboard avant d'avoir de la donnée). */
+          leads.length === 0 && activeTab !== 'builder' && activeTab !== 'scheduled' && activeTab !== 'templates' ? (
             <Card className="p-0">
               <EmptyState
                 variant="first-time"

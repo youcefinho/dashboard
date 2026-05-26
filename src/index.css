@@ -2518,7 +2518,11 @@ mark,
   table { page-break-inside: avoid; }
 
   body::after {
-    content: 'Généré par Intralys CRM — intralys.com';
+    /* LOT WHITE-LABEL APPLY (Sprint 20) — footer PDF piloté par var CSS.
+       Défaut Intralys conservé en fallback (var absente ⇒ texte affiché).
+       Quand remove_powered_by est actif, AppLayout pose --wl-powered-by: ''
+       (masque le texte sans supprimer/casser la règle — non destructif). */
+    content: var(--wl-powered-by, 'Généré par Intralys CRM — intralys.com');
     position: fixed;
     bottom: 0;
     right: 0;
@@ -2534,6 +2538,65 @@ body.pdf-mode-active header,
 body.pdf-mode-active .skip-link,
 body.pdf-mode-active [role="toolbar"]:not(.print-keep) { display: none !important; }
 .print-page-header { display: none; }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   LOT FACTURATION-RÉELLE — gabarit pièce unitaire (facture/devis) conforme QC
+   Injecté en DOM par pdfExport.ts (exportPiecePdf) + révélé via
+   body.pdf-mode-piece. Taxes = champs STOCKÉS serveur (§6.C), zéro recalcul.
+   Sobre/pro : en-tête émetteur, client, lignes, ventilation TPS/TVQ séparée,
+   n° d'inscription, échéance, totaux. */
+.pdf-piece-doc { display: none; }
+body.pdf-mode-piece #main-content,
+body.pdf-mode-piece .pdf-cover-page,
+body.pdf-mode-piece .print-page-header { display: none !important; }
+body.pdf-mode-piece .pdf-piece-doc {
+  display: block;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 8px 0;
+  color: #1a1a1a;
+  font-size: 12px;
+}
+.pdf-piece-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  border-bottom: 2px solid var(--brand-cyan, #0aa);
+  padding-bottom: 12px; margin-bottom: 20px;
+}
+.pdf-piece-issuer { font-size: 18px; font-weight: 700; color: var(--brand-cyan, #0aa); }
+.pdf-piece-title { font-size: 20px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+.pdf-piece-meta {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 32px;
+  margin-bottom: 18px;
+}
+.pdf-piece-meta > div { display: flex; flex-direction: column; gap: 2px; }
+.pdf-piece-meta span { font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; color: #6b7280; }
+.pdf-piece-meta b { font-size: 12px; font-weight: 600; }
+.pdf-piece-desc { margin-bottom: 16px; color: #374151; }
+.pdf-piece-items { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+.pdf-piece-items th {
+  text-align: left; font-size: 9px; text-transform: uppercase; letter-spacing: 0.06em;
+  color: #6b7280; border-bottom: 1px solid #d1d5db; padding: 6px 8px;
+}
+.pdf-piece-items td { padding: 7px 8px; border-bottom: 1px solid #eef0f2; }
+.pdf-piece-items .num { text-align: right; font-variant-numeric: tabular-nums; }
+.pdf-piece-items .muted { color: #9ca3af; text-align: center; }
+.pdf-piece-totals { margin-left: auto; width: 280px; }
+.pdf-piece-totals > div {
+  display: flex; justify-content: space-between; padding: 4px 0;
+  font-variant-numeric: tabular-nums;
+}
+.pdf-piece-totals .grand {
+  border-top: 2px solid #1a1a1a; margin-top: 4px; padding-top: 8px;
+  font-size: 14px; font-weight: 700;
+}
+.pdf-piece-reg {
+  display: flex; gap: 24px; margin-top: 20px; padding-top: 12px;
+  border-top: 1px solid #e5e7eb; font-size: 10px; color: #4b5563;
+}
+.pdf-piece-payment {
+  margin-top: 16px; padding: 10px 12px; border: 1px dashed #d1d5db;
+  border-radius: 6px; font-size: 10px; color: #4b5563; background: #f9fafb;
+}
 
 /* ──────────────────────────────────────────────────────────────────────────
    ── Sprint 39 vague 39-1A — Personality bump : typography hierarchy plus marquée ──
@@ -12716,3 +12779,1686 @@ body.pdf-mode-invoice .credit-note-table th {
     color: #111827;
   }
 }
+
+/* ── LOT A (GIGA-PLAN-V2) — PageHero sobre Stripe ──────────────────────────
+   APPEND-only. Le composant PageHero a échappé au RESET Sprint 38 : il rendait
+   2 orbs décoratifs + un titre `text-gradient-brand` (incohérence #1 sur 21
+   pages). Le rendu est désormais sobre (cf src/components/ui/PageHero.tsx).
+   Cette classe `.page-hero--sober` neutralise tout reliquat de shadow brand /
+   surface décorative qui aurait pu être hérité de classes legacy, et garantit
+   une carte blanche subtle cohérente avec le reste du produit.
+   ⚠️ Les classes legacy `.text-gradient-brand` (index.css:440) et
+   `.hero-stat-orb` (index.css:2378) sont CONSERVÉES (contractuelles, autres
+   consommateurs / signature print). On ne touche QUE ce que PageHero rend. */
+.page-hero--sober {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-xs);
+}
+.page-hero--sober h1 {
+  /* Garde-fou : si un style hérité tentait de réappliquer un gradient brand
+     sur le titre, on force le token texte sobre. */
+  background: none !important;
+  -webkit-text-fill-color: currentColor;
+  color: var(--text-primary);
+}
+
+/* === LOT D Reports Hardening (2026-05-20) ============================
+   Phase B Manager-C : états transversaux des widgets dashboard
+   (loading / error / empty) + scope-bound badge + snapshot indicator.
+   Calque Stripe-sober (Sprint 38 RESET) — pas de glow ni gradient brand.
+   Append-only, aucune classe existante touchée.
+   ===================================================================== */
+
+.db-widget-state {
+  width: 100%;
+  height: 100%;
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 16px;
+  border-radius: 12px;
+}
+
+.db-widget-state__pulse {
+  width: 100%;
+  height: 100%;
+  border-radius: 10px;
+  background: linear-gradient(
+    90deg,
+    var(--bg-subtle) 0%,
+    var(--border-subtle) 50%,
+    var(--bg-subtle) 100%
+  );
+  background-size: 200% 100%;
+  animation: db-widget-state-shimmer 1.4s ease-in-out infinite;
+  opacity: 0.6;
+}
+
+@keyframes db-widget-state-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .db-widget-state__pulse {
+    animation: none;
+    opacity: 0.4;
+  }
+}
+
+.db-widget-state--error .db-widget-state__label,
+.db-widget-state--empty .db-widget-state__label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  line-height: 1.5;
+  max-width: 80%;
+}
+
+.db-widget-state--error {
+  background: color-mix(in srgb, var(--danger) 4%, transparent);
+}
+
+.db-widget-state--error .db-widget-state__label {
+  color: var(--danger);
+}
+
+.db-widget-state--empty {
+  background: var(--bg-subtle);
+}
+
+/* ── Scope-bound badge sur la toolbar du builder ─────────────────── */
+.db-builder__scope {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+}
+
+.db-builder__scope--readonly {
+  margin-left: 0;
+  margin-bottom: 8px;
+  padding: 0 4px;
+}
+
+/* ── Snapshot indicator (page publique SharedDashboard) ──────────── */
+.shared-dashboard-page__audit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.shared-dashboard-page__snapshot-tag {
+  margin-left: 4px;
+}
+
+.shared-dashboard-page__last-view {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ── Carte 404 / lien expiré (page publique) — sober, cohérent app ──── */
+.shared-dashboard-page__error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 48px 32px;
+  text-align: center;
+}
+
+.shared-dashboard-page__error-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+}
+
+.shared-dashboard-page__error-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  max-width: 26ch;
+  text-wrap: balance;
+}
+
+/* === Fin LOT D Reports Hardening ===================================== */
+
+/* === LOT G1 Helpdesk =================================================
+   Manager-C Phase B 2026-05-20. Tables tickets/KB + bulles fil ticket +
+   article public KB. Calque Stripe-sober (border-subtle, tints subtiles,
+   pas de glow/gradient brand). prefers-reduced-motion respecté.
+   ===================================================================== */
+
+/* Tables file tickets & articles KB — grilles légères Stripe-clean. */
+.ticket-table,
+.kb-table {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.ticket-row {
+  display: grid;
+  grid-template-columns: minmax(0, 2.4fr) minmax(0, 1.4fr) auto minmax(0, 1.2fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  text-align: left;
+  width: 100%;
+}
+
+.kb-row {
+  display: grid;
+  grid-template-columns: minmax(0, 2.6fr) minmax(0, 1.2fr) auto auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  text-align: left;
+  width: 100%;
+}
+
+.ticket-row:last-child,
+.kb-row:last-child {
+  border-bottom: none;
+}
+
+.ticket-row--head,
+.kb-row--head {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+  background: var(--bg-subtle);
+}
+
+.ticket-row--clickable {
+  background: transparent;
+  border-left: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  transition: background-color var(--duration-base, 150ms) ease;
+}
+
+.ticket-row--clickable:hover {
+  background: var(--bg-subtle);
+}
+
+.ticket-row--clickable:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+
+.ticket-cell-subject {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ticket-cell-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kb-cell-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: left;
+  background: transparent;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kb-cell-title:hover {
+  color: var(--primary);
+}
+
+.kb-cell-title:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.kb-cell-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.kb-icon-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.kb-icon-link:hover {
+  background: var(--bg-subtle);
+  color: var(--text-primary);
+}
+
+.kb-icon-link--danger:hover {
+  color: var(--danger);
+}
+
+.kb-icon-link:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* Fil ticket — espacement bulles. */
+.ticket-msg {
+  width: 100%;
+}
+
+/* Article KB public — typographie prose simple lisible. */
+.kb-prose {
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--text-primary);
+}
+
+.kb-prose h2 {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 28px 0 10px;
+}
+
+.kb-prose h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 22px 0 8px;
+}
+
+.kb-prose p {
+  margin: 0 0 14px;
+  text-wrap: pretty;
+}
+
+.kb-prose ul,
+.kb-prose ol {
+  margin: 0 0 14px;
+  padding-left: 22px;
+}
+
+.kb-prose li {
+  margin: 4px 0;
+}
+
+.kb-prose a {
+  color: var(--primary);
+  text-decoration: underline;
+}
+
+.kb-prose code {
+  background: var(--bg-subtle);
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  font-size: 0.9em;
+}
+
+/* Article KB public — squelette de chargement (prose) cohérent app. */
+.kb-public-skeleton {
+  --shimmer-from: var(--bg-subtle);
+}
+
+/* Toggle « note interne » du fil ticket — checkbox native stylée sobre. */
+.ticket-note-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.ticket-note-checkbox {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs, 4px);
+  background: var(--bg-surface);
+  cursor: pointer;
+  display: inline-grid;
+  place-content: center;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.ticket-note-checkbox::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 1px;
+  transform: scale(0);
+  transition: transform 120ms ease;
+  background: #fff;
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0, 43% 62%);
+}
+
+.ticket-note-checkbox:checked {
+  background: var(--warning);
+  border-color: var(--warning);
+}
+
+.ticket-note-checkbox:checked::before {
+  transform: scale(1);
+}
+
+.ticket-note-checkbox:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ticket-row--clickable,
+  .kb-icon-link,
+  .kb-cell-title,
+  .ticket-note-checkbox,
+  .ticket-note-checkbox::before {
+    transition: none;
+  }
+}
+
+/* Responsive : sur étroit, masque colonnes secondaires (sujet + statut prioritaires). */
+@media (max-width: 720px) {
+  .ticket-row {
+    grid-template-columns: minmax(0, 2fr) auto auto;
+  }
+  .ticket-row > :nth-child(2),
+  .ticket-row > :nth-child(4),
+  .ticket-row > :nth-child(6) {
+    display: none;
+  }
+  .kb-row {
+    grid-template-columns: minmax(0, 2fr) auto auto;
+  }
+  .kb-row > :nth-child(2),
+  .kb-row > :nth-child(4) {
+    display: none;
+  }
+}
+
+/* === Fin LOT G1 Helpdesk ============================================= */
+
+/* === LOT G6 Segmentation + A/B === */
+/* Stripe-sober : surfaces neutres, bordures subtiles, zéro orb/glow/gradient. */
+
+.segment-card {
+  transition: transform 150ms ease, box-shadow 150ms ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .segment-card {
+    transition: none;
+  }
+}
+
+/* Builder de critères : espacement clair entre blocs */
+.segment-builder .prop-label {
+  margin-bottom: 0.375rem;
+}
+
+/* Aperçu live (footer du panel) */
+.segment-preview-foot strong {
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Échantillon de l'aperçu */
+.segment-sample {
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 0.75rem;
+}
+
+/* Reporting A/B — tableau sobre */
+.abtest-report {
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 0.625rem;
+}
+.abtest-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+.abtest-table th {
+  text-align: left;
+  font-weight: 500;
+  color: var(--text-muted);
+  padding: 0.25rem 0.5rem 0.25rem 0;
+}
+.abtest-table td {
+  padding: 0.375rem 0.625rem 0.375rem 0.5rem;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  border-top: 1px solid var(--border-subtle);
+}
+.abtest-table th:first-child,
+.abtest-table td:first-child {
+  padding-left: 0.5rem;
+}
+/* Zebra subtil (Stripe-sober) — alterne les lignes de données */
+.abtest-table tbody tr:nth-child(even) td {
+  background: var(--bg-subtle);
+}
+.abtest-winner-row td {
+  background: var(--success-subtle, rgba(16, 185, 129, 0.06)) !important;
+}
+/* Spacing cohérent du badge gagnant dans la cellule variante */
+.abtest-winner-row td:first-child {
+  font-weight: 600;
+}
+
+/* Éditeur de variantes A/B */
+.abtest-editor .border-subtle {
+  border-color: var(--border-subtle);
+}
+
+/* Aperçu segment — état vide (0 lead correspondant) */
+.segment-preview-empty {
+  text-align: center;
+  padding: 0.875rem 0.75rem;
+}
+
+/* === Fin LOT G6 Segmentation + A/B === */
+
+/* === LOT G8 AI Workspace conversationnel (Phase B Manager-C) ============== */
+/* Panel assistant IA : sidebar threads + fil de chat. Stripe-sober, additif. */
+
+.aichat-layout {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+}
+
+.aichat-sidebar {
+  width: 200px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border-subtle);
+  padding: 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+}
+
+.aichat-new-thread {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 7px 10px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.aichat-new-thread:hover { background: var(--bg-surface); border-color: var(--primary); }
+.aichat-new-thread:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+.aichat-new-thread:disabled { opacity: 0.6; cursor: default; }
+
+.aichat-threads-title {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  padding: 4px 6px 0;
+}
+
+.aichat-threads-empty {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  padding: 8px 6px;
+}
+
+.aichat-threads-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.aichat-thread-item {
+  display: flex;
+  align-items: center;
+  border-radius: var(--radius-sm);
+  transition: background 0.12s ease;
+}
+.aichat-thread-item:hover { background: var(--bg-subtle); }
+.aichat-thread-item.is-active { background: var(--bg-subtle); }
+.aichat-thread-item.is-active .aichat-thread-title { color: var(--primary); font-weight: 600; }
+
+.aichat-thread-select {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  padding: 7px 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+.aichat-thread-icon { color: var(--text-muted); flex-shrink: 0; }
+.aichat-thread-title {
+  font-size: 0.8125rem;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.aichat-thread-delete {
+  opacity: 0;
+  padding: 4px 6px;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.12s ease, color 0.12s ease;
+}
+.aichat-thread-item:hover .aichat-thread-delete { opacity: 1; }
+.aichat-thread-delete:hover { color: var(--danger, #dc2626); }
+.aichat-thread-delete:focus-visible { opacity: 1; outline: 2px solid var(--primary); outline-offset: 1px; }
+
+.aichat-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.aichat-thread {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.aichat-mock-notice {
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  background: var(--bg-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 6px 14px;
+  text-align: center;
+}
+
+.aichat-messages {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.aichat-loading {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 20px;
+}
+
+.aichat-row { display: flex; }
+.aichat-row--user { justify-content: flex-end; }
+.aichat-row--assistant { justify-content: flex-start; }
+
+.aichat-bubble {
+  max-width: 82%;
+  padding: 9px 12px;
+  border-radius: var(--radius-md, 10px);
+  font-size: 0.8438rem;
+  line-height: 1.5;
+}
+.aichat-bubble--user {
+  background: var(--primary);
+  color: #fff;
+  border-bottom-right-radius: 3px;
+}
+.aichat-bubble--assistant {
+  background: var(--bg-subtle);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  border-bottom-left-radius: 3px;
+}
+
+.aichat-bubble-content > .aichat-md-p { margin: 0 0 6px; }
+.aichat-bubble-content > .aichat-md-p:last-child { margin-bottom: 0; }
+.aichat-md-code {
+  font-family: ui-monospace, monospace;
+  font-size: 0.78em;
+  background: rgba(0, 0, 0, 0.06);
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+.aichat-bubble--user .aichat-md-code { background: rgba(255, 255, 255, 0.18); }
+
+.aichat-bubble--thinking {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Brouillon DRAFT-ONLY (workflow / courriel) — lecture seule + actions */
+.aichat-draft {
+  margin-top: 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  overflow: hidden;
+}
+.aichat-draft-head {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.aichat-draft-raw {
+  margin: 8px;
+  padding: 10px 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.72rem;
+  line-height: 1.55;
+  color: var(--text-primary);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 180px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.aichat-draft-actions {
+  display: flex;
+  gap: 6px;
+  padding: 6px 8px;
+  border-top: 1px solid var(--border-subtle);
+}
+.aichat-draft-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 4px 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.aichat-draft-btn:hover { background: var(--bg-subtle); }
+.aichat-draft-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+.aichat-draft-btn--primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+.aichat-draft-btn--primary:hover { filter: brightness(0.95); }
+
+/* === SPRINT 11 (Copilot v2) — cartes d'action proposée (confirmation humaine) ===
+   Style sobre Stripe : réutilise les tokens existants (--primary/--border-subtle/
+   --bg-surface/--success/--danger). Le bouton « Exécuter » EST la confirmation. */
+.aichat-actions {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.aichat-action-card {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  padding: 8px 10px;
+  transition: border-color 0.12s ease, opacity 0.12s ease;
+}
+.aichat-action-card.is-executed {
+  border-color: color-mix(in oklch, var(--success) 45%, var(--border-subtle));
+  opacity: 0.85;
+}
+.aichat-action-card.is-failed {
+  border-color: color-mix(in oklch, var(--danger) 45%, var(--border-subtle));
+}
+.aichat-action-head {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+}
+.aichat-action-icon { color: var(--primary); }
+.aichat-action-label {
+  margin: 6px 0 8px;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--text-primary);
+}
+.aichat-action-buttons {
+  display: flex;
+  gap: 6px;
+}
+.aichat-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 4px 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, filter 0.12s ease;
+}
+.aichat-action-btn:hover:not(:disabled) { background: var(--bg-subtle); }
+.aichat-action-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+.aichat-action-btn:disabled { opacity: 0.55; cursor: default; }
+.aichat-action-btn--primary {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+.aichat-action-btn--primary:hover:not(:disabled) { filter: brightness(0.95); }
+.aichat-action-result {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+.aichat-action-result--ok { color: var(--success, #16a34a); }
+.aichat-action-result--err { color: var(--danger, #dc2626); margin-bottom: 8px; }
+
+.aichat-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.75rem;
+  color: var(--danger, #dc2626);
+  background: var(--bg-subtle);
+  border-top: 1px solid var(--border-subtle);
+  padding: 8px 14px;
+}
+.aichat-retry-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 3px 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.aichat-retry-btn:hover { background: var(--bg-surface); border-color: var(--primary); }
+.aichat-retry-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+
+.aichat-input-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+}
+.aichat-input {
+  flex: 1;
+  resize: none;
+  max-height: 120px;
+  min-height: 38px;
+  padding: 9px 12px;
+  font-size: 0.8438rem;
+  font-family: inherit;
+  line-height: 1.4;
+  color: var(--text-primary);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  transition: border-color 0.15s ease;
+}
+.aichat-input:focus { outline: none; border-color: var(--primary); }
+.aichat-send-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  color: #fff;
+  background: var(--primary);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: filter 0.15s ease, opacity 0.15s ease;
+}
+.aichat-send-btn:hover:not(:disabled) { filter: brightness(0.95); }
+.aichat-send-btn:disabled { opacity: 0.45; cursor: default; }
+
+.aichat-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: 100%;
+  padding: 32px 20px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.8438rem;
+}
+.aichat-empty--inline { height: auto; padding: 24px; }
+.aichat-empty-icon { color: var(--primary); }
+
+/* Chip d'icône d'invitation (empty = discuter) — distinct du noCap (verrou) */
+.aichat-empty-icon-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary) 20%, transparent);
+}
+
+/* État accès refusé (capability absente) — sober, neutre, sans invitation */
+.aichat-nocap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  height: 100%;
+  padding: 40px 28px;
+  text-align: center;
+}
+.aichat-nocap-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+}
+.aichat-nocap-text {
+  font-size: 0.8438rem;
+  color: var(--text-muted);
+  max-width: 32ch;
+  line-height: 1.55;
+  text-wrap: pretty;
+}
+
+.aichat-suggested {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  max-width: 360px;
+  margin-top: 4px;
+}
+.aichat-suggested-chip {
+  font-size: 0.78rem;
+  padding: 6px 10px;
+  color: var(--text-primary);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.aichat-suggested-chip:hover { background: var(--bg-surface); border-color: var(--primary); color: var(--primary); }
+.aichat-suggested-chip:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+.aichat-shortcut-hint {
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aichat-new-thread,
+  .aichat-thread-item,
+  .aichat-thread-delete,
+  .aichat-draft-btn,
+  .aichat-action-card,
+  .aichat-action-btn,
+  .aichat-input,
+  .aichat-send-btn,
+  .aichat-suggested-chip { transition: none; }
+}
+
+/* === Fin LOT G8 AI Workspace === */
+
+/* === LOT G10 Communauté === */
+/* Onglets Cours / Communauté (espace membre public) — Stripe-sober. */
+.community-tab {
+  padding: 6px 12px;
+  border-radius: var(--radius-md, 8px);
+  font-weight: 500;
+  color: #6b7280;
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.community-tab:hover {
+  color: var(--text-primary, #1a1f36);
+  background: var(--bg-subtle, #f6f8fa);
+}
+.community-tab--active {
+  color: var(--primary, #635bff);
+  background: color-mix(in srgb, var(--primary, #635bff) 8%, transparent);
+  border-color: color-mix(in srgb, var(--primary, #635bff) 20%, transparent);
+}
+
+/* Lignes thread / messages — sobre, hover discret. */
+.community-thread-row {
+  transition: border-color 0.15s, background 0.15s;
+}
+.community-thread-row:hover {
+  background: var(--bg-subtle, #f6f8fa);
+}
+.community-msg {
+  background: var(--bg-surface, #fff);
+}
+
+/* Badges cosmétiques (pinned / locked / cours complété). */
+.community-tag-pinned {
+  color: var(--primary, #635bff);
+}
+.community-tag-locked {
+  color: var(--warning, #c7912c);
+}
+.community-badge-completed {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill, 999px);
+  color: var(--success, #1aab59);
+  background: color-mix(in srgb, var(--success, #1aab59) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--success, #1aab59) 20%, transparent);
+  white-space: nowrap;
+}
+
+/* Squelette de chargement léger (espace membre public — sans primitive). */
+.community-skel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 0;
+}
+.community-skel-bar {
+  height: 12px;
+  border-radius: var(--radius-sm, 6px);
+  background: linear-gradient(
+    90deg,
+    var(--bg-subtle, #f6f8fa) 25%,
+    color-mix(in srgb, var(--bg-subtle, #f6f8fa) 60%, #fff) 50%,
+    var(--bg-subtle, #f6f8fa) 75%
+  );
+  background-size: 200% 100%;
+  animation: community-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes community-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── Modération PRO (CoursesAdmin) — listing inline sobre Stripe. ────────── */
+.mod-thread-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 0;
+}
+.mod-thread-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+  text-align: left;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary, #1a1f36);
+}
+.mod-thread-chevron {
+  flex-shrink: 0;
+  color: var(--text-muted, #6b7280);
+  transition: transform 0.15s ease;
+}
+.mod-thread-title:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm, 6px);
+}
+.mod-thread-body {
+  padding: 4px 0 14px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.mod-section-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted, #6b7280);
+  margin-bottom: 6px;
+}
+.mod-empty {
+  font-size: 12px;
+  color: var(--text-muted, #6b7280);
+}
+.mod-item-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mod-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-subtle, #e6e9ee);
+  border-radius: var(--radius-md, 8px);
+  background: var(--bg-surface, #fff);
+}
+.mod-item-body {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-primary, #1a1f36);
+  white-space: pre-wrap;
+  word-break: break-word;
+  min-width: 0;
+  flex: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .community-tab,
+  .community-thread-row,
+  .mod-thread-chevron {
+    transition: none;
+  }
+  .community-skel-bar {
+    animation: none;
+  }
+}
+/* === Fin LOT G10 Communauté === */
+
+/* === LOT G2 Affiliation === */
+/* Stripe-sober : réutilise table-premium, ajoute hover quick-actions + code chip.
+   Zéro orb/glow/gradient. Bloc appendé en fin de fichier (Manager-2 exclusif). */
+
+/* Quick-actions de ligne révélées au hover/focus (éditer / supprimer) */
+.table-premium tbody tr.affiliate-row .row-quick-actions {
+  opacity: 0;
+  transform: translateX(4px);
+  transition: opacity var(--duration-fast, 120ms) var(--ease, ease),
+    transform var(--duration-fast, 120ms) var(--ease, ease);
+}
+.table-premium tbody tr.affiliate-row:hover .row-quick-actions,
+.table-premium tbody tr.affiliate-row:focus-within .row-quick-actions {
+  opacity: 1;
+  transform: translateX(0);
+}
+/* Toujours visibles au focus clavier (accessibilité) */
+.table-premium tbody tr.affiliate-row:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+.table-premium tbody tr.affiliate-row:focus-visible td:first-child {
+  border-left: 2px solid var(--primary);
+}
+
+/* Code chip sobre pour l'explication du lien d'affiliation public */
+.affiliate-link-code {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md, 6px);
+  padding: 0.25rem 0.5rem;
+  word-break: break-all;
+}
+.affiliate-link-code__var {
+  color: var(--primary);
+  background: var(--primary-soft);
+  border-radius: var(--radius-sm, 4px);
+  padding: 0 0.3125rem;
+  font-weight: 500;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .table-premium tbody tr.affiliate-row .row-quick-actions {
+    transition: none;
+    transform: none;
+  }
+}
+/* === Fin LOT G2 === */
+
+/* === LOT G9 White-label === */
+/* UI domaine personnalisé (BrandingSettings) — Stripe-grade subtle.
+   Réutilise au max les vars/primitives existantes ; aucune décoration. */
+.g9-domain-empty {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  padding: 0.75rem 0;
+}
+.g9-domain-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0.25rem 0 1rem;
+}
+.g9-domain-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.625rem 0.875rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md, 0.625rem);
+  background: var(--bg-surface);
+}
+.g9-domain-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+.g9-domain-host {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.g9-domain-meta {
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+}
+.g9-domain-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+.g9-domain-add {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.g9-domain-note {
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  margin-top: 0.625rem;
+}
+/* === Fin LOT G9 === */
+
+/* === LOT G4 OAuth === */
+/* Hint d'honnêteté sur les cartes OAuth (Google Calendar / Slack) :
+   la connexion n'aboutit que si les credentials serveur sont configurés. */
+.oauth-config-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+  font-size: 0.625rem;
+  line-height: 1.2;
+  color: var(--text-muted);
+}
+/* === Fin LOT G4 === */
+
+/* === LOT G7 Marketplace === */
+/* Étoiles de notation — lecture (rating_avg) + interactive (review form). */
+.mk-stars {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+}
+.mk-star {
+  color: var(--border-strong);
+}
+.mk-star--on {
+  color: var(--warning);
+  fill: var(--warning);
+}
+.mk-star-btn {
+  display: inline-flex;
+  padding: 2px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  transition: transform 120ms ease;
+}
+.mk-star-btn:hover {
+  transform: scale(1.12);
+}
+.mk-star-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--primary-ring);
+}
+
+/* Card catalogue — léger lift Stripe-sober au survol (calque .mk via card). */
+.mk-card {
+  transition:
+    transform 140ms ease,
+    box-shadow 140ms ease;
+}
+.mk-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+/* Description tronquée 2 lignes dans les cards catalogue. */
+.mk-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Aperçu lisible de la structure d'un modèle (jamais le JSON brut). */
+.mk-structure {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-subtle);
+  width: fit-content;
+}
+
+/* Sélecteur de catégorie compact dans la barre de filtres. */
+.mk-cat-select {
+  min-width: 11rem;
+}
+/* === Fin LOT G7 === */
+
+/* === Sprint A Reporting planifié === */
+/* Onglet « Planifiés » de Reports.tsx — liste de rapports envoyés par courriel.
+   Calque le pattern .db-list-* (Stripe-grade subtle). */
+.sched-report-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+.sched-report-card {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.sched-report-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.sched-report-card__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sched-report-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.sched-report-card__chip {
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 2px 8px;
+}
+.sched-report-card__dates {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 0;
+}
+.sched-report-card__dates dt {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+.sched-report-card__dates dd {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.sched-report-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+.sched-report-card__icon-btn {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+.sched-report-card__icon-btn:hover {
+  background: var(--bg-subtle);
+  color: var(--text-primary);
+}
+.sched-report-card__icon-btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+.sched-report-card__icon-btn--danger:hover {
+  background: rgba(239, 68, 68, 0.08);
+  color: var(--danger);
+  border-color: rgba(239, 68, 68, 0.4);
+}
+@media (prefers-reduced-motion: reduce) {
+  .sched-report-card__icon-btn {
+    transition: none !important;
+  }
+}
+/* === Fin Sprint A === */
+
+/* === Sprint C IA proactive === */
+/* Widget alertes IA proactive (ProactiveAlertsWidget). SUBTLE Stripe-grade :
+   surface Card existante + structure légère. Pas d'orb/glow/gradient brand. */
+.proactive-widget-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.proactive-widget-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+  color: var(--primary);
+  flex-shrink: 0;
+}
+.proactive-widget-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+.proactive-widget-loading {
+  font-size: 13px;
+  color: var(--text-muted);
+  padding: 4px 0;
+}
+.proactive-widget-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.proactive-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 8px;
+  border-radius: var(--radius-md);
+  border-top: 1px solid var(--border);
+  transition: background-color var(--duration-base, 150ms) var(--ease, ease);
+}
+.proactive-alert:first-child { border-top: none; }
+.proactive-alert:hover { background: var(--bg-hover); }
+.proactive-alert--seen { opacity: 0.6; }
+.proactive-alert-kind {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.proactive-alert-body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.proactive-alert-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 2px;
+}
+.proactive-alert-cat {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+.proactive-alert-date {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+.proactive-alert-headline {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-wrap: pretty;
+}
+.proactive-alert-text {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-top: 2px;
+  text-wrap: pretty;
+}
+.proactive-alert-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+@media (max-width: 640px) {
+  .proactive-alert { flex-wrap: wrap; }
+  .proactive-alert-actions { width: 100%; justify-content: flex-end; }
+}
+/* === Fin Sprint C === */
+
+/* === Sprint D Attribution === */
+/* Heatmap de cohortes (CohortHeatmap.tsx) — onglet « Cohortes » de Reports. */
+.cohort-heatmap-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.cohort-heatmap {
+  border-collapse: separate;
+  border-spacing: 3px;
+  width: 100%;
+  font-size: 12px;
+}
+.cohort-heatmap__th {
+  font-weight: 500;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 4px 6px;
+  white-space: nowrap;
+}
+.cohort-heatmap__th--month,
+.cohort-heatmap__th--size { text-align: left; }
+.cohort-heatmap__th--span { text-align: left; }
+.cohort-heatmap__th--col { font-variant-numeric: tabular-nums; }
+.cohort-heatmap__month {
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  padding: 6px 8px;
+}
+.cohort-heatmap__size {
+  color: var(--text-muted);
+  text-align: right;
+  padding: 6px 8px;
+  font-variant-numeric: tabular-nums;
+}
+.cohort-heatmap__cell {
+  text-align: center;
+  padding: 8px 6px;
+  min-width: 48px;
+  border-radius: 6px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  transition: filter 0.12s ease;
+}
+.cohort-heatmap__cell:hover { filter: brightness(0.94); }
+/* === Fin Sprint D === */
+
+/* === Sprint E Portail === */
+/* Onglets nav 360 du portail client PUBLIC (PortalSpace). Calque exact des
+   community-tab (Stripe-sober : soft tint primary, border 20%, pill). Zéro
+   orb/glow/gradient. Bloc appendé en fin de fichier (Manager-C exclusif). */
+.portal-tab {
+  padding: 6px 12px;
+  border-radius: var(--radius-md, 8px);
+  font-weight: 500;
+  color: var(--text-muted, #697386);
+  background: transparent;
+  border: 1px solid transparent;
+  transition: color 0.12s ease, background 0.12s ease, border-color 0.12s ease;
+}
+.portal-tab:hover {
+  color: var(--text-primary, #1a1f36);
+  background: var(--bg-subtle, #f6f8fa);
+}
+.portal-tab--active {
+  color: var(--primary, #635bff);
+  background: color-mix(in srgb, var(--primary, #635bff) 8%, transparent);
+  border-color: color-mix(in srgb, var(--primary, #635bff) 20%, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .portal-tab {
+    transition: none;
+  }
+  .portal-spinner {
+    animation: none;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Sprint 29 — a11y AAA + design convergence (2026-05-23)
+   Catchall reduced-motion fallback + touch-target AAA mobile.
+   APPEND-ONLY (no edit existing rules).
+   ────────────────────────────────────────────────────────────────────── */
+
+/* M2.1 — Catchall reduced-motion : safety net pour les composants qui
+   définissent leurs propres animations hors des règles ciblées existantes
+   (Sprint 32-48 ont 40+ blocs ciblés). Les règles spécifiques restent
+   prioritaires car spécifiques. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* M2.2 — Touch-target AAA (WCAG 2.5.5) : 44×44px minimum sur pointers
+   coarse (touchscreen). Ne touche PAS le design Stripe-clean desktop
+   (mouse/trackpad = pointer fine, h-8/h-9/h-10 conservé). */
+@media (pointer: coarse) {
+  button:not([class*="h-11"]):not([class*="h-12"]):not([class*="link"]),
+  [role="button"]:not([class*="h-11"]):not([class*="h-12"]),
+  a[role="button"] {
+    min-height: 44px;
+  }
+  /* Icon-only buttons : largeur 44px aussi */
+  button[aria-label]:not(:has(> :not(svg))):not([class*="w-11"]):not([class*="w-12"]) {
+    min-width: 44px;
+  }
+}
+
+/* ── Fin Sprint 29 ──────────────────────────────────────── */
+/* === Fin Sprint E === */

@@ -26,6 +26,10 @@ import { json, sanitizeInput } from './helpers';
 import { getClientModules } from './modules';
 import { createOrderCore } from './ecommerce-orders';
 import { computeTax } from './ecommerce-tax-engine';
+// Sprint 4 — résolution coupon EN AMONT (réutilise le cœur Manager-B,
+// zéro duplication). On passe le montant résolu au `discount_cents`
+// EXISTANT de createOrderCore — createOrderCore reste INCHANGÉ (§6.C).
+import { resolveCouponDiscount, incrementCouponUsage } from './ecommerce-coupons';
 // S3 M2 — validation d'entrée (schéma M1 figé, import only).
 import { validate, addCartItemSchema, updateCartItemSchema } from '../lib/schemas';
 import { validationError } from './lib/validate-response';
@@ -402,6 +406,42 @@ export async function handleConvertCart(
     );
   }
 
+  // ── Sprint 4 — résolution coupon EN AMONT (Manager-B) ──────────────────
+  // SI un code promo est fourni, on calcule le `discount_cents` via le cœur
+  // partagé resolveCouponDiscount (borné tenant, fenêtre/quota/plancher/
+  // devise). Le montant remplace `body.discount_cents` et est passé au
+  // paramètre EXISTANT de createOrderCore — createOrderCore et le calcul
+  // total restent INCHANGÉS (§6.C : subtotal→-discount→taxe→+shipping).
+  // Best-effort : table coupons absente / code invalide ⇒ pas de remise,
+  // la conversion se poursuit (un code invalide ne bloque pas la commande).
+  let discountCents = body.discount_cents as number | undefined;
+  let appliedCouponId: string | null = null;
+  const promoCode = sanitizeInput((body.code as string) || (body.coupon_code as string) || '', 60);
+  if (promoCode) {
+    // Sous-total panier (prix effectif × qté) — même source que shapeCart,
+    // sert uniquement à vérifier le plancher min_order_cents du coupon.
+    const { results: priced } = await env.DB.prepare(
+      `SELECT ci.quantity AS quantity,
+              COALESCE(v.price_override, p.base_price, 0) AS unit_price_cents
+         FROM cart_items ci
+         JOIN product_variants v ON v.id = ci.variant_id
+         JOIN products p ON p.id = v.product_id AND p.client_id = ?
+        WHERE ci.cart_id = ?`,
+    ).bind(clientId, cart.id).all();
+    const subtotalCents = ((priced || []) as Array<{ quantity: number; unit_price_cents: number }>)
+      .reduce((s, ln) => s
+        + Math.max(0, Math.round(ln.unit_price_cents || 0))
+          * Math.max(1, Math.round(ln.quantity || 1)), 0);
+    const couponCurrency = body.currency ? String(body.currency) : null;
+    const resolved = await resolveCouponDiscount(
+      env, clientId, promoCode, subtotalCents, couponCurrency,
+    );
+    if (resolved.valid && resolved.discount_cents > 0) {
+      discountCents = resolved.discount_cents;
+      appliedCouponId = resolved.couponId ?? null;
+    }
+  }
+
   try {
     const result = await createOrderCore(
       env,
@@ -414,7 +454,7 @@ export async function handleConvertCart(
           quantity: Math.max(1, Math.round(l.quantity || 1)),
         })),
         shipping_cents: body.shipping_cents as number,
-        discount_cents: body.discount_cents as number,
+        discount_cents: discountCents,
         note: body.note as string,
         source: 'cart',
       },
@@ -428,6 +468,13 @@ export async function handleConvertCart(
               updated_at = datetime('now')
         WHERE id = ? AND client_id = ?`,
     ).bind(cart.id, clientId).run();
+
+    // Sprint 4 — incrémente le compteur d'usage du coupon appliqué
+    // (best-effort, borné tenant, jamais bloquant). Uniquement APRÈS succès
+    // de createOrderCore + marquage panier converti.
+    if (appliedCouponId) {
+      await incrementCouponUsage(env, clientId, appliedCouponId);
+    }
 
     return json(
       {

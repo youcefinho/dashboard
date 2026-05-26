@@ -317,19 +317,34 @@ export async function createOrderCore(
   const orderNumber = await nextOrderNumber(env, clientId);
   const orderId = crypto.randomUUID();
 
+  // Sprint 4 (LOT-ECOM4 §6.F) — multi-devise : persistance de la devise du
+  // tenant à l'INSERT (avant : orders.currency restait DEFAULT 'CAD'). SEULE
+  // addition au contrat figé. Résolution best-effort via le résolveur EXISTANT
+  // resolveRegionContext (ecommerce-region.ts:204, currency ∈ CAD/EUR/DZD) ;
+  // tout échec ⇒ fallback 'CAD' = comportement actuel (régression-zéro QC).
+  // AUCUN taux de change, JAMAIS sommé multi-devise. La signature de
+  // createOrderCore et le calcul de total (subtotal/discount/taxe/shipping)
+  // restent BYTE-IDENTIQUES — la devise n'entre dans AUCUN calcul.
+  let orderCurrency = 'CAD';
+  try {
+    const { resolveRegionContext } = await import('./ecommerce-region');
+    const ctx = await resolveRegionContext(env, clientId);
+    if (ctx?.currency) orderCurrency = ctx.currency;
+  } catch { /* best-effort : fallback 'CAD' = comportement actuel */ }
+
   await env.DB.prepare(
     `INSERT INTO orders
        (id, client_id, customer_id, order_number, status, financial_status,
         fulfillment_status, subtotal_cents, tps_cents, tvq_cents,
         shipping_cents, discount_cents, total_cents, email, note, source,
-        tax_region, tax_breakdown_json, placed_at)
+        tax_region, tax_breakdown_json, currency, placed_at)
      VALUES (?, ?, ?, ?, 'pending', 'unpaid', 'unfulfilled', ?, ?, ?, ?, ?, ?,
-             ?, ?, ?, ?, ?, datetime('now'))`,
+             ?, ?, ?, ?, ?, ?, datetime('now'))`,
   ).bind(
     orderId, clientId, customerId, orderNumber,
     subtotalCents, tpsCents, tvqCents, shippingCents, discountCents, totalCents,
     email, note, source,
-    regime.toUpperCase(), taxBreakdownJson,
+    regime.toUpperCase(), taxBreakdownJson, orderCurrency,
   ).run();
 
   for (const r of resolved) {

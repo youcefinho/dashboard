@@ -1,6 +1,27 @@
 // ── Tests mock-anthropic.ts — réponses prédéfinies ──
 import { describe, it, expect } from 'vitest';
 import { mockClaude } from '../mocks/mock-anthropic';
+import { isAiMockMode } from '../ai';
+import type { Env } from '../types';
+
+// ── LOT RÉEL §6.1 — isAiMockMode (source de vérité mode mock IA) ──
+describe('isAiMockMode', () => {
+  it('retourne true quand aucune clé Anthropic n\'est configurée', () => {
+    expect(isAiMockMode({} as unknown as Env)).toBe(true);
+  });
+
+  it('retourne true quand USE_MOCKS === "true" même avec une clé', () => {
+    expect(isAiMockMode({ ANTHROPIC_API_KEY: 'sk-ant-real', USE_MOCKS: 'true' } as unknown as Env)).toBe(true);
+  });
+
+  it('retourne false quand une vraie clé Anthropic est présente et USE_MOCKS absent', () => {
+    expect(isAiMockMode({ ANTHROPIC_API_KEY: 'sk-ant-real' } as unknown as Env)).toBe(false);
+  });
+
+  it('retourne false quand USE_MOCKS a une valeur non-"true" avec clé', () => {
+    expect(isAiMockMode({ ANTHROPIC_API_KEY: 'sk-ant-real', USE_MOCKS: 'false' } as unknown as Env)).toBe(false);
+  });
+});
 
 describe('mockClaude', () => {
   it('retourne un score 0-100 pour un prompt de scoring', () => {

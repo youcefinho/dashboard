@@ -4,12 +4,21 @@ import { useState, useEffect, useRef, useCallback, type ReactNode, type MouseEve
 import { Sidebar } from './Sidebar';
 import { useNavigate, Link, useRouterState } from '@tanstack/react-router';
 import { CommandPalette } from '@/components/CommandPalette';
+// LOT G8 — Assistant IA conversationnel global (panel slide-over, ouvert Cmd+/)
+import { AiAssistantPanel } from '@/components/assistant/AiAssistantPanel';
+// SPRINT 11 (Copilot v2) — contexte de page courante transmis à l'assistant
+import type { AiPageContext } from '@/lib/types';
 import { KeyboardShortcutsModal } from '@/components/KeyboardShortcutsModal';
 import { QuickAddFab } from '@/components/QuickAddFab';
 import { ActivityFeedPanel } from '@/components/ActivityFeedPanel';
 import { Activity as ActivityIcon } from 'lucide-react';
 import { useTheme } from '@/lib/useTheme';
-import { getNotifications, markNotificationRead, markAllNotificationsRead, type NotificationItem } from '@/lib/api';
+import { getNotifications, markNotificationRead, markAllNotificationsRead, getClientBranding, getActiveSubAccount, type NotificationItem } from '@/lib/api';
+// LOT WHITE-LABEL APPLY (Sprint 20) — propagation front du branding tenant.
+// applyTenantBranding/resetTenantBranding FIGÉS Phase A (on les APPELLE, jamais
+// on ne les modifie). Manager-C — owned AppLayout.tsx.
+import { applyTenantBranding, resetTenantBranding } from '@/lib/applyBranding';
+import type { TenantBranding, ClientBrandingMeta } from '@/lib/types';
 import { Search, Bell, Moon, Sun, Menu, Plus, Rows3, Rows2, Rows4, Check, X as XIcon, ExternalLink, BellOff, WifiOff } from 'lucide-react';
 import { Icon } from '@/components/ui';
 import { useDensity } from '@/lib/useDensity';
@@ -135,6 +144,109 @@ function routeCategoryFor(pathname: string): 'workspace' | 'inbox' | 'settings' 
   return 'default';
 }
 
+// ── SPRINT 11 (Copilot v2) — contexte de page courante pour l'assistant ──────
+// Best-effort, optionnel : dérive { route, entity_type?, entity_id? } depuis le
+// pathname courant. RE-VALIDÉ + RE-BORNÉ tenant worker-side (aucune confiance
+// accordée à ces valeurs ; le front n'envoie JAMAIS de client_id). On ne mappe
+// que les entités sûres dont l'id figure directement dans l'URL.
+function derivePageContext(pathname: string): AiPageContext {
+  const ctx: AiPageContext = { route: pathname };
+  // Détecte /<segment>/<id> pour les entités CRM connues (id = segment non vide
+  // qui n'est pas un sous-onglet réservé comme 'new'/'import'). Best-effort.
+  const ENTITY_BY_SEGMENT: Record<string, string> = {
+    leads: 'lead',
+    tasks: 'task',
+    pipeline: 'lead',
+    conversations: 'conversation',
+    calendar: 'appointment',
+  };
+  const reserved = new Set(['new', 'import', 'export', 'create']);
+  const parts = pathname.split('/').filter(Boolean);
+  if (parts.length >= 2) {
+    const seg = parts[0]!;
+    const id = parts[1]!;
+    const entity = ENTITY_BY_SEGMENT[seg];
+    if (entity && id && !reserved.has(id)) {
+      ctx.entity_type = entity;
+      ctx.entity_id = id;
+    }
+  }
+  return ctx;
+}
+
+// ── LOT WHITE-LABEL APPLY (Sprint 20) — propagation du branding tenant ────────
+// Évènement window diffusant le branding résolu du sous-compte actif, écouté par
+// la Sidebar (logo/nom conditionnels) sans état partagé (api.ts/types.ts FIGÉS).
+const WL_BRANDING_EVENT = 'intralys:branding';
+
+// Désérialise la colonne `branding` JSON (best-effort) en métadonnées tolérantes
+// aux deux graphies (company_name canonique | companyName historique).
+function parseBrandingMeta(raw: string | null | undefined): ClientBrandingMeta {
+  if (!raw) return {};
+  try {
+    return JSON.parse(raw) as ClientBrandingMeta;
+  } catch {
+    return {}; // branding non-JSON (legacy) ⇒ pas de méta, défaut Intralys
+  }
+}
+
+// Pilote le footer PDF (index.css `body::after`) via la var --wl-powered-by :
+// remove_powered_by ⇒ '' (masqué, non destructif) ; sinon on retire l'override
+// (var absente ⇒ défaut Intralys du fallback CSS). Best-effort, SSR-safe.
+function applyPoweredByVar(removePoweredBy: boolean): void {
+  if (typeof document === 'undefined') return;
+  try {
+    const root = document.documentElement;
+    if (removePoweredBy) {
+      root.style.setProperty('--wl-powered-by', "''");
+    } else {
+      root.style.removeProperty('--wl-powered-by');
+    }
+  } catch {
+    /* best-effort */
+  }
+}
+
+// Résout + applique le branding du sous-compte actif (best-effort, jamais throw).
+// Reset complet si aucun branding (rétro-compat byte : couleurs/footer Intralys).
+async function resolveAndApplyBranding(): Promise<void> {
+  try {
+    const clientId = getActiveSubAccount();
+    if (!clientId) {
+      // Legacy/mono-tenant : aucun sous-compte ⇒ défaut Intralys.
+      resetTenantBranding();
+      applyPoweredByVar(false);
+      try { window.dispatchEvent(new CustomEvent(WL_BRANDING_EVENT, { detail: null })); } catch { /* ignore */ }
+      return;
+    }
+    const res = await getClientBranding(clientId);
+    const d = res.data;
+    if (!d) {
+      resetTenantBranding();
+      applyPoweredByVar(false);
+      try { window.dispatchEvent(new CustomEvent(WL_BRANDING_EVENT, { detail: null })); } catch { /* ignore */ }
+      return;
+    }
+    const meta = parseBrandingMeta(d.branding);
+    const branding: TenantBranding = {
+      primary_color: d.primary_color,
+      accent_color: d.accent_color,
+      logo_url: d.logo_url,
+      company_name: meta.company_name || meta.companyName,
+      favicon: meta.favicon,
+      remove_powered_by: meta.remove_powered_by === true,
+    };
+    // Reset d'abord (au changement de sous-compte, on repart d'un état propre)
+    // puis applique le branding du tenant courant.
+    resetTenantBranding();
+    applyTenantBranding(branding);
+    applyPoweredByVar(branding.remove_powered_by === true);
+    try { window.dispatchEvent(new CustomEvent(WL_BRANDING_EVENT, { detail: branding })); } catch { /* ignore */ }
+  } catch {
+    /* propagation best-effort : ne bloque jamais le boot */
+  }
+}
+
 export function AppLayout({ children, title }: AppLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -142,6 +254,8 @@ export function AppLayout({ children, title }: AppLayoutProps) {
   const [notifPanelOpen, setNotifPanelOpen] = useState(false);
   const toast = useToast();
   const [cmdOpen, setCmdOpen] = useState(false);
+  // LOT G8 — état d'ouverture du panel assistant IA (raccourci Cmd+/)
+  const [assistantOpen, setAssistantOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   // Sprint 24 vague 3A — filter persisted in sessionStorage
@@ -344,6 +458,25 @@ export function AppLayout({ children, title }: AppLayoutProps) {
     };
   }, []);
 
+  // ── LOT WHITE-LABEL APPLY (Sprint 20) — applique le branding du sous-compte
+  //    actif au boot, puis ré-applique à chaque changement de sous-compte.
+  //    Borné tenant (getActiveSubAccount). Best-effort : jamais de throw, jamais
+  //    de blocage du boot. Sans branding ⇒ reset (couleurs/footer Intralys).
+  useEffect(() => {
+    void resolveAndApplyBranding();
+    // Le sous-compte actif est stocké en localStorage (clé X-Sub-Account) :
+    // un changement déclenche un `storage` event (autres onglets) et, dans
+    // l'onglet courant, un `focus` (retour sur l'app après switch) — on
+    // ré-applique dans les deux cas (best-effort, idempotent).
+    const reapply = () => { void resolveAndApplyBranding(); };
+    window.addEventListener('storage', reapply);
+    window.addEventListener('focus', reapply);
+    return () => {
+      window.removeEventListener('storage', reapply);
+      window.removeEventListener('focus', reapply);
+    };
+  }, []);
+
   const loadNotifications = useCallback(async () => {
     try {
       const res = await getNotifications({ limit: 20 });
@@ -396,6 +529,12 @@ export function AppLayout({ children, title }: AppLayoutProps) {
     if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
       e.preventDefault();
       setCmdOpen(prev => !prev);
+    }
+    // LOT G8 — Cmd+/ (Meta+Slash / Ctrl+Slash) toggle l'assistant IA.
+    // Calque exact la détection cmd+K ci-dessus. Ne casse PAS cmd+K.
+    if ((e.metaKey || e.ctrlKey) && e.key === '/') {
+      e.preventDefault();
+      setAssistantOpen(prev => !prev);
     }
   }, []);
 
@@ -780,6 +919,13 @@ export function AppLayout({ children, title }: AppLayoutProps) {
       <NetworkStatusBanner />
 
       <CommandPalette isOpen={cmdOpen} onClose={() => setCmdOpen(false)} />
+      {/* LOT G8 — Assistant IA conversationnel (panel slide-over droit, Cmd+/) */}
+      {/* SPRINT 11 — contexte de page courante (route + entité) dérivé du pathname */}
+      <AiAssistantPanel
+        open={assistantOpen}
+        onOpenChange={setAssistantOpen}
+        pageContext={derivePageContext(routerLocation.pathname)}
+      />
       <KeyboardShortcutsModal />
       <QuickAddFab />
       <ActivityFeedPanel open={activityOpen} onOpenChange={setActivityOpen} />

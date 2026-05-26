@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Chat en direct</title>
+  <style>
+    :root {
+      --primary: #3b82f6;
+      --primary-dark: rgba(0, 0, 0, 0.12);
+      --bg: #ffffff;
+      --bg-alt: #f8fafc;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --danger: #dc2626;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg); color: var(--text);
+      display: flex; flex-direction: column;
+      font-size: 14px;
+    }
+
+    /* Header ─────────────────────────────────────────── */
+    #header {
+      background: var(--primary); color: #fff;
+      padding: 12px 14px;
+      display: flex; align-items: center; gap: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,.08);
+      flex-shrink: 0;
+    }
+    #avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: rgba(255,255,255,.22); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 600; font-size: 15px;
+      flex-shrink: 0;
+    }
+    #header-meta { flex: 1; min-width: 0; }
+    #h-name { font-weight: 600; line-height: 1.2; }
+    #h-status { font-size: 11px; opacity: .88; line-height: 1.2; display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+    #h-status .dot { width: 7px; height: 7px; border-radius: 50%; background: #16a34a; box-shadow: 0 0 0 2px rgba(255,255,255,.25); }
+    #h-status.offline .dot { background: #cbd5e1; box-shadow: none; }
+    #close-btn {
+      background: rgba(255,255,255,.16); border: 0; color: #fff;
+      width: 30px; height: 30px; border-radius: 8px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background .15s;
+    }
+    #close-btn:hover { background: rgba(255,255,255,.28); }
+
+    /* Content ─────────────────────────────────────────── */
+    #content { flex: 1; overflow: hidden; position: relative; display: flex; flex-direction: column; min-height: 0; }
+
+    /* Prechat form */
+    #prechat { padding: 20px 18px 18px; background: var(--bg-alt); overflow-y: auto; }
+    #prechat .lead {
+      font-size: 13px; color: var(--text-muted); line-height: 1.5;
+      margin: 0 0 14px;
+    }
+    .field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
+    .field label { font-size: 12px; font-weight: 500; color: var(--text-muted); }
+    .field input {
+      padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+      font-size: 14px; outline: none; transition: border-color .15s;
+      background: #fff; color: var(--text);
+      font-family: inherit;
+    }
+    .field input:focus { border-color: var(--primary); }
+    .honeypot { position: absolute; left: -9999px; top: -9999px; height: 0; width: 0; opacity: 0; pointer-events: none; }
+    .btn-primary {
+      width: 100%; padding: 11px;
+      background: var(--primary); color: #fff; border: 0; border-radius: 8px;
+      font-weight: 600; font-size: 14px; cursor: pointer;
+      transition: filter .15s; margin-top: 4px;
+      font-family: inherit;
+    }
+    .btn-primary:hover { filter: brightness(1.08); }
+    .btn-primary:disabled { opacity: .55; cursor: progress; }
+    #prechat-error { color: var(--danger); font-size: 12px; margin: 4px 0 0; min-height: 16px; }
+    #turnstile-container { margin: 10px 0; min-height: 65px; }
+
+    /* Chat view */
+    #chat-view { flex: 1; display: none; flex-direction: column; min-height: 0; }
+    #messages {
+      flex: 1; padding: 14px;
+      overflow-y: auto; background: var(--bg-alt);
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .msg {
+      display: flex; flex-direction: column;
+      max-width: 82%;
+      animation: __fadein .18s ease-out;
+    }
+    @keyframes __fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+    .msg.visitor { align-self: flex-end; align-items: flex-end; }
+    .msg.agent   { align-self: flex-start; align-items: flex-start; }
+    .msg.system  { align-self: center; max-width: 100%; }
+    .msg .author { font-size: 11px; color: var(--text-muted); margin: 0 4px 3px; }
+    .bubble {
+      padding: 9px 13px; border-radius: 14px; font-size: 14px;
+      line-height: 1.42; word-wrap: break-word; overflow-wrap: anywhere;
+    }
+    .msg.visitor .bubble { background: var(--primary); color: #fff; border-bottom-right-radius: 4px; }
+    .msg.agent   .bubble { background: #fff; color: var(--text); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+    .msg.system  .bubble { background: transparent; color: var(--text-muted); font-size: 12px; padding: 4px 8px; text-align: center; }
+
+    /* Typing dots */
+    .typing { display: inline-flex; gap: 4px; padding: 10px 14px; background: #fff; border: 1px solid var(--border); border-radius: 14px; border-bottom-left-radius: 4px; }
+    .typing span { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); animation: __dots 1.2s ease-in-out infinite; }
+    .typing span:nth-child(2) { animation-delay: .15s; }
+    .typing span:nth-child(3) { animation-delay: .3s; }
+    @keyframes __dots { 0%,80%,100% { transform: scale(.7); opacity: .5; } 40% { transform: scale(1); opacity: 1; } }
+
+    /* Input area */
+    #input-area {
+      padding: 10px 12px; background: #fff; border-top: 1px solid var(--border);
+      display: flex; gap: 8px; align-items: center;
+      flex-shrink: 0;
+    }
+    #chat-input {
+      flex: 1; padding: 10px 14px; border: 1px solid var(--border);
+      border-radius: 20px; font-size: 14px; outline: none;
+      font-family: inherit; color: var(--text);
+    }
+    #chat-input:focus { border-color: var(--primary); }
+    #send-btn {
+      background: var(--primary); color: #fff; border: 0;
+      width: 38px; height: 38px; border-radius: 50%; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: transform .15s, filter .15s; flex-shrink: 0;
+    }
+    #send-btn:hover { transform: scale(1.05); }
+    #send-btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+
+    /* Connection status banner */
+    #conn-banner {
+      padding: 6px 10px; background: #fef3c7; color: #92400e;
+      font-size: 11px; text-align: center; display: none; border-bottom: 1px solid #fde68a;
+    }
+    #conn-banner.show { display: block; }
+
+    /* Offline form */
+    #offline-form { padding: 20px 18px; background: var(--bg-alt); overflow-y: auto; display: none; }
+    #offline-form h3 { margin: 0 0 6px; font-size: 15px; color: var(--text); }
+    #offline-form p { margin: 0 0 14px; font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+    #offline-form textarea {
+      width: 100%; min-height: 90px; padding: 10px 12px;
+      border: 1px solid var(--border); border-radius: 8px;
+      font-size: 14px; outline: none; resize: vertical;
+      font-family: inherit; color: var(--text);
+    }
+    #offline-form textarea:focus { border-color: var(--primary); }
+    #offline-success { color: #047857; font-size: 13px; margin-top: 10px; display: none; }
+  </style>
+</head>
+<body>
+
+  <header id="header">
+    <div id="avatar">S</div>
+    <div id="header-meta">
+      <div id="h-name">Support</div>
+      <div id="h-status"><span class="dot"></span><span id="h-status-text">En ligne</span></div>
+    </div>
+    <button id="close-btn" type="button" aria-label="Fermer le chat">
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </header>
+
+  <div id="content">
+    <div id="conn-banner">Reconnexion en cours…</div>
+
+    <!-- Prechat form (visible by default) -->
+    <form id="prechat" novalidate>
+      <p class="lead" id="prechat-welcome">Bonjour ! Laissez-nous vos coordonnées pour commencer.</p>
+      <div class="field">
+        <label for="pc-name">Nom complet</label>
+        <input type="text" id="pc-name" name="name" autocomplete="name" required maxlength="120" />
+      </div>
+      <div class="field">
+        <label for="pc-email">Courriel</label>
+        <input type="email" id="pc-email" name="email" autocomplete="email" required maxlength="200" />
+      </div>
+      <!-- Honeypot anti-bot — display:none + tabindex=-1 + autocomplete=off -->
+      <div class="honeypot" aria-hidden="true">
+        <label for="pc-hp">Ne pas remplir</label>
+        <input type="text" id="pc-hp" name="_hp" tabindex="-1" autocomplete="off" />
+      </div>
+      <div id="turnstile-container"></div>
+      <p id="prechat-error" role="alert"></p>
+      <button type="submit" class="btn-primary" id="pc-submit">Démarrer la conversation</button>
+    </form>
+
+    <!-- Offline form -->
+    <form id="offline-form">
+      <h3>Laissez-nous un message</h3>
+      <p>Nos agents ne sont pas disponibles pour le moment. Indiquez vos coordonnées et un message, nous vous recontactons rapidement.</p>
+      <div class="field">
+        <label for="of-name">Nom</label>
+        <input type="text" id="of-name" name="name" autocomplete="name" required maxlength="120" />
+      </div>
+      <div class="field">
+        <label for="of-email">Courriel</label>
+        <input type="email" id="of-email" name="email" autocomplete="email" required maxlength="200" />
+      </div>
+      <div class="field">
+        <label for="of-msg">Message</label>
+        <textarea id="of-msg" name="message" required maxlength="2000"></textarea>
+      </div>
+      <div class="honeypot" aria-hidden="true">
+        <input type="text" id="of-hp" name="_hp" tabindex="-1" autocomplete="off" />
+      </div>
+      <button type="submit" class="btn-primary">Envoyer</button>
+      <p id="offline-success">Message envoyé. Merci !</p>
+    </form>
+
+    <!-- Chat view -->
+    <div id="chat-view">
+      <div id="messages" aria-live="polite"></div>
+      <div id="input-area">
+        <input type="text" id="chat-input" placeholder="Écrivez votre message…" autocomplete="off" maxlength="2000" />
+        <button id="send-btn" type="button" aria-label="Envoyer" disabled>
+          <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    'use strict';
+
+    // ── Config from URL params ───────────────────────────────────────────────
+    var qs = new URLSearchParams(window.location.search);
+    var clientId = qs.get('client') || qs.get('client_id') || '';
+    var color = qs.get('color') || '#3b82f6';
+    var welcome = qs.get('welcome') || 'Bonjour ! Laissez-nous vos coordonnées pour commencer.';
+    var agency = qs.get('agency') || 'Support';
+    var presence = qs.get('presence') === 'offline' ? 'offline' : 'online';
+    var turnstileEnabled = qs.get('turnstile') === '1';
+    var apiBase = window.location.origin;
+
+    // Apply color (validated)
+    if (/^#[0-9a-fA-F]{3,8}$/.test(color)) {
+      document.documentElement.style.setProperty('--primary', color);
+    } else {
+      color = '#3b82f6';
+    }
+
+    // Header customization (textContent — anti-XSS)
+    document.getElementById('h-name').textContent = agency;
+    document.getElementById('avatar').textContent = (agency.charAt(0) || 'S').toUpperCase();
+    document.getElementById('prechat-welcome').textContent = welcome;
+
+    // ── Element refs ─────────────────────────────────────────────────────────
+    var $ = function (id) { return document.getElementById(id); };
+    var prechatForm = $('prechat');
+    var offlineForm = $('offline-form');
+    var chatView = $('chat-view');
+    var messagesEl = $('messages');
+    var chatInput = $('chat-input');
+    var sendBtn = $('send-btn');
+    var closeBtn = $('close-btn');
+    var connBanner = $('conn-banner');
+    var headerStatus = $('h-status');
+    var headerStatusText = $('h-status-text');
+
+    // ── State ───────────────────────────────────────────────────────────────
+    var storeKey = function (k) { return 'ix2_' + clientId + '_' + k; };
+    var conversationId = '';
+    var visitorName = '';
+    var visitorEmail = '';
+    try {
+      conversationId = localStorage.getItem(storeKey('conv')) || '';
+      visitorName = localStorage.getItem(storeKey('name')) || '';
+      visitorEmail = localStorage.getItem(storeKey('email')) || '';
+    } catch (_) {}
+
+    var ws = null;
+    var wsRetries = 0;
+    var wsReconnectTimer = null;
+    var typingTimer = null;
+    var typingEl = null;
+
+    // ── Mode switching ──────────────────────────────────────────────────────
+    function showPrechat() {
+      prechatForm.style.display = 'block';
+      chatView.style.display = 'none';
+      offlineForm.style.display = 'none';
+      if (visitorName) $('pc-name').value = visitorName;
+      if (visitorEmail) $('pc-email').value = visitorEmail;
+    }
+    function showChat() {
+      prechatForm.style.display = 'none';
+      offlineForm.style.display = 'none';
+      chatView.style.display = 'flex';
+      setTimeout(function () { chatInput.focus(); }, 50);
+    }
+    function showOffline() {
+      prechatForm.style.display = 'none';
+      chatView.style.display = 'none';
+      offlineForm.style.display = 'block';
+      if (visitorName) $('of-name').value = visitorName;
+      if (visitorEmail) $('of-email').value = visitorEmail;
+    }
+
+    // Initial routing
+    if (presence === 'offline' && !conversationId) {
+      showOffline();
+      headerStatus.classList.add('offline');
+      headerStatusText.textContent = 'Hors-ligne';
+    } else if (conversationId && visitorName) {
+      showChat();
+      connect();
+    } else {
+      showPrechat();
+    }
+
+    // ── Turnstile (lazy load) ───────────────────────────────────────────────
+    var turnstileToken = '';
+    if (turnstileEnabled) {
+      var s = document.createElement('script');
+      s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?onload=__ix2tsReady';
+      s.async = true; s.defer = true;
+      window.__ix2tsReady = function () {
+        if (window.turnstile) {
+          window.turnstile.render('#turnstile-container', {
+            sitekey: qs.get('ts_key') || '1x00000000000000000000AA',
+            callback: function (token) { turnstileToken = token; },
+            'error-callback': function () { turnstileToken = ''; },
+          });
+        }
+      };
+      document.head.appendChild(s);
+    }
+
+    // ── Close button ────────────────────────────────────────────────────────
+    closeBtn.addEventListener('click', function () {
+      try { window.parent.postMessage({ type: 'webchat.close' }, apiBase); } catch (_) {}
+    });
+
+    // ── Prechat submit ──────────────────────────────────────────────────────
+    prechatForm.addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      var name = $('pc-name').value.trim();
+      var email = $('pc-email').value.trim();
+      var hp = $('pc-hp').value;
+      var err = $('prechat-error');
+      err.textContent = '';
+
+      if (!name || name.length < 2) {
+        err.textContent = 'Veuillez entrer votre nom.';
+        return;
+      }
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        err.textContent = 'Veuillez entrer un courriel valide.';
+        return;
+      }
+      if (turnstileEnabled && !turnstileToken) {
+        err.textContent = 'Veuillez compléter la vérification anti-bot.';
+        return;
+      }
+
+      var btn = $('pc-submit');
+      btn.disabled = true;
+      btn.textContent = 'Connexion…';
+
+      var payload = {
+        client_id: clientId,
+        visitor_name: name,
+        visitor_email: email,
+        _hp: hp,
+        page_url: document.referrer || '',
+        referrer: document.referrer || '',
+      };
+      if (turnstileEnabled) payload.turnstile_token = turnstileToken;
+
+      fetch(apiBase + '/api/chat-session/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        credentials: 'omit',
+      })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, body: j }; }); })
+        .then(function (res) {
+          if (!res.ok) {
+            // Phase B not implemented (501) → fallback sur /api/webchat/prechat existant
+            if (res.body && /not yet implemented/i.test(res.body.error || '')) {
+              return fallbackPrechat(name, email);
+            }
+            throw new Error((res.body && res.body.error) || 'Erreur réseau');
+          }
+          var d = (res.body && (res.body.data || res.body)) || {};
+          conversationId = d.conversation_id || d.session_id || '';
+          if (!conversationId) throw new Error('Réponse invalide');
+          visitorName = name; visitorEmail = email;
+          persist();
+          showChat();
+          connect();
+        })
+        .catch(function (e) {
+          err.textContent = (e && e.message) || 'Connexion impossible.';
+        })
+        .then(function () {
+          btn.disabled = false;
+          btn.textContent = 'Démarrer la conversation';
+        });
+    });
+
+    function fallbackPrechat(name, email) {
+      return fetch(apiBase + '/api/webchat/prechat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name, email: email, client_id: clientId, conversation_id: conversationId }),
+        credentials: 'omit',
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (j) {
+          var d = (j && (j.data || j)) || {};
+          conversationId = d.conversation_id || '';
+          if (!conversationId) throw new Error('Réponse invalide');
+          visitorName = name; visitorEmail = email;
+          persist();
+          showChat();
+          connect();
+        });
+    }
+
+    function persist() {
+      try {
+        localStorage.setItem(storeKey('conv'), conversationId);
+        localStorage.setItem(storeKey('name'), visitorName);
+        localStorage.setItem(storeKey('email'), visitorEmail);
+      } catch (_) {}
+    }
+
+    // ── Offline form submit ─────────────────────────────────────────────────
+    offlineForm.addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      var name = $('of-name').value.trim();
+      var email = $('of-email').value.trim();
+      var msg = $('of-msg').value.trim();
+      var hp = $('of-hp').value;
+      if (!name || !email || !msg) return;
+
+      fetch(apiBase + '/api/webchat/prechat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name, email: email, client_id: clientId,
+          conversation_id: '', offline_message: msg, _hp: hp,
+        }),
+        credentials: 'omit',
+      }).catch(function () { /* best-effort */ })
+        .then(function () {
+          offlineForm.reset();
+          $('offline-success').style.display = 'block';
+        });
+    });
+
+    // ── WebSocket lifecycle ─────────────────────────────────────────────────
+    function wsUrl() {
+      var proto = apiBase.indexOf('https://') === 0 ? 'wss://' : 'ws://';
+      var host = apiBase.replace(/^https?:\/\//, '');
+      return proto + host + '/api/webchat/ws?conversation_id=' +
+        encodeURIComponent(conversationId) +
+        '&role=visitor&name=' + encodeURIComponent(visitorName);
+    }
+
+    function connect() {
+      if (!conversationId || !visitorName) return;
+      clearTimeout(wsReconnectTimer);
+      notifyParent({ type: 'webchat.ws.state', state: 'reconnecting' });
+
+      try {
+        ws = new WebSocket(wsUrl());
+      } catch (e) {
+        scheduleReconnect();
+        return;
+      }
+
+      ws.onopen = function () {
+        wsRetries = 0;
+        connBanner.classList.remove('show');
+        sendBtn.disabled = false;
+        notifyParent({ type: 'webchat.ws.state', state: 'open' });
+      };
+      ws.onmessage = function (event) {
+        var data;
+        try { data = JSON.parse(event.data); } catch (_) { return; }
+        if (!data || typeof data !== 'object') return;
+        handleWsMessage(data);
+      };
+      ws.onclose = function () {
+        sendBtn.disabled = true;
+        notifyParent({ type: 'webchat.ws.state', state: 'closed' });
+        scheduleReconnect();
+      };
+      ws.onerror = function () {
+        try { ws.close(); } catch (_) {}
+      };
+    }
+
+    function scheduleReconnect() {
+      connBanner.classList.add('show');
+      // Exponential backoff : 1s, 2s, 4s, 8s, 16s, max 30s
+      var delay = Math.min(30000, 1000 * Math.pow(2, wsRetries));
+      wsRetries++;
+      wsReconnectTimer = setTimeout(connect, delay);
+    }
+
+    function handleWsMessage(data) {
+      if (data.type === 'history' && Array.isArray(data.messages)) {
+        messagesEl.innerHTML = '';
+        data.messages.forEach(renderMessage);
+        return;
+      }
+      if (data.type === 'typing') {
+        if (data.sender === 'agent') showTyping();
+        return;
+      }
+      if (data.type === 'message' || data.type === 'system') {
+        hideTyping();
+        renderMessage(data);
+      }
+    }
+
+    function renderMessage(msg) {
+      if (!msg || typeof msg !== 'object') return;
+      var wrap = document.createElement('div');
+      var sender = msg.sender === 'visitor' ? 'visitor' : (msg.type === 'system' ? 'system' : 'agent');
+      wrap.className = 'msg ' + sender;
+
+      if (sender === 'agent' && msg.name) {
+        var author = document.createElement('div');
+        author.className = 'author';
+        author.textContent = String(msg.name); // anti-XSS : textContent
+        wrap.appendChild(author);
+      }
+
+      var bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      bubble.textContent = String(msg.body || ''); // anti-XSS
+      wrap.appendChild(bubble);
+
+      messagesEl.appendChild(wrap);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function showTyping() {
+      if (typingEl) return;
+      typingEl = document.createElement('div');
+      typingEl.className = 'msg agent';
+      typingEl.innerHTML = '<div class="typing"><span></span><span></span><span></span></div>';
+      messagesEl.appendChild(typingEl);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+      clearTimeout(typingTimer);
+      typingTimer = setTimeout(hideTyping, 4000);
+    }
+    function hideTyping() {
+      if (typingEl) {
+        typingEl.remove();
+        typingEl = null;
+      }
+      clearTimeout(typingTimer);
+    }
+
+    // ── Send message ────────────────────────────────────────────────────────
+    function send() {
+      if (!ws || ws.readyState !== 1) return;
+      var text = chatInput.value.trim();
+      if (!text) return;
+      try {
+        ws.send(JSON.stringify({ body: text }));
+        chatInput.value = '';
+      } catch (_) {}
+    }
+    sendBtn.addEventListener('click', send);
+    chatInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        send();
+      } else if (ws && ws.readyState === 1) {
+        // typing indicator throttle
+        if (!chatInput._tts || Date.now() - chatInput._tts > 1500) {
+          chatInput._tts = Date.now();
+          try { ws.send(JSON.stringify({ type: 'typing' })); } catch (_) {}
+        }
+      }
+    });
+
+    // ── Notify parent (strict — toujours apiBase comme targetOrigin) ────────
+    function notifyParent(payload) {
+      try { window.parent.postMessage(payload, apiBase); } catch (_) {}
+    }
+
+    // Announce presence (if config offline) to parent so chip stays in sync
+    notifyParent({ type: 'webchat.presence', presence: presence });
+  })();
+  </script>
+</body>
+</html>

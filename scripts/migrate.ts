@@ -9,6 +9,7 @@ const dbName = 'intralys-crm';
 // Flags S2 M1 — défensifs, défaut = comportement strict/sûr
 const isDryRun = process.argv.includes('--dry-run');
 const continueOnError = process.argv.includes('--continue-on-error');
+const allowUnmanifested = process.argv.includes('--allow-unmanifested');
 
 // Motifs d'erreur SQLite bénins = fichier déjà appliqué (idempotence best-effort).
 // ⚠ LIMITE D1 : `wrangler d1 execute --file` exécute le fichier en BLOC, sans
@@ -102,6 +103,24 @@ function getOrderedMigrationsFallback(allFiles: string[]): string[] {
   return [...phaseEarly, ...p3, ...sprint2, ...sprint3, ...phaseLate];
 }
 
+// Durcissement S2 §2-D trou 2 : patterns de fichiers que le fallback ne sait
+// PAS ordonner. Si l'un d'eux est sur disque et qu'on tombe en fallback, STOP.
+const FALLBACK_UNSUPPORTED_PATTERNS = [
+  /^migration-sprint[ERS]/i,
+  /^migration-sprintLOT/i,
+  /^migration-team-/i,
+  /^migration-invoice-/i,
+  /^migration-funnel-/i,
+  /^migration-booking-/i,
+  /^migration-promo-/i,
+  /^migration-emailseq-/i,
+  /^migration-member-/i,
+];
+
+function hasFallbackUnsupportedFiles(allFiles: string[]): string[] {
+  return allFiles.filter(f => FALLBACK_UNSUPPORTED_PATTERNS.some(p => p.test(f)));
+}
+
 // M1.1 — Ordre canonique depuis docs/migrations-manifest.json (contrat S1 figé,
 // LECTURE SEULE). Trié par `seq`, filtré aux fichiers réellement présents sur
 // disque. En cas d'absence / JSON invalide → fallback EXACT 5 buckets + warn.
@@ -113,6 +132,15 @@ function getOrderedMigrations(allFiles: string[], rootDir = process.cwd()): stri
       console.warn(
         `⚠ Manifest absent (${manifestPath}). Fallback ordre 5-buckets historique.`
       );
+      // Trou 2 (§2-D) : le fallback ne sait pas ordonner team-*/invoice-*/funnel-*/sprintE*
+      const unsupported = hasFallbackUnsupportedFiles(allFiles);
+      if (unsupported.length > 0) {
+        console.error('⛔ STOP : fichiers hors-portée du fallback 5-buckets détectés :');
+        unsupported.forEach(f => console.error(`   - ${f}`));
+        console.error('Le manifest est REQUIS pour ordonner ces migrations. Corriger docs/migrations-manifest.json.');
+        process.exitCode = 1;
+        return [];
+      }
       return getOrderedMigrationsFallback(allFiles);
     }
     const raw = readFileSync(manifestPath, 'utf-8');
@@ -124,6 +152,13 @@ function getOrderedMigrations(allFiles: string[], rootDir = process.cwd()): stri
       console.warn(
         '⚠ Manifest présent mais sans tableau `migrations` exploitable. Fallback 5-buckets.'
       );
+      const unsupported2 = hasFallbackUnsupportedFiles(allFiles);
+      if (unsupported2.length > 0) {
+        console.error('⛔ STOP : fichiers hors-portée du fallback 5-buckets détectés :');
+        unsupported2.forEach(f => console.error(`   - ${f}`));
+        process.exitCode = 1;
+        return [];
+      }
       return getOrderedMigrationsFallback(allFiles);
     }
 
@@ -136,12 +171,26 @@ function getOrderedMigrations(allFiles: string[], rootDir = process.cwd()): stri
         console.warn(`⚠ Manifest référence "${e.file}" mais le fichier est absent sur disque — ignoré.`);
       }
     }
-    // Warn : fichiers sur disque mais absents du manifest (jamais joués)
+    // Trou 1 (§2-D) : fichiers sur disque mais absents du manifest = ERREUR DURE
+    // (sauf flag --allow-unmanifested). Un fichier non manifesté ne sera JAMAIS
+    // appliqué → c'est un bug silencieux qu'il faut stopper.
     const inManifest = new Set(sorted.map(e => e.file));
+    const unmanifested: string[] = [];
     for (const f of allFiles) {
       if (!inManifest.has(f)) {
-        console.warn(`⚠ Fichier "${f}" présent sur disque mais absent du manifest — non ordonné, non appliqué.`);
+        unmanifested.push(f);
       }
+    }
+    if (unmanifested.length > 0) {
+      for (const f of unmanifested) {
+        console.error(`⛔ Fichier "${f}" présent sur disque mais ABSENT du manifest — ne sera JAMAIS appliqué.`);
+      }
+      if (!allowUnmanifested) {
+        console.error('⛔ STOP : ajouter ces fichiers au manifest ou relancer avec --allow-unmanifested.');
+        process.exitCode = 1;
+        return [];
+      }
+      console.warn('⚠ --allow-unmanifested : ces fichiers sont ignorés mais le runner continue.');
     }
 
     const ordered = sorted
@@ -158,6 +207,13 @@ function getOrderedMigrations(allFiles: string[], rootDir = process.cwd()): stri
     console.warn(
       `⚠ Manifest illisible / JSON invalide (${e?.message ?? e}). Fallback ordre 5-buckets historique.`
     );
+    const unsupported3 = hasFallbackUnsupportedFiles(allFiles);
+    if (unsupported3.length > 0) {
+      console.error('⛔ STOP : fichiers hors-portée du fallback 5-buckets détectés :');
+      unsupported3.forEach(f => console.error(`   - ${f}`));
+      process.exitCode = 1;
+      return [];
+    }
     return getOrderedMigrationsFallback(allFiles);
   }
 }
@@ -203,7 +259,7 @@ async function migrate() {
   // 3. Scan directory — catch ALL migration prefixes
   const rootDir = process.cwd();
   const allFiles = readdirSync(rootDir).filter(f =>
-    (f.startsWith('migration-phase') || f.startsWith('migration-sprint') || f.startsWith('migration_p3_'))
+    (f.startsWith('migration-') || f.startsWith('migration_'))
     && f.endsWith('.sql')
   );
 
@@ -274,6 +330,8 @@ async function migrate() {
 export {
   getOrderedMigrations,
   getOrderedMigrationsFallback,
+  hasFallbackUnsupportedFiles,
+  FALLBACK_UNSUPPORTED_PATTERNS,
   isBenignError,
   assertE9Guard,
   naturalNumberKey,

@@ -11,4 +11,5 @@ ios/
 android/
 # Playwright
 tests/visual/results/
+tests/results/
 playwright-report/

@@ -15,7 +15,7 @@ interface TriggerLink {
 
 export function TriggerLinksPage() {
   const confirm = useConfirm();
-  const { success: toastSuccess } = useToast();
+  const { success: toastSuccess, error: toastError } = useToast();
   const [links, setLinks] = useState<TriggerLink[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -24,12 +24,24 @@ export function TriggerLinksPage() {
   const [newTag, setNewTag] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  // Renforcement — error state
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const loadLinks = useCallback(async () => {
     setIsLoading(true);
-    const result = await getTriggerLinks();
-    if (result.data) setLinks(result.data);
-    setIsLoading(false);
+    setLoadError(null);
+    try {
+      const result = await getTriggerLinks();
+      if (result.error) {
+        setLoadError(result.error);
+      } else if (result.data) {
+        setLinks(result.data);
+      }
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : t('trigger.error.load_failed'));
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
   useEffect(() => { void loadLinks(); }, [loadLinks]);
@@ -37,10 +49,21 @@ export function TriggerLinksPage() {
   const handleCreate = async () => {
     if (!newName || !newUrl) return;
     setIsCreating(true);
-    await createTriggerLink({ name: newName, target_url: newUrl, tag_to_apply: newTag });
-    setNewName(''); setNewUrl(''); setNewTag('');
-    setShowCreate(false); setIsCreating(false);
-    void loadLinks();
+    try {
+      const res = await createTriggerLink({ name: newName, target_url: newUrl, tag_to_apply: newTag });
+      if (res && (res as { error?: string }).error) {
+        toastError((res as { error: string }).error);
+        setIsCreating(false);
+        return;
+      }
+      setNewName(''); setNewUrl(''); setNewTag('');
+      setShowCreate(false);
+      void loadLinks();
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : t('trigger.error.create_failed'));
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -51,8 +74,16 @@ export function TriggerLinksPage() {
       danger: true,
     });
     if (!ok) return;
-    await deleteTriggerLink(id);
-    void loadLinks();
+    try {
+      const res = await deleteTriggerLink(id);
+      if (res && (res as { error?: string }).error) {
+        toastError((res as { error: string }).error);
+        return;
+      }
+      void loadLinks();
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : t('trigger.error.delete_failed'));
+    }
   };
 
   const copyShortUrl = (id: string) => {
@@ -91,8 +122,21 @@ export function TriggerLinksPage() {
 
       <KpiStrip items={kpiItems} />
 
+      {/* Renforcement — error state */}
+      {loadError && !isLoading && (
+        <Card className="p-6" role="alert" aria-live="assertive">
+          <p className="text-sm font-semibold text-[var(--danger)] mb-1">
+            {t('trigger.error.load_failed')}
+          </p>
+          <p className="text-xs text-[var(--text-muted)] mb-3 break-all">{loadError}</p>
+          <Button variant="secondary" size="sm" onClick={() => { void loadLinks(); }}>
+            {t('action.retry')}
+          </Button>
+        </Card>
+      )}
+
       {isLoading ? (
-        <Card className="p-0 overflow-hidden">
+        <Card className="p-0 overflow-hidden" aria-busy="true" aria-live="polite">
           <div className="px-4 py-3 border-b border-[var(--border-subtle)] bg-[var(--bg-subtle)] flex items-center gap-6">
             {[1,2,3,4].map(i => (
               <Skeleton key={i} className="h-3 w-20 rounded" />
@@ -117,7 +161,7 @@ export function TriggerLinksPage() {
             ))}
           </div>
         </Card>
-      ) : links.length === 0 ? (
+      ) : loadError ? null : links.length === 0 ? (
         <EmptyState
           variant="first-time"
           icon={<Icon as={LinkIcon} size={48} />}
@@ -163,7 +207,7 @@ export function TriggerLinksPage() {
                         type="button"
                         onClick={() => copyShortUrl(link.id)}
                         className="action-chip"
-                        title="Copier URL"
+                        title={t('trigger.action.copy_url_title')}
                         style={isCopied ? {
                           background: 'linear-gradient(135deg, rgba(55,202,55,0.14) 0%, rgba(0,157,219,0.06) 100%)',
                           borderColor: 'rgba(55,202,55,0.50)',
@@ -175,7 +219,7 @@ export function TriggerLinksPage() {
                         </span>
                         <span>{isCopied ? t('trigger.action.copied') : t('trigger.action.copy')}</span>
                       </button>
-                      <Button variant="ghost" size="sm" onClick={() => handleDelete(link.id)} title="Supprimer"><Icon as={Trash2} size="sm" style={{ color: 'var(--danger)' }} /></Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleDelete(link.id)} title={t('trigger.action.delete_title')}><Icon as={Trash2} size="sm" style={{ color: 'var(--danger)' }} /></Button>
                     </div>
                   </td>
                 </tr>
@@ -188,10 +232,10 @@ export function TriggerLinksPage() {
 
       <Modal open={showCreate} onOpenChange={() => setShowCreate(false)} title={t('trigger.modal.title')}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div><label className="prop-label">Nom</label><Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="ex: Lien guide gratuit" autoFocus /></div>
-          <div><label className="prop-label">URL cible</label><Input value={newUrl} onChange={e => setNewUrl(e.target.value)} placeholder="https://..." /></div>
-          <div><label className="prop-label">Tag au clic (optionnel)</label><Input value={newTag} onChange={e => setNewTag(e.target.value)} placeholder="ex: intéressé_guide" /></div>
-          <Button variant="primary" onClick={handleCreate} disabled={isCreating || !newName || !newUrl} style={{ marginTop: 8 }}>
+          <div><label className="prop-label">{t('trigger.modal.name')}</label><Input value={newName} onChange={e => setNewName(e.target.value)} placeholder={t('trigger.modal.name_placeholder')} autoFocus /></div>
+          <div><label className="prop-label">{t('trigger.modal.url')}</label><Input value={newUrl} onChange={e => setNewUrl(e.target.value)} placeholder="https://..." /></div>
+          <div><label className="prop-label">{t('trigger.modal.tag')}</label><Input value={newTag} onChange={e => setNewTag(e.target.value)} placeholder={t('trigger.modal.tag_placeholder')} /></div>
+          <Button variant="primary" onClick={handleCreate} disabled={isCreating || !newName || !newUrl} aria-busy={isCreating} isLoading={isCreating} style={{ marginTop: 8 }}>
             {isCreating ? t('trigger.modal.creating') : t('trigger.modal.submit')}
           </Button>
         </div>

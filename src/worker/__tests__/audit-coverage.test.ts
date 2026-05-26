@@ -91,7 +91,7 @@ function makeRequest(url: string, method: string, body?: unknown): Request {
 // ════════════════════════════════════════════════════════════
 
 describe('S4 M3 — audit_log team.ts', () => {
-  it("handleInviteUser : audit user.invite/user, details={role,email}, sans secret", async () => {
+  it("handleInviteUser : audit user.invite/user_invitation, details={role,email}, sans secret", async () => {
     const db = createMockD1();
     // existing user lookup → aucun (autorise l'invite)
     db.seed('select id from users where email', []);
@@ -109,10 +109,11 @@ describe('S4 M3 — audit_log team.ts', () => {
     expect(call).not.toBeNull();
     const a = parseAudit(call!);
     expect(a.action).toBe('user.invite');
-    expect(a.resourceType).toBe('user');
+    expect(a.resourceType).toBe('user_invitation');
     expect(typeof a.resourceId).toBe('string');
     expect(a.userId).toBe('u-actor-1'); // acteur dérivé X-User-Id
-    expect(a.details).toMatchObject({ role: 'agent', email: 'invite@ex.com' });
+    // LOT TEAM A : 'agent' non dans VALID_GENERIC_ROLES → normalisé en 'member'
+    expect(a.details).toMatchObject({ role: 'member', email: 'invite@ex.com' });
     assertNoSecretInDetails(call!.args[4]);
   });
 

@@ -1,6 +1,7 @@
 // ── ComplianceSettings — Sprint 23 W33 : KpiStrip + Textarea + useToast + Switch + row-premium
 import { useState, useEffect, useMemo } from 'react';
 import { apiFetch } from '@/lib/api';
+import { t } from '@/lib/i18n';
 import {
   Card,
   Button,
@@ -29,25 +30,43 @@ export function ComplianceSettings() {
   const [amfRequired, setAmfRequired] = useState(false);
   const [unsubscribes, setUnsubscribes] = useState<Unsubscribe[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    // Load unsubscribes
-    apiFetch<Unsubscribe[]>('/unsubscribes')
-      .then((res) => {
-        setUnsubscribes(res.data || []);
-      })
-      .finally(() => setIsLoading(false));
+    let cancelled = false;
+    setLoadError(false);
+    setIsLoading(true);
 
-    // Load compliance settings
-    apiFetch<any>('/settings/compliance').then((res) => {
-      if (res.data) {
-        setAmfCert(res.data.amf_certificate || '');
-        setAmfRequired(res.data.amf_disclaimer_required === 1);
+    // Load unsubscribes + settings in parallel ; surface error UI if both fail.
+    const pUnsub = apiFetch<Unsubscribe[]>('/unsubscribes')
+      .then((res) => ({ ok: true as const, res }))
+      .catch(() => ({ ok: false as const, res: null }));
+
+    const pSettings = apiFetch<any>('/settings/compliance')
+      .then((res) => ({ ok: true as const, res }))
+      .catch(() => ({ ok: false as const, res: null }));
+
+    void Promise.all([pUnsub, pSettings]).then(([u, s]) => {
+      if (cancelled) return;
+      if (u.ok && u.res) setUnsubscribes(u.res.data || []);
+      if (s.ok && s.res && s.res.data) {
+        setAmfCert(s.res.data.amf_certificate || '');
+        setAmfRequired(s.res.data.amf_disclaimer_required === 1);
       }
+      if (!u.ok && !s.ok) {
+        setLoadError(true);
+        toastError(t('compliance.toast_load_error'));
+      }
+      setIsLoading(false);
     });
-  }, []);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [reloadKey, toastError]);
 
   const handleSaveAmf = async () => {
     setIsSaving(true);
@@ -59,16 +78,16 @@ export function ComplianceSettings() {
           amf_disclaimer_required: amfRequired ? 1 : 0,
         }),
       });
-      success('Mentions légales enregistrées');
+      success(t('compliance.toast_saved'));
     } catch (err: any) {
-      toastError(err?.message || 'Erreur lors de la sauvegarde');
+      toastError(err?.message || t('compliance.toast_save_error'));
     }
     setIsSaving(false);
   };
 
   const handleExportUnsubscribes = () => {
     if (!unsubscribes || unsubscribes.length === 0) {
-      toastError('Aucune donnée à exporter');
+      toastError(t('compliance.toast_no_export'));
       return;
     }
     try {
@@ -83,9 +102,9 @@ export function ComplianceSettings() {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      success('Export CSV téléchargé');
+      success(t('compliance.toast_export_ok'));
     } catch (err: any) {
-      toastError(err?.message || "Échec de l'export");
+      toastError(err?.message || t('compliance.toast_export_error'));
     }
   };
 
@@ -94,53 +113,77 @@ export function ComplianceSettings() {
     const diffMin = Math.floor(diffMs / 60000);
     const diffH = Math.floor(diffMin / 60);
     const diffD = Math.floor(diffH / 24);
-    if (diffMin < 1) return "À l'instant";
-    if (diffMin < 60) return `Il y a ${diffMin} min`;
-    if (diffH < 24) return `Il y a ${diffH}h`;
-    return `Il y a ${diffD} jours`;
+    if (diffMin < 1) return t('compliance.time_now');
+    if (diffMin < 60) return t('compliance.time_min').replace('{n}', String(diffMin));
+    if (diffH < 24) return t('compliance.time_hour').replace('{n}', String(diffH));
+    return t('compliance.time_day').replace('{n}', String(diffD));
   };
 
   const kpis = useMemo(() => {
     const byEmail = unsubscribes.filter((u) => u.channel === 'email').length;
     const bySms = unsubscribes.filter((u) => u.channel === 'sms').length;
     return [
-      { label: 'Désabonnés total', value: unsubscribes.length, color: 'danger' as const, icon: <Ban size={12} /> },
-      { label: 'Email', value: byEmail, color: 'brand' as const, icon: <Mail size={12} /> },
-      { label: 'SMS', value: bySms, color: 'warning' as const, icon: <Smartphone size={12} /> },
-      { label: 'RGPD requests', value: 0, color: 'neutral' as const, icon: <FileCheck size={12} /> },
+      { label: t('compliance.kpi_total'), value: unsubscribes.length, color: 'danger' as const, icon: <Ban size={12} /> },
+      { label: t('compliance.kpi_email'), value: byEmail, color: 'brand' as const, icon: <Mail size={12} /> },
+      { label: t('compliance.kpi_sms'), value: bySms, color: 'warning' as const, icon: <Smartphone size={12} /> },
+      { label: t('compliance.kpi_rgpd'), value: 0, color: 'neutral' as const, icon: <FileCheck size={12} /> },
     ];
   }, [unsubscribes]);
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in" data-testid="compliance-settings">
       <header className="settings-page-header">
         <div>
           <h2 className="t-h2 flex items-center gap-2">
             <Icon as={Shield} size="lg" className="text-[var(--primary)]" />
-            Conformité & légal
+            {t('compliance.page_title')}
           </h2>
           <p className="t-caption text-[var(--gray-500)]">
-            Listes de désabonnement (Loi 25 / CASL) et mentions légales.
+            {t('compliance.page_subtitle')}
           </p>
         </div>
       </header>
+
+      {loadError && (
+        <div
+          role="alert"
+          className="rounded-xl border border-[var(--danger)] bg-[var(--danger-soft,rgba(239,68,68,0.08))] p-4 flex items-center justify-between gap-3"
+          data-testid="compliance-load-error"
+        >
+          <p className="text-sm text-[var(--danger)] flex-1">
+            {t('compliance.toast_load_error')}
+          </p>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setReloadKey((k) => k + 1)}
+          >
+            {t('compliance.retry')}
+          </Button>
+        </div>
+      )}
 
       <KpiStrip items={kpis} />
 
       <Card className="settings-card p-6">
         <header className="settings-section-header">
           <h3 className="t-h3 flex items-center gap-2">
-            <Shield size={16} className="text-[var(--primary)]" /> Mentions légales
+            <Shield size={16} className="text-[var(--primary)]" /> {t('compliance.legal_title')}
           </h3>
           <p className="t-caption text-[var(--gray-500)]">
-            Insertion automatique dans les courriels sortants — AMF, RBQ, OACIQ.
+            {t('compliance.legal_subtitle')}
           </p>
         </header>
-        <div className="settings-toggle-row">
+        <div
+          className="settings-toggle-row"
+          role="group"
+          aria-label={t('compliance.disclaimer_aria')}
+          data-testid="compliance-amf-toggle"
+        >
           <div className="settings-toggle-row__meta">
-            <p className="settings-toggle-row__title">Mentions légales automatiques</p>
+            <p className="settings-toggle-row__title">{t('compliance.auto_title')}</p>
             <p className="settings-toggle-row__desc">
-              Active l'insertion auto dans les courriels sortants.
+              {t('compliance.auto_desc')}
             </p>
           </div>
           <Switch checked={amfRequired} onCheckedChange={setAmfRequired} variant="brand" />
@@ -148,22 +191,28 @@ export function ComplianceSettings() {
         {amfRequired && (
           <div className="settings-form-row settings-form-row--full">
             <label className="settings-label">
-              Texte de la mention légale
+              {t('compliance.text_label')}
             </label>
             <Textarea
               value={amfCert}
               onChange={(e) => setAmfCert(e.target.value)}
-              placeholder="ex: 123456 — Cabinet enregistré auprès de l'AMF"
+              placeholder={t('compliance.text_placeholder')}
               maxLength={500}
               showCounter
               className="h-[88px]"
             />
-            <p className="settings-helper">Numéro de permis, AMF, RBQ, OACIQ, etc.</p>
+            <p className="settings-helper">{t('compliance.text_helper')}</p>
           </div>
         )}
         <div className="settings-actions">
-          <Button onClick={handleSaveAmf} disabled={isSaving || (amfRequired && !amfCert)} isLoading={isSaving}>
-            Enregistrer
+          <Button
+            onClick={handleSaveAmf}
+            disabled={isSaving || (amfRequired && !amfCert)}
+            isLoading={isSaving}
+            aria-busy={isSaving}
+            data-testid="compliance-save-amf"
+          >
+            {t('compliance.save')}
           </Button>
         </div>
       </Card>
@@ -172,23 +221,29 @@ export function ComplianceSettings() {
         <header className="settings-section-header settings-section-header--inset settings-section-header--with-action">
           <div>
             <h3 className="t-h3 flex items-center gap-2">
-              <Icon as={Ban} size="md" className="text-[var(--danger)]" /> Liste de suppression (opt-outs)
+              <Icon as={Ban} size="md" className="text-[var(--danger)]" /> {t('compliance.optout_title')}
             </h3>
-            <p className="t-caption text-[var(--gray-500)]">Conformité Loi 25 / CASL.</p>
+            <p className="t-caption text-[var(--gray-500)]">{t('compliance.optout_subtitle')}</p>
           </div>
-          <Button variant="secondary" size="sm" onClick={handleExportUnsubscribes} leftIcon={<Icon as={Download} size="sm" />}>
-            Exporter CSV
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleExportUnsubscribes}
+            leftIcon={<Icon as={Download} size="sm" />}
+            data-testid="compliance-export-csv"
+          >
+            {t('compliance.export_csv')}
           </Button>
         </header>
 
         {isLoading ? (
-          <div className="p-8 text-center text-sm text-[var(--text-muted)]">Chargement...</div>
+          <div className="p-8 text-center text-sm text-[var(--text-muted)]">{t('compliance.loading')}</div>
         ) : unsubscribes.length === 0 ? (
           <EmptyState
             variant="compact"
             icon={<Ban size={28} />}
-            title="Aucun contact désabonné"
-            description="Les opt-outs apparaîtront ici (CASL / RGPD)."
+            title={t('compliance.empty_title')}
+            description={t('compliance.empty_desc')}
           />
         ) : (
           <div className="p-4 space-y-2.5">

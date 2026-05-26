@@ -6,7 +6,7 @@
 // Coexiste avec `landing/Pricing.tsx` (legacy, prix 47/97/197). Cette nouvelle
 // version vit sous `/marketing/pricing` — wirée via App.tsx Sprint 47.
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { Check, X, Sparkles, ChevronDown } from 'lucide-react';
 import { PublicLayout } from '../landing/PublicLayout';
@@ -202,16 +202,34 @@ export function MarketingPricingPage() {
 
       <div className="mk-pricing">
         {/* Hero */}
-        <section className="mk-pricing__hero">
-          <h1 className="mk-pricing__title">Tarification simple et transparente</h1>
+        <section className="mk-pricing__hero" aria-labelledby="mk-pricing-title">
+          <h1 id="mk-pricing-title" className="mk-pricing__title">Tarification simple et transparente</h1>
           <p className="mk-pricing__sub">Sans surprise, sans engagement. 14 jours d'essai gratuit sur tous les plans.</p>
 
-          {/* Toggle monthly / annual */}
-          <div className="mk-billing-toggle" role="tablist" aria-label="Cycle de facturation">
+          {/* Toggle monthly / annual — renforcement a11y : navigation clavier
+              ←/→ entre les onglets + annonce live region du cycle actif.
+              Garde la sémantique tablist existante (cf. ARIA Tabs pattern). */}
+          <div
+            className="mk-billing-toggle"
+            role="tablist"
+            aria-label="Cycle de facturation"
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'Home' || e.key === 'End') {
+                e.preventDefault();
+                const next: Billing = e.key === 'Home' ? 'monthly'
+                  : e.key === 'End' ? 'annual'
+                    : billing === 'monthly' ? 'annual' : 'monthly';
+                setBilling(next);
+              }
+            }}
+          >
             <button
               type="button"
               role="tab"
+              id="mk-billing-tab-monthly"
               aria-selected={billing === 'monthly'}
+              aria-controls="mk-plans-panel"
+              tabIndex={billing === 'monthly' ? 0 : -1}
               className={`mk-billing-toggle__btn${billing === 'monthly' ? ' mk-billing-toggle__btn--active' : ''}`}
               onClick={() => setBilling('monthly')}
             >
@@ -220,18 +238,33 @@ export function MarketingPricingPage() {
             <button
               type="button"
               role="tab"
+              id="mk-billing-tab-annual"
               aria-selected={billing === 'annual'}
+              aria-controls="mk-plans-panel"
+              tabIndex={billing === 'annual' ? 0 : -1}
               className={`mk-billing-toggle__btn${billing === 'annual' ? ' mk-billing-toggle__btn--active' : ''}`}
               onClick={() => setBilling('annual')}
             >
               Annuel
-              <span className="mk-billing-toggle__save">−20%</span>
+              <span className="mk-billing-toggle__save" aria-hidden>−20%</span>
+              <span className="sr-only">(économise 20%)</span>
             </button>
           </div>
+          {/* Live region polite pour annoncer le changement de cycle aux
+              technologies d'assistance. */}
+          <p className="sr-only" aria-live="polite">
+            {billing === 'monthly' ? 'Tarifs mensuels affichés' : 'Tarifs annuels affichés, économie de 20%'}
+          </p>
         </section>
 
-        {/* 3 cards plans */}
-        <section className="mk-plans" aria-label="Plans tarifaires">
+        {/* 3 cards plans — tabpanel pour le tablist Cycle facturation */}
+        <section
+          id="mk-plans-panel"
+          className="mk-plans"
+          aria-label="Plans tarifaires"
+          role="tabpanel"
+          aria-labelledby={billing === 'monthly' ? 'mk-billing-tab-monthly' : 'mk-billing-tab-annual'}
+        >
           {PLANS.map((p) => (
             <PlanCard key={p.id} plan={p} billing={billing} />
           ))}
@@ -244,6 +277,9 @@ export function MarketingPricingPage() {
 
           <div className="mk-compare__wrap">
             <table className="mk-compare__table">
+              <caption className="sr-only">
+                Comparaison détaillée des trois plans Starter, Pro et Agency sur 30 fonctionnalités regroupées en 6 catégories (volumes, communication, automatisation, analyse, intégrations, sécurité).
+              </caption>
               <thead>
                 <tr>
                   <th scope="col" className="mk-compare__feature-col">Fonctionnalité</th>
@@ -308,15 +344,20 @@ function PlanCard({ plan, billing }: { plan: PlanInfo; billing: Billing }) {
         <p className="mk-plan__tagline">{plan.tagline}</p>
       </header>
 
-      <div className="mk-plan__price">
-        <span className="mk-plan__price-amount">
+      <div
+        className="mk-plan__price"
+        aria-label={`${displayPrice} dollars canadiens par mois${
+          annualTotal !== null ? `, soit ${annualTotal} dollars facturés annuellement` : ''
+        }`}
+      >
+        <span className="mk-plan__price-amount" aria-hidden>
           <span className="mk-plan__currency">$</span>
           <span className="mk-plan__num">{displayPrice}</span>
         </span>
-        <span className="mk-plan__period">/mois</span>
+        <span className="mk-plan__period" aria-hidden>/mois</span>
       </div>
       {annualTotal !== null && (
-        <p className="mk-plan__price-note">{annualTotal}$ facturé annuellement</p>
+        <p className="mk-plan__price-note" aria-hidden>{annualTotal}$ facturé annuellement</p>
       )}
 
       <Link to="/demo" className="mk-plan__cta-link">
@@ -378,19 +419,29 @@ function FeatureValueCell({ value, popular }: { value: FeatureCell; popular?: bo
 }
 
 // ── FAQ item (accordion) ────────────────────────────────────
+// Renforcement a11y : aria-expanded explicite sur summary (les lecteurs
+// d'écran l'annoncent même si <details> le fait nativement — ceinture +
+// bretelles). Ajout aria-controls pour relier summary ↔ contenu.
 function FaqItem({ q, a }: { q: string; a: string }) {
   const [open, setOpen] = useState(false);
+  // ID stable par instance pour aria-controls.
+  const idRef = useRef<string>('');
+  if (!idRef.current) {
+    idRef.current = `mk-faq-${Math.random().toString(36).slice(2, 9)}`;
+  }
+  const contentId = `${idRef.current}-content`;
+
   return (
     <details
       className={`mk-faq__item${open ? ' mk-faq__item--open' : ''}`}
       open={open}
       onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}
     >
-      <summary className="mk-faq__q">
+      <summary className="mk-faq__q" aria-expanded={open} aria-controls={contentId}>
         <span>{q}</span>
         <Icon as={ChevronDown} size={16} className="mk-faq__chevron" aria-hidden />
       </summary>
-      <p className="mk-faq__a">{a}</p>
+      <p id={contentId} className="mk-faq__a">{a}</p>
     </details>
   );
 }

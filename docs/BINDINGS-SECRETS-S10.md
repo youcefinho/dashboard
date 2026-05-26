@@ -129,6 +129,36 @@ machine hôte (jamais sur la VM). Un gate échoué = STOP.
 
 ---
 
+## Sprint 32 — GBP scope addition
+
+`GOOGLE_OAUTH_CLIENT_ID` + `GOOGLE_OAUTH_CLIENT_SECRET` (déjà posés Sprint G4 seq95) sont RÉUTILISÉS pour GBP avec scope additionnel :
+- `https://www.googleapis.com/auth/business.manage`
+
+**Prérequis Google Cloud Console** :
+1. Activer "My Business Account Management API" + "My Business Business Information API" + "Business Profile Performance API"
+2. Demander la verification d'app pour le scope `business.manage` (review Google obligatoire, peut prendre 4-6 semaines)
+3. Domaine vérifié (`app.intralys.io`) requis pour pouvoir publier
+
+En attendant la verification :
+- Mode dev/test : Google permet 100 users test sans verification (à ajouter manuellement dans Google Cloud Console → OAuth consent screen → Test users)
+- Mode prod : Brand Verification requise avant rollout client beta
+
+---
+
+## Sprint 33 — Calendar Sync bindings
+
+- `MS_OAUTH_CLIENT_ID` (NEW) : Azure App registration client ID
+- `MS_OAUTH_CLIENT_SECRET` (NEW) : Azure App registration secret
+- `MS_OAUTH_TENANT` (NEW, défaut 'common') : Azure tenant ID ou 'common' multi-tenant
+- `GCAL_SYNC_OAUTH_CLIENT_ID` (NEW optionnel) : si app Google dédiée pour calendar sync (sinon fallback GOOGLE_OAUTH_CLIENT_ID)
+- `GCAL_SYNC_OAUTH_CLIENT_SECRET` (NEW optionnel) : idem
+
+Setup :
+- Outlook : voir `docs/OUTLOOK-OAUTH-SETUP-S33.md`
+- GCal write : ajouter scope `https://www.googleapis.com/auth/calendar` à l'app existante OU créer nouvelle app
+
+---
+
 ## 7. Renvois
 
 - `docs/GOLIVE-S10.md` — source de vérité des 5 gates (§1, §6.2) + synthèse
@@ -143,5 +173,8 @@ machine hôte (jamais sur la VM). Un gate échoué = STOP.
   (aucun nouveau binding requis).
 - `docs/PERF-S9.md` — Activation : migration seq 77 (8 index + `web_vitals`),
   endpoint `POST /api/telemetry/web-vitals` (aucun nouveau binding requis).
+- `docs/LOT-GBP-S32.md` — Sprint 32 GBP integration : réutilise
+  `GOOGLE_OAUTH_CLIENT_ID/SECRET` Sprint G4 avec scope `business.manage` distinct
+  (provider `google_business`). Verification Google Cloud Console requise avant prod.
 
 > Statut : inventaire écrit, NON exécuté (VM VMware) — à exécuter par Rochdi.

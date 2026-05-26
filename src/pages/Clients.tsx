@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/Input';
 import { getClients, createClient, getLeads } from '@/lib/api';
 import { t } from '@/lib/i18n';
 import type { Client, Lead } from '@/lib/types';
+// LOT renforcement — surface inline error pour getClients / getLeads (silent fail avant)
 
 // Type étendu pour les clients avec compteurs
 interface ClientWithCounts extends Client {
@@ -22,15 +23,22 @@ export function ClientsPage() {
   const [clients, setClients] = useState<ClientWithCounts[]>([]);
   const [clientMetrics, setClientMetrics] = useState<Record<string, ClientMetrics>>({});
   const [isLoading, setIsLoading] = useState(true);
+  // LOT renforcement — error inline + retry
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
 
   const loadClients = async () => {
     setIsLoading(true);
+    setLoadError(null);
     const [clientsRes, leadsRes] = await Promise.all([getClients(), getLeads()]);
     if (clientsRes.data) {
       setClients(clientsRes.data as unknown as ClientWithCounts[]);
+    } else if (clientsRes.error) {
+      setLoadError(clientsRes.error);
+    } else if (leadsRes.error) {
+      setLoadError(leadsRes.error);
     }
     // Calculer les métriques par client
     if (leadsRes.data) {
@@ -111,8 +119,23 @@ export function ClientsPage() {
         </div>
       </div>
 
+      {/* LOT renforcement — inline error banner (role=alert + retry) */}
+      {loadError && !isLoading && (
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="mb-4 p-3 rounded-lg border border-[var(--danger)]/40 bg-[var(--danger)]/5 flex items-center justify-between gap-3"
+        >
+          <div className="min-w-0">
+            <p className="text-[12px] font-semibold text-[var(--danger)]">{t('common.error.title')}</p>
+            <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">{t('common.error.load_failed')}</p>
+          </div>
+          <Button size="sm" variant="secondary" onClick={() => void loadClients()}>{t('common.retry')}</Button>
+        </div>
+      )}
+
       {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" aria-busy="true" aria-live="polite" aria-label={t('a11y.loading_sr')}>
           {Array.from({ length: 3 }).map((_, i) => (
             <Card key={i}><Skeleton className="h-40 w-full" /></Card>
           ))}
@@ -264,7 +287,7 @@ function AddClientModal({
           <Input id="client-site" value={siteUrl} onChange={e => setSiteUrl(e.target.value)} placeholder={t('clients.modal.site_placeholder')} />
         </div>
 
-        {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
+        {error && <p role="alert" aria-live="assertive" className="text-sm text-[var(--danger)]">{error}</p>}
 
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="ghost" type="button" onClick={onClose}>{t('clients.modal.cancel')}</Button>

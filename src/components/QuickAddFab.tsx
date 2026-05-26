@@ -242,7 +242,7 @@ export function QuickAddFab() {
 
   const fabClassName = [
     'quick-add-fab',
-    'fixed bottom-20 right-5 z-40 rounded-full transition-all active:scale-95 cursor-pointer flex items-center justify-center md:bottom-6',
+    'fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-5 z-40 rounded-full transition-all active:scale-95 cursor-pointer flex items-center justify-center md:bottom-[calc(1.5rem+env(safe-area-inset-bottom))]',
     isShrunk ? 'fab-shrunk w-10 h-10' : 'w-14 h-14 hover:scale-110',
   ].join(' ');
 
@@ -284,7 +284,7 @@ export function QuickAddFab() {
       />
       <div
         className="fab-fan-out fixed z-40 pointer-events-none"
-        style={{ right: '20px', bottom: isShrunk ? '80px' : '80px', width: 0, height: 0 }}
+        style={{ right: '20px', bottom: 'calc(80px + env(safe-area-inset-bottom))', width: 0, height: 0 }}
         role="menu"
         aria-label="Actions de création rapide"
       >

@@ -5,6 +5,8 @@ import { autoEnrollForTrigger } from './workflows';
 // S4 M2 — validation d'entrée (schémas additifs, import only).
 import { validate, createAppointmentSchemaS4, updateAppointmentSchemaS4 } from '../lib/schemas';
 import { validationError } from './lib/validate-response';
+// Sprint P0-2 — helpers PURS partagés (validateSlot pre-INSERT additif).
+import { validateSlot, BOOKING_ERROR_CODES } from './lib/booking-engine';
 
 export async function handleGetAppointments(
   env: Env,
@@ -70,6 +72,14 @@ export async function handleCreateAppointment(
     return json({ error: 'Type de RDV invalide' }, 400);
   }
 
+  // Sprint P0-2 — validation slot canonique (start<end + durée 15..480min).
+  // Additif : si invalide on rejette AVANT INSERT. Ne casse PAS les payloads
+  // existants qui étaient déjà valides (toute durée >= 15min reste OK).
+  const slotCheck = validateSlot({ startAt: startTime, endAt: endTime });
+  if (!slotCheck.ok) {
+    return json({ error: `Créneau invalide (${slotCheck.error || BOOKING_ERROR_CODES.SLOT_INVALID})` }, 400);
+  }
+
   const id = crypto.randomUUID();
 
   await env.DB.prepare(
@@ -103,6 +113,15 @@ export async function handleCreateAppointment(
       console.error('Webhook error:', e);
     }
   }
+
+  // ── Sprint 33 — Calendar sync push (best-effort, fire-and-forget) ─────────
+  // Push CRM → externes connectés (GCal/Outlook). NE THROW JAMAIS. Aucun ctx
+  // dispo dans cette signature → fire-and-forget standard. L'engine gère
+  // l'anti-loop (last_synced_at > now-30s) et les erreurs par provider.
+  try {
+    const { pushAppointmentToExternal } = await import('./calendar-sync');
+    void pushAppointmentToExternal(env, { clientId } as any, id, 'create').catch(() => { /* best-effort */ });
+  } catch { /* best-effort */ }
 
   return json({ data: { id } }, 201);
 }
@@ -151,6 +170,19 @@ export async function handleUpdateAppointment(
   await env.DB.prepare(
     `UPDATE appointments SET ${updates.join(', ')} WHERE id = ?`
   ).bind(...params).run();
+
+  // ── Sprint 33 — Calendar sync push (best-effort, fire-and-forget) ─────────
+  // Push CRM → externes. action='cancel' si nouveau status=cancelled, sinon
+  // 'update'. clientId résolu via SELECT (l'auth ici n'a pas clientId direct).
+  try {
+    const apptForSync = await env.DB.prepare('SELECT client_id FROM appointments WHERE id = ?').bind(appointmentId).first() as { client_id: string | null } | null;
+    const syncClientId = apptForSync?.client_id || '';
+    if (syncClientId) {
+      const isCancel = body.status === 'cancelled';
+      const { pushAppointmentToExternal } = await import('./calendar-sync');
+      void pushAppointmentToExternal(env, { clientId: syncClientId } as any, appointmentId, isCancel ? 'cancel' : 'update').catch(() => { /* best-effort */ });
+    }
+  } catch { /* best-effort */ }
 
   // Log si changement de statut
   if (body.status) {
@@ -211,6 +243,17 @@ export async function handleRescheduleAppointment(
       `INSERT INTO activity_log (lead_id, client_id, user_id, action, details) VALUES (?, ?, ?, 'appointment_rescheduled', ?)`
     ).bind(appt.lead_id, appt.client_id, auth.userId, JSON.stringify({ appointment_id: appointmentId, title: appt.title })).run();
   }
+
+  // ── Sprint 33 — Calendar sync push (best-effort, fire-and-forget) ─────────
+  // action='reschedule' → PATCH event externe avec nouveaux start/end.
+  try {
+    const syncClientId = appt?.client_id || '';
+    if (syncClientId) {
+      const { pushAppointmentToExternal } = await import('./calendar-sync');
+      void pushAppointmentToExternal(env, { clientId: syncClientId } as any, appointmentId, 'reschedule').catch(() => { /* best-effort */ });
+    }
+  } catch { /* best-effort */ }
+
   return json({ data: { success: true } });
 }
 

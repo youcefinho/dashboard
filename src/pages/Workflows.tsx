@@ -1,16 +1,18 @@
 // ── Page Workflows — Liste + Builder preview Sprint Design 2 (D2.4) ──
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Link } from '@tanstack/react-router';
+import { Link, useNavigate } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, Button, Skeleton, EmptyState, useConfirm, PageHero, KpiStrip, Icon as UIcon, type KpiItem, Tag } from '@/components/ui';
+import { Modal } from '@/components/ui/Modal';
 // Sprint 44 M3.3 — Pull-to-refresh
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { PullToRefreshIndicator } from '@/components/ui/PullToRefreshIndicator';
-import { getWorkflows, toggleWorkflow, deleteWorkflow } from '@/lib/api';
-import type { Workflow, TriggerType } from '@/lib/types';
+import { getWorkflows, toggleWorkflow, deleteWorkflow, getWorkflowTemplates, createWorkflowFromTemplate } from '@/lib/api';
+import type { Workflow, TriggerType, WorkflowTemplate } from '@/lib/types';
 import { TRIGGER_LABELS, TRIGGER_ICONS } from '@/lib/types';
-import { Search, Zap, Play, Trash2, Copy, Eye, Users, Activity, ArrowRight, Plus, FolderOpen, LayoutGrid, LayoutList, ChevronRight } from 'lucide-react';
+import { getWorkflowTemplateMeta } from '@/pages/workflow-templates';
+import { Search, Zap, Play, Trash2, Copy, Eye, Users, Activity, ArrowRight, Plus, FolderOpen, LayoutGrid, LayoutList, ChevronRight, LayoutTemplate } from 'lucide-react';
 import { t } from '@/lib/i18n';
 
 type FilterMode = 'all' | 'active' | 'inactive';
@@ -21,8 +23,11 @@ const FOLDER_LABELS_STATIC: Record<FolderFilter, string> = { all: 'Tous', onboar
 
 export function WorkflowsPage() {
   const confirm = useConfirm();
+  const navigate = useNavigate();
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  // LOT renforcement — surface inline error pour getWorkflows (silent fail avant)
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [filterMode, setFilterMode] = useState<FilterMode>('all');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [searchQuery, setSearchQuery] = useState('');
@@ -30,10 +35,38 @@ export function WorkflowsPage() {
   // Sprint 32 vague 32-3A — Expand inline (trigger + actions count + last_run_at)
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  // ── Galerie de modèles (LOT AUTOMATION BUILDER — wf_tpl.*) ──────────────
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [templates, setTemplates] = useState<WorkflowTemplate[]>([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+  const [creatingKey, setCreatingKey] = useState<string | null>(null);
+
+  const openTemplates = useCallback(async () => {
+    setShowTemplates(true);
+    if (templates.length === 0) {
+      setTemplatesLoading(true);
+      const r = await getWorkflowTemplates();
+      if (r.data) setTemplates(r.data);
+      setTemplatesLoading(false);
+    }
+  }, [templates.length]);
+
+  const handleUseTemplate = useCallback(async (key: string) => {
+    setCreatingKey(key);
+    const r = await createWorkflowFromTemplate(key);
+    setCreatingKey(null);
+    if (r.data?.id) {
+      setShowTemplates(false);
+      void navigate({ to: '/workflows/$workflowId/edit', params: { workflowId: r.data.id } });
+    }
+  }, [navigate]);
+
   const load = useCallback(async () => {
     setIsLoading(true);
+    setLoadError(null);
     const r = await getWorkflows(folderFilter === 'all' ? undefined : folderFilter);
     if (r.data) setWorkflows(r.data);
+    else if (r.error) setLoadError(r.error);
     setIsLoading(false);
   }, [folderFilter]);
 
@@ -100,12 +133,13 @@ export function WorkflowsPage() {
 
         <div className="segmented-control segmented-control--icon">
           {([['grid', LayoutGrid], ['list', LayoutList]] as const).map(([m, Icon]) => (
-            <button key={m} onClick={() => setViewMode(m as ViewMode)} className={viewMode === m ? 'is-active' : ''} aria-label={m === 'grid' ? 'Vue grille' : 'Vue liste'}>
+            <button key={m} onClick={() => setViewMode(m as ViewMode)} className={viewMode === m ? 'is-active' : ''} aria-label={m === 'grid' ? t('a11y.view_grid') : t('a11y.view_list')} aria-pressed={viewMode === m}>
               <Icon size={15} />
             </button>
           ))}
         </div>
 
+        <Button size="sm" variant="secondary" leftIcon={<UIcon as={LayoutTemplate} size="sm" />} onClick={() => void openTemplates()}>{t('wf_tpl.from_template')}</Button>
         <Link to="/workflows/new"><Button size="sm" leftIcon={<UIcon as={Plus} size="sm" />}>{t('workflows.action.new')}</Button></Link>
       </div>
 
@@ -145,9 +179,24 @@ export function WorkflowsPage() {
             </div>
           </div>
 
+          {/* LOT renforcement — inline error banner (role=alert + retry) */}
+          {loadError && !isLoading && (
+            <div
+              role="alert"
+              aria-live="assertive"
+              className="mb-4 p-3 rounded-lg border border-[var(--danger)]/40 bg-[var(--danger)]/5 flex items-center justify-between gap-3"
+            >
+              <div className="min-w-0">
+                <p className="text-[12px] font-semibold text-[var(--danger)]">{t('common.error.title')}</p>
+                <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">{t('common.error.load_failed')}</p>
+              </div>
+              <Button size="sm" variant="secondary" onClick={() => void load()}>{t('common.retry')}</Button>
+            </div>
+          )}
+
           {/* Content */}
           {isLoading ? (
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3" aria-busy="true" aria-live="polite" aria-label={t('a11y.loading_sr')}>
               {Array.from({ length: 6 }).map((_, i) => (
                 <Card key={i} className="p-5">
                   <div className="flex items-start justify-between mb-3">
@@ -210,6 +259,8 @@ export function WorkflowsPage() {
                         {wf.description && <p className="text-[11px] text-[var(--text-muted)] line-clamp-2 mt-1">{wf.description}</p>}
                       </div>
                       <button onClick={() => void handleToggle(wf.id, wf.is_active)}
+                        aria-label={wf.is_active ? t('a11y.workflow_deactivate') : t('a11y.workflow_activate')}
+                        aria-pressed={!!wf.is_active}
                         className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer shrink-0 ml-3 ${wf.is_active ? 'bg-[var(--success)]' : 'bg-[var(--bg-muted)]'}`}>
                         <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform shadow-sm ${wf.is_active ? 'translate-x-[18px]' : 'translate-x-[3px]'}`} />
                       </button>
@@ -252,11 +303,11 @@ export function WorkflowsPage() {
                       <Link to={`/workflows/${wf.id}`} className="flex-1">
                         <Button variant="secondary" size="sm" className="w-full" leftIcon={<UIcon as={Eye} size="xs" />}>{t('workflows.action.details')}</Button>
                       </Link>
-                      <button className="p-1.5 rounded-lg border border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--primary)] hover:border-[var(--primary)] cursor-pointer transition-all" title="Dupliquer">
+                      <button className="p-1.5 rounded-lg border border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--primary)] hover:border-[var(--primary)] cursor-pointer transition-all" title={t('a11y.duplicate')} aria-label={t('a11y.duplicate')}>
                         <Copy size={13} />
                       </button>
                       <button onClick={() => void handleDelete(wf.id)}
-                        className="p-1.5 rounded-lg border border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--danger)] hover:border-[var(--danger)] cursor-pointer transition-all" title="Supprimer">
+                        className="p-1.5 rounded-lg border border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--danger)] hover:border-[var(--danger)] cursor-pointer transition-all" title={t('a11y.delete')} aria-label={t('a11y.delete')}>
                         <Trash2 size={13} />
                       </button>
                     </div>
@@ -295,7 +346,7 @@ export function WorkflowsPage() {
                                   type="button"
                                   className={`table-expand-trigger ${isExpanded ? 'is-expanded' : ''}`}
                                   onClick={() => setExpandedId(isExpanded ? null : wf.id)}
-                                  aria-label={isExpanded ? 'Réduire' : 'Afficher les détails'}
+                                  aria-label={isExpanded ? t('a11y.collapse_row') : t('a11y.expand_row')}
                                   aria-expanded={isExpanded}
                                 >
                                   <ChevronRight size={14} />
@@ -314,14 +365,15 @@ export function WorkflowsPage() {
                             <td className="text-center">
                               <button onClick={() => void handleToggle(wf.id, wf.is_active)}
                                 className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer ${wf.is_active ? 'bg-[var(--success)]' : 'bg-[var(--bg-muted)]'}`}
-                                aria-label={wf.is_active ? 'Désactiver le workflow' : 'Activer le workflow'}>
+                                aria-label={wf.is_active ? t('a11y.workflow_deactivate') : t('a11y.workflow_activate')}
+                                aria-pressed={!!wf.is_active}>
                                 <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform shadow-sm ${wf.is_active ? 'translate-x-[18px]' : 'translate-x-[3px]'}`} />
                               </button>
                             </td>
                             <td className="text-right">
                               <div className="flex gap-1 justify-end">
-                                <Link to={`/workflows/${wf.id}`} className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--primary)] hover:bg-[var(--bg-subtle)] transition-all" aria-label="Voir détails"><UIcon as={Eye} size="sm" /></Link>
-                                <button onClick={() => void handleDelete(wf.id)} className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-[var(--bg-subtle)] cursor-pointer transition-all" aria-label="Supprimer"><UIcon as={Trash2} size="sm" /></button>
+                                <Link to={`/workflows/${wf.id}`} className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--primary)] hover:bg-[var(--bg-subtle)] transition-all" aria-label={t('workflows.action.view_detail')}><UIcon as={Eye} size="sm" /></Link>
+                                <button onClick={() => void handleDelete(wf.id)} className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-[var(--bg-subtle)] cursor-pointer transition-all" aria-label={t('a11y.delete')}><UIcon as={Trash2} size="sm" /></button>
                               </div>
                             </td>
                           </tr>
@@ -364,6 +416,46 @@ export function WorkflowsPage() {
         </div>
       </div>
       </div>
+
+      {/* ── Galerie de modèles (wf_tpl.*) ── */}
+      <Modal open={showTemplates} onOpenChange={setShowTemplates} title={t('wf_tpl.title')}>
+        {templatesLoading ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-32 rounded-xl" />)}
+          </div>
+        ) : templates.length === 0 ? (
+          <p className="text-sm text-[var(--text-muted)] py-6 text-center">{t('wf_tpl.empty')}</p>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {templates.map((tpl) => {
+              const meta = getWorkflowTemplateMeta(tpl.industry);
+              const key = tpl.key || tpl.id || '';
+              return (
+                <Card key={key} className="p-4 flex flex-col gap-2 list-item-enter">
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-9 h-9 rounded-lg flex items-center justify-center text-lg shrink-0" style={{ background: 'var(--brand-tint)' }}>
+                      {meta.icon}
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="font-semibold text-[13px] text-[var(--text-primary)] truncate">{tpl.name}</h3>
+                      <Tag size="xs" variant="neutral">{t('wf_tpl.industry')} : {meta.industryLabel}</Tag>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-[var(--text-muted)] line-clamp-3 flex-1">{tpl.description}</p>
+                  <div className="flex items-center gap-2 text-[10px] text-[var(--text-muted)]">
+                    <UIcon as={Zap} size="xs" />
+                    <span>{TRIGGER_LABELS[tpl.trigger_type as TriggerType] || tpl.trigger_type}</span>
+                    <span className="ml-auto">{(tpl.steps?.length ?? 0)} {t('workflows.stats.steps')}</span>
+                  </div>
+                  <Button size="sm" className="w-full mt-1" disabled={creatingKey === key} onClick={() => void handleUseTemplate(key)}>
+                    {creatingKey === key ? '...' : t('wf_tpl.use')}
+                  </Button>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </Modal>
     </AppLayout>
   );
 }

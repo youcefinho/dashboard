@@ -16,7 +16,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Tag, Skeleton, useToast, SlidePanel, Switch, Icon, EmptyStateIllustration } from '@/components/ui';
+import { Card, Button, Tag, Skeleton, useToast, SlidePanel, Switch, Icon, EmptyStateIllustration, EmptyState, PageHero } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { getAppointments, createAppointment, updateAppointment, rescheduleAppointment, getCalendars, getClients, sendAppointmentReminderNow, type Calendar as CalType } from '@/lib/api';
@@ -28,6 +28,8 @@ import { useHaptic } from '@/hooks/useHaptic';
 import { useShortcuts } from '@/hooks/useShortcuts';
 import { announceSR } from '@/lib/announce';
 import { useAppointmentHoverPreview } from '@/components/panels/AppointmentHoverPreview';
+// Sprint 33 C3 — Calendar sync status badge (Google Calendar / Outlook)
+import { CalendarSyncStatusBadge } from '@/components/calendar/CalendarSyncStatusBadge';
 // Sprint 48 M3.2 — Intl date/time formatters
 import { formatDate } from '@/lib/i18n/datetime';
 import { formatDateInTimezone, getStoredTimezone } from '@/lib/i18n/timezone';
@@ -113,6 +115,8 @@ export function CalendarPage() {
   const [calendars, setCalendars] = useState<CalType[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  // Sprint LOT 1-3 — Error state inline + retry (gap audit Calendar)
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const [resizing, setResizing] = useState<ResizingState | null>(null);
   const resizingRef = useRef<ResizingState | null>(null);
@@ -150,26 +154,36 @@ export function CalendarPage() {
 
   const load = useCallback(async () => {
     setIsLoading(true);
-    const [apptRes, calRes, clientsRes] = await Promise.all([
-      getAppointments(),
-      getCalendars(),
-      getClients(),
-    ]);
-    if (apptRes.data) setAppointments(apptRes.data);
-    if (calRes.data) {
-      setCalendars(calRes.data);
-      if (calRes.data.length > 0 && selectedCalendars.size === 0) {
-        setSelectedCalendars(new Set(calRes.data.map(c => c.id)));
-        setFormCalendarId(calRes.data[0]!.id);
+    setLoadError(null);
+    try {
+      const [apptRes, calRes, clientsRes] = await Promise.all([
+        getAppointments(),
+        getCalendars(),
+        getClients(),
+      ]);
+      if (apptRes.data) setAppointments(apptRes.data);
+      if (calRes.data) {
+        setCalendars(calRes.data);
+        if (calRes.data.length > 0 && selectedCalendars.size === 0) {
+          setSelectedCalendars(new Set(calRes.data.map(c => c.id)));
+          setFormCalendarId(calRes.data[0]!.id);
+        }
       }
-    }
-    if (clientsRes.data) {
-      setClients(clientsRes.data);
-      if (clientsRes.data.length > 0) {
-        setFormClientId(prev => prev || clientsRes.data![0]!.id);
+      if (clientsRes.data) {
+        setClients(clientsRes.data);
+        if (clientsRes.data.length > 0) {
+          setFormClientId(prev => prev || clientsRes.data![0]!.id);
+        }
       }
+      // Sprint LOT 1-3 — Si tous les endpoints critiques échouent → error inline
+      if (!apptRes.data && !calRes.data) {
+        setLoadError(apptRes.error || calRes.error || t('calendar.error.load_failed'));
+      }
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : t('calendar.error.load_failed'));
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   }, [selectedCalendars.size]);
 
   useEffect(() => { void load(); }, [load]);
@@ -457,11 +471,37 @@ export function CalendarPage() {
   useEffect(() => { scrollParentRef.current = document.getElementById('main-content'); }, []);
   const ptr = usePullToRefresh(async () => { await load(); }, { scrollParent: scrollParentRef });
 
+  // Sprint LOT 1-3 — Si load() a échoué globalement : on rend un block alert + retry
+  // au lieu du calendrier vide (gap audit Calendar). L'utilisateur peut quand
+  // même réessayer sans recharger la page.
+  if (loadError && !isLoading) {
+    return (
+      <AppLayout title={t('calendar.page.title')}>
+        <div className="p-6">
+          <Card className="p-6 border border-[var(--danger)]/30" role="alert" aria-live="assertive">
+            <p className="text-sm font-semibold text-[var(--danger)] mb-1">
+              {t('calendar.error.load_failed')}
+            </p>
+            <p className="text-xs text-[var(--text-muted)] mb-3 break-all">{loadError}</p>
+            <Button variant="secondary" onClick={() => void load()}>
+              {t('action.retry')}
+            </Button>
+          </Card>
+        </div>
+      </AppLayout>
+    );
+  }
+
   return (
     <AppLayout title={t('calendar.page.title')}>
       <div ref={ptr.containerRef}>
       <PullToRefreshIndicator distance={ptr.pullDistance} progress={ptr.pullProgress} isRefreshing={ptr.isRefreshing} />
       <div className="cal-page">
+        <PageHero
+          title={t('calendar.page.title')}
+          description={t('calendar.subtitle')}
+          compact
+        />
         <div className="cal-shell">
 
           {/* ── Sidebar : Mini-cal + filtres ──────────────────────── */}
@@ -591,6 +631,8 @@ export function CalendarPage() {
               </div>
 
               <div className="cal-toolbar-right">
+                {/* Sprint 33 C3 — badge agrégé sync calendrier (null si aucune connexion) */}
+                <CalendarSyncStatusBadge compact />
                 <div className="cal-view-switcher" role="tablist" aria-label={t('calendar.aria.view_mode')}>
                   {(['day', 'week', 'month', 'agenda'] as const).map(v => {
                     const label = v === 'day' ? t('calendar.view.day') : v === 'week' ? t('calendar.view.week') : v === 'month' ? t('calendar.view.month') : t('calendar.view.agenda');
@@ -1176,15 +1218,16 @@ export function CalendarPage() {
 // Sprint 45 M2.2 — Illustration Stripe-clean (kind="calendar") + animation float
 function CalendarEmptyOverlay({ title, onCreate }: { title: string; onCreate: () => void }) {
   return (
-    <div className="cal-empty-overlay empty-state" role="status" aria-live="polite">
-      <div className="cal-empty-icon empty-state-illustration" aria-hidden="true">
-        <EmptyStateIllustration kind="calendar" size={140} />
-      </div>
-      <h3 className="cal-empty-title empty-state-title">{title}</h3>
-      <p className="cal-empty-desc empty-state-description">{t('calendar.empty.desc')}</p>
-      <Button variant="primary" size="sm" leftIcon={<Icon as={Plus} size={14} />} onClick={onCreate}>
-        {t('calendar.new_event')}
-      </Button>
-    </div>
+    <EmptyState
+      className="cal-empty-overlay"
+      illustration={<EmptyStateIllustration kind="calendar" size={140} />}
+      title={title}
+      description={t('calendar.empty.desc')}
+      action={
+        <Button variant="primary" size="sm" leftIcon={<Icon as={Plus} size={14} />} onClick={onCreate}>
+          {t('calendar.new_event')}
+        </Button>
+      }
+    />
   );
 }

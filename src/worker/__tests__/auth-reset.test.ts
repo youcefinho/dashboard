@@ -45,6 +45,10 @@ describe('Sprint 12 - Phase A.2 - Password Reset', () => {
     });
 
     it('insère un token et envoie un email si user trouvé', async () => {
+      // checkRateLimit (Sprint 23) émet 1 `.first()` (COUNT) avant le SELECT
+      // user. On répond 0 hits puis la row user pour atteindre l'INSERT token.
+      // @ts-expect-error mock
+      mockEnv.DB.first.mockResolvedValueOnce({ c: 0 }); // rate-limit COUNT
       // @ts-expect-error mock
       mockEnv.DB.first.mockResolvedValueOnce({ id: 'user-1', name: 'Rochdi' });
 
@@ -72,7 +76,9 @@ describe('Sprint 12 - Phase A.2 - Password Reset', () => {
 
       const req = new Request('http://localhost/api/auth/reset-password', {
         method: 'POST',
-        body: JSON.stringify({ token: 'bad-token', password: 'newpassword123' }),
+        // Token min 10 chars (resetPasswordSchema zod) — sinon court-circuit
+        // par 'INVALID_INPUT' avant l'assertion 'Lien invalide'.
+        body: JSON.stringify({ token: 'bad-token-xyz', password: 'newpassword123' }),
       });
 
       const res = await handleResetPassword(req, mockEnv);
@@ -92,7 +98,8 @@ describe('Sprint 12 - Phase A.2 - Password Reset', () => {
 
       const req = new Request('http://localhost/api/auth/reset-password', {
         method: 'POST',
-        body: JSON.stringify({ token: 'good-token', password: 'newpassword123' }),
+        // Token min 10 chars (resetPasswordSchema zod).
+        body: JSON.stringify({ token: 'good-token-xyz', password: 'newpassword123' }),
       });
 
       const res = await handleResetPassword(req, mockEnv);

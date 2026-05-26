@@ -18,6 +18,7 @@ import {
   ChevronUp, ChevronDown, Eye, EyeOff,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
+import { ProactiveAlertsWidget } from '@/components/ProactiveAlertsWidget';
 
 // ── Types widgets configurables ──────────────────────────────
 type WidgetId = 'stats' | 'clients' | 'chart' | 'activity' | 'contacts' | 'pipeline_donut' | 'top_sources';
@@ -29,6 +30,17 @@ interface WidgetConfig {
   visible: boolean;
   order: number;
 }
+
+// Sprint LOT 1-3 — Labels lus via t() au render (clés i18n, parité 4 catalogues)
+const WIDGET_LABEL_KEYS: Record<WidgetId, string> = {
+  stats: 'dashboard.page.widget_stats',
+  clients: 'dashboard.page.widget_clients',
+  chart: 'dashboard.page.widget_chart',
+  activity: 'dashboard.page.widget_activity',
+  pipeline_donut: 'dashboard.page.widget_pipeline_donut',
+  top_sources: 'dashboard.page.widget_top_sources',
+  contacts: 'dashboard.page.widget_contacts',
+};
 
 const DEFAULT_WIDGETS: WidgetConfig[] = [
   { id: 'stats', label: 'KPIs principaux', icon: '📊', visible: true, order: 0 },
@@ -143,7 +155,7 @@ export function DashboardPage() {
   if (error) {
     return (
       <AppLayout title={t('dashboard.page.title')}>
-        <div className="flex items-center justify-center h-64">
+        <div className="flex items-center justify-center h-64" role="alert" aria-live="assertive">
           <div className="text-center">
             <p className="text-[var(--danger)] mb-2">{error}</p>
         <button onClick={() => window.location.reload()} className="text-sm text-[var(--brand-primary)] hover:underline cursor-pointer">{t('dashboard.error.retry')}</button>
@@ -216,12 +228,17 @@ export function DashboardPage() {
               <button onClick={() => setShowConfig(!showConfig)}
                 className={`h-9 w-9 rounded-lg flex items-center justify-center transition cursor-pointer ${showConfig ? 'bg-[var(--brand-primary)] text-white' : 'hover:bg-[var(--bg-subtle)]'}`}
                 style={!showConfig ? { border: '1px solid var(--border-default)', color: 'var(--text-secondary)' } : {}}
-                title="Configurer les widgets">
+                title={t('dashboard.page.config_title')}
+                aria-label={t('dashboard.page.config_aria')}
+                aria-expanded={showConfig}>
                 <Settings2 size={16} />
               </button>
             </div>
           </div>
         </div>
+
+        {/* ═══ Sprint C — Widget IA proactive (self-gated capability ai.use + self-hide si vide) ═══ */}
+        <ProactiveAlertsWidget />
 
         {/* ═══ Panneau de configuration des widgets ═══ */}
         {showConfig && (
@@ -235,13 +252,16 @@ export function DashboardPage() {
                 <div key={w.id} className={`flex items-center gap-2 p-2 rounded-lg border transition-all ${
                   w.visible ? 'border-[var(--brand-primary)]/30 bg-[var(--brand-primary)]/5' : 'border-[var(--border-subtle)] opacity-50'
                 }`}>
-                  <button onClick={() => toggleWidget(w.id)} className="cursor-pointer shrink-0" title={w.visible ? 'Masquer' : 'Afficher'}>
+                  <button onClick={() => toggleWidget(w.id)} className="cursor-pointer shrink-0"
+                    title={w.visible ? t('dashboard.page.config_hide') : t('dashboard.page.config_show')}
+                    aria-label={w.visible ? t('dashboard.page.config_hide') : t('dashboard.page.config_show')}
+                    aria-pressed={w.visible}>
                     {w.visible ? <Eye size={14} className="text-[var(--brand-primary)]" /> : <EyeOff size={14} className="text-[var(--text-muted)]" />}
                   </button>
-                  <span className="text-xs flex-1 truncate">{w.icon} {w.label}</span>
+                  <span className="text-xs flex-1 truncate">{w.icon} {t(WIDGET_LABEL_KEYS[w.id])}</span>
                   <div className="flex flex-col">
-                    <button onClick={() => moveWidget(w.id, -1)} disabled={idx === 0} className="text-[var(--text-muted)] hover:text-[var(--brand-primary)] cursor-pointer disabled:opacity-20"><ChevronUp size={12} /></button>
-                    <button onClick={() => moveWidget(w.id, 1)} disabled={idx === widgets.length - 1} className="text-[var(--text-muted)] hover:text-[var(--brand-primary)] cursor-pointer disabled:opacity-20"><ChevronDown size={12} /></button>
+                    <button onClick={() => moveWidget(w.id, -1)} disabled={idx === 0} aria-label={t('dashboard.page.widget_move_up')} className="text-[var(--text-muted)] hover:text-[var(--brand-primary)] cursor-pointer disabled:opacity-20"><ChevronUp size={12} /></button>
+                    <button onClick={() => moveWidget(w.id, 1)} disabled={idx === widgets.length - 1} aria-label={t('dashboard.page.widget_move_down')} className="text-[var(--text-muted)] hover:text-[var(--brand-primary)] cursor-pointer disabled:opacity-20"><ChevronDown size={12} /></button>
                   </div>
                 </div>
               ))}

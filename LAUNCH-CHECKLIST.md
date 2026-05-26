@@ -186,11 +186,54 @@ une régression produit.
 
 ---
 
+## 11. Acquis LOT A-D (release candidate — intégrés, non vérifiés VM)
+
+- **LOT A — Design system** : `<PageHero>` rendu **sobre** (titre
+  `--text-primary`, orbs décoratifs / gradient brand retirés du DOM —
+  `display:none` legacy déjà actif, non-régressif), signature props
+  INCHANGÉE, 21 pages consommatrices intactes. Détail : `docs/LOT-A.md`.
+- **LOT B — Recherche globale** : nouvel endpoint authentifié
+  `GET /api/search` (`handleGlobalSearch`) cross-entités leads/clients/
+  tasks/conversations, **multi-tenant strict**, `LIKE` sur index S9
+  (0-migration) ; SMS réel non-mock (`messages.ts`). Détail : `docs/LOT-B.md`.
+- **LOT C — i18n résiduel** : **705 clés** ×4 catalogues (fr-CA/fr-FR/en/es,
+  parité stricte prouvée) sur 19 fichiers cibles (admin/help/reports/
+  panels/onboarding/feedback/inbox). Détail : `docs/LOT-C.md`.
+- **LOT D — Résilience / observabilité** : `fetchWithTimeout` (fetch borné
+  AbortController) wrappé dans `ai.ts/push.ts/tracking.ts` ;
+  `GET /api/admin/web-vitals` + `GET /api/admin/data-reconcile` (admin-only,
+  read-only, robustes 200) ; 0-migration. Détail : `docs/SPRINT-D.md`.
+
+> Tous écrits, **NON buildés/testés sur la VM** (sandbox VMware) — à
+> re-vérifier par Rochdi (build combiné, cf §1 Gate 1).
+
+## 12. Dette technique connue (NON enterrée — tracée honnêtement)
+
+- **Build combiné A-D + E NON re-vérifié** : chaque lot est code-complete
+  mais jamais buildé/testé sur la VM ; le build avec **tous les acquis
+  empilés** (A→E) n'a jamais été exécuté. Prérequis Gate 1, à faire par
+  Rochdi sur la machine hôte avant tout déploiement.
+- **LOT C-bis — i18n résiduel reporté** : `ScopePicker.tsx` (~40 strings),
+  `BulkActionBar.tsx`, jours de semaine (`UserActivityHeatmap`), titres
+  d'articles `HelpCenter` (contenu `.md`) restent en FR hardcodé — reportés
+  explicitement (aucune clé créée, cf `docs/LOT-C.md` §3). Non bloquant
+  (marché cible fr-CA).
+- **`sendMagicEmail` = stub log-only** (`src/worker/beta.ts:172-179`) :
+  aucun courriel envoyé, le lien magic est seulement loggé
+  (`console.log`, visible `wrangler tail`). **L'invitation bêta est donc
+  100 % manuelle** (procédure : `docs/RUNBOOK-OPS.md` §3). Brancher
+  Resend/SendGrid (`TODO(prod)`) avant d'automatiser l'envoi.
+- **6 pages CRM dé-i18n** (dette R tracée, NON bloquante) : FR hardcodé →
+  fr-FR/en/es affichent du FR sur ces pages. Acceptable (cible fr-CA),
+  ré-i18n propre = tâche future (clés créées AVANT conversion).
+
+---
+
 ## Verdict final
 
 | Condition | Statut |
 |---|---|
-| 🔴 Sprint R remédié (6 pages CRM i18n) | **NON — BLOQUANT non enterrable** |
+| ✅ Sprint R remédié (6 pages CRM i18n) | **RÉSOLU 2026-05-17** — restauration commit `5764096`, vérifié disque + navigateur (cf bloc « ✅ SPRINT R — RÉSOLU » en tête). **Ne bloque plus le go-live.** |
 | Gate 1 — Build & tests | Écrit, NON exécuté (VM) — à exécuter Rochdi |
 | Gate 2 — Backup D1 prod | Écrit, NON exécuté (VM) — à exécuter Rochdi |
 | Gate 3 — Dry-run migrations | Écrit, NON exécuté (VM) — à exécuter Rochdi |
@@ -198,7 +241,69 @@ une régression produit.
 | Gate 5 — Non-régression multi-tenant | Écrit, NON exécuté (VM) — à exécuter Rochdi |
 | Revue PCI/légale E4/E6 signée | NON — `payments_live_enabled=0` non levé |
 
-**GO-LIVE : NON.** Tant que le sprint R n'est pas remédié et vérifié, et que
-les 5 gates Rochdi + la revue régulée E4/E6 ne sont pas tous verts, la
-plateforme n'est PAS prête à la production. Plateforme code-complete ≠ prête
-au go-live. Synthèse plateforme complète : `docs/GOLIVE-S10.md §2`.
+**GO-LIVE : NON.** Le sprint R est **résolu** (cf bloc en tête) — il ne
+bloque plus. Le go-live reste néanmoins **conditionné** à : le **build
+combiné LOT A-D + E re-vérifié** (`bun run build` 0 erreur TS — jamais
+exécuté sur la VM, jamais re-vérifié avec les acquis empilés), les **5 gates
+Rochdi** tous verts, et la **revue régulée PCI/légale E4/E6 signée**
+(`payments_live_enabled=0` non levé). Tant que ces conditions ne sont pas
+toutes vertes, la plateforme n'est PAS prête à la production. Plateforme
+code-complete ≠ prête au go-live. Synthèse plateforme complète :
+`docs/GOLIVE-S10.md §2`.
+
+---
+
+## ✅ LOT 3 — Sprints 21-30 livrés (2026-05-22→23)
+
+### Sprints du LOT 3
+
+- **Sprint 21 onboarding durci** (seq119) — table `onboarding_events` + colonnes checklist serveur
+- **Sprint 22 billing Stripe mock** (seq120) — 4 tiers seed (free/starter/pro/unlimited), E4 flag mock
+- **Sprint 23 sécurité/conformité** (seq121) — rate-limit D1, audit enrichi `request_id`, Loi 25 export/delete, cookies banner
+- **Sprint 24 observability** (seq122) — `request_metrics`, `alert_rules`, header `X-Request-Id`, `/api/admin/observability/*`
+- **Sprint 25 perf** (seq123) — 3 indexes composites (audit_log, request_metrics, web_vitals), Cache Cloudflare helper, PerfBudgetCard
+- **Sprint 26 E2E Playwright** — 5 specs LOT 3 + helpers DRY + page-objects (pas de migration)
+- **Sprint 27 mobile/PWA** (seq124) — safe-area patches, i18n NetworkStatusBanner, `device_tokens` enrichi 4 colonnes
+- **Sprint 28 i18n convergence** — parité ×4 stricte, ~56 clés extraites cross-pages (pas de migration)
+- **Sprint 29 a11y AAA + design** — catchall reduce-motion, touch-target 44px mobile, Icon aria-hidden default, Badge AAA tokens, SkipToContent reusable
+- **Sprint 30 RC/beta** (seq125) — `release_gates_runs` + `beta_invite_codes` seed 5 codes + route `/api/admin/release-gates`
+
+### Gate 1bis — Build LOT 3
+- [ ] `bun run build` après empilement Sprints 21-29 (validation Antigravity GROUPÉE, premier build complet)
+- [ ] `tsc --noEmit` → 0 erreur (hors `__tests__/` exclus)
+- [ ] `bun run test` → ~500+ tests cumulés LOT 3 verts
+
+### Gate 4bis — Migrations seq119→125
+- [ ] `bun run db:backup:prod` (Gate 2 existant)
+- [ ] `bun run scripts/migrate.ts --remote --dry-run` → ordre seq119, 120, 121, 122, 123, 124, 125
+- [ ] `bun run db:migrate:prod`
+- [ ] Vérifications post-migration (cf. `docs/GOLIVE-LOT3.md §2`)
+
+### Gate 5bis — Smoke tests LOT 3 (10 tests)
+- [ ] `/api/onboarding/state` 200 + checklist serveur
+- [ ] `/api/billing/plans` → 4 tiers
+- [ ] Cookie banner UI affichée + accept-all → localStorage rempli
+- [ ] Header `X-Request-Id` présent réponses
+- [ ] `/api/admin/observability/health` 200
+- [ ] PerfBudgetCard WEB_VITALS visible
+- [ ] PWA installable + push register OK
+- [ ] i18n parité ×4 catalogues (`scripts/check-i18n-parity` si dispo)
+- [ ] Lighthouse a11y ≥ 95 sur `/`, `/dashboard`, `/leads`
+- [ ] `/api/admin/release-gates` 200 + `all_green:true`
+
+### §6bis — Bindings & secrets enrichis LOT 3
+
+- `RATE_LIMITER` (KV optionnel, fallback D1 si absent) — Sprint 23
+- `FCM_SERVER_KEY?: string` (typé Env Sprint 30 — FCM Legacy deprecated post-juin 2024, migration v1 OAuth backlog P0)
+- `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` SaaS Sprint 22 (DISTINCT E4 marchand — mock flag inactif)
+- Webhook targets `alert_rules` Sprint 24 (URL libres configurées via UI admin)
+
+### §12 enrichi — Dette technique
+
+Pointer `docs/TECH-DEBT-RC.md` (source de vérité dette priorisée P0-P3, 15 items).
+
+Items critiques rappelés ici :
+- **P0-01** Branche `sendMagicEmail` Resend (stub log-only actuellement)
+- **P0-02** Migration FCM Legacy → v1 OAuth (deprecated juin 2024)
+- **P0-03** Retrait BYPASS auth (12 occurrences, manuel Rochdi post-RC)
+- **P0-04** Revue PCI/légale E4 Stripe SaaS (avant `payments_live_enabled=1`)

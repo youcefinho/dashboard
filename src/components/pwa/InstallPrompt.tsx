@@ -11,11 +11,12 @@
 //   - Pas de gradient/orbs/glow massif (paradigm Stripe SUBTLE Sprint 38 RESET)
 //   - A11y : Modal Radix Dialog (focus trap + Escape + aria-label)
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Download, Sparkles, Zap, WifiOff, X } from 'lucide-react';
 import { Button, Icon, Modal } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { usePwaInstall } from '@/hooks/usePwaInstall';
+import { t } from '@/lib/i18n';
 
 const AUTO_SHOW_DELAY_MS = 8000;
 
@@ -25,31 +26,34 @@ interface Feature {
   description: string;
 }
 
-const FEATURES: Feature[] = [
-  {
-    icon: Zap,
-    title: 'Démarrage instantané',
-    description: 'Lancement sub-seconde depuis l\'écran d\'accueil, comme une app native.',
-  },
-  {
-    icon: WifiOff,
-    title: 'Fonctionne hors ligne',
-    description: 'Consultez leads, tâches et inbox même sans connexion.',
-  },
-  {
-    icon: Sparkles,
-    title: 'Notifications push',
-    description: 'Soyez alerté des nouveaux leads et messages directement.',
-  },
-];
+function buildFeatures(): Feature[] {
+  return [
+    {
+      icon: Zap,
+      title: t('pwa.install_modal.feature_speed_title'),
+      description: t('pwa.install_modal.feature_speed_desc'),
+    },
+    {
+      icon: WifiOff,
+      title: t('pwa.install_modal.feature_offline_title'),
+      description: t('pwa.install_modal.feature_offline_desc'),
+    },
+    {
+      icon: Sparkles,
+      title: t('pwa.install_modal.feature_push_title'),
+      description: t('pwa.install_modal.feature_push_desc'),
+    },
+  ];
+}
 
 export function InstallPrompt() {
   const toast = useToast();
   const [open, setOpen] = useState(false);
+  const features = useMemo(() => buildFeatures(), []);
   const { canInstall, isInstalled, promptInstall, dismiss } = usePwaInstall({
     onInstalled: () => {
       setOpen(false);
-      toast.success('Application installée !', {
+      toast.success(t('pwa.installed_toast'), {
         title: 'Intralys CRM',
         celebrate: true,
       });
@@ -76,8 +80,8 @@ export function InstallPrompt() {
   const handleInstall = async () => {
     const outcome = await promptInstall();
     if (outcome === 'unavailable') {
-      toast.info('Installation indisponible', {
-        message: 'Votre navigateur ne supporte pas l\'installation PWA.',
+      toast.info(t('pwa.unavailable_toast'), {
+        message: t('pwa.unavailable_desc'),
       });
     }
     // 'accepted' / 'dismissed' → géré par les events natifs (appinstalled)
@@ -98,8 +102,8 @@ export function InstallPrompt() {
         if (!o) handleDismiss();
         else setOpen(o);
       }}
-      title="Installer Intralys CRM"
-      description="Accédez à votre CRM directement depuis l'écran d'accueil."
+      title={t('pwa.install_modal.title')}
+      description={t('pwa.install_modal.subtitle')}
       size="sm"
     >
       <div className="pwa-install-modal">
@@ -116,7 +120,7 @@ export function InstallPrompt() {
 
         {/* Features list */}
         <ul className="pwa-install-modal__features" role="list">
-          {FEATURES.map((f) => (
+          {features.map((f) => (
             <li key={f.title} className="pwa-install-modal__feature">
               <span className="pwa-install-modal__feature-icon" aria-hidden>
                 <Icon as={f.icon} size={14} strokeWidth={2} />
@@ -136,9 +140,9 @@ export function InstallPrompt() {
             size="sm"
             onClick={handleDismiss}
             leftIcon={<Icon as={X} size={14} />}
-            aria-label="Plus tard, ne pas installer maintenant"
+            aria-label={t('pwa.install_modal.cta_later')}
           >
-            Plus tard
+            {t('pwa.install_modal.cta_later')}
           </Button>
           <Button
             variant="primary"
@@ -146,7 +150,7 @@ export function InstallPrompt() {
             onClick={() => void handleInstall()}
             leftIcon={<Icon as={Download} size={14} />}
           >
-            Installer
+            {t('pwa.install_modal.cta_install')}
           </Button>
         </div>
 

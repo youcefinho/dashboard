@@ -32,6 +32,8 @@ export interface BottomSheetProps {
   /** Afficher la handle drag visible en haut */
   showHandle?: boolean;
   className?: string;
+  /** LOT C — aria-label du bouton fermer (i18n). Défaut 'Fermer' (rétro-compat). */
+  closeLabel?: string;
 }
 
 const sizeMap: Record<NonNullable<BottomSheetProps['size']>, string> = {
@@ -51,6 +53,7 @@ export function BottomSheet({
   size = 'auto',
   showHandle = false,
   className,
+  closeLabel = 'Fermer',
 }: BottomSheetProps) {
   const dragStartY = useRef<number | null>(null);
   const [dragOffset, setDragOffset] = useState(0);
@@ -177,7 +180,7 @@ export function BottomSheet({
               </div>
               <DialogPrimitive.Close
                 className="chip-btn chip-btn--sm shrink-0 ml-3"
-                aria-label="Fermer"
+                aria-label={closeLabel}
               >
                 <Icon as={X} size={14} />
               </DialogPrimitive.Close>

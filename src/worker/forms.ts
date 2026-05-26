@@ -1,9 +1,41 @@
 // ── Module Forms — Intralys CRM (Sprint 7 enrichi) ──────────
 import type { Env } from './types';
+import type { FormFieldAnalyticsRow } from '../lib/types';
 import { sanitizeInput, json, audit } from './helpers';
 import { autoEnrollForTrigger } from './workflows';
 import { validate, publicFormSubmitSchema, createFormSchema } from '../lib/schemas';
 import { validationError } from './lib/validate-response';
+
+// ── LOT FORMS XL (Sprint 5) — éval conditionnelle serveur (Manager-B) ──────────
+// Structure d'un champ dans le JSON forms.fields (cf. §6.B-bis). conditional/step
+// OPTIONNELS : un champ sans conditional est TOUJOURS visible (legacy).
+type FormFieldShape = {
+  name: string;
+  required?: boolean;
+  custom_field_id?: string;
+  conditional?: { field_name?: string; operator?: string; value?: string };
+};
+
+// Évalue la VISIBILITÉ d'un champ selon son `conditional` contre les valeurs
+// soumises dans `data`. Opérateurs : equals/not_equals/contains/is_empty/
+// is_not_empty (§6.D). En cas de doute (conditional malformé / opérateur inconnu)
+// le champ est considéré VISIBLE — l'éval conditionnelle ne doit JAMAIS empêcher
+// une soumission légitime.
+function isFieldVisible(field: FormFieldShape, data: Record<string, unknown>): boolean {
+  const cond = field.conditional;
+  if (!cond || !cond.field_name || !cond.operator) return true; // pas de condition = visible
+  const raw = data[cond.field_name];
+  const actual = raw === undefined || raw === null ? '' : String(raw);
+  const expected = cond.value === undefined || cond.value === null ? '' : String(cond.value);
+  switch (cond.operator) {
+    case 'equals': return actual === expected;
+    case 'not_equals': return actual !== expected;
+    case 'contains': return actual.includes(expected);
+    case 'is_empty': return actual.trim() === '';
+    case 'is_not_empty': return actual.trim() !== '';
+    default: return true; // opérateur inconnu ⇒ visible (ne bloque pas)
+  }
+}
 
 export async function handlePublicFormGet(env: Env, url: URL): Promise<Response> {
   const slug = url.pathname.replace('/api/form/', '');
@@ -22,6 +54,44 @@ export async function handlePublicFormSubmit(request: Request, env: Env): Promis
   const form = await env.DB.prepare('SELECT * FROM forms WHERE id = ? AND is_active = 1')
     .bind(body.form_id).first() as Record<string, unknown> | null;
   if (!form) return json({ error: 'Formulaire non trouvé' }, 404);
+
+  const submitData = body.data as Record<string, unknown>;
+
+  // ── Anti-spam HONEYPOT (§6.D) — champ caché `_hp` (convention FIGÉE). Posé par
+  //    Manager-C dans PublicForm, jamais rempli par un humain. Rempli (valeur non
+  //    vide) ⇒ REJET SILENCIEUX : on renvoie un succès factice (201, même forme
+  //    que le succès réel) SANS créer de submission/lead ni autoEnrollForTrigger.
+  //    Aucun signal au bot. Placé TÔT, avant toute écriture.
+  const hp = submitData['_hp'];
+  if (hp !== undefined && hp !== null && String(hp).trim() !== '') {
+    return json({
+      data: {
+        id: crypto.randomUUID(),
+        success_message: form.success_message,
+        redirect_url: form.redirect_url,
+        quiz_score: null,
+        quiz_result: null,
+      },
+    }, 201);
+  }
+
+  // ── Éval conditionnelle serveur (§6.D) — ne valider `required` que pour les
+  //    champs VISIBLES. Un champ caché par condition non satisfaite ne bloque pas
+  //    la soumission. Best-effort : un fields JSON illisible ⇒ pas de blocage.
+  {
+    let fieldsForValidation: FormFieldShape[] = [];
+    try { fieldsForValidation = JSON.parse((form.fields as string) || '[]'); } catch { /* legacy / illisible ⇒ skip */ }
+    for (const field of fieldsForValidation) {
+      if (!field || !field.name || field.name === '_hp') continue; // honeypot jamais requis
+      if (!field.required) continue;
+      if (!isFieldVisible(field, submitData)) continue; // champ caché ⇒ pas requis
+      const val = submitData[field.name];
+      const empty = val === undefined || val === null
+        || (typeof val === 'string' && val.trim() === '')
+        || (Array.isArray(val) && val.length === 0);
+      if (empty) return json({ error: `Champ requis manquant: ${field.name}` }, 400);
+    }
+  }
 
   const subId = crypto.randomUUID();
   const ip = request.headers.get('CF-Connecting-IP') || '';
@@ -117,10 +187,13 @@ export async function handlePublicFormSubmit(request: Request, env: Env): Promis
 
     // Mapper custom fields si présents
     const fields = form.fields as string;
-    let fieldsDef: Array<{ name: string; custom_field_id?: string }> = [];
+    let fieldsDef: FormFieldShape[] = [];
     try { fieldsDef = JSON.parse(fields || '[]'); } catch { /* ignore */ }
 
     for (const field of fieldsDef) {
+      // Éval conditionnelle (§6.D) : un champ caché par condition non satisfaite
+      // n'est NI requis NI mappé. Champ sans conditional = toujours visible.
+      if (!isFieldVisible(field, submitData)) continue;
       if (field.custom_field_id && d[field.name]) {
         await env.DB.prepare(
           'INSERT OR REPLACE INTO custom_field_values (lead_id, field_id, value) VALUES (?, ?, ?)'
@@ -272,4 +345,128 @@ export async function handleGetFormSubmissions(env: Env, auth: { role: string },
     'SELECT * FROM form_submissions WHERE form_id = ? ORDER BY created_at DESC LIMIT ?'
   ).bind(formId, limit).all();
   return json({ data: results || [] });
+}
+
+// ════════════════════════════════════════════════════════════
+// ── LOT FORMS XL (Sprint 5) — STUBS Phase A (Manager-A) ───────
+// ⚠ ZONE STUBS : Phase A n'ajoute QUE ces 2 stubs en FIN de fichier. Manager-B
+// (Phase B) remplit les corps réels ET fait le reste de forms.ts (éval
+// conditionnelle serveur dans handlePublicFormSubmit : ne valider `required` que
+// pour les champs VISIBLES ; rejet honeypot : champ caché spécifique rempli ⇒
+// 200 silencieux sans créer de lead). NE PAS modifier ces signatures.
+// Voir docs/LOT-FORMS-XL.md §6.F / §6.H.
+// ════════════════════════════════════════════════════════════
+
+// POST /api/form/:slug/field-event — PUBLIC (aucun auth). Journalise un
+// événement de champ (focus/blur/complete/abandon) pour l'analytics drop-off.
+// Corps réel Phase B (Manager-B) : résoudre slug → form_id, INSERT INTO
+// form_field_events (form_id, field_name, event, session_id). Best-effort : le
+// tracking ne doit JAMAIS bloquer le remplissage.
+export async function handleLogFormFieldEvent(
+  request: Request,
+  env: Env,
+  slug: string
+): Promise<Response> {
+  // Best-effort intégral : tout échec (body illisible, slug inconnu, table
+  // absente) ⇒ on renvoie 200 success sans throw. Le tracking ne doit JAMAIS
+  // bloquer le remplissage côté visiteur.
+  try {
+    const raw = await request.json().catch(() => null) as
+      { field_name?: string; event?: string; session_id?: string } | null;
+    if (!raw || !raw.field_name) return json({ data: { success: true } });
+
+    // Résoudre slug → form_id (lien APPLICATIF, pas de FK). Slug inconnu ⇒
+    // best-effort silencieux (pas d'INSERT, mais 200).
+    const f = await env.DB.prepare('SELECT id FROM forms WHERE slug = ? AND is_active = 1')
+      .bind(slug).first() as { id: string } | null;
+    if (!f) return json({ data: { success: true } });
+
+    await env.DB.prepare(
+      'INSERT INTO form_field_events (form_id, field_name, event, session_id) VALUES (?, ?, ?, ?)'
+    ).bind(
+      f.id,
+      sanitizeInput(raw.field_name, 200),
+      sanitizeInput(raw.event || 'interaction', 50),
+      sanitizeInput(raw.session_id || '', 100),
+    ).run();
+  } catch { /* best-effort : ne jamais bloquer */ }
+  return json({ data: { success: true } });
+}
+
+// GET /api/forms/:id/field-analytics — PROTÉGÉ (admin via auth.role, comme les
+// autres handlers forms). Agrège le drop-off par champ depuis form_field_events
+// + form_submissions. Corps réel Phase B (Manager-B) → FormFieldAnalyticsRow[].
+export async function handleGetFormFieldAnalytics(
+  env: Env,
+  auth: { role: string },
+  formId: string
+): Promise<Response> {
+  if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
+
+  // Best-effort : table absente / formId inconnu ⇒ { data: [] }, jamais de 500.
+  try {
+    // Agrégation par champ depuis form_field_events :
+    //   reached    = nb de sessions DISTINCTES ayant interagi avec le champ
+    //                (fallback : nb d'événements si session_id vide).
+    //   completed  = nb de sessions DISTINCTES ayant marqué le champ 'complete'.
+    // Le drop-off par champ = (reached - completed) / reached.
+    const { results } = await env.DB.prepare(
+      `SELECT
+         field_name,
+         COUNT(DISTINCT CASE WHEN session_id IS NOT NULL AND session_id != ''
+                             THEN session_id END) AS sessions_reached,
+         COUNT(*) AS events_reached,
+         COUNT(DISTINCT CASE WHEN event = 'complete'
+                             AND session_id IS NOT NULL AND session_id != ''
+                             THEN session_id END) AS sessions_completed,
+         SUM(CASE WHEN event = 'complete' THEN 1 ELSE 0 END) AS events_completed
+       FROM form_field_events
+       WHERE form_id = ? AND field_name IS NOT NULL AND field_name != ''
+       GROUP BY field_name
+       ORDER BY events_reached DESC`
+    ).bind(formId).all() as {
+      results: Array<{
+        field_name: string;
+        sessions_reached: number;
+        events_reached: number;
+        sessions_completed: number;
+        events_completed: number;
+      }>;
+    };
+
+    // Recoupement form_submissions : nb de soumissions complètes du formulaire
+    // (baseline de complétion globale). Best-effort.
+    let totalSubmissions = 0;
+    try {
+      const sub = await env.DB.prepare(
+        'SELECT COUNT(*) AS c FROM form_submissions WHERE form_id = ?'
+      ).bind(formId).first() as { c: number } | null;
+      totalSubmissions = sub?.c ?? 0;
+    } catch { /* best-effort */ }
+
+    const rows: FormFieldAnalyticsRow[] = (results || []).map((r) => {
+      // Préférer les sessions distinctes ; fallback sur le compte d'événements
+      // si aucun session_id n'a été fourni par le client.
+      const reached = r.sessions_reached > 0 ? r.sessions_reached : r.events_reached;
+      // completion par champ : sessions 'complete' du champ, sinon recoupe avec
+      // les soumissions réelles (un champ atteint par tous puis soumis).
+      let completed = r.sessions_completed > 0 ? r.sessions_completed : r.events_completed;
+      if (completed === 0 && totalSubmissions > 0) {
+        completed = Math.min(reached, totalSubmissions);
+      }
+      const dropoff = reached > 0
+        ? Math.round(((reached - completed) / reached) * 1000) / 10
+        : 0;
+      return {
+        field_name: r.field_name,
+        reached,
+        completed,
+        dropoff_rate: Math.max(0, dropoff),
+      };
+    });
+
+    return json({ data: rows });
+  } catch {
+    return json({ data: [] as FormFieldAnalyticsRow[] });
+  }
 }

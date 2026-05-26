@@ -2,10 +2,20 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Input, Select, SlidePanel, PageHero, KpiStrip, type KpiItem, Tag, Icon, useToast } from '@/components/ui';
-import { Plug, CheckCircle2, AlertCircle, Layers, Trash2, Plus } from 'lucide-react';
-import { apiFetch, getClients } from '@/lib/api';
+import { Card, Button, Input, Select, SlidePanel, PageHero, KpiStrip, type KpiItem, Tag, Icon, useToast, useConfirm } from '@/components/ui';
+import { Plug, CheckCircle2, AlertCircle, Layers, Trash2, Plus, Link2, MessageSquare } from 'lucide-react';
+import { apiFetch, getClients, getOauthConnections, deleteOauthConnection, oauthAuthorizeUrl, getWhatsAppConnection, saveWhatsAppConnection } from '@/lib/api';
+import type { OauthConnection, WhatsAppConnection } from '@/lib/types';
 import { t } from '@/lib/i18n';
+// Sprint 21 — Onboarding durci : auto-complète 'integration_connected' dès
+// que le tenant a au moins 1 intégration active (idempotent, best-effort).
+import { useOnboardingItemCompletion } from '@/components/onboarding/useOnboardingItemCompletion';
+// Sprint 32 C1 — Carte d'intégration Google Business Profile (OAuth natif).
+import { GbpConnectButton } from '@/components/gbp/GbpConnectButton';
+// Sprint 33 C3 — Carte sync calendrier (Google Calendar + Outlook, OAuth natif).
+// Note : la spec parle de `CalendarSyncSettings` mais C1 a livré le composant
+// canonique sous le nom `CalendarConnectButtons` (cf. components/calendar/index.ts).
+import { CalendarConnectButtons } from '@/components/calendar/CalendarConnectButtons';
 
 interface IntegrationConfig {
   id: string;
@@ -18,6 +28,10 @@ interface IntegrationConfig {
   docsUrl?: string;
   // Sprint 51 M3.4 — état honnête : 'live' = backend réel ; 'soon' = pas encore branché
   availability?: 'live' | 'soon';
+  // LOT G4 — connexion via OAuth natif (Google Calendar / Slack). Le bouton
+  // "Connecter" navigue vers l'authorize ; le backend renvoie 400 not_configured
+  // proprement si les credentials serveur manquent.
+  oauthProvider?: 'google' | 'slack';
 }
 
 const INTEGRATIONS: IntegrationConfig[] = [
@@ -75,10 +89,14 @@ const INTEGRATIONS: IntegrationConfig[] = [
   {
     id: 'slack', name: 'Slack', icon: '💬', category: 'automation',
     description: 'Notifications en temps réel des nouveaux leads et RDV dans un canal Slack.',
-    status: 'inactive', availability: 'soon',
-    fields: [
-      { key: 'webhook_url', label: 'Webhook URL Slack', placeholder: 'https://hooks.slack.com/services/...' },
-    ],
+    status: 'inactive', availability: 'live', oauthProvider: 'slack',
+    fields: [],
+  },
+  {
+    id: 'google_calendar', name: 'Google Calendar', icon: '📆', category: 'calendar',
+    description: 'Synchronisez vos rendez-vous CRM avec Google Calendar via une connexion sécurisée OAuth.',
+    status: 'inactive', availability: 'live', oauthProvider: 'google',
+    fields: [],
   },
   {
     id: 'webchat', name: 'Webchat Widget', icon: '💬', category: 'communications',
@@ -220,7 +238,7 @@ function LeadAdsConfigPanel({
       <div className="space-y-6">
         {!isMeta && (
           <div className="p-3 rounded-[var(--radius-md)] bg-[var(--bg-subtle)]">
-            <p className="text-[10px] font-semibold text-[var(--text-secondary)] mb-1">URL Webhook à coller dans Google Ads</p>
+            <p className="text-[10px] font-semibold text-[var(--text-secondary)] mb-1">{t('integrations.gads.webhook_url_label')}</p>
             <code className="block text-xs font-mono text-[var(--primary)] break-all">{googleWebhookUrl}</code>
           </div>
         )}
@@ -254,12 +272,12 @@ function LeadAdsConfigPanel({
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Clé webhook (google_key)</label>
+                <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">{t('integrations.gads.key_label')}</label>
                 <Input value={webhookKey} onChange={(e) => setWebhookKey(e.target.value)} placeholder="gads_secret_..." />
               </div>
               <div>
-                <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Libellé (optionnel)</label>
-                <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Campagne Été 2026" />
+                <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">{t('integrations.gads.label_label')}</label>
+                <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder={t('integrations.gads.label_placeholder')} />
               </div>
             </div>
           )}
@@ -449,6 +467,213 @@ function LeadSourcesCallout() {
   );
 }
 
+// ── LOT G4 — Panneau "Connexions OAuth actives" ────────────────────────────
+// Liste les connexions OAuth natives du tenant (Google Calendar / Slack).
+// Tokens jamais exposés (projection métadonnées seule côté worker). Déconnexion
+// via deleteOauthConnection + useConfirm.
+const OAUTH_PROVIDER_LABELS: Record<string, { name: string; icon: string }> = {
+  google: { name: 'Google Calendar', icon: '📆' },
+  slack: { name: 'Slack', icon: '💬' },
+};
+
+function OauthConnectionsPanel({ reloadKey }: { reloadKey: number }) {
+  const { success, error: toastError } = useToast();
+  const confirm = useConfirm();
+  const [conns, setConns] = useState<OauthConnection[] | null>(null);
+
+  const load = useCallback(async () => {
+    const res = await getOauthConnections();
+    // Honnêteté UI : si l'endpoint n'est pas dispo (provider non configuré côté
+    // serveur), on tombe sur une liste vide plutôt qu'un état d'erreur bruyant.
+    setConns(res.data ?? []);
+  }, []);
+
+  useEffect(() => { void load(); }, [load, reloadKey]);
+
+  const disconnect = async (c: OauthConnection) => {
+    const label = OAUTH_PROVIDER_LABELS[c.provider]?.name || c.provider;
+    const ok = await confirm({
+      title: t('integrations.oauth.disconnect'),
+      description: `${label}${c.account_email ? ` — ${c.account_email}` : ''}`,
+      danger: true,
+      confirmLabel: t('integrations.oauth.disconnect'),
+    });
+    if (!ok) return;
+    const res = await deleteOauthConnection(c.id);
+    if (res.error) { toastError(res.error); return; }
+    success(t('integrations.oauth.disconnect'));
+    void load();
+  };
+
+  // Tant que rien n'est connecté, on n'affiche pas le panneau (évite le bruit).
+  if (!conns || conns.length === 0) return null;
+
+  return (
+    <Card className="p-4 mb-6 border-l-4 border-l-[var(--success)]">
+      <div className="flex items-center gap-2 mb-3">
+        <Icon as={Link2} size={14} className="text-[var(--success)]" />
+        <h3 className="text-sm font-semibold">{t('integrations.kpi.connected')}</h3>
+        <Tag dot size="xs" variant="success">{conns.length}</Tag>
+      </div>
+      <div className="space-y-2">
+        {conns.map((c) => {
+          const meta = OAUTH_PROVIDER_LABELS[c.provider] || { name: c.provider, icon: '🔌' };
+          return (
+            <div key={c.id} className="flex items-center justify-between gap-3 p-3 rounded-[var(--radius-md)] bg-[var(--bg-subtle)]">
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="text-xl shrink-0" aria-hidden="true">{meta.icon}</span>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold truncate">{meta.name}</p>
+                  <p className="text-[10px] text-[var(--text-muted)] truncate">
+                    {c.account_email
+                      ? t('integrations.oauth.connected_as', { email: c.account_email })
+                      : t('integrations.status.connected')}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Tag dot size="xs" variant={c.status === 'active' ? 'success' : 'neutral'}>
+                  {c.status === 'active' ? t('integrations.status.connected') : c.status}
+                </Tag>
+                <Button variant="ghost" size="sm" onClick={() => void disconnect(c)}>
+                  <Icon as={Trash2} size={12} /> {t('integrations.oauth.disconnect')}
+                </Button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
+// ── LOT SMS/WHATSAPP seq 104 (Phase C) — carte WhatsApp Business ───────────
+// État flag-inactif par défaut : tant que phone_number_id n'est pas configuré
+// (ou que le worker renvoie status 'inactive'), la carte affiche « WhatsApp non
+// configuré » et un formulaire de connexion. Consomme UNIQUEMENT les helpers
+// FIGÉS Phase A (getWhatsAppConnection / saveWhatsAppConnection). Le secret
+// access_token n'est JAMAIS renvoyé par le backend (absent du miroir front) :
+// on l'envoie en écriture seule, on ne l'affiche jamais. Calque la carte
+// d'intégration externe (Card border-l, Tag de statut, formulaire inline).
+function WhatsAppCard() {
+  const { success, error: toastError } = useToast();
+  const [conn, setConn] = useState<WhatsAppConnection | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState(false);
+  const [phoneNumberId, setPhoneNumberId] = useState('');
+  const [accessToken, setAccessToken] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const res = await getWhatsAppConnection();
+    // Honnêteté UI : endpoint indispo / non configuré ⇒ null (carte « non
+    // configuré »), jamais un état d'erreur bruyant.
+    setConn(res.data ?? null);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { void load(); }, [load]);
+
+  // Actif uniquement si le backend a confirmé un status non 'inactive'.
+  const isActive = !!conn && conn.status !== 'inactive';
+
+  const save = async () => {
+    setSaving(true);
+    const res = await saveWhatsAppConnection({
+      ...(phoneNumberId.trim() ? { phone_number_id: phoneNumberId.trim() } : {}),
+      ...(accessToken.trim() ? { access_token: accessToken.trim() } : {}),
+    });
+    setSaving(false);
+    if (res.error || !res.data) {
+      toastError(res.error || t('whatsapp.not_configured'));
+      return;
+    }
+    success(t('whatsapp.title'));
+    setAccessToken('');
+    setExpanded(false);
+    void load();
+  };
+
+  return (
+    <Card className={`card-premium transition-all mb-6 ${isActive ? 'border-l-4 border-l-[var(--success)]' : ''}`}>
+      <div className="p-4">
+        <div className="flex items-center gap-4">
+          <div
+            className="w-12 h-12 rounded-[var(--radius-md)] flex items-center justify-center text-2xl shrink-0"
+            style={{ background: 'var(--bg-subtle)' }}
+          >
+            <Icon as={MessageSquare} size={22} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-0.5">
+              <h3 className="text-sm font-semibold">{t('whatsapp.title')}</h3>
+              {isActive ? (
+                <Tag variant="success" size="xs">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--success)] mr-1 align-middle" />
+                  {t('integrations.status.connected')}
+                </Tag>
+              ) : (
+                <Tag dot size="xs" variant="neutral">{t('whatsapp.not_configured')}</Tag>
+              )}
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--bg-subtle)] text-[var(--text-muted)]">
+                {CATEGORY_LABELS['communications']}
+              </span>
+            </div>
+            <p className="text-xs text-[var(--text-muted)]">
+              {isActive && conn?.phone_number_id
+                ? conn.phone_number_id
+                : t('whatsapp.not_configured')}
+            </p>
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={loading}
+              onClick={() => setExpanded((v) => !v)}
+            >
+              {isActive ? t('integrations.action.configure') : t('whatsapp.connect')}
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {expanded && (
+        <div className="px-4 pb-4 border-t border-[var(--border-subtle)] pt-3 space-y-3 animate-slide-down">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Phone Number ID</label>
+              <Input
+                value={phoneNumberId}
+                onChange={(e) => setPhoneNumberId(e.target.value)}
+                placeholder="1234567890"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-[var(--text-secondary)] mb-1 block">Access Token</label>
+              <Input
+                type="password"
+                value={accessToken}
+                onChange={(e) => setAccessToken(e.target.value)}
+                placeholder="EAAG..."
+              />
+            </div>
+          </div>
+          <div className="flex gap-2 justify-end pt-1">
+            <Button variant="ghost" size="sm" onClick={() => setExpanded(false)}>
+              {t('integrations.action.cancel')}
+            </Button>
+            <Button size="sm" disabled={saving} onClick={() => void save()}>
+              {saving ? t('integrations.panel.saving') : t('whatsapp.connect')}
+            </Button>
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
+
 export function IntegrationsPage() {
   const [configs, setConfigs] = useState<Record<string, Record<string, string>>>({});
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -456,6 +681,31 @@ export function IntegrationsPage() {
   const [leadAdsPanel, setLeadAdsPanel] = useState<LeadProvider | null>(null);
   const [filterCategory, setFilterCategory] = useState<FilterCategory>('all');
   const [copiedUrl, setCopiedUrl] = useState(false);
+  // LOT G4 — toast au retour du flow OAuth (?connected=… / ?error=…) + refresh panneau
+  const { success: toastSuccess, error: toastError } = useToast();
+  const [oauthReloadKey, setOauthReloadKey] = useState(0);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const connected = params.get('connected');
+    const err = params.get('error');
+    if (!connected && !err) return;
+    if (connected) {
+      const label = OAUTH_PROVIDER_LABELS[connected]?.name || connected;
+      toastSuccess(t('integrations.oauth.connected_as', { email: label }));
+      setOauthReloadKey((k) => k + 1);
+    } else if (err) {
+      // Honnêteté : not_configured = provider sans credentials serveur.
+      toastError(err === 'not_configured'
+        ? t('integrations.oauth.not_configured')
+        : err);
+    }
+    // Nettoie l'URL pour éviter de re-toaster au refresh.
+    params.delete('connected');
+    params.delete('error');
+    const qs = params.toString();
+    window.history.replaceState({}, '', window.location.pathname + (qs ? `?${qs}` : ''));
+  }, [toastSuccess, toastError]);
 
   const updateConfig = (intId: string, key: string, value: string) => {
     setConfigs(prev => ({ ...prev, [intId]: { ...prev[intId], [key]: value } }));
@@ -463,6 +713,12 @@ export function IntegrationsPage() {
 
   const webhookUrl = `${window.location.origin}/api/webhook/lead`;
   const activeCount = INTEGRATIONS.filter(i => i.status === 'active').length;
+
+  // ── Sprint 21 (Onboarding durci) — auto-complète 'integration_connected'
+  //    dès qu'au moins une intégration est active. Idempotent (un seul appel
+  //    API par session) et silencieux en cas d'échec. Condition basée sur
+  //    activeCount déjà calculé — aucun fetch supplémentaire.
+  useOnboardingItemCompletion('integration_connected', activeCount > 0);
 
   const filteredIntegrations = INTEGRATIONS.filter(i =>
     filterCategory === 'all' || i.category === filterCategory
@@ -503,10 +759,22 @@ export function IntegrationsPage() {
           {t('integrations.webhook.desc')}
         </p>
         <div className="flex gap-2">
-          <code className="flex-1 px-3 py-2 bg-[var(--bg-subtle)] rounded-[var(--radius-md)] text-xs font-mono text-[var(--primary)] overflow-x-auto">
+          <code
+            className="flex-1 px-3 py-2 bg-[var(--bg-subtle)] rounded-[var(--radius-md)] text-xs font-mono text-[var(--primary)] overflow-x-auto"
+            aria-label={t('integrations.webhook.url_label')}
+          >
             POST {webhookUrl}
           </code>
-          <Button size="sm" onClick={copyUrl}>{copiedUrl ? t('integrations.webhook.copied') : t('integrations.webhook.copy')}</Button>
+          <Button
+            size="sm"
+            onClick={copyUrl}
+            aria-label={copiedUrl ? t('integrations.webhook.copied') : t('integrations.webhook.copy_aria')}
+          >
+            {copiedUrl ? t('integrations.webhook.copied') : t('integrations.webhook.copy')}
+          </Button>
+          <span className="sr-only" role="status" aria-live="polite">
+            {copiedUrl ? t('integrations.webhook.copied_announce') : ''}
+          </span>
         </div>
         <details className="mt-3">
           <summary className="text-xs text-[var(--text-muted)] cursor-pointer hover:text-[var(--primary)]">
@@ -535,6 +803,64 @@ X-Client-Id: <id_sous_compte>`}</pre>
 
       {/* Sprint 51 M3.4 — Encart Sources de leads entrantes + mini feed */}
       <LeadSourcesCallout />
+
+      {/* LOT G4 — Connexions OAuth actives (Google Calendar / Slack) */}
+      <OauthConnectionsPanel reloadKey={oauthReloadKey} />
+
+      {/* LOT SMS/WHATSAPP seq 104 — carte WhatsApp Business (flag-inactif) */}
+      <WhatsAppCard />
+
+      {/* Sprint 32 C1 — Google Business Profile (OAuth natif, reviews + stats) */}
+      <Card className="card-premium mb-6">
+        <div className="p-4">
+          <div className="flex items-center gap-4">
+            <div
+              className="w-12 h-12 rounded-[var(--radius-md)] flex items-center justify-center text-2xl shrink-0"
+              style={{ background: 'var(--bg-subtle)' }}
+              aria-hidden="true"
+            >
+              🏢
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-0.5">
+                <h3 className="text-sm font-semibold">Google Business Profile</h3>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--bg-subtle)] text-[var(--text-muted)]">
+                  {CATEGORY_LABELS['data']}
+                </span>
+              </div>
+              <p className="text-xs text-[var(--text-muted)]">{t('gbp.title')}</p>
+            </div>
+            <div className="shrink-0">
+              <GbpConnectButton />
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      {/* Sprint 33 C3 — Synchronisation calendrier (Google Calendar + Outlook) */}
+      <Card className="card-premium mb-6">
+        <div className="p-4">
+          <div className="flex items-center gap-4 mb-4">
+            <div
+              className="w-12 h-12 rounded-[var(--radius-md)] flex items-center justify-center text-2xl shrink-0"
+              style={{ background: 'var(--bg-subtle)' }}
+              aria-hidden="true"
+            >
+              📆
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-0.5">
+                <h3 className="text-sm font-semibold">Synchronisation Calendrier</h3>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--bg-subtle)] text-[var(--text-muted)]">
+                  {CATEGORY_LABELS['calendar']}
+                </span>
+              </div>
+              <p className="text-xs text-[var(--text-muted)]">{t('calendar_sync.subtitle')}</p>
+            </div>
+          </div>
+          <CalendarConnectButtons />
+        </div>
+      </Card>
 
       {/* Filtres catégorie — action-chip group premium */}
       <div className="flex gap-2 mb-6 flex-wrap">
@@ -613,6 +939,13 @@ X-Client-Id: <id_sous_compte>`}</pre>
                       </span>
                     </div>
                     <p className="text-xs text-[var(--text-muted)]">{integration.description}</p>
+                    {integration.oauthProvider && (
+                      // Honnêteté UI : la connexion réussit seulement si les credentials
+                      // serveur sont configurés ; sinon le backend renvoie not_configured.
+                      <p className="oauth-config-hint">
+                        <Icon as={AlertCircle} size={10} /> {t('integrations.oauth.not_configured')}
+                      </p>
+                    )}
                   </div>
                   <div className="flex gap-2 shrink-0">
                     {integration.docsUrl && (
@@ -629,12 +962,29 @@ X-Client-Id: <id_sous_compte>`}</pre>
                       >
                         {t('integrations.action.configure')}
                       </Button>
+                    ) : integration.oauthProvider ? (
+                      // LOT G4 — calque EXACT du bouton Meta : navigation top-level vers
+                      // l'authorize. Le backend renvoie 400 not_configured proprement et
+                      // redirige vers ?error=not_configured (toast géré au montage).
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => window.location.href = oauthAuthorizeUrl(integration.oauthProvider!)}
+                      >
+                        <Icon as={Link2} size={12} /> {t('integrations.oauth.connect')}
+                      </Button>
                     ) : isSoon ? (
                       <Button variant="ghost" size="sm" disabled aria-label={`${integration.name} — bientôt disponible`}>
                         {t('integrations.action.coming_soon')}
                       </Button>
                     ) : (
-                      <Button variant="secondary" size="sm" onClick={() => setExpanded(isExpanded ? null : integration.id)}>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => setExpanded(isExpanded ? null : integration.id)}
+                        aria-expanded={isExpanded}
+                        aria-controls={`integration-config-${integration.id}`}
+                      >
                         {isExpanded ? t('integrations.action.collapse') : t('integrations.action.configure')}
                       </Button>
                     )}
@@ -644,7 +994,12 @@ X-Client-Id: <id_sous_compte>`}</pre>
 
               {/* Configuration étendue (sauf facebook/google → SlidePanel dédié) */}
               {isExpanded && integration.id !== 'facebook' && integration.id !== 'google' && (
-                <div className="px-4 pb-4 border-t border-[var(--border-subtle)] pt-3 space-y-3 animate-slide-down">
+                <div
+                  id={`integration-config-${integration.id}`}
+                  className="px-4 pb-4 border-t border-[var(--border-subtle)] pt-3 space-y-3 animate-slide-down"
+                  role="region"
+                  aria-label={t('integrations.action.configure')}
+                >
                   {integration.fields.length > 0 ? (
                     <>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -664,22 +1019,22 @@ X-Client-Id: <id_sous_compte>`}</pre>
                     </>
                   ) : integration.id === 'meta_messaging' ? (
                     <div className="text-center py-4 bg-[var(--bg-subtle)] rounded-[var(--radius-md)]">
-                      <p className="text-sm text-[var(--text-muted)] mb-3">Connectez-vous à Facebook pour lier votre page et compte Instagram.</p>
+                      <p className="text-sm text-[var(--text-muted)] mb-3">{t('integrations.meta.connect_desc')}</p>
                       <Button onClick={() => window.location.href = '/api/meta/oauth/start'} className="bg-[#1877F2] hover:bg-[#1877F2]/90 text-white border-none">
-                        Connecter avec Facebook
+                        {t('integrations.meta.connect_button')}
                       </Button>
                     </div>
                   ) : integration.id === 'webchat' ? (
                     <div className="text-center py-4 bg-[var(--bg-subtle)] rounded-[var(--radius-md)]">
-                      <p className="text-sm font-medium mb-2">Code du widget à intégrer :</p>
+                      <p className="text-sm font-medium mb-2">{t('integrations.webchat.snippet_label')}</p>
                       <code className="block p-3 bg-black/50 text-green-400 text-xs text-left rounded overflow-x-auto whitespace-pre">
 {`<script src="${window.location.origin}/api/webchat/widget.js?client_id=VOTRE_ID" defer></script>`}
                       </code>
                     </div>
                   ) : (
                     <div className="text-center py-4 bg-[var(--bg-subtle)] rounded-[var(--radius-md)]">
-                      <p className="text-sm text-[var(--text-muted)]">Utilisez l'URL webhook universelle ci-dessus pour connecter cette intégration.</p>
-                      <p className="text-xs text-[var(--text-muted)] mt-1">Consultez la documentation de {integration.name} pour configurer le webhook sortant.</p>
+                      <p className="text-sm text-[var(--text-muted)]">{t('integrations.fallback.universal_desc')}</p>
+                      <p className="text-xs text-[var(--text-muted)] mt-1">{t('integrations.fallback.doc_hint', { name: integration.name })}</p>
                     </div>
                   )}
                 </div>

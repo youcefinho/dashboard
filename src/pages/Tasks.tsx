@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { t } from '@/lib/i18n';
-import { Card, Button, Badge, EmptyState, Skeleton, PageHero } from '@/components/ui';
+import { Card, Button, Badge, EmptyState, Skeleton, PageHero, useConfirm } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { 
@@ -20,8 +20,10 @@ import { SwipeAction } from '@/components/ui/SwipeAction';
 import { useLongPress } from '@/hooks/useLongPress';
 
 export function TasksPage() {
+  const confirm = useConfirm();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [templates, setTemplates] = useState<TaskTemplate[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | TaskStatus>(() => (localStorage.getItem('intralys_tasks_filter') as 'all' | TaskStatus) || 'all');
   
   // Modals
@@ -54,9 +56,13 @@ export function TasksPage() {
 
   const load = () => {
     setIsLoading(true);
+    setLoadError(null);
     getTasks()
-      .then(res => { if (res.data) setTasks(res.data); })
-      .catch(() => {})
+      .then(res => {
+        if (res.data) setTasks(res.data);
+        else if (res.error) setLoadError(res.error);
+      })
+      .catch((e) => setLoadError(e instanceof Error ? e.message : t('tasks.error.load')))
       .finally(() => setIsLoading(false));
   };
   const loadTemplates = () => { getTaskTemplates().then(res => { if (res.data) setTemplates(res.data); }).catch(() => {}); };
@@ -110,7 +116,15 @@ export function TasksPage() {
     load();
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
+    const ok = await confirm({
+      title: t('tasks.confirm.delete_title'),
+      description: t('tasks.confirm.delete_desc'),
+      confirmLabel: t('tasks.detail.delete'),
+      cancelLabel: t('tasks.modal.cancel'),
+      danger: true,
+    });
+    if (!ok) return;
     setTasks(prev => prev.filter(t => t.id !== id));
     void deleteTask(id);
     if (showDetailModal?.id === id) setShowDetailModal(null);
@@ -212,17 +226,34 @@ export function TasksPage() {
             ))}
           </div>
           <div className="flex items-center bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-lg p-0.5">
-            <button onClick={() => setViewMode('list')} className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-[var(--brand-primary)] text-white' : 'text-[var(--text-muted)]'}`}><LayoutList size={14} /></button>
-            <button onClick={() => setViewMode('kanban')} className={`p-1.5 rounded-md transition-all ${viewMode === 'kanban' ? 'bg-[var(--brand-primary)] text-white' : 'text-[var(--text-muted)]'}`}><Kanban size={14} /></button>
+            <button onClick={() => setViewMode('list')} aria-label={t('tasks.view.list')} aria-pressed={viewMode === 'list'} className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-[var(--brand-primary)] text-white' : 'text-[var(--text-muted)]'}`}><LayoutList size={14} aria-hidden /></button>
+            <button onClick={() => setViewMode('kanban')} aria-label={t('tasks.view.kanban')} aria-pressed={viewMode === 'kanban'} className={`p-1.5 rounded-md transition-all ${viewMode === 'kanban' ? 'bg-[var(--brand-primary)] text-white' : 'text-[var(--text-muted)]'}`}><Kanban size={14} aria-hidden /></button>
           </div>
           <Button size="sm" leftIcon={<Plus size={14} />} onClick={() => setShowAddModal(true)}>{t('tasks.action.add_short')}</Button>
         </div>
       </div>
 
+      {/* Error inline avec retry — Sprint reinforce */}
+      {loadError && !isLoading && (
+        <div
+          role="alert"
+          aria-live="polite"
+          className="mb-4 flex items-center justify-between gap-3 px-4 py-3 rounded-lg bg-[var(--danger-soft)] border border-[var(--danger)]/30 text-[var(--danger)]"
+        >
+          <div className="flex items-center gap-2 text-sm">
+            <AlertTriangle size={16} aria-hidden />
+            <span>{loadError}</span>
+          </div>
+          <Button size="sm" variant="secondary" onClick={load} aria-label={t('action.retry')}>
+            {t('action.retry')}
+          </Button>
+        </div>
+      )}
+
       {/* Kanban / Liste */}
       {isLoading ? (
         viewMode === 'kanban' ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4" aria-busy="true" aria-live="polite">
             {[0, 1, 2].map(i => (
               <div key={i} className="bg-[var(--bg-surface)] rounded-[var(--radius-lg)] p-3 space-y-2">
                 <Skeleton className="h-4 w-24 mb-2" />
@@ -232,7 +263,7 @@ export function TasksPage() {
             ))}
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-2" aria-busy="true" aria-live="polite">
             {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
           </div>
         )
@@ -253,8 +284,8 @@ export function TasksPage() {
                     key={task.id}
                     rightActions={
                       <div className="flex gap-2 justify-end w-full pr-2">
-                        <button className="w-10 h-10 bg-[var(--danger)] text-white rounded-[var(--radius-lg)] flex items-center justify-center shadow-sm" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(task.id); }}>
-                          <Trash2 size={16} />
+                        <button aria-label={t('tasks.detail.delete')} className="w-10 h-10 bg-[var(--danger)] text-white rounded-[var(--radius-lg)] flex items-center justify-center shadow-sm" onClick={(e) => { e.preventDefault(); e.stopPropagation(); void handleDelete(task.id); }}>
+                          <Trash2 size={16} aria-hidden />
                         </button>
                       </div>
                     }
@@ -294,11 +325,11 @@ export function TasksPage() {
                 key={task.id}
                 rightActions={
                   <div className="flex gap-2 justify-end w-full pr-2">
-                    <button className="w-12 h-12 bg-[var(--success)] text-white rounded-[var(--radius-lg)] flex items-center justify-center shadow-sm" onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleStatus(task); }}>
-                      <CheckCircle2 size={20} />
+                    <button aria-label={TASK_STATUS_LABELS[task.status]} className="w-12 h-12 bg-[var(--success)] text-white rounded-[var(--radius-lg)] flex items-center justify-center shadow-sm" onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleStatus(task); }}>
+                      <CheckCircle2 size={20} aria-hidden />
                     </button>
-                    <button className="w-12 h-12 bg-[var(--danger)] text-white rounded-[var(--radius-lg)] flex items-center justify-center shadow-sm" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(task.id); }}>
-                      <Trash2 size={20} />
+                    <button aria-label={t('tasks.detail.delete')} className="w-12 h-12 bg-[var(--danger)] text-white rounded-[var(--radius-lg)] flex items-center justify-center shadow-sm" onClick={(e) => { e.preventDefault(); e.stopPropagation(); void handleDelete(task.id); }}>
+                      <Trash2 size={20} aria-hidden />
                     </button>
                   </div>
                 }
@@ -319,7 +350,7 @@ export function TasksPage() {
                         <span className={`flex items-center gap-1 ${isOverdue(task) ? 'text-[var(--danger)] font-semibold' : ''}`}>📅 {formatDueDate(task.due_date)} {isOverdue(task) && '⚠️'}</span>
                       </div>
                     </div>
-                    <button onClick={(e) => { e.stopPropagation(); handleDelete(task.id); }} className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-[var(--danger-soft)] transition-all shrink-0"><Trash2 size={14} /></button>
+                    <button onClick={(e) => { e.stopPropagation(); void handleDelete(task.id); }} aria-label={t('tasks.detail.delete')} className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-[var(--danger-soft)] transition-all shrink-0"><Trash2 size={14} aria-hidden /></button>
                   </Card>
                 </div>
               </SwipeAction>
@@ -436,7 +467,7 @@ export function TasksPage() {
             </div>
             
             <div className="flex justify-end pt-2">
-              <Button variant="ghost" className="text-[var(--danger)] hover:bg-[var(--danger-soft)]" onClick={() => handleDelete(showDetailModal.id)} leftIcon={<Trash2 size={14}/>}>{t('tasks.detail.delete')}</Button>
+              <Button variant="ghost" className="text-[var(--danger)] hover:bg-[var(--danger-soft)]" onClick={() => void handleDelete(showDetailModal.id)} leftIcon={<Trash2 size={14} aria-hidden/>}>{t('tasks.detail.delete')}</Button>
             </div>
           </div>
         </Modal>

@@ -3,6 +3,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Textarea } from '@/components/ui';
 import { toast } from 'sonner';
+import { t } from '@/lib/i18n';
 
 // Couleur par tranche NPS (detractor 0-6, passive 7-8, promoter 9-10)
 function npsBucket(n: number): 'detractor' | 'passive' | 'promoter' {
@@ -78,10 +79,10 @@ export function NpsModal() {
       });
 
       localStorage.setItem('intralys_nps_answered', 'true');
-      toast.success('Merci pour vos précieux retours !');
+      toast.success(t('feedback.nps_thanks'));
       setIsOpen(false);
     } catch (err) {
-      toast.error('Erreur lors de l\'envoi.');
+      toast.error(t('feedback.nps_send_error'));
     } finally {
       setIsSubmitting(false);
     }
@@ -90,12 +91,12 @@ export function NpsModal() {
   if (!isOpen) return null;
 
   return (
-    <Modal open={isOpen} onOpenChange={setIsOpen} title="Votre avis compte">
+    <Modal open={isOpen} onOpenChange={setIsOpen} title={t('feedback.nps_title')}>
       <div className="w-[520px] max-w-full">
         {step === 1 ? (
           <div className="text-center animate-in fade-in-0 duration-200">
             <h3 className="text-xl font-bold text-[var(--text-primary)] mb-6 leading-snug">
-              Quelle est la probabilité que vous recommandiez Intralys à un collègue ou un ami ?
+              {t('feedback.nps_question')}
             </h3>
 
             <div className="flex flex-wrap justify-center gap-1.5 mb-4">
@@ -115,7 +116,7 @@ export function NpsModal() {
                       padding: '0 6px',
                       fontSize: 13,
                     }}
-                    aria-label={`Note ${num} sur 10`}
+                    aria-label={t('feedback.nps_score_aria').replace('{n}', String(num))}
                   >
                     {num}
                   </button>
@@ -124,38 +125,38 @@ export function NpsModal() {
             </div>
 
             <div className="flex justify-between text-[10px] text-[var(--text-muted)] uppercase font-bold tracking-[0.16em] px-1">
-              <span>Pas du tout probable</span>
-              <span>Très probable</span>
+              <span>{t('feedback.nps_not_likely')}</span>
+              <span>{t('feedback.nps_very_likely')}</span>
             </div>
 
             {/* Légende couleurs */}
             <div className="flex items-center justify-center gap-4 mt-6 text-[10px] text-[var(--text-muted)] font-medium">
               <span className="inline-flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full" style={{ background: '#E93D3D' }} /> Détracteurs
+                <span className="w-2 h-2 rounded-full" style={{ background: '#E93D3D' }} /> {t('feedback.nps_detractors')}
               </span>
               <span className="inline-flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full" style={{ background: '#FF9A00' }} /> Passifs
+                <span className="w-2 h-2 rounded-full" style={{ background: '#FF9A00' }} /> {t('feedback.nps_passives')}
               </span>
               <span className="inline-flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full" style={{ background: '#37CA37' }} /> Promoteurs
+                <span className="w-2 h-2 rounded-full" style={{ background: '#37CA37' }} /> {t('feedback.nps_promoters')}
               </span>
             </div>
           </div>
         ) : (
           <div className="animate-in fade-in-0 slide-in-from-bottom-1 duration-200">
             <h3 className="text-xl font-bold text-[var(--text-primary)] mb-2">
-              {score !== null && score >= 9 ? 'Super ! Qu\'est-ce qui vous plaît le plus ?' :
-               score !== null && score >= 7 ? 'Merci. Que pourrions-nous améliorer ?' :
-               'Désolé de l\'apprendre. Comment pouvons-nous corriger le tir ?'}
+              {score !== null && score >= 9 ? t('feedback.nps_q_promoter') :
+               score !== null && score >= 7 ? t('feedback.nps_q_passive') :
+               t('feedback.nps_q_detractor')}
             </h3>
             <p className="text-sm text-[var(--text-secondary)] mb-4">
-              Votre réponse détaillée nous aidera à faire d'Intralys le meilleur outil pour vous.
+              {t('feedback.nps_followup')}
             </p>
 
             <Textarea
               value={comment}
               onChange={e => setComment(e.target.value)}
-              placeholder="Partagez vos pensées..."
+              placeholder={t('feedback.nps_comment_ph')}
               rows={5}
               maxLength={800}
               showCounter
@@ -164,9 +165,9 @@ export function NpsModal() {
             />
 
             <div className="flex justify-end gap-3">
-              <Button variant="secondary" onClick={() => setIsOpen(false)}>Plus tard</Button>
+              <Button variant="secondary" onClick={() => setIsOpen(false)}>{t('feedback.nps_later')}</Button>
               <Button variant="premium" onClick={() => void handleSubmit()} disabled={isSubmitting}>
-                {isSubmitting ? 'Envoi...' : 'Envoyer la réponse'}
+                {isSubmitting ? t('feedback.nps_sending') : t('feedback.nps_send')}
               </Button>
             </div>
           </div>

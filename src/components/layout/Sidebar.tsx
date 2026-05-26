@@ -9,10 +9,13 @@ import {
   BarChart3, Settings, LogOut, ChevronLeft, ChevronRight,
   UserCircle, CreditCard, Trash2, Link2, ClipboardList, Bookmark,
   ShieldCheck, Store, Package, ShoppingCart, Contact,
+  LayoutTemplate, Phone,
+  // Sprint 21 — Onboarding durci : icône "Premiers pas"
+  Sparkles,
 } from 'lucide-react';
 import { Icon } from '@/components/ui';
-import { getSmartLists, getLeads, getTasks, getNotifications, getModules, type ModuleId } from '@/lib/api';
-import type { SmartList } from '@/lib/types';
+import { getSmartLists, getLeads, getTasks, getNotifications, getModules, getClientBranding, getActiveSubAccount, getOnboardingChecklist, type ModuleId } from '@/lib/api';
+import type { SmartList, TenantBranding, ClientBrandingMeta } from '@/lib/types';
 // Sprint 45 M1.4 — Onboarding progress chip (auto-hide quand 5/5 atteint)
 import { OnboardingProgressChip } from '@/components/onboarding/OnboardingProgressChip';
 import { t } from '@/lib/i18n';
@@ -37,6 +40,8 @@ const NAV_SECTIONS: NavSection[] = [
       { path: '/clients', label: t('nav.clients'), icon: <Icon as={UserCircle} size={18} />, adminOnly: true },
       { path: '/pipeline', label: t('nav.pipeline'), icon: <Icon as={Briefcase} size={18} /> },
       { path: '/invoices', label: t('nav.invoices'), icon: <Icon as={CreditCard} size={18} /> },
+      // ── Sprint 18 CATALOGUE DE SERVICES — catalogue d'articles service/produit ──
+      { path: '/catalog', label: t('catalog.title'), icon: <Icon as={Package} size={18} /> },
       { path: '/conversations', label: t('nav.conversations'), icon: <Icon as={MessageSquare} size={18} />, badgeKey: 'notifsUnread' },
     ],
   },
@@ -47,6 +52,10 @@ const NAV_SECTIONS: NavSection[] = [
       { path: '/workflows', label: t('nav.automations'), icon: <Icon as={Zap} size={18} /> },
       { path: '/trigger-links', label: t('nav.trigger_links'), icon: <Icon as={Link2} size={18} /> },
       { path: '/forms/builder/new', label: t('nav.forms'), icon: <Icon as={ClipboardList} size={18} /> },
+      // ── LOT FUNNEL — builder landing pages / funnels ──
+      { path: '/funnels', label: t('funnel.nav'), icon: <Icon as={LayoutTemplate} size={18} /> },
+      // ── LOT MARKETPLACE (Sprint 19) — catalogue de modèles cross-tenant (G7, non gated) ──
+      { path: '/marketplace', label: t('marketplace.nav'), icon: <Icon as={Store} size={18} /> },
     ],
   },
   {
@@ -55,6 +64,8 @@ const NAV_SECTIONS: NavSection[] = [
       { path: '/documents', label: t('nav.documents'), icon: <Icon as={FileText} size={18} /> },
       { path: '/documents/templates', label: t('nav.doc_templates'), icon: <Icon as={FileText} size={18} /> },
       { path: '/reviews', label: t('nav.reviews'), icon: <Icon as={Star} size={18} /> },
+      // ── LOT TELEPHONY-DISPOSITION (Sprint 16) — journal d'appels global ──
+      { path: '/telephonie', label: t('telephony.page.title'), icon: <Icon as={Phone} size={18} /> },
       { path: '/calendar', label: t('nav.calendar'), icon: <Icon as={CalendarDays} size={18} /> },
       { path: '/tasks', label: t('nav.tasks'), icon: <Icon as={CheckSquare} size={18} />, badgeKey: 'tasksTodo' },
       { path: '/integrations', label: t('nav.integrations'), icon: <Icon as={Plug} size={18} /> },
@@ -101,6 +112,16 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   // Sprint E1 M2.2 — modules actifs du tenant (gate la section BOUTIQUE).
   // Défaut ['crm'] : tant que non chargé, section e-commerce masquée (no flash).
   const [activeModules, setActiveModules] = useState<ModuleId[]>(['crm']);
+  // ── Sprint 21 (Onboarding durci) — entrée nav "Premiers pas" visible
+  //    UNIQUEMENT si la checklist n'est pas complète (pct < 100). Best-effort :
+  //    si l'API fail, on garde l'entrée masquée par défaut (null) pour éviter
+  //    le flash. Refresh sur route change (calque badgeCounts).
+  const [checklistPct, setChecklistPct] = useState<number | null>(null);
+  // ── LOT WHITE-LABEL APPLY (Sprint 20) — branding tenant (logo/nom conditionnels).
+  //    Null/sans champ ⇒ fallback Intralys (rétro-compat byte). Hydraté par
+  //    l'évènement `intralys:branding` (émis par AppLayout au boot / changement
+  //    de sous-compte) + un fetch léger au mount (premier rendu correct).
+  const [branding, setBranding] = useState<TenantBranding | null>(null);
 
   useEffect(() => {
     localStorage.setItem('sidebar_collapsed', collapsed ? '1' : '0');
@@ -118,6 +139,53 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       .catch(() => { /* fallback ['crm'] : section e-commerce masquée */ });
     return () => { cancelled = true; };
   }, []);
+
+  // ── LOT WHITE-LABEL APPLY (Sprint 20) — branding tenant pour logo/nom Sidebar.
+  //    1) Écoute l'évènement `intralys:branding` (source de vérité = AppLayout) ;
+  //    2) fetch léger au mount (best-effort) pour le premier rendu si l'event a
+  //       déjà été émis avant le montage de la Sidebar. Borné tenant
+  //       (getActiveSubAccount). Sans branding ⇒ null ⇒ fallback Intralys.
+  useEffect(() => {
+    const onBranding = (e: Event) => {
+      const detail = (e as CustomEvent<TenantBranding | null>).detail;
+      setBranding(detail ?? null);
+    };
+    window.addEventListener('intralys:branding', onBranding as EventListener);
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const clientId = getActiveSubAccount();
+        if (!clientId) return; // legacy/mono-tenant ⇒ fallback Intralys
+        const res = await getClientBranding(clientId);
+        if (cancelled || !res.data) return;
+        const d = res.data;
+        let meta: ClientBrandingMeta = {};
+        if (d.branding) {
+          try { meta = JSON.parse(d.branding) as ClientBrandingMeta; } catch { /* legacy non-JSON */ }
+        }
+        setBranding({
+          logo_url: d.logo_url,
+          company_name: meta.company_name || meta.companyName,
+        });
+      } catch { /* best-effort : fallback Intralys */ }
+    })();
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener('intralys:branding', onBranding as EventListener);
+    };
+  }, []);
+
+  // ── Sprint 21 (Onboarding durci) — fetch checklist serveur pour décider
+  //    si l'entrée "Premiers pas" doit être affichée. Best-effort silencieux.
+  useEffect(() => {
+    let cancelled = false;
+    getOnboardingChecklist()
+      .then((r) => { if (!cancelled && r.data) setChecklistPct(r.data.pct); })
+      .catch(() => { /* silent — entrée masquée si fail */ });
+    return () => { cancelled = true; };
+  }, [location.pathname]);
 
   // Sprint 23 wave 16 — fetch counts pour badges sidebar. Refresh sur route change.
   useEffect(() => {
@@ -180,21 +248,44 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       `}>
         {/* Logo + collapse toggle — Stripe-clean : white bg, signature Intralys gradient préservée uniquement sur le logo chip */}
         <div className="h-14 flex items-center justify-between px-3 border-b border-[var(--border)] shrink-0">
-          <div className="flex items-center gap-2.5 overflow-hidden">
-            {/* Sprint 39 39-3B — logo bump 32→36 + wordmark "Intralys" en t-h3 primary (Stripe Dashboard pattern) */}
-            <div className="w-9 h-9 rounded-md flex items-center justify-center shrink-0 font-bold text-[15px] text-white"
-              style={{
-                background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
-              }}>
-              I
-            </div>
-            {!collapsed && (
-              <div className="overflow-hidden">
-                <h1 className="text-[15px] font-bold leading-tight text-[var(--primary)] whitespace-nowrap tracking-tight">Intralys</h1>
-                <p className="text-[10px] uppercase tracking-[0.12em] text-[var(--text-muted)]">CRM</p>
+          {/* ── LOT WHITE-LABEL APPLY (Sprint 20) — logo/nom tenant conditionnels.
+              Si le branding du sous-compte actif fournit un logo_url et/ou un
+              company_name → on les affiche ; SINON fallback Intralys (chip
+              gradient « I » + wordmark « Intralys » + « CRM ») — rétro-compat
+              byte. Borné tenant (sous-compte actif). */}
+          {(() => {
+            const logoUrl = typeof branding?.logo_url === 'string' ? branding.logo_url.trim() : '';
+            const companyName = typeof branding?.company_name === 'string' ? branding.company_name.trim() : '';
+            const hasLogo = logoUrl.length > 0;
+            const hasName = companyName.length > 0;
+            return (
+              <div className="flex items-center gap-2.5 overflow-hidden">
+                {/* Sprint 39 39-3B — logo bump 32→36 + wordmark "Intralys" en t-h3 primary (Stripe Dashboard pattern) */}
+                {hasLogo ? (
+                  <div className="w-9 h-9 rounded-md flex items-center justify-center shrink-0 overflow-hidden bg-[var(--bg-surface)] border border-[var(--border)]">
+                    <img src={logoUrl} alt={companyName || 'Logo'} className="w-full h-full object-contain" loading="lazy" decoding="async" />
+                  </div>
+                ) : (
+                  <div className="w-9 h-9 rounded-md flex items-center justify-center shrink-0 font-bold text-[15px] text-white"
+                    style={{
+                      background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
+                    }}>
+                    {hasName ? companyName.charAt(0).toUpperCase() : 'I'}
+                  </div>
+                )}
+                {!collapsed && (
+                  <div className="overflow-hidden">
+                    <h1 className="text-[15px] font-bold leading-tight text-[var(--primary)] whitespace-nowrap tracking-tight truncate">
+                      {hasName ? companyName : 'Intralys'}
+                    </h1>
+                    {!hasName && (
+                      <p className="text-[10px] uppercase tracking-[0.12em] text-[var(--text-muted)]">CRM</p>
+                    )}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            );
+          })()}
           <button
             onClick={() => setCollapsed(!collapsed)}
             aria-label={collapsed ? t('nav.expand_sidebar') : t('nav.collapse_sidebar')}
@@ -331,6 +422,41 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             );
           })}
         </nav>
+
+        {/* Sprint 21 — Onboarding durci : entrée nav "Premiers pas" visible si
+            la checklist n'est pas complète (pct < 100). Best-effort : masquée
+            si l'API n'a pas répondu (checklistPct === null) pour éviter le flash. */}
+        {checklistPct !== null && checklistPct < 100 && (
+          <div className="px-2 pb-1">
+            <Link
+              to="/getting-started"
+              onClick={onClose}
+              title={collapsed ? t('onboarding.getting_started.title') : undefined}
+              aria-current={location.pathname === '/getting-started' ? 'page' : undefined}
+              className={`sidebar-nav-item group flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[13px] transition-colors relative cursor-pointer ${collapsed ? 'justify-center' : ''} ${
+                location.pathname === '/getting-started'
+                  ? 'is-active bg-[var(--primary-soft)] text-[var(--primary)] font-semibold'
+                  : 'text-[var(--text-secondary)] font-medium hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+              }`}
+            >
+              <span
+                aria-hidden
+                className="inline-flex items-center justify-center shrink-0"
+                style={{ color: location.pathname === '/getting-started' ? 'var(--primary)' : 'var(--text-muted)' }}
+              >
+                <Icon as={Sparkles} size={18} />
+              </span>
+              {!collapsed && (
+                <span className="truncate flex-1">{t('onboarding.getting_started.title')}</span>
+              )}
+              {!collapsed && (
+                <span className="text-[10px] font-semibold tabular-nums text-[var(--text-muted)] shrink-0">
+                  {checklistPct}%
+                </span>
+              )}
+            </Link>
+          </div>
+        )}
 
         {/* Sprint 45 M1.4 — Onboarding progress chip (auto-hide quand 5/5) */}
         <div className={`px-2 ${collapsed ? 'flex justify-center' : ''}`}>

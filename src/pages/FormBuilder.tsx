@@ -10,7 +10,8 @@ import { Modal } from '@/components/ui/Modal';
 import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { getForm, updateForm, getFormStats } from '@/lib/api';
+import { getForm, updateForm, getFormStats, getFormFieldAnalytics } from '@/lib/api';
+import type { FormFieldCondition, FormFieldConditionOperator, FormFieldAnalyticsRow } from '@/lib/types';
 import { ArrowLeft, Save, Eye, GripVertical, Plus, Trash2, Settings, BarChart3, Code, Copy } from 'lucide-react';
 import { t } from '@/lib/i18n';
 
@@ -20,7 +21,12 @@ interface FormField {
   id: string; type: FieldType; name: string; label: string;
   placeholder: string; required: boolean; validation?: string;
   options?: string[]; custom_field_id?: string; weight?: number;
+  // ── LOT FORMS XL (Sprint 5) — attributs additifs OPTIONNELS (§6.B-bis) ──
+  conditional?: FormFieldCondition;   // show-if. Absent = toujours visible.
+  step?: number;                      // multi-étapes. Absent/0 = étape 1.
 }
+
+const COND_OPERATORS: FormFieldConditionOperator[] = ['equals', 'not_equals', 'contains', 'is_empty', 'is_not_empty'];
 
 interface FormStatsData { total_views: number; total_submissions: number; conversion_rate: string; }
 
@@ -76,6 +82,9 @@ export function FormBuilderPage() {
   const [stats, setStats] = useState<FormStatsData | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  // ── LOT FORMS XL — onglet analytics drop-off par champ ──
+  const [showAnalytics, setShowAnalytics] = useState(false);
+  const [analytics, setAnalytics] = useState<FormFieldAnalyticsRow[] | null>(null);
 
   const loadForm = useCallback(async () => {
     if (!formId) { setIsLoading(false); return; }
@@ -149,6 +158,14 @@ export function FormBuilderPage() {
     setShowStats(true);
   };
 
+  // ── LOT FORMS XL — drop-off par champ (getFormFieldAnalytics, best-effort) ──
+  const loadAnalytics = async () => {
+    setShowAnalytics(true);
+    setAnalytics(null);
+    const result = await getFormFieldAnalytics(formId);
+    setAnalytics(result.data ?? []);
+  };
+
   const embedCode = `<script src="https://crm.intralys.com/f/${formSlug}.js" async></script>`;
 
   return (
@@ -159,7 +176,7 @@ export function FormBuilderPage() {
 
       <div className="builder-topbar">
         <div className="builder-topbar-left">
-          <Button variant="ghost" size="sm" onClick={() => navigate({ to: '/templates' })}>
+          <Button variant="ghost" size="sm" onClick={() => navigate({ to: '/forms' })}>
             <Icon as={ArrowLeft} size="md" /> {t('fb.back')}
           </Button>
           <Input value={formName} onChange={e => setFormName(e.target.value)} placeholder={t('fb.form_name_ph')}
@@ -175,8 +192,9 @@ export function FormBuilderPage() {
           </Select>
           <Button variant="ghost" size="sm" onClick={() => setShowPreview(!showPreview)}><Icon as={Eye} size="sm" /> {t('fb.preview')}</Button>
           <Button variant="ghost" size="sm" onClick={loadStats}><BarChart3 size={14} /> Stats</Button>
+          <Button variant="ghost" size="sm" onClick={loadAnalytics}><BarChart3 size={14} /> {t('fb.analytics.title')}</Button>
           <Button variant="ghost" size="sm" onClick={() => setShowEmbed(true)}><Icon as={Code} size="sm" /> Embed</Button>
-          <Button variant="ghost" size="sm" onClick={() => setShowSettings(true)} aria-label="Paramètres"><Icon as={Settings} size="sm" /></Button>
+          <Button variant="ghost" size="sm" onClick={() => setShowSettings(true)} aria-label={t('formbuilder.action.settings_aria')}><Icon as={Settings} size="sm" /></Button>
           <Button variant="primary" size="sm" onClick={handleSave} disabled={isSaving}>
             <Icon as={Save} size="sm" /> {isSaving ? '...' : t('fb.save')}
           </Button>
@@ -302,6 +320,75 @@ export function FormBuilderPage() {
               )}
               <label className="prop-label">Custom Field ID</label>
               <Input value={selectedField.custom_field_id || ''} onChange={e => updateField({ ...selectedField, custom_field_id: e.target.value })} placeholder="Optionnel" />
+
+              {/* ── LOT FORMS XL — Multi-étapes : numéro d'étape (clé `step`) ── */}
+              <label className="prop-label" style={{ marginTop: 12 }}>{t('fb.step.title')}</label>
+              <Input
+                type="number"
+                min={1}
+                value={selectedField.step && selectedField.step > 0 ? selectedField.step : 1}
+                onChange={e => {
+                  const n = Math.max(1, Number(e.target.value) || 1);
+                  updateField({ ...selectedField, step: n });
+                }}
+              />
+
+              {/* ── LOT FORMS XL — Logique conditionnelle (clé `conditional`) ── */}
+              <label className="prop-label" style={{ marginTop: 12 }}>{t('fb.cond.title')}</label>
+              <Select
+                value={selectedField.conditional?.field_name || ''}
+                onChange={e => {
+                  const fieldName = e.target.value;
+                  if (!fieldName) {
+                    // conditional absent ⇒ champ toujours visible (§6.B-bis).
+                    // undefined est omis par JSON.stringify à la sauvegarde.
+                    updateField({ ...selectedField, conditional: undefined });
+                  } else {
+                    updateField({
+                      ...selectedField,
+                      conditional: {
+                        field_name: fieldName,
+                        operator: selectedField.conditional?.operator || 'equals',
+                        value: selectedField.conditional?.value,
+                      },
+                    });
+                  }
+                }}
+              >
+                <option value="">{t('fb.cond.none')}</option>
+                {fields.filter(f => f.id !== selectedField.id).map(f => (
+                  <option key={f.id} value={f.name}>{f.label || f.name}</option>
+                ))}
+              </Select>
+              {selectedField.conditional && (
+                <>
+                  <label className="prop-label" style={{ marginTop: 8 }}>{t('fb.cond.operator')}</label>
+                  <Select
+                    value={selectedField.conditional.operator}
+                    onChange={e => updateField({
+                      ...selectedField,
+                      conditional: { ...selectedField.conditional!, operator: e.target.value as FormFieldConditionOperator },
+                    })}
+                  >
+                    {COND_OPERATORS.map(op => (
+                      <option key={op} value={op}>{t(`fb.cond.op.${op}`)}</option>
+                    ))}
+                  </Select>
+                  {selectedField.conditional.operator !== 'is_empty' && selectedField.conditional.operator !== 'is_not_empty' && (
+                    <>
+                      <label className="prop-label" style={{ marginTop: 8 }}>{t('fb.cond.value')}</label>
+                      <Input
+                        value={selectedField.conditional.value || ''}
+                        onChange={e => updateField({
+                          ...selectedField,
+                          conditional: { ...selectedField.conditional!, value: e.target.value },
+                        })}
+                      />
+                    </>
+                  )}
+                </>
+              )}
+
               <div style={{ marginTop: 16 }}>
                 <Button variant="ghost" size="sm" onClick={() => {
                   const dup = { ...selectedField, id: crypto.randomUUID(), name: `${selectedField.name}_copy` };
@@ -328,12 +415,44 @@ export function FormBuilderPage() {
         ) : <p style={{ color: 'var(--text-muted)' }}>{t('fb.stats.loading')}</p>}
       </Modal>
 
+      <Modal open={showAnalytics} onOpenChange={() => setShowAnalytics(false)} title={t('fb.analytics.title')}>
+        {analytics === null ? (
+          <p style={{ color: 'var(--text-muted)' }}>{t('fb.stats.loading')}</p>
+        ) : analytics.length === 0 ? (
+          <p style={{ color: 'var(--text-muted)' }}>{t('fb.analytics.empty')}</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {analytics.map(row => {
+              const completionPct = Math.round((1 - (row.dropoff_rate || 0)) * 100);
+              const dropoffPct = Math.round((row.dropoff_rate || 0) * 100);
+              const label = fields.find(f => f.name === row.field_name)?.label || row.field_name;
+              return (
+                <div key={row.field_name} style={{ borderBottom: '1px solid var(--border-subtle)', paddingBottom: 8 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
+                    <span style={{ fontWeight: 500 }}>{label}</span>
+                    <span style={{ color: 'var(--text-muted)' }}>
+                      {t('fb.analytics.reached')}: {row.reached} · {t('fb.analytics.completion')}: {completionPct}%
+                    </span>
+                  </div>
+                  <div style={{ height: 6, borderRadius: 999, background: 'var(--bg-canvas)', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${completionPct}%`, background: 'var(--primary, #009DDB)' }} />
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                    {t('fb.analytics.dropoff')}: {dropoffPct}%
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Modal>
+
       <Modal open={showEmbed} onOpenChange={() => setShowEmbed(false)} title={t('fb.embed.title')}>
         <div>
           <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: 12 }}>
             URL publique : <code style={{ color: 'var(--primary)' }}>https://crm.intralys.com/f/{formSlug}</code>
           </p>
-          <label className="prop-label">Code d'intégration</label>
+          <label className="prop-label">{t('formbuilder.embed.code_label')}</label>
           <Textarea rows={3} value={embedCode} readOnly className="font-mono text-xs" onClick={e => (e.target as HTMLTextAreaElement).select()} />
           <Button variant="primary" size="sm" style={{ marginTop: 8 }} onClick={() => { navigator.clipboard.writeText(embedCode); }}>
             <Icon as={Copy} size="sm" /> {t('fb.embed.copy')}
@@ -374,7 +493,7 @@ export function FormBuilderPage() {
                   rows={2}
                   value={consentText}
                   onChange={e => setConsentText(e.target.value)}
-                  placeholder="J'accepte d'être recontacté(e) conformément à la Loi 25."
+                  placeholder={t('formbuilder.field.consent_placeholder')}
                 />
               </div>
             )}

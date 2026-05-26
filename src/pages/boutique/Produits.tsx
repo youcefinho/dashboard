@@ -39,11 +39,13 @@ function statusLabel(s?: string) {
 }
 
 export function ProduitsPage() {
-  const { success } = useToast();
+  const { success, error: toastError } = useToast();
   const confirm = useConfirm();
   const [products, setProducts] = useState<ProductRow[]>([]);
   const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  // Error state (Sprint reinforcement) — affiché si le fetch produits échoue.
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Filtres
   const [search, setSearch] = useState('');
@@ -74,6 +76,7 @@ export function ProduitsPage() {
 
   const load = async () => {
     setIsLoading(true);
+    setLoadError(null);
     try {
       const res = await getEcommerceProducts({
         status: statusFilter || undefined,
@@ -81,9 +84,16 @@ export function ProduitsPage() {
         search: debouncedSearch || undefined,
         sort,
       });
-      setProducts((res.data as ProductRow[]) || []);
+      if (res.error) {
+        setLoadError(res.error);
+        setProducts([]);
+      } else {
+        setProducts((res.data as ProductRow[]) || []);
+      }
     } catch {
-      /* silencieux : pas de donnée fictive */
+      // Pas de donnée fictive — on affiche un état d'erreur honnête.
+      setLoadError(t('shop.error.load_failed'));
+      setProducts([]);
     }
     setIsLoading(false);
   };
@@ -97,14 +107,23 @@ export function ProduitsPage() {
     const ok = await confirm({
       title: t('shop.delete_product_q'),
       description: t('shop.delete_product_desc'),
-      confirmLabel: 'Supprimer', danger: true,
+      confirmLabel: t('action.delete'),
+      cancelLabel: t('action.cancel'),
+      danger: true,
     });
     if (!ok) return;
     try {
-      await deleteEcommerceProduct(p.id);
+      const res = await deleteEcommerceProduct(p.id);
+      if (res && res.error) {
+        toastError(res.error);
+        return;
+      }
       setProducts((prev) => prev.filter((x) => x.id !== p.id));
       success(t('shop.product_deleted'));
-    } catch { /* silencieux */ }
+    } catch {
+      // Réseau / exception non-API : on prévient l'utilisateur (pas silencieux).
+      toastError(t('common.error.load_failed'));
+    }
   };
 
   const openCreate = () => { setEditId(null); setWizardOpen(true); };
@@ -146,7 +165,7 @@ export function ProduitsPage() {
               value={search} onChange={(e: any) => setSearch(e.target.value)} />
           </div>
           <Select className="md:w-48" value={statusFilter}
-            onChange={(e: any) => setStatusFilter(e.target.value)} aria-label="Statut">
+            onChange={(e: any) => setStatusFilter(e.target.value)} aria-label={t('shop.filter_status_aria')}>
             <option value="">{t('shop.filter_all_status')}</option>
             <option value="active">{t('shop.status_active')}</option>
             <option value="draft">{t('shop.status_draft')}</option>
@@ -158,7 +177,7 @@ export function ProduitsPage() {
             {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </Select>
           <Select className="md:w-48" value={sort}
-            onChange={(e: any) => setSort(e.target.value)} aria-label="Tri">
+            onChange={(e: any) => setSort(e.target.value)} aria-label={t('shop.sort_aria')}>
             <option value="created_desc">{t('shop.sort_recent')}</option>
             <option value="created_asc">{t('shop.sort_oldest')}</option>
             <option value="title_asc">{t('shop.sort_title_asc')}</option>
@@ -169,7 +188,7 @@ export function ProduitsPage() {
         </div>
 
         {isLoading ? (
-          <Card className="p-0 overflow-hidden">
+          <Card className="p-0 overflow-hidden" aria-busy="true" data-testid="produits-loading">
             <div className="px-4 py-3 border-b border-[var(--border-subtle)] bg-[var(--bg-subtle)] flex items-center gap-6">
               {[1, 2, 3, 4, 5, 6].map((i) => <Skeleton key={i} className="h-3 w-20 rounded" />)}
             </div>
@@ -184,6 +203,20 @@ export function ProduitsPage() {
                 </div>
               ))}
             </div>
+          </Card>
+        ) : loadError ? (
+          <Card className="p-6" aria-live="polite" data-testid="produits-error">
+            <p className="text-sm text-[var(--danger-text)] mb-3">{loadError}</p>
+            <Button
+              variant="secondary"
+              size="sm"
+              leftIcon={<Icon as={RefreshCw} size="sm" />}
+              onClick={() => void load()}
+              aria-label={t('action.retry')}
+              data-testid="produits-retry"
+            >
+              {t('action.retry')}
+            </Button>
           </Card>
         ) : products.length === 0 ? (
           <Card className="p-0 overflow-hidden">
@@ -204,7 +237,7 @@ export function ProduitsPage() {
                 hasFilters && (
                   <Button variant="ghost" leftIcon={<RefreshCw size={14} />}
                     onClick={() => { setSearch(''); setStatusFilter(''); setCatFilter(''); }}>
-                    Réinitialiser les filtres
+                    {t('shop.reset_filters')}
                   </Button>
                 )
               }
@@ -240,7 +273,8 @@ export function ProduitsPage() {
                               <button type="button"
                                 className={`table-expand-trigger ${isOpen ? 'is-expanded' : ''}`}
                                 onClick={() => toggleExpand(p.id)}
-                                aria-label={isOpen ? 'Réduire' : 'Afficher les détails'}>
+                                aria-expanded={isOpen}
+                                aria-label={isOpen ? t('shop.collapse_details') : t('shop.expand_details')}>
                                 <ChevronRight size={14} />
                               </button>
                               <div className="h-10 w-10 rounded-md overflow-hidden bg-[var(--bg-subtle)] flex items-center justify-center shrink-0 border border-[var(--border-subtle)]" aria-hidden>
@@ -252,7 +286,7 @@ export function ProduitsPage() {
                                 className="flex flex-col min-w-0 text-left hover:text-[var(--primary)] transition-colors"
                                 onClick={() => setDetailId(p.id)}>
                                 <span className="font-semibold text-[13px] truncate" title={p.title}>
-                                  {p.title || 'Sans titre'}
+                                  {p.title || t('shop.untitled')}
                                 </span>
                                 <span className="text-[11px] text-[var(--text-muted)] truncate">
                                   {p.product_type || p.vendor || p.slug}
@@ -296,7 +330,8 @@ export function ProduitsPage() {
                           <td data-print-hide className="text-right">
                             <button type="button" onClick={() => handleDelete(p)}
                               className="p-1.5 rounded text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-[var(--danger)]/10 transition-colors"
-                              aria-label="Supprimer le produit" title="Supprimer">
+                              aria-label={`${t('shop.delete_product_action')} — ${p.title || t('shop.untitled')}`}
+                              title={t('shop.delete_product_action')}>
                               <Icon as={Trash2} size="sm" />
                             </button>
                           </td>
@@ -309,7 +344,7 @@ export function ProduitsPage() {
                                   <div className="table-expand-detail-section" style={{ flex: '1 1 280px' }}>
                                     <span className="table-expand-detail-label">{t('shop.description')}</span>
                                     <span className="table-expand-detail-value text-[12px] leading-relaxed">
-                                      {p.description || 'Aucune description.'}
+                                      {p.description || t('shop.no_description')}
                                     </span>
                                   </div>
                                   <div className="table-expand-detail-section" style={{ flex: '2 1 360px' }}>

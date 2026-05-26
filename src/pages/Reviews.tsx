@@ -6,9 +6,12 @@ import { Button, Card, EmptyState, PageHero, KpiStrip, type KpiItem, Tag } from 
 // Sprint 44 M3.3 — Pull-to-refresh
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { PullToRefreshIndicator } from '@/components/ui/PullToRefreshIndicator';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, getReputationSettings, updateReputationSettings, getPrivateFeedback } from '@/lib/api';
+import type { ReputationSettings, PrivateFeedback } from '@/lib/types';
 import { Star, MessageCircle, Inbox, Send, ChevronRight } from 'lucide-react';
 import { t } from '@/lib/i18n';
+// Sprint 32 C2 — Onglet Google Business Profile (reviews live GBP)
+import { GbpReviewsTab } from '@/components/gbp/GbpReviewsTab';
 
 interface ReviewStats {
   total_reviews: number;
@@ -44,7 +47,13 @@ interface ReviewRequest {
   created_at: string;
 }
 
-type Tab = 'overview' | 'reviews' | 'requests';
+// ── LOT REPUTATION (Sprint 8) — 2 onglets ADDITIFS (Manager-C) ──────────────
+//   'settings' = réglages réputation (seuil, URL publique, toggles) via les
+//   helpers PRO FIGÉS getReputationSettings / updateReputationSettings.
+//   'private'  = feedback privé (note < seuil, jamais publié) via getPrivateFeedback.
+//   Valeurs existantes ('overview'|'reviews'|'requests') INTOUCHÉES.
+// Sprint 32 C2 — extension : ajout onglet 'gbp' (Google Business Profile).
+type Tab = 'overview' | 'reviews' | 'requests' | 'settings' | 'private' | 'gbp';
 
 export function ReviewsPage() {
   const [tab, setTab] = useState<Tab>('overview');
@@ -60,6 +69,14 @@ export function ReviewsPage() {
   // Sprint 42 M2 — Filtres reviews (rating + source)
   const [ratingFilter, setRatingFilter] = useState<0 | 5 | 4 | 3 | 2 | 1>(0);
   const [sourceFilter, setSourceFilter] = useState<'all' | 'google' | 'facebook'>('all');
+
+  // ── LOT REPUTATION (Sprint 8) — onglets Réglages + Feedback privé ─────────
+  const [settings, setSettings] = useState<ReputationSettings | null>(null);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [settingsSaved, setSettingsSaved] = useState(false);
+  // S6 M1.1 — erreur sauvegarde réglages : surfacée via role="alert" (a11y).
+  const [settingsError, setSettingsError] = useState<string>('');
+  const [privateFeedback, setPrivateFeedback] = useState<PrivateFeedback[]>([]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -77,6 +94,40 @@ export function ReviewsPage() {
   }, []);
 
   useEffect(() => { void loadData(); }, [loadData]);
+
+  // ── LOT REPUTATION (Sprint 8) — chargement réglages + feedback privé ──────
+  // Helpers PRO FIGÉS (apiFetch, auth + capability côté worker). Discrimination
+  // res.error/!res.data (§6.A — jamais de `code`). Best-effort, silencieux.
+  const loadReputation = useCallback(async () => {
+    const [setRes, fbRes] = await Promise.all([
+      getReputationSettings(),
+      getPrivateFeedback(),
+    ]);
+    if (setRes.data) setSettings(setRes.data);
+    if (fbRes.data) setPrivateFeedback(fbRes.data);
+  }, []);
+
+  useEffect(() => { void loadReputation(); }, [loadReputation]);
+
+  const saveSettings = async () => {
+    if (!settings || settingsSaving) return;
+    setSettingsSaving(true);
+    setSettingsSaved(false);
+    setSettingsError('');
+    const res = await updateReputationSettings({
+      rating_threshold: settings.rating_threshold,
+      public_redirect_url: settings.public_redirect_url ?? null,
+      widget_enabled: settings.widget_enabled,
+      notify_on_review: settings.notify_on_review,
+    });
+    setSettingsSaving(false);
+    if (res.data) {
+      setSettings(res.data);
+      setSettingsSaved(true);
+    } else {
+      setSettingsError(res.error || t('reviews.error.save'));
+    }
+  };
 
   const suggestReply = async (reviewId: string) => {
     setSuggestingId(reviewId);
@@ -139,6 +190,10 @@ export function ReviewsPage() {
     { key: 'overview', label: t('reviews.tab.overview') },
     { key: 'reviews', label: `${t('reviews.tab.reviews')} (${reviews.length})` },
     { key: 'requests', label: `${t('reviews.tab.requests')} (${requests.length})` },
+    { key: 'settings', label: t('reputation.tab_settings') },
+    { key: 'private', label: `${t('reputation.tab_private')} (${privateFeedback.length})` },
+    // Sprint 32 C2 — onglet GBP
+    { key: 'gbp', label: t('gbp.reviews.title') },
   ];
 
   // Sprint 44 M3.3 — Pull-to-refresh
@@ -186,7 +241,12 @@ export function ReviewsPage() {
       </div>
 
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div
+          className="grid grid-cols-1 md:grid-cols-3 gap-4"
+          aria-busy="true"
+          aria-live="polite"
+          role="status"
+        >
           {[1,2,3].map(i => <div key={i} className="skeleton h-32 rounded-[var(--radius-lg)]" />)}
         </div>
       ) : (
@@ -294,7 +354,7 @@ export function ReviewsPage() {
                                     type="button"
                                     className={`table-expand-trigger ${isExpanded ? 'is-expanded' : ''}`}
                                     onClick={() => setExpandedReviewId(isExpanded ? null : review.id)}
-                                    aria-label={isExpanded ? 'Réduire' : 'Afficher les détails'}
+                                    aria-label={isExpanded ? t('reviews.expand.collapse') : t('reviews.expand.show_details')}
                                     aria-expanded={isExpanded}
                                   >
                                     <ChevronRight size={14} />
@@ -320,8 +380,8 @@ export function ReviewsPage() {
                                 {!review.reply && replyingId !== review.id ? (
                                   <div className="flex gap-1 justify-end">
                                     <Button size="sm" variant="secondary" onClick={() => { setReplyingId(review.id); setReplyText(''); }}>{t('reviews.action.reply')}</Button>
-                                    <Button size="sm" variant="ghost" onClick={() => void suggestReply(review.id)} disabled={suggestingId === review.id}>
-                                      {suggestingId === review.id ? 'IA...' : 'IA'}
+                                    <Button size="sm" variant="ghost" onClick={() => void suggestReply(review.id)} disabled={suggestingId === review.id} aria-label={t('reviews.ai.label')}>
+                                      {suggestingId === review.id ? t('reviews.ai.loading') : t('reviews.ai.label')}
                                     </Button>
                                   </div>
                                 ) : review.reply ? (
@@ -335,32 +395,32 @@ export function ReviewsPage() {
                                   <div className="table-expand-inner">
                                     <div className="table-expand-detail">
                                       <div className="table-expand-detail-section" style={{ flex: '1 1 360px' }}>
-                                        <span className="table-expand-detail-label">Commentaire complet</span>
-                                        <span className="table-expand-detail-value text-[12px] leading-relaxed text-[var(--text-secondary)]">{review.comment ? `« ${review.comment} »` : 'Pas de commentaire textuel.'}</span>
+                                        <span className="table-expand-detail-label">{t('reviews.expand.full_comment')}</span>
+                                        <span className="table-expand-detail-value text-[12px] leading-relaxed text-[var(--text-secondary)]">{review.comment ? `« ${review.comment} »` : t('reviews.expand.no_comment')}</span>
                                       </div>
                                       <div className="table-expand-detail-section">
-                                        <span className="table-expand-detail-label">Source</span>
-                                        <span className="table-expand-detail-value text-[12px]">{review.source === 'google' ? 'Google My Business' : review.source}</span>
+                                        <span className="table-expand-detail-label">{t('reviews.expand.source_label')}</span>
+                                        <span className="table-expand-detail-value text-[12px]">{review.source === 'google' ? t('reviews.expand.source_google') : review.source}</span>
                                       </div>
                                       <div className="table-expand-detail-section">
-                                        <span className="table-expand-detail-label">Lead lié</span>
+                                        <span className="table-expand-detail-label">{t('reviews.expand.lead_label')}</span>
                                         <span className="table-expand-detail-value text-[12px]">{leadLinked || '—'}</span>
                                       </div>
                                       {review.reply && (
                                         <div className="table-expand-detail-section" style={{ flex: '1 1 100%' }}>
-                                          <span className="table-expand-detail-label">Votre réponse</span>
+                                          <span className="table-expand-detail-label">{t('reviews.expand.reply_label')}</span>
                                           <span className="table-expand-detail-value text-[12px] leading-relaxed reviews-reply-quote">{review.reply}</span>
                                         </div>
                                       )}
                                       {replyingId === review.id && (
                                         <div className="table-expand-detail-section" style={{ flex: '1 1 100%' }}>
-                                          <span className="table-expand-detail-label">Rédiger une réponse</span>
+                                          <span className="table-expand-detail-label">{t('reviews.expand.reply_write_label')}</span>
                                           <textarea
                                             value={replyText}
                                             onChange={e => setReplyText(e.target.value)}
                                             rows={3}
                                             className="w-full px-3 py-2 text-sm bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] focus:border-[var(--primary)] focus:outline-none"
-                                            placeholder="Écrivez votre réponse..."
+                                            placeholder={t('reviews.expand.reply_placeholder')}
                                           />
                                           <div className="flex gap-2 mt-2">
                                             <Button size="sm" onClick={() => void submitReply(review.id)}>{t('reviews.action.send')}</Button>
@@ -439,6 +499,134 @@ export function ReviewsPage() {
               </Card>
             )
           )}
+
+          {/* ── LOT REPUTATION — Réglages réputation (seuil + URL + toggles) ── */}
+          {tab === 'settings' && (
+            <Card className="max-w-2xl">
+              <div className="space-y-5">
+                {/* Seuil de note (1-5) — pilote le routing intelligent (serveur). */}
+                <div>
+                  <label className="block text-sm font-medium text-[var(--text-primary)] mb-1" htmlFor="rep-threshold">
+                    {t('reputation.threshold_label')}
+                  </label>
+                  <select
+                    id="rep-threshold"
+                    className="w-32 px-3 py-2 text-sm bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] focus:border-[var(--primary)] focus:outline-none"
+                    value={settings?.rating_threshold ?? 4}
+                    onChange={e => setSettings(s => s ? { ...s, rating_threshold: Number(e.target.value) } : s)}
+                    disabled={!settings}
+                  >
+                    {[1, 2, 3, 4, 5].map(n => (
+                      <option key={n} value={n}>{n} ★</option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-[var(--text-muted)] mt-1">{t('reputation.threshold_help')}</p>
+                </div>
+
+                {/* URL de redirection publique (Google / Facebook). */}
+                <div>
+                  <label className="block text-sm font-medium text-[var(--text-primary)] mb-1" htmlFor="rep-url">
+                    {t('reputation.public_url_label')}
+                  </label>
+                  <input
+                    id="rep-url"
+                    type="url"
+                    className="w-full px-3 py-2 text-sm bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] focus:border-[var(--primary)] focus:outline-none"
+                    value={settings?.public_redirect_url ?? ''}
+                    onChange={e => setSettings(s => s ? { ...s, public_redirect_url: e.target.value } : s)}
+                    placeholder="https://g.page/r/..."
+                    disabled={!settings}
+                  />
+                  <p className="text-xs text-[var(--text-muted)] mt-1">{t('reputation.public_url_help')}</p>
+                </div>
+
+                {/* Toggle — widget activé. */}
+                <label className="flex items-center gap-2.5 cursor-pointer text-sm text-[var(--text-primary)]">
+                  <input
+                    type="checkbox"
+                    checked={!!settings?.widget_enabled}
+                    onChange={e => setSettings(s => s ? { ...s, widget_enabled: e.target.checked ? 1 : 0 } : s)}
+                    disabled={!settings}
+                  />
+                  {t('reputation.tab_settings')}
+                </label>
+
+                {/* Toggle — notification à chaque avis. */}
+                <label className="flex items-center gap-2.5 cursor-pointer text-sm text-[var(--text-primary)]">
+                  <input
+                    type="checkbox"
+                    checked={!!settings?.notify_on_review}
+                    onChange={e => setSettings(s => s ? { ...s, notify_on_review: e.target.checked ? 1 : 0 } : s)}
+                    disabled={!settings}
+                  />
+                  {t('reputation.notify_label')}
+                </label>
+
+                <div className="flex items-center gap-3 pt-2">
+                  <Button onClick={() => void saveSettings()} disabled={!settings || settingsSaving} aria-busy={settingsSaving}>
+                    {t('reputation.save')}
+                  </Button>
+                  {settingsSaved && <span className="text-xs text-[var(--success)]" role="status" aria-live="polite">{t('reputation.saved')}</span>}
+                </div>
+                {settingsError && (
+                  <p
+                    role="alert"
+                    aria-live="assertive"
+                    className="text-xs"
+                    style={{ color: 'var(--danger)' }}
+                  >
+                    {settingsError}
+                  </p>
+                )}
+              </div>
+            </Card>
+          )}
+
+          {/* ── LOT REPUTATION — Feedback privé (note basse interceptée) ── */}
+          {tab === 'private' && (
+            privateFeedback.length === 0 ? (
+              <EmptyState
+                variant="first-time"
+                icon={<span className="text-4xl">🔒</span>}
+                title={t('reputation.tab_private')}
+                description={t('reputation.private_empty')}
+              />
+            ) : (
+              <Card className="overflow-x-auto p-0">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-[var(--border-subtle)] bg-[var(--bg-subtle)]">
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t('reputation.private_rating')}</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t('reputation.private_comment')}</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t('reviews.req.lead')}</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t('reviews.req.sent_at')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {privateFeedback.map((fb, idx) => (
+                      <tr key={fb.id} className="row-premium list-item-enter border-b border-[var(--border-subtle)]" style={{ animationDelay: `${idx * 30}ms` }}>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-0.5 text-[14px] leading-none">{renderStars(fb.rating ?? 0)}</div>
+                        </td>
+                        <td className="py-3 px-4 text-[var(--text-secondary)]">
+                          {fb.comment ? `« ${fb.comment} »` : '—'}
+                        </td>
+                        <td className="py-3 px-4 text-[var(--text-muted)]">
+                          {(fb as unknown as { lead_name?: string }).lead_name || fb.lead_id || '—'}
+                        </td>
+                        <td className="py-3 px-4 text-[var(--text-muted)]">
+                          {fb.created_at ? new Date(fb.created_at).toLocaleDateString('fr-CA') : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </Card>
+            )
+          )}
+
+          {/* ── Sprint 32 C2 — Google Business Profile (reviews live GBP) ── */}
+          {tab === 'gbp' && <GbpReviewsTab />}
         </>
       )}
       </div>

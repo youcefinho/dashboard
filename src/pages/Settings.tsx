@@ -2,26 +2,38 @@
 import { useState, useEffect, useMemo } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useAuth } from '@/lib/auth';
-import { getPacks, installPack, type IndustryPack } from '@/lib/api';
+import { getPacks, installPack, getIvrMenus, saveIvrMenu, deleteIvrMenu, type IndustryPack, type IvrMenu } from '@/lib/api';
 import { Card, Button, Tag, useToast, useConfirm, Skeleton, Input, Icon } from '@/components/ui';
 import {
   User, Bell, Shield, Palette,
   Columns, Package, Brain, Users, Key, FileText, CreditCard,
-  Building, BookOpen, Smartphone, Search, Plug, Boxes, Globe, Truck
+  Building, BookOpen, Smartphone, Search, Plug, Boxes, Globe, Truck, UploadCloud, PhoneCall,
+  Plus, Trash2, Check
 } from 'lucide-react';
 import { fuzzyScoreMulti } from '@/lib/fuzzy';
 import { t } from '@/lib/i18n';
+// Sprint 21 — Onboarding durci : auto-complète 'profile_completed' dès que le
+// profil user a un nom + email renseignés (idempotent, best-effort, silencieux).
+import { useOnboardingItemCompletion } from '@/components/onboarding/useOnboardingItemCompletion';
 
 // Sous-composants importés
 import { ProfileSettings } from '@/components/settings/ProfileSettings';
 import { SecuritySettings } from '@/components/settings/SecuritySettings';
 import { TeamSettings } from '@/components/settings/TeamSettings';
 import { RolesPermissionsSettings } from '@/components/settings/RolesPermissionsSettings';
+import { SubAccountsSettings } from '@/components/settings/SubAccountsSettings';
 import { ApiWebhooksSettings } from '@/components/settings/ApiWebhooksSettings';
 import { LeadSourcesSettings } from '@/components/settings/LeadSourcesSettings';
 import { BrandingSettings } from '@/components/settings/BrandingSettings';
 import { BillingSettings } from '@/components/settings/BillingSettings';
+// Sprint 22 — Billing Stripe prod (E4 flag mock) — Manager-C
+// Vue enrichie (plans + portal + invoices + webhook) AJOUTÉE après la vue
+// compacte `<BillingSettings />` (qui reste intacte, rétro-compat absolue).
+import { BillingPlanPanel } from '@/components/billing/BillingPlanPanel';
 import { AuditLogSettings } from '@/components/settings/AuditLogSettings';
+// ── Sprint 23 — Sécurité / conformité : mes données + permissions perso ──
+import { DataPrivacyPanel } from '@/components/settings/DataPrivacyPanel';
+import { RoleOverridesPanel } from '@/components/settings/RoleOverridesPanel';
 import { PipelineSettings } from '@/components/settings/PipelineSettings';
 import { NotificationsSettings } from '@/components/settings/NotificationsSettings';
 import { SystemSettings } from '@/components/settings/SystemSettings';
@@ -39,14 +51,20 @@ import { ShippingSettings } from '@/components/settings/ShippingSettings';
 import { ConsumerPolicySettings } from '@/components/settings/ConsumerPolicySettings';
 // Sprint E8 M3 — canaux de vente (omnicanal : Shopify/Woo + stratégie stock)
 import { ChannelSettings } from '@/components/settings/ChannelSettings';
+// LOT RÉEL Manager C — Import de leads GHL CSV (wizard)
+import { MigrationImportSettings } from '@/components/settings/MigrationImportSettings';
+// Sprint 3 GIGA — Templates SMS (LOT SMS/WhatsApp seq104)
+import { SmsTemplates } from '@/pages/settings/SmsTemplates';
 
-type SettingsTab = 'profil' | 'notifications' | 'securite' | 'equipe' | 'roles' | 'branding' | 'billing' | 'audit' | 'api' | 'sources_leads' | 'pipelines' | 'custom_fields' | 'conformite' | 'raccourcis' | 'systeme' | 'packs' | 'ai_scoring' | 'modules' | 'region' | 'paiements' | 'expedition' | 'conso_conformite' | 'canaux';
+type SettingsTab = 'profil' | 'notifications' | 'securite' | 'equipe' | 'roles' | 'sous_comptes' | 'branding' | 'billing' | 'audit' | 'api' | 'sources_leads' | 'pipelines' | 'custom_fields' | 'conformite' | 'raccourcis' | 'systeme' | 'packs' | 'ai_scoring' | 'modules' | 'region' | 'paiements' | 'expedition' | 'conso_conformite' | 'canaux' | 'migration_import' | 'telephonie' | 'sms_templates' | 'data_privacy' | 'role_overrides';
 
 const TABS: { id: SettingsTab; icon: typeof User; label: string; group: string; adminOnly?: boolean; description: string }[] = [
   { id: 'profil', icon: User, label: 'Mon profil', group: 'COMPTE', description: 'Nom, avatar, email, mot de passe' },
   { id: 'notifications', icon: Bell, label: 'Notifications', group: 'COMPTE', description: 'Email, push, SMS, in-app, sons' },
   { id: 'securite', icon: Shield, label: 'Sécurité & Sessions', group: 'COMPTE', description: '2FA, sessions actives, biométrie' },
   { id: 'systeme', icon: Smartphone, label: 'Appareil & Système', group: 'COMPTE', description: 'Thème, densité, sons, vibrations' },
+  // ── Sprint 23 — Sécurité / conformité : entrée Loi 25 + RGPD (export / suppression / DPO) ──
+  { id: 'data_privacy', icon: Shield, label: 'Mes données personnelles', group: 'COMPTE', description: 'Loi 25 + RGPD : exporter, supprimer, contacter le DPO' },
 
   { id: 'branding', icon: Palette, label: 'Branding & Sous-compte', group: 'CONFIGURATION', adminOnly: true, description: 'Logo, couleurs, domaine, white-label' },
   { id: 'custom_fields', icon: FileText, label: 'Champs Persos', group: 'CONFIGURATION', adminOnly: true, description: 'Custom fields lead, deal, client' },
@@ -54,6 +72,9 @@ const TABS: { id: SettingsTab; icon: typeof User; label: string; group: string; 
 
   { id: 'equipe', icon: Users, label: 'Équipe & Utilisateurs', group: 'AGENCE', adminOnly: true, description: 'Inviter, gérer team, assignations' },
   { id: 'roles', icon: Shield, label: 'Rôles & Permissions', group: 'AGENCE', adminOnly: true, description: 'RBAC, scopes, accès fins' },
+  // ── Sprint 23 — Sécurité / conformité : surcharges de capacités par user (override RBAC) ──
+  { id: 'role_overrides', icon: Key, label: 'Permissions personnalisées', group: 'AGENCE', adminOnly: true, description: 'Outrepasser le rôle d\'un utilisateur, capacité par capacité' },
+  { id: 'sous_comptes', icon: Building, label: 'Sous-comptes', group: 'AGENCE', adminOnly: true, description: 'Gérer les sous-comptes clients, branding, membres' },
   { id: 'billing', icon: CreditCard, label: 'Facturation & Usage', group: 'AGENCE', adminOnly: true, description: 'Plan, paiement, quotas, factures' },
   { id: 'packs', icon: Package, label: 'Packs Industrie', group: 'AGENCE', adminOnly: true, description: 'Templates niche : courtiers, dentistes' },
 
@@ -65,6 +86,9 @@ const TABS: { id: SettingsTab; icon: typeof User; label: string; group: string; 
   { id: 'conso_conformite', icon: BookOpen, label: 'Conformité conso', group: 'AVANCÉ', adminOnly: true, description: 'Rétractation, mentions, retours boutique (indicatif — revue légale requise)' },
   { id: 'api', icon: Key, label: 'API & Webhooks', group: 'AVANCÉ', adminOnly: true, description: 'Clés API, webhooks, scopes' },
   { id: 'sources_leads', icon: Plug, label: 'Sources de leads', group: 'AVANCÉ', adminOnly: true, description: 'Connecteur entrant, tokens, mapping, Zapier' },
+  { id: 'telephonie', icon: PhoneCall, label: t('telephony.ivr.title'), group: 'AVANCÉ', adminOnly: true, description: t('telephony.ivr.config') },
+  { id: 'sms_templates', icon: FileText, label: t('smsTemplate.title'), group: 'AVANCÉ', adminOnly: true, description: 'Modèles de SMS réutilisables pour campagnes et workflows' },
+  { id: 'migration_import', icon: UploadCloud, label: t('migration_import.tab_label'), group: 'AVANCÉ', adminOnly: true, description: t('migration_import.tab_desc') },
   { id: 'conformite', icon: BookOpen, label: 'Conformité & RGPD', group: 'AVANCÉ', adminOnly: true, description: 'Loi 25, CASL, consentements, export' },
   { id: 'ai_scoring', icon: Brain, label: 'IA & Scoring', group: 'AVANCÉ', adminOnly: true, description: 'Scoring auto, prompts, modèles IA' },
   { id: 'audit', icon: Building, label: 'Journal d\'Audit', group: 'AVANCÉ', adminOnly: true, description: 'Logs actions, exports, historique' },
@@ -76,6 +100,16 @@ export function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>('profil');
   // Sprint 30 vague 30-1D — Settings nav search global
   const [navQuery, setNavQuery] = useState('');
+
+  // ── Sprint 21 (Onboarding durci) — auto-complète l'item 'profile_completed'
+  //    dès que le profil user a un nom + email renseignés (condition simple,
+  //    déjà disponible via useAuth()). Le hook est idempotent : un seul appel
+  //    API par session (flag localStorage). Best-effort silencieux.
+  const isProfileComplete = Boolean(
+    user?.name && user.name.trim().length > 0 &&
+    user?.email && user.email.trim().length > 0,
+  );
+  useOnboardingItemCompletion('profile_completed', isProfileComplete);
 
   // Sprint 51 M3.4 — deep-link ?tab=sources_leads (depuis Intégrations)
   useEffect(() => {
@@ -130,11 +164,21 @@ export function SettingsPage() {
       case 'securite': return <SecuritySettings />;
       case 'equipe': return <TeamSettings />;
       case 'roles': return <RolesPermissionsSettings />;
+      case 'sous_comptes': return <SubAccountsSettings />;
       case 'api': return <ApiWebhooksSettings />;
       case 'sources_leads': return <LeadSourcesSettings />;
       case 'branding': return <BrandingSettings />;
-      case 'billing': return <BillingSettings />;
+      case 'billing': return (
+        <>
+          <BillingSettings />
+          {/* Sprint 22 — vue enrichie Stripe prod (E4 flag mock) sous la vue compacte. */}
+          <BillingPlanPanel />
+        </>
+      );
       case 'audit': return <AuditLogSettings />;
+      // ── Sprint 23 — Sécurité / conformité ──
+      case 'data_privacy': return <DataPrivacyPanel />;
+      case 'role_overrides': return <RoleOverridesPanel />;
       case 'pipelines': return <PipelineSettings />;
       case 'conformite': return <ComplianceSettings />;
       case 'custom_fields': return <CustomFieldsSettings />;
@@ -147,6 +191,9 @@ export function SettingsPage() {
       case 'expedition': return <ShippingSettings />;
       case 'conso_conformite': return <ConsumerPolicySettings />;
       case 'canaux': return <ChannelSettings />;
+      case 'migration_import': return <MigrationImportSettings />;
+      case 'telephonie': return <TelephonySettings />;
+      case 'sms_templates': return <SmsTemplates />;
       // Placeholder pour les autres
       default: return (
         <div className="p-8 text-center text-[var(--text-muted)] bg-[var(--bg-surface)] rounded-xl border border-dashed border-[var(--border-strong)]">
@@ -404,13 +451,23 @@ function PacksSettings() {
   const [packs, setPacks] = useState<IndustryPack[]>([]);
   const [loading, setLoading] = useState(true);
   const [installingId, setInstallingId] = useState<string | null>(null);
+  // LOT renforcement — error inline + retry sur getPacks
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const reloadPacks = () => {
+    setLoading(true);
+    setLoadError(null);
     getPacks().then(res => {
       if (res.data) setPacks(res.data);
+      else if (res.error) setLoadError(res.error);
+      setLoading(false);
+    }).catch((e: unknown) => {
+      setLoadError(e instanceof Error ? e.message : String(e));
       setLoading(false);
     });
-  }, []);
+  };
+
+  useEffect(() => { reloadPacks(); }, []);
 
   const handleInstall = async (packId: string) => {
     const ok = await confirm({
@@ -438,7 +495,7 @@ function PacksSettings() {
   if (loading) {
     return (
       /* Skeleton qui matche la shell Settings : sidebar 8 items + content 2 cards */
-      <div className="flex gap-6">
+      <div className="flex gap-6" aria-busy="true" aria-live="polite" aria-label={t('a11y.loading_sr')}>
         <div className="w-56 space-y-1 shrink-0">
           {Array.from({ length: 8 }).map((_, i) => (
             <Skeleton key={i} className="h-9 w-full rounded-lg" />
@@ -465,11 +522,25 @@ function PacksSettings() {
 
   return (
     <div className="space-y-4">
-      {packs.length === 0 ? (
+      {/* LOT renforcement — inline error banner */}
+      {loadError && (
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="p-3 rounded-lg border border-[var(--danger)]/40 bg-[var(--danger)]/5 flex items-center justify-between gap-3"
+        >
+          <div className="min-w-0">
+            <p className="text-[12px] font-semibold text-[var(--danger)]">{t('common.error.title')}</p>
+            <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">{t('common.error.load_failed')}</p>
+          </div>
+          <Button size="sm" variant="secondary" onClick={reloadPacks}>{t('common.retry')}</Button>
+        </div>
+      )}
+      {packs.length === 0 && !loadError ? (
         <Card className="p-8 text-center text-[var(--text-muted)] border-dashed">
           Aucun pack disponible.
         </Card>
-      ) : (
+      ) : packs.length > 0 ? (
         packs.map(pack => (
           <Card key={pack.id} className="p-5 border-[var(--primary)] hover:shadow-md transition-shadow">
             <div className="flex justify-between items-start mb-4">
@@ -495,13 +566,221 @@ function PacksSettings() {
               </div>
             </div>
 
-            <Button 
-              className="w-full" 
+            <Button
+              className="w-full"
               onClick={() => void handleInstall(pack.id)}
               disabled={installingId === pack.id}
+              aria-busy={installingId === pack.id}
             >
               {installingId === pack.id ? t('settings.packs.installing') : t('settings.packs.install_cta')}
             </Button>
+          </Card>
+        ))
+      ) : null}
+    </div>
+  );
+}
+
+// ── Sprint F Téléphonie — TelephonySettings (config IVR inline) ──────────────
+// Liste les menus IVR (getIvrMenus), création / édition (name + config_json
+// textarea JSON v1), activation et suppression (saveIvrMenu / deleteIvrMenu).
+// i18n : clés telephony.ivr.* posées Phase A, aucune nouvelle clé créée.
+function TelephonySettings() {
+  const { success, error: toastError } = useToast();
+  const confirm = useConfirm();
+  const [menus, setMenus] = useState<IvrMenu[]>([]);
+  const [loading, setLoading] = useState(true);
+  // LOT renforcement — error inline + retry sur getIvrMenus
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | 'new' | null>(null);
+  const [draftName, setDraftName] = useState('');
+  const [draftConfig, setDraftConfig] = useState('');
+  const [configError, setConfigError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const reload = () => {
+    setLoadError(null);
+    getIvrMenus().then(res => {
+      if (res.data) setMenus(res.data);
+      else if (res.error) setLoadError(res.error);
+      setLoading(false);
+    }).catch((e: unknown) => {
+      setLoadError(e instanceof Error ? e.message : String(e));
+      setLoading(false);
+    });
+  };
+  useEffect(() => { reload(); }, []);
+
+  const startNew = () => {
+    setEditingId('new');
+    setDraftName('');
+    setDraftConfig('{\n  "greeting": "Bonjour, merci d\'appeler.",\n  "options": [\n    { "digit": "1", "action": "forward", "to": "" }\n  ]\n}');
+    setConfigError(null);
+  };
+
+  const startEdit = (menu: IvrMenu) => {
+    setEditingId(menu.id);
+    setDraftName(menu.name || '');
+    // Re-indente le JSON stocké pour l'édition (best-effort)
+    let pretty = menu.config_json || '';
+    try { pretty = JSON.stringify(JSON.parse(menu.config_json || '{}'), null, 2); } catch { /* garde brut */ }
+    setDraftConfig(pretty);
+    setConfigError(null);
+  };
+
+  const cancel = () => { setEditingId(null); setConfigError(null); };
+
+  const handleSave = async () => {
+    if (!draftName.trim()) { setConfigError(t('telephony.ivr.config')); return; }
+    // Validation JSON côté client avant envoi (config_json textarea v1)
+    let parsed: unknown;
+    try { parsed = JSON.parse(draftConfig || '{}'); }
+    catch { setConfigError(t('telephony.ivr.invalid_json')); return; }
+    setSaving(true);
+    const res = await saveIvrMenu({
+      id: editingId && editingId !== 'new' ? editingId : undefined,
+      name: draftName.trim(),
+      config: parsed,
+    });
+    setSaving(false);
+    if (res.error) { toastError(res.error); return; }
+    success(t('telephony.ivr.title'));
+    setEditingId(null);
+    reload();
+  };
+
+  const handleToggleActive = async (menu: IvrMenu) => {
+    const res = await saveIvrMenu({
+      id: menu.id,
+      name: menu.name || '',
+      config: (() => { try { return JSON.parse(menu.config_json || '{}'); } catch { return {}; } })(),
+      is_active: !menu.is_active,
+    });
+    if (res.error) { toastError(res.error); return; }
+    reload();
+  };
+
+  const handleDelete = async (menu: IvrMenu) => {
+    const ok = await confirm({
+      title: t('telephony.ivr.title'),
+      description: menu.name || t('telephony.ivr.config'),
+      danger: true,
+    });
+    if (!ok) return;
+    const res = await deleteIvrMenu(menu.id);
+    if (res.error) { toastError(res.error); return; }
+    reload();
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-4" aria-busy="true" aria-live="polite" aria-label={t('a11y.loading_sr')}>
+        <Card className="p-5 space-y-3">
+          <Skeleton className="h-5 w-40" />
+          <Skeleton className="h-3 w-3/4" />
+          <Skeleton className="h-24 w-full rounded-lg" />
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* LOT renforcement — inline error banner */}
+      {loadError && (
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="p-3 rounded-lg border border-[var(--danger)]/40 bg-[var(--danger)]/5 flex items-center justify-between gap-3"
+        >
+          <div className="min-w-0">
+            <p className="text-[12px] font-semibold text-[var(--danger)]">{t('common.error.title')}</p>
+            <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">{t('common.error.load_failed')}</p>
+          </div>
+          <Button size="sm" variant="secondary" onClick={reload}>{t('common.retry')}</Button>
+        </div>
+      )}
+      {/* En-tête section */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-bold text-[var(--text-primary)] flex items-center gap-2">
+            <Icon as={PhoneCall} size={18} /> {t('telephony.ivr.title')}
+          </h3>
+          <p className="text-sm text-[var(--text-secondary)] mt-0.5">{t('telephony.ivr.config')}</p>
+        </div>
+        {editingId === null && (
+          <Button size="sm" onClick={startNew}>
+            <Icon as={Plus} size={14} className="mr-1" /> {t('telephony.ivr.title')}
+          </Button>
+        )}
+      </div>
+
+      {/* Éditeur (création ou édition) */}
+      {editingId !== null && (
+        <Card className="p-5 space-y-3 border-[var(--primary)]">
+          <Input
+            label={t('telephony.ivr.title')}
+            value={draftName}
+            onChange={(e) => setDraftName(e.target.value)}
+            placeholder={t('telephony.ivr.title')}
+          />
+          <div>
+            <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1">
+              {t('telephony.ivr.config')}
+            </label>
+            <textarea
+              value={draftConfig}
+              onChange={(e) => { setDraftConfig(e.target.value); setConfigError(null); }}
+              rows={10}
+              spellCheck={false}
+              className="w-full px-3 py-2 text-xs font-mono bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-[var(--text-primary)] resize-y focus:border-[var(--brand-primary)] focus:outline-none"
+            />
+            {configError && <p className="text-xs text-[var(--danger)] mt-1">{configError}</p>}
+            <p className="text-[10px] text-[var(--text-muted)] mt-1">
+              {t('telephony.ivr.option')} : {`{ "digit": "1", "action": "forward", "to": "+1..." }`}
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button size="sm" disabled={saving} onClick={() => void handleSave()}>
+              <Icon as={Check} size={14} className="mr-1" /> {t('action.save')}
+            </Button>
+            <Button size="sm" variant="secondary" onClick={cancel}>{t('action.cancel')}</Button>
+          </div>
+        </Card>
+      )}
+
+      {/* Liste des menus */}
+      {menus.length === 0 && editingId === null ? (
+        <Card className="p-8 text-center text-[var(--text-muted)] border-dashed">
+          {t('telephony.notconfigured')}
+        </Card>
+      ) : (
+        menus.map(menu => (
+          <Card key={menu.id} className="p-4 flex items-center justify-between gap-3">
+            <button onClick={() => startEdit(menu)} className="flex-1 min-w-0 text-left cursor-pointer">
+              <p className="text-sm font-semibold text-[var(--text-primary)] truncate">{menu.name || t('telephony.ivr.title')}</p>
+              <p className="text-[11px] text-[var(--text-muted)] font-mono truncate">{menu.config_json || '{}'}</p>
+            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              <Tag variant={menu.is_active ? 'success' : 'neutral'} size="sm">
+                {menu.is_active ? t('telephony.status.completed') : t('telephony.status.queued')}
+              </Tag>
+              <button
+                onClick={() => void handleToggleActive(menu)}
+                title={menu.is_active ? t('telephony.status.queued') : t('telephony.status.completed')}
+                aria-label={menu.is_active ? t('telephony.status.queued') : t('telephony.status.completed')}
+                aria-pressed={!!menu.is_active}
+                className="p-1.5 rounded-md text-[var(--text-muted)] hover:text-[var(--brand-primary)] hover:bg-[var(--bg-subtle)] cursor-pointer transition-all">
+                <Icon as={Check} size={15} />
+              </button>
+              <button
+                onClick={() => void handleDelete(menu)}
+                title={t('action.delete')}
+                aria-label={t('a11y.delete')}
+                className="p-1.5 rounded-md text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-[var(--danger)]/10 cursor-pointer transition-all">
+                <Icon as={Trash2} size={15} />
+              </button>
+            </div>
           </Card>
         ))
       )}

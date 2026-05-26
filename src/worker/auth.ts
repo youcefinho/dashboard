@@ -2,6 +2,11 @@
 import type { Env } from './types';
 import { json, audit } from './helpers';
 import { hashPassword, verifyPassword } from './crypto';
+// Sprint 23 — retrofit zod sur forgot/reset password (validation cohérente
+// avec le reste du codebase + bornes max longueur). On utilise safeParse
+// directement pour ne pas entrer en collision avec `validate()` local.
+import { forgotPasswordSchema, resetPasswordSchema } from '../lib/schemas';
+import { checkRateLimit } from './lib/rate-limit';
 
 const LOGIN_WINDOW_HOURS = 1;
 const MAX_LOGIN_ATTEMPTS = 5;
@@ -116,7 +121,7 @@ export async function handleLogin(request: Request, env: Env): Promise<Response>
   return finishLogin(env, user.id, user.role, user.name, email, !!user.must_change_password, ip, ua);
 }
 
-async function finishLogin(env: Env, userId: string, role: string, name: string, email: string, mustChangePassword: boolean, ip: string, ua: string): Promise<Response> {
+export async function finishLogin(env: Env, userId: string, role: string, name: string, email: string, mustChangePassword: boolean, ip: string, ua: string): Promise<Response> {
   const token = crypto.randomUUID();
   const expiresAt = new Date(Date.now() + SESSION_DURATION_HOURS * 3600_000).toISOString();
   await env.DB.prepare("INSERT INTO admin_sessions (token, user_id, role, created_at, expires_at, ip, user_agent, last_active_at) VALUES (?, ?, ?, datetime('now'), ?, ?, ?, datetime('now'))").bind(token, userId, role, expiresAt, ip, ua).run();
@@ -127,6 +132,70 @@ async function finishLogin(env: Env, userId: string, role: string, name: string,
   } catch { /* non critique */ }
   await audit(env, userId, 'auth.login', 'user', userId, { email, role, ip });
   return json({ success: true, token, must_change_password: mustChangePassword, user: { id: userId, name, role, email } });
+}
+
+// ── Register (public — provisionne une agence-tenant) ───────────
+// CONTRAT §6.5 (figé). Succès = format IDENTIQUE à finishLogin.
+// `provisionAgencyTenant` est implémenté par Manager 2 (./provisioning) —
+// signature contractuelle §6.4 : Promise<{userId,agencyId,clientId}>.
+
+const registerSchema = {
+  parse(data: unknown) {
+    const d = data as { email?: string; password?: string; name?: string; company?: string };
+    if (!d.email || typeof d.email !== 'string') throw 'Email requis';
+    if (!d.password || typeof d.password !== 'string') throw 'Mot de passe requis';
+    if (d.password.length < 8) throw 'Mot de passe trop court (min 8 caractères)';
+    if (!d.name || typeof d.name !== 'string') throw 'Nom requis';
+    return {
+      email: d.email.trim().toLowerCase(),
+      password: d.password,
+      name: d.name.trim(),
+      company:
+        typeof d.company === 'string' && d.company.trim() ? d.company.trim() : undefined,
+    };
+  },
+};
+
+export async function handleRegister(request: Request, env: Env): Promise<Response> {
+  const ip = request.headers.get('CF-Connecting-IP') || '127.0.0.1';
+  const ua = request.headers.get('User-Agent') || 'Unknown Browser';
+
+  let raw: unknown;
+  try {
+    raw = await request.json();
+  } catch {
+    return json({ error: 'Requête invalide', code: 'INVALID_INPUT' }, 400);
+  }
+  const parsed = validate(registerSchema, raw);
+  if (!parsed.success) return json({ error: parsed.error, code: 'INVALID_INPUT' }, 400);
+  const { email, password, name, company } = parsed.data;
+
+  // Email déjà pris ?
+  const existing = (await env.DB.prepare('SELECT id FROM users WHERE email = ?')
+    .bind(email)
+    .first()) as { id: string } | null;
+  if (existing) {
+    return json({ error: 'Cet email est déjà utilisé', code: 'EMAIL_TAKEN' }, 409);
+  }
+
+  const passwordHash = await hashPassword(password);
+
+  let provisioned: { userId: string; agencyId: string; clientId: string };
+  try {
+    const { provisionAgencyTenant } = await import('./provisioning');
+    provisioned = await provisionAgencyTenant(env, {
+      email,
+      name: company || name,
+      passwordHash,
+    });
+  } catch {
+    return json({ error: 'Création du compte impossible', code: 'PROVISION_FAILED' }, 500);
+  }
+
+  await audit(env, provisioned.userId, 'auth.register', 'user', provisioned.userId, { email });
+
+  // Succès : format IDENTIQUE à finishLogin (token + session).
+  return finishLogin(env, provisioned.userId, 'admin', name, email, false, ip, ua);
 }
 
 export async function handleChangePassword(request: Request, env: Env): Promise<Response> {
@@ -215,10 +284,22 @@ export async function handleNotificationPreferences(request: Request, env: Env):
 }
 
 export async function handleForgotPassword(request: Request, env: Env): Promise<Response> {
-  const body = await request.json() as { email?: string };
-  if (!body.email) return json({ error: 'Email requis' }, 400);
+  // Sprint 23 — rate-limit IP best-effort (5 / 10min). Anti-énumeration +
+  // anti-spam Resend. Fail-open si seq121 absente (calque handlers Sprint 23).
+  const ip = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || 'unknown';
+  const rl = await checkRateLimit(env, `forgot-password:ip:${ip}`, 5, 600);
+  if (!rl.allowed) {
+    return json({ error: 'Trop de tentatives — réessayez plus tard', code: 'RATE_LIMITED' }, 429);
+  }
 
-  const email = body.email.toLowerCase().trim();
+  const body = await request.json().catch(() => ({}));
+  // Sprint 23 — retrofit zod (email format + max 200 chars). Avant : check
+  // manuel `if (!body.email)` — insuffisant face à payloads malformés.
+  const parsed = forgotPasswordSchema.safeParse(body);
+  if (!parsed.success) {
+    return json({ error: 'Email invalide', code: 'INVALID_INPUT' }, 400);
+  }
+  const email = parsed.data.email.toLowerCase().trim();
   const user = await env.DB.prepare('SELECT id, name FROM users WHERE email = ? AND is_active = 1').bind(email).first() as { id: string; name: string } | null;
 
   if (user) {
@@ -257,19 +338,25 @@ export async function handleForgotPassword(request: Request, env: Env): Promise<
 }
 
 export async function handleResetPassword(request: Request, env: Env): Promise<Response> {
-  const body = await request.json() as { token?: string; password?: string };
-  if (!body.token || !body.password) return json({ error: 'Token et mot de passe requis' }, 400);
-  if (body.password.length < 8) return json({ error: 'Mot de passe trop court (min 8)' }, 400);
+  const body = await request.json().catch(() => ({}));
+  // Sprint 23 — retrofit zod : token min 10 / max 200, password min 8 / max 500.
+  // Avant : check manuel `if (!body.token || !body.password)`. Bornes max
+  // ajoutées pour éviter payloads abusifs.
+  const parsed = resetPasswordSchema.safeParse(body);
+  if (!parsed.success) {
+    return json({ error: 'Token ou mot de passe invalide', code: 'INVALID_INPUT' }, 400);
+  }
+  const { token: resetToken, password: newPassword } = parsed.data;
 
   const resetReq = await env.DB.prepare(
     "SELECT id, user_id, used, expires_at FROM password_reset_tokens WHERE token = ?"
-  ).bind(body.token).first() as { id: string; user_id: string; used: number; expires_at: string } | null;
+  ).bind(resetToken).first() as { id: string; user_id: string; used: number; expires_at: string } | null;
 
   if (!resetReq) return json({ error: 'Lien invalide' }, 400);
   if (resetReq.used === 1) return json({ error: 'Lien déjà utilisé' }, 400);
   if (new Date(resetReq.expires_at) < new Date()) return json({ error: 'Lien expiré' }, 400);
 
-  const hash = await hashPassword(body.password);
+  const hash = await hashPassword(newPassword);
   
   await env.DB.prepare(
     "UPDATE users SET password_hash = ?, must_change_password = 0, updated_at = datetime('now') WHERE id = ?"

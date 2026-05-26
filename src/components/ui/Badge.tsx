@@ -32,24 +32,24 @@ const intentStyles: Record<string, Record<string, string>> = {
     outline: 'border-[var(--primary)] text-[var(--primary)]',
   },
   success: {
-    soft: 'bg-[var(--success-soft)] text-[var(--success)]',
+    soft: 'bg-[var(--success-soft)] text-[var(--success-text)]',
     solid: 'bg-[var(--success)] text-white',
-    outline: 'border-[var(--success)] text-[var(--success)]',
+    outline: 'border-[var(--success)] text-[var(--success-text)]',
   },
   warning: {
-    soft: 'bg-[var(--warning-soft)] text-[var(--warning)]',
+    soft: 'bg-[var(--warning-soft)] text-[var(--warning-text)]',
     solid: 'bg-[var(--warning)] text-white',
-    outline: 'border-[var(--warning)] text-[var(--warning)]',
+    outline: 'border-[var(--warning)] text-[var(--warning-text)]',
   },
   danger: {
-    soft: 'bg-[var(--danger-soft)] text-[var(--danger)]',
+    soft: 'bg-[var(--danger-soft)] text-[var(--danger-text)]',
     solid: 'bg-[var(--danger)] text-white',
-    outline: 'border-[var(--danger)] text-[var(--danger)]',
+    outline: 'border-[var(--danger)] text-[var(--danger-text)]',
   },
   info: {
-    soft: 'bg-[var(--info-soft)] text-[var(--info)]',
+    soft: 'bg-[var(--info-soft)] text-[var(--info-text)]',
     solid: 'bg-[var(--info)] text-white',
-    outline: 'border-[var(--info)] text-[var(--info)]',
+    outline: 'border-[var(--info)] text-[var(--info-text)]',
   },
 };
 

@@ -11,6 +11,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import {
   PageHero, Card, EmptyState, Skeleton, SlidePanel, Button, Tag, Avatar, Icon,
 } from '@/components/ui';
+import { RefreshCw } from 'lucide-react';
 import { getEcommerceCustomers, getCustomer360 } from '@/lib/api';
 import { t, getLocale } from '@/lib/i18n';
 import { formatMoneyCents } from '@/lib/i18n/number';
@@ -121,29 +122,58 @@ export function BoutiqueClientsPage() {
   const navigate = useNavigate();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Customer | null>(null);
   const [detail, setDetail] = useState<Customer360 | null>(null);
+  const [detailError, setDetailError] = useState<string | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  // reloadKey : bump pour relancer le fetch principal après erreur.
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
+    setIsLoading(true);
+    setLoadError(null);
     getEcommerceCustomers()
-      .then((res) => { if (!cancelled) setCustomers(res.data || []); })
-      .catch(() => { /* silencieux */ })
+      .then((res) => {
+        if (cancelled) return;
+        if (res.error) {
+          setLoadError(res.error);
+          setCustomers([]);
+        } else {
+          setCustomers(res.data || []);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setLoadError(t('shop.customers.error.load_failed'));
+          setCustomers([]);
+        }
+      })
       .finally(() => { if (!cancelled) setIsLoading(false); });
     return () => { cancelled = true; };
-  }, []);
+  }, [reloadKey]);
 
   // Charge l'agrégat 360 à chaque sélection (dégrade : panneau reste
   // utilisable avec les infos de base si l'endpoint M1 échoue).
   useEffect(() => {
-    if (!selected) { setDetail(null); return; }
+    if (!selected) { setDetail(null); setDetailError(null); return; }
     let cancelled = false;
     setDetail(null);
+    setDetailError(null);
     setDetailLoading(true);
     getCustomer360(selected.id)
-      .then((res) => { if (!cancelled && res.data) setDetail(res.data); })
-      .catch(() => { /* silencieux : on garde le fallback infos de base */ })
+      .then((res) => {
+        if (cancelled) return;
+        if (res.error) {
+          setDetailError(res.error);
+        } else if (res.data) {
+          setDetail(res.data);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setDetailError(t('common.error.load_failed'));
+      })
       .finally(() => { if (!cancelled) setDetailLoading(false); });
     return () => { cancelled = true; };
   }, [selected]);
@@ -168,7 +198,7 @@ export function BoutiqueClientsPage() {
       />
 
       {isLoading ? (
-        <Card className="p-0 overflow-hidden">
+        <Card className="p-0 overflow-hidden" aria-busy="true" data-testid="boutique-clients-loading">
           <div className="px-4 py-3 border-b border-[var(--border-subtle)] bg-[var(--bg-subtle)] flex items-center gap-6">
             {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-3 w-20 rounded" />)}
           </div>
@@ -181,6 +211,20 @@ export function BoutiqueClientsPage() {
               </div>
             ))}
           </div>
+        </Card>
+      ) : loadError ? (
+        <Card className="p-6" aria-live="polite" data-testid="boutique-clients-error">
+          <p className="text-sm text-[var(--danger-text)] mb-3">{loadError}</p>
+          <Button
+            variant="secondary"
+            size="sm"
+            leftIcon={<Icon as={RefreshCw} size="sm" />}
+            onClick={() => setReloadKey((k) => k + 1)}
+            aria-label={t('action.retry')}
+            data-testid="boutique-clients-retry"
+          >
+            {t('action.retry')}
+          </Button>
         </Card>
       ) : customers.length === 0 ? (
         <Card className="p-0 overflow-hidden">
@@ -200,7 +244,7 @@ export function BoutiqueClientsPage() {
                 <tr>
                   <th className="col-frozen text-left" style={{ minWidth: 220 }}>{t('shop.customers')}</th>
                   <th className="text-left">{t('qc.email')}</th>
-                  <th className="text-left">Téléphone</th>
+                  <th className="text-left">{t('qc.phone')}</th>
                   <th className="text-left">{t('shop.rfm.segment')}</th>
                   <th data-print-hide style={{ width: 48 }}></th>
                 </tr>
@@ -212,6 +256,15 @@ export function BoutiqueClientsPage() {
                     className="list-item-enter cursor-pointer"
                     style={{ animationDelay: `${idx * 28}ms` }}
                     onClick={() => setSelected(c)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setSelected(c);
+                      }
+                    }}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`${t('shop.customer_detail')} — ${customerName(c)}`}
                   >
                     <td className="col-frozen font-medium">{customerName(c)}</td>
                     <td className="text-[var(--text-muted)]">{c.email}</td>
@@ -270,9 +323,17 @@ export function BoutiqueClientsPage() {
             {/* KPI LTV / AOV / nb commandes — devise boutique de référence */}
             <section className="pt-4 border-t border-[var(--border-subtle)]">
               {detailLoading && !detail ? (
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-3 gap-3" aria-busy="true">
                   {[1, 2, 3].map((i) => <Skeleton key={i} className="h-16 rounded-lg" />)}
                 </div>
+              ) : detailError && !detail ? (
+                <p
+                  className="text-xs text-[var(--danger-text)] italic"
+                  aria-live="polite"
+                  data-testid="boutique-customer-detail-error"
+                >
+                  {detailError}
+                </p>
               ) : detail ? (
                 <div className="grid grid-cols-3 gap-3">
                   {([

@@ -2,6 +2,24 @@
 import type { Env } from './types';
 import { sanitizeInput, json, audit, sendSms, corsHeaders } from './helpers';
 import { verifyPassword, base32Encode, verifyTotp } from './crypto';
+import { isUnsubscribed } from './compliance';
+// Renforcement P3 (2026-05-26) — helpers PURS pour widgets/layouts/periodes.
+// Additif strict — réutilisable par dashboards.ts (builder) et tout endpoint
+// futur de validation de layout/widget côté worker.
+import {
+  validateWidgetConfig as _validateWidgetConfig,
+  validateDashboardLayout as _validateDashboardLayout,
+  validateWidgetPosition as _validateWidgetPosition,
+  computePeriod as _computePeriod,
+  VALID_WIDGET_TYPES as _VALID_WIDGET_TYPES,
+  VALID_PERIOD_SELECTORS as _VALID_PERIOD_SELECTORS,
+} from './lib/dashboard-engine';
+void _validateWidgetConfig;
+void _validateDashboardLayout;
+void _validateWidgetPosition;
+void _computePeriod;
+void _VALID_WIDGET_TYPES;
+void _VALID_PERIOD_SELECTORS;
 
 // ── Dashboard Stats ─────────────────────────────────────────
 
@@ -147,6 +165,8 @@ export async function handleSendSmsRoute(request: Request, env: Env, auth: { use
     to = lead.phone; clientId = lead.client_id;
   }
   if (!to) return json({ error: 'Numéro requis' }, 400);
+  // Conformité CASL/Loi 25 — refuser l'envoi à un numéro désabonné SMS (opt-out STOP).
+  if (await isUnsubscribed(env, '', to, 'sms')) return json({ error: 'Numéro désabonné (SMS)' }, 403);
   const result = await sendSms(env, to, sanitizeInput(body.message, 1600));
   if (!result.success) return json({ error: result.error || 'Échec envoi SMS' }, 500);
   const msgId = crypto.randomUUID();

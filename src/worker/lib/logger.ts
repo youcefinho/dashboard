@@ -30,10 +30,14 @@
 // Défaut = 'warn' (discret : seuls error+warn passent en prod).
 // Une valeur inconnue retombe sur le défaut 'warn'.
 
-type LogLevel = 'error' | 'warn' | 'info';
+// Sprint 24 — Observabilité : niveau 'debug' AJOUTÉ (additif, additionne en
+// fin de la hiérarchie de sévérité). Threshold 'warn' par défaut : 'debug' est
+// donc OFF en prod sauf si LOG_LEVEL='info' (debug<info dans SEVERITY → skip)
+// ou LOG_LEVEL='debug' (nouveau, opt-in explicite).
+type LogLevel = 'error' | 'warn' | 'info' | 'debug';
 
 /** Sévérité numérique : un message passe si severity(msgLevel) <= severity(threshold). */
-const SEVERITY: Record<LogLevel, number> = { error: 0, warn: 1, info: 2 };
+const SEVERITY: Record<LogLevel, number> = { error: 0, warn: 1, info: 2, debug: 3 };
 
 const DEFAULT_LEVEL: LogLevel = 'warn';
 
@@ -47,7 +51,7 @@ function resolveLevel(env: unknown): LogLevel {
     env && typeof env === 'object'
       ? (env as Record<string, unknown>)['LOG_LEVEL']
       : undefined;
-  if (raw === 'error' || raw === 'warn' || raw === 'info') return raw;
+  if (raw === 'error' || raw === 'warn' || raw === 'info' || raw === 'debug') return raw;
   return DEFAULT_LEVEL;
 }
 
@@ -58,6 +62,10 @@ export interface Logger {
   info(msg: string, ctx?: LogContext): void;
   warn(msg: string, ctx?: LogContext): void;
   error(msg: string, ctx?: LogContext): void;
+  // Sprint 24 — Observabilité : niveau 'debug' (off par défaut, opt-in
+  // LOG_LEVEL='debug'). Utile pour traces fines (request_id propagation,
+  // alert evaluator, request-metrics flush). Pas de PII (Loi 25, cf. entête).
+  debug(msg: string, ctx?: LogContext): void;
 }
 
 /**
@@ -75,6 +83,7 @@ function emit(level: LogLevel, msg: string, ctx?: LogContext): void {
     });
     if (level === 'error') console.error(line);
     else if (level === 'warn') console.warn(line);
+    else if (level === 'debug') console.debug(line);
     else console.info(line);
   } catch {
     // Sérialisation impossible (ctx circulaire, etc.) : on dégrade
@@ -114,6 +123,9 @@ export function createLogger(env: unknown): Logger {
     error(msg, ctx) {
       if (passes('error')) emit('error', msg, ctx);
     },
+    debug(msg, ctx) {
+      if (passes('debug')) emit('debug', msg, ctx);
+    },
   };
 }
 
@@ -123,3 +135,28 @@ export function createLogger(env: unknown): Logger {
  * disponible préférer `createLogger(env)` pour respecter `LOG_LEVEL`.
  */
 export const logger: Logger = createLogger(undefined);
+
+// ── Sprint 24 — Observabilité : logger corrélé par requête ──────────────
+//
+// `createCorrelatedLogger(env, requestId)` est un WRAPPER additif autour de
+// `createLogger(env)` qui enrichit chaque `ctx` log avec `request_id`. Permet
+// de tracer une requête HTTP de bout en bout dans les logs (corrélation avec
+// audit_log.request_id seq121 et header de réponse X-Request-Id).
+//
+// La signature `createLogger(env): Logger` figée S4 n'est PAS modifiée — ce
+// helper est strictement additif. Si `requestId` est null/empty, on dégrade
+// proprement en pass-through (aucun ajout au ctx). JAMAIS de throw.
+//
+// Loi 25 : `request_id` est un UUID v4 généré côté serveur (aucune PII), donc
+// safe à logger librement.
+export function createCorrelatedLogger(env: unknown, requestId: string | null): Logger {
+  const base = createLogger(env);
+  const enrich = (ctx?: LogContext): LogContext =>
+    requestId ? { ...(ctx || {}), request_id: requestId } : (ctx || {});
+  return {
+    info: (m, c) => base.info(m, enrich(c)),
+    warn: (m, c) => base.warn(m, enrich(c)),
+    error: (m, c) => base.error(m, enrich(c)),
+    debug: (m, c) => base.debug(m, enrich(c)),
+  };
+}

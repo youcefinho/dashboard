@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { t } from '@/lib/i18n';
 import { PublicLayout } from '../landing/PublicLayout';
 import { Search, Book, FileText, Video, ChevronRight } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -8,12 +9,25 @@ import { Tag } from '@/components/ui/Tag';
 import { KpiStrip } from '@/components/ui/KpiStrip';
 
 const categories = [
-  { id: 'getting-started', name: 'Premiers pas', icon: <Book size={16} /> },
-  { id: 'leads', name: 'Gestion des Leads', icon: <FileText size={16} /> },
-  { id: 'workflows', name: 'Automatisations', icon: <Video size={16} /> },
-  { id: 'integrations', name: 'Intégrations', icon: <ChevronRight size={16} /> },
-  { id: 'billing', name: 'Facturation', icon: <FileText size={16} /> },
+  { id: 'getting-started', icon: <Book size={16} /> },
+  { id: 'leads', icon: <FileText size={16} /> },
+  { id: 'workflows', icon: <Video size={16} /> },
+  { id: 'integrations', icon: <ChevronRight size={16} /> },
+  { id: 'billing', icon: <FileText size={16} /> },
 ];
+
+const CATEGORY_NAME_KEYS: Record<string, string> = {
+  'getting-started': 'help.cat_getting_started',
+  'leads': 'help.cat_leads',
+  'workflows': 'help.cat_workflows',
+  'integrations': 'help.cat_integrations',
+  'billing': 'help.cat_billing',
+};
+
+function categoryName(id: string): string {
+  const key = CATEGORY_NAME_KEYS[id];
+  return key ? t(key) : id;
+}
 
 const articles: Record<string, { title: string; category: string; file: string }> = {
   // Getting started (5)
@@ -66,7 +80,7 @@ export function HelpCenterPage() {
           setIsLoading(false);
         })
         .catch(() => {
-          setMarkdownContent('# Erreur\nImpossible de charger cet article.');
+          setMarkdownContent(t('help.load_error'));
           setIsLoading(false);
         });
     }
@@ -117,24 +131,24 @@ export function HelpCenterPage() {
         </div>
         <div className="relative max-w-3xl mx-auto text-center z-10">
           <p className="text-xs font-semibold text-white/80 uppercase tracking-[0.18em] mb-3">
-            Centre d'aide Intralys
+            {t('help.hero_meta')}
           </p>
           <h1
             className="text-3xl md:text-5xl font-extrabold text-white mb-8 tracking-tight"
             style={{ letterSpacing: '-0.02em' }}
           >
-            Comment pouvons-nous vous aider ?
+            {t('help.hero_title')}
           </h1>
           {/* Input premium (wave 41) */}
           <div className="max-w-xl mx-auto">
             <Input
               type="search"
-              placeholder="Rechercher des articles, des tutoriels..."
+              placeholder={t('help.search_placeholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               leftIcon={<Search size={16} />}
               className="h-12 text-base bg-white/95"
-              aria-label="Rechercher dans le centre d'aide"
+              aria-label={t('help.search_aria')}
             />
           </div>
         </div>
@@ -144,9 +158,9 @@ export function HelpCenterPage() {
         {/* KpiStrip optionnel (wave 41) */}
         <KpiStrip
           items={[
-            { label: 'Articles', value: totalArticles, color: 'brand' },
-            { label: 'Catégories', value: totalCategories, color: 'info' },
-            { label: 'Populaires', value: 8, color: 'accent' },
+            { label: t('help.kpi_articles'), value: totalArticles, color: 'brand' },
+            { label: t('help.kpi_categories'), value: totalCategories, color: 'info' },
+            { label: t('help.kpi_popular'), value: 8, color: 'accent' },
           ]}
           className="mb-8"
         />
@@ -154,7 +168,7 @@ export function HelpCenterPage() {
         <div className="grid grid-cols-1 md:grid-cols-[260px_1fr] gap-8">
           {/* Sidebar categories — style sidebar-nav-item adapté light */}
           <aside className="md:sticky md:top-24 self-start">
-            <p className="heading-premium mb-3">Catégories</p>
+            <p className="heading-premium mb-3">{t('help.sidebar_categories')}</p>
             <nav>
               <ul className="space-y-1.5">
                 {categories.map((cat) => {
@@ -175,7 +189,7 @@ export function HelpCenterPage() {
                         <span className="help-cat-icon shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-lg transition-all">
                           {cat.icon}
                         </span>
-                        <span className="truncate">{cat.name}</span>
+                        <span className="truncate">{categoryName(cat.id)}</span>
                       </button>
                     </li>
                   );
@@ -192,11 +206,11 @@ export function HelpCenterPage() {
                   onClick={() => setSelectedArticle(null)}
                   className="relative text-sm text-[var(--primary)] font-semibold flex items-center gap-1 mb-6 hover:underline"
                 >
-                  <ChevronRight size={16} className="rotate-180" /> Retour aux articles
+                  <ChevronRight size={16} className="rotate-180" /> {t('help.back_to_articles')}
                 </button>
                 <div className="relative mb-4">
                   <Tag size="xs" variant="brand">
-                    {categories.find((c) => c.id === articles[selectedArticle]!.category)?.name ?? 'Article'}
+                    {categories.find((c) => c.id === articles[selectedArticle]!.category) ? categoryName(articles[selectedArticle]!.category) : t('help.tag_fallback')}
                   </Tag>
                 </div>
                 {isLoading ? (
@@ -217,8 +231,8 @@ export function HelpCenterPage() {
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-lg font-bold text-[var(--text-primary)] tracking-tight">
                     {searchResults
-                      ? `Résultats (${visibleArticles.length})`
-                      : categories.find((c) => c.id === activeCategory)?.name ?? 'Articles'}
+                      ? t('help.results').replace('{n}', String(visibleArticles.length))
+                      : (categories.find((c) => c.id === activeCategory) ? categoryName(activeCategory) : t('help.articles_fallback'))}
                   </h2>
                   {searchResults && (
                     <button
@@ -226,7 +240,7 @@ export function HelpCenterPage() {
                       onClick={() => setSearchQuery('')}
                       className="text-xs text-[var(--primary)] font-semibold hover:underline"
                     >
-                      Réinitialiser
+                      {t('help.reset')}
                     </button>
                   )}
                 </div>
@@ -235,7 +249,7 @@ export function HelpCenterPage() {
                   <div className="card-premium p-12 text-center">
                     <Book className="mx-auto mb-4 text-[var(--text-muted)]" size={40} />
                     <p className="text-sm text-[var(--text-muted)]">
-                      Aucun article ne correspond à votre recherche.
+                      {t('help.no_results')}
                     </p>
                   </div>
                 ) : (
@@ -265,7 +279,7 @@ export function HelpCenterPage() {
                           </span>
                           {searchResults && (
                             <Tag size="xs" variant="neutral">
-                              {categories.find((c) => c.id === a.category)?.name ?? a.category}
+                              {categories.find((c) => c.id === a.category) ? categoryName(a.category) : a.category}
                             </Tag>
                           )}
                           <ChevronRight

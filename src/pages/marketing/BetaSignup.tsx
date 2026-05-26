@@ -2,7 +2,7 @@
 // Liste d'attente beta privée. Stripe SUBTLE strict (pas glow/orb/gradient).
 // ⚠️ Loi 25 / CASL : consentement explicite obligatoire + finalité claire.
 
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Send, Loader2, CheckCircle2, Users } from 'lucide-react';
 import { PublicLayout } from '../landing/PublicLayout';
 import { Button } from '@/components/ui/Button';
@@ -12,6 +12,10 @@ import { Textarea } from '@/components/ui/Textarea';
 import { Icon } from '@/components/ui/Icon';
 import { useToast } from '@/components/ui/Toast';
 import { MarketingMeta } from './_meta';
+
+// Renforcement : regex email partagée avec Login/Signup/Contact (Sprint 26-2B).
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const USE_CASE_MAX = 1000;
 
 const INDUSTRIES = [
   'Immobilier',
@@ -38,6 +42,26 @@ export function BetaSignupPage() {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [count, setCount] = useState<number | null>(null);
+  // Renforcement : touched par champ pour inline errors au blur.
+  const [touched, setTouched] = useState<{ email: boolean; company: boolean }>({
+    email: false,
+    company: false,
+  });
+  // Renforcement : ref sur le bloc succès pour focus management (annonce SR).
+  const successRef = useRef<HTMLDivElement | null>(null);
+  // Refs sur les boutons segmented pour navigation clavier (radio group).
+  const segRefs = useRef<Array<HTMLButtonElement | null>>([]);
+
+  const emailValid = EMAIL_RE.test(email);
+  const emailError = touched.email && email.length > 0 && !emailValid
+    ? "Format de courriel invalide. Exemple : nom@entreprise.com"
+    : touched.email && email.length === 0
+      ? 'Le courriel est requis.'
+      : '';
+  const companyError = touched.company && company.trim().length === 0
+    ? "Le nom de l'entreprise est requis."
+    : '';
+  const formInvalid = !emailValid || company.trim().length === 0;
 
   useEffect(() => {
     let alive = true;
@@ -48,9 +72,24 @@ export function BetaSignupPage() {
     return () => { alive = false; };
   }, []);
 
+  // Renforcement a11y : focus management après succès — déplace le focus
+  // sur le bloc de confirmation pour que les lecteurs d'écran l'annoncent.
+  useEffect(() => {
+    if (done && successRef.current) {
+      try { successRef.current.focus(); } catch { /* noop */ }
+    }
+  }, [done]);
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (submitting) return;
+    // Renforcement : touch tous les champs requis pour montrer toutes les
+    // erreurs inline avant d'évaluer la validité globale.
+    setTouched({ email: true, company: true });
+    if (formInvalid) {
+      toast.error('Vérifie les champs en rouge avant de continuer.', { title: 'Champs requis' });
+      return;
+    }
     if (!consent) {
       toast.error('Coche la case de consentement pour rejoindre la liste.', { title: 'Consentement requis' });
       return;
@@ -75,6 +114,21 @@ export function BetaSignupPage() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  // Renforcement a11y : navigation clavier ←/→/Home/End dans le radiogroup
+  // taille d'équipe (ARIA Radio Group pattern).
+  function handleSegKeyDown(e: React.KeyboardEvent<HTMLButtonElement>, idx: number) {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
+    e.preventDefault();
+    let nextIdx = idx;
+    if (e.key === 'ArrowLeft') nextIdx = idx === 0 ? TEAM_SIZES.length - 1 : idx - 1;
+    else if (e.key === 'ArrowRight') nextIdx = idx === TEAM_SIZES.length - 1 ? 0 : idx + 1;
+    else if (e.key === 'Home') nextIdx = 0;
+    else if (e.key === 'End') nextIdx = TEAM_SIZES.length - 1;
+    const nextVal = TEAM_SIZES[nextIdx]!;
+    setTeamSize(nextVal);
+    try { segRefs.current[nextIdx]?.focus(); } catch { /* noop */ }
   }
 
   return (
@@ -103,7 +157,13 @@ export function BetaSignupPage() {
         </header>
 
         {done ? (
-          <div className="mk-beta__success" role="status">
+          <div
+            className="mk-beta__success"
+            role="status"
+            aria-live="polite"
+            tabIndex={-1}
+            ref={successRef}
+          >
             <span className="mk-beta__success-icon">
               <Icon as={CheckCircle2} size={28} aria-hidden />
             </span>
@@ -114,7 +174,12 @@ export function BetaSignupPage() {
             </p>
           </div>
         ) : (
-          <form className="mk-beta__form" onSubmit={handleSubmit} noValidate>
+          <form
+            className="mk-beta__form"
+            onSubmit={handleSubmit}
+            noValidate
+            aria-busy={submitting || undefined}
+          >
             <div className="mk-beta__row">
               <Input
                 label="Courriel professionnel"
@@ -122,16 +187,20 @@ export function BetaSignupPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                onBlur={() => setTouched((s) => ({ ...s, email: true }))}
                 autoComplete="email"
                 placeholder="toi@entreprise.com"
+                error={emailError || undefined}
               />
               <Input
                 label="Nom de l'entreprise"
                 required
                 value={company}
                 onChange={(e) => setCompany(e.target.value)}
+                onBlur={() => setTouched((s) => ({ ...s, company: true }))}
                 autoComplete="organization"
                 placeholder="Ton entreprise inc."
+                error={companyError || undefined}
               />
             </div>
 
@@ -147,20 +216,32 @@ export function BetaSignupPage() {
               </Select>
 
               <div className="mk-beta__field">
-                <span className="mk-beta__label">Taille de l'équipe</span>
-                <div className="mk-beta__segmented" role="radiogroup" aria-label="Taille de l'équipe">
-                  {TEAM_SIZES.map((s) => (
-                    <button
-                      key={s}
-                      type="button"
-                      role="radio"
-                      aria-checked={teamSize === s}
-                      className={`mk-beta__seg ${teamSize === s ? 'is-active' : ''}`}
-                      onClick={() => setTeamSize(s)}
-                    >
-                      {s}
-                    </button>
-                  ))}
+                <span className="mk-beta__label" id="mk-beta-team-label">Taille de l'équipe</span>
+                <div
+                  className="mk-beta__segmented"
+                  role="radiogroup"
+                  aria-labelledby="mk-beta-team-label"
+                >
+                  {TEAM_SIZES.map((s, i) => {
+                    const checked = teamSize === s;
+                    return (
+                      <button
+                        key={s}
+                        type="button"
+                        role="radio"
+                        aria-checked={checked}
+                        // Pattern ARIA Radio Group : un seul radio focusable
+                        // à la fois (tabIndex 0), les autres -1.
+                        tabIndex={checked ? 0 : -1}
+                        ref={(el) => { segRefs.current[i] = el; }}
+                        className={`mk-beta__seg ${checked ? 'is-active' : ''}`}
+                        onClick={() => setTeamSize(s)}
+                        onKeyDown={(e) => handleSegKeyDown(e, i)}
+                      >
+                        {s}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -170,9 +251,23 @@ export function BetaSignupPage() {
               value={useCase}
               onChange={(e) => setUseCase(e.target.value)}
               rows={4}
-              maxLength={1000}
+              maxLength={USE_CASE_MAX}
               placeholder="Ex. centraliser mes leads Facebook + relances automatiques en français…"
+              aria-describedby="mk-beta-usecase-counter"
             />
+            {/* Renforcement UX : compteur caractères pour textarea limitée */}
+            <p
+              id="mk-beta-usecase-counter"
+              style={{
+                fontSize: 12,
+                color: 'var(--text-muted)',
+                marginTop: -8,
+                textAlign: 'right',
+              }}
+              aria-live="polite"
+            >
+              {useCase.length} / {USE_CASE_MAX}
+            </p>
 
             {/* ⚠️ Loi 25 / CASL — consentement explicite + finalité claire */}
             <label className="mk-beta__consent">
@@ -198,6 +293,9 @@ export function BetaSignupPage() {
               variant="primary"
               size="lg"
               isLoading={submitting}
+              disabled={submitting}
+              aria-disabled={submitting || undefined}
+              aria-busy={submitting || undefined}
               leftIcon={
                 submitting ? (
                   <Icon as={Loader2} size={16} className="animate-spin" />

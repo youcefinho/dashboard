@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import path from 'path';
@@ -58,5 +58,10 @@ export default defineConfig({
         },
       },
     },
+  },
+  test: {
+    // Charge les matchers jest-dom (toBeInTheDocument, toHaveTextContent, etc.)
+    // pour les tests composants qui utilisent @testing-library/react
+    setupFiles: ['./src/test-setup.ts'],
   },
 });

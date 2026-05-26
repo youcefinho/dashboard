@@ -11,17 +11,22 @@ export function DocumentTemplatesPage() {
   const confirm = useConfirm();
   const [templates, setTemplates] = useState<DocumentTemplate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newHtml, setNewHtml] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   const loadTemplates = async () => {
     setIsLoading(true);
+    setLoadError(null);
     try {
       const res = await getDocumentTemplates();
       setTemplates(res.data || []);
     } catch (e) {
       console.error(e);
+      setLoadError(t('doc_tpl.error_load'));
     } finally {
       setIsLoading(false);
     }
@@ -32,7 +37,9 @@ export function DocumentTemplatesPage() {
   }, []);
 
   const handleCreate = async () => {
-    if (!newTitle || !newHtml) return;
+    if (!newTitle || !newHtml || isSaving) return;
+    setActionError(null);
+    setIsSaving(true);
     try {
       await createDocumentTemplate({
         name: newTitle,
@@ -45,22 +52,27 @@ export function DocumentTemplatesPage() {
       void loadTemplates();
     } catch (e) {
       console.error(e);
+      setActionError(t('doc_tpl.error_create'));
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: string, name: string) => {
     const ok = await confirm({
       title: t('doc_tpl.confirm.title'),
-      description: t('doc_tpl.confirm.desc'),
+      description: t('doc_tpl.confirm.desc_named', { name }),
       confirmLabel: t('common.delete'),
       danger: true,
     });
     if (!ok) return;
+    setActionError(null);
     try {
       await deleteDocumentTemplate(id);
       void loadTemplates();
     } catch (e) {
       console.error(e);
+      setActionError(t('doc_tpl.error_delete'));
     }
   };
 
@@ -82,7 +94,7 @@ export function DocumentTemplatesPage() {
   return (
     <AppLayout title={t('doc_tpl.page.title')}>
       <PageHero
-        meta="Insights"
+        meta={t('doc_tpl.hero.meta')}
         title={t('doc_tpl.page.title')}
         highlight={t('doc_tpl.page.title')}
         description={t('doc_tpl.hero.desc')}
@@ -95,41 +107,63 @@ export function DocumentTemplatesPage() {
 
       {!isLoading && templates.length > 0 && <KpiStrip items={kpis} />}
 
+      {actionError && (
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="mb-4 px-4 py-3 rounded-[var(--radius-md)] bg-[color-mix(in_oklch,var(--danger)_8%,transparent)] border border-[color-mix(in_oklch,var(--danger)_30%,transparent)] text-sm text-[var(--danger)] flex items-center justify-between gap-3"
+        >
+          <span>{actionError}</span>
+          <button
+            type="button"
+            onClick={() => setActionError(null)}
+            className="text-xs underline hover:no-underline"
+            aria-label={t('doc_tpl.error_dismiss')}
+          >
+            {t('doc_tpl.error_dismiss')}
+          </button>
+        </div>
+      )}
+
       {isCreating && (
         <Card className="p-6 mb-6 animate-fade-in border border-[var(--primary)]">
           <h3 className="text-lg font-bold mb-4">{t('doc_tpl.form.title')}</h3>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-1">{t('doc_tpl.form.name')}</label>
-              <Input 
-                placeholder="Ex: Contrat de prestation de services" 
-                value={newTitle} 
-                onChange={e => setNewTitle(e.target.value)} 
+              <label className="block text-sm font-medium mb-1" htmlFor="doc-tpl-name">{t('doc_tpl.form.name')}</label>
+              <Input
+                id="doc-tpl-name"
+                placeholder={t('doc_tpl.form.name_placeholder')}
+                value={newTitle}
+                onChange={e => setNewTitle(e.target.value)}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">{t('doc_tpl.form.content')}</label>
+              <label className="block text-sm font-medium mb-1" htmlFor="doc-tpl-content">{t('doc_tpl.form.content')}</label>
               <Textarea
+                id="doc-tpl-content"
                 rows={12}
                 className="font-mono text-xs"
-                placeholder="<h1>Mandat de courtage</h1><p>Entre {{client_company}} et {{lead_name}}...</p>"
+                placeholder={t('doc_tpl.form.content_placeholder')}
                 value={newHtml}
                 onChange={e => setNewHtml(e.target.value)}
               />
               <p className="text-xs text-[var(--text-muted)] mt-1">
-                Variables disponibles: {'{{lead_name}}'}, {'{{lead_email}}'}, {'{{client_name}}'}, {'{{client_company}}'}, {'{{date}}'}
+                {t('doc_tpl.form.variables_hint')}
               </p>
             </div>
             <div className="flex gap-2 justify-end">
-              <Button variant="secondary" onClick={() => setIsCreating(false)}>{t('doc_tpl.form.cancel')}</Button>
-              <Button onClick={() => void handleCreate()}>{t('doc_tpl.form.save')}</Button>
+              <Button variant="secondary" onClick={() => { setIsCreating(false); setActionError(null); }}>{t('doc_tpl.form.cancel')}</Button>
+              <Button onClick={() => void handleCreate()} disabled={isSaving || !newTitle.trim() || !newHtml.trim()}>
+                {isSaving ? t('doc_tpl.form.saving') : t('doc_tpl.form.save')}
+              </Button>
             </div>
           </div>
         </Card>
       )}
 
       {isLoading ? (
-        <div className="space-y-4">
+        <div className="space-y-4" aria-busy="true" aria-live="polite">
           {/* KPI strip skeleton */}
           <div className="flex gap-3">
             {[0, 1, 2].map(i => <Skeleton key={i} className="h-20 flex-1 rounded-2xl" />)}
@@ -155,6 +189,13 @@ export function DocumentTemplatesPage() {
             ))}
           </div>
         </div>
+      ) : loadError ? (
+        <EmptyState
+          icon={<Icon as={FileText} size={40} />}
+          title={loadError}
+          description={t('doc_tpl.error_load_desc')}
+          action={<Button variant="primary" onClick={() => void loadTemplates()}>{t('doc_tpl.error_retry')}</Button>}
+        />
       ) : templates.length === 0 && !isCreating ? (
         <EmptyState
           variant="first-time"
@@ -165,28 +206,40 @@ export function DocumentTemplatesPage() {
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {templates.map(tpl => (
+          {templates.map(tpl => {
+            const vars = tpl.body_html.match(/\{\{([^}]+)\}\}/g)?.slice(0, 5).join(', ');
+            return (
             <div key={tpl.id} className="card-premium p-5 flex flex-col list-item-enter">
               <div className="flex justify-between items-start mb-3">
-                <Tag variant="brand" size="sm">Modèle</Tag>
+                <Tag variant="brand" size="sm">{t('doctemplates.card.badge')}</Tag>
                 <div className="flex gap-1">
-                  <button className="p-1.5 text-[var(--text-muted)] hover:text-[var(--primary)] rounded hover:bg-[var(--bg-subtle)] transition-colors">
+                  <button
+                    type="button"
+                    aria-label={t('doc_tpl.action.edit_aria', { name: tpl.name })}
+                    className="p-1.5 text-[var(--text-muted)] hover:text-[var(--primary)] rounded hover:bg-[var(--bg-subtle)] transition-colors"
+                  >
                     <Icon as={Edit} size="sm" />
                   </button>
-                  <button onClick={() => void handleDelete(tpl.id)} className="p-1.5 text-[var(--text-muted)] hover:text-[var(--danger)] rounded hover:bg-[color-mix(in_oklch,var(--danger)_10%,transparent)] transition-colors">
+                  <button
+                    type="button"
+                    onClick={() => void handleDelete(tpl.id, tpl.name)}
+                    aria-label={t('doc_tpl.action.delete_aria', { name: tpl.name })}
+                    className="p-1.5 text-[var(--text-muted)] hover:text-[var(--danger)] rounded hover:bg-[color-mix(in_oklch,var(--danger)_10%,transparent)] transition-colors"
+                  >
                     <Icon as={Trash2} size="sm" />
                   </button>
                 </div>
               </div>
               <h3 className="font-bold text-lg mb-1 line-clamp-1">{tpl.name}</h3>
               <p className="text-xs text-[var(--text-muted)] mb-4 flex-1">
-                Créé le {new Date(tpl.created_at).toLocaleDateString('fr-CA')}
+                {t('doc_tpl.card.created_on', { date: new Date(tpl.created_at).toLocaleDateString('fr-CA') })}
               </p>
               <div className="text-[10px] text-[var(--text-muted)] bg-[var(--bg-subtle)] p-2 rounded">
-                Variables: {tpl.body_html.match(/\{\{([^}]+)\}\}/g)?.slice(0, 5).join(', ') || 'Aucune'}...
+                {t('doc_tpl.card.variables_label')}: {vars || t('doc_tpl.card.variables_none')}...
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </AppLayout>

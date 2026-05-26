@@ -2,6 +2,7 @@
 // Résout des chemins dot-path d'un payload JSON entrant → champs Lead canoniques.
 // Capture l'attribution marketing (UTM, gclid, fbclid, referrer) et le consentement.
 import { sanitizeInput } from './helpers';
+import { normalizeLeadLocale } from './i18n-server';
 
 export interface LeadMappingResult {
   name: string;
@@ -23,6 +24,9 @@ export interface LeadMappingResult {
   };
   // null = non renseigné dans le payload (≠ false = opt-out explicite)
   consent: boolean | null;
+  // Sprint MULTILANG-B — langue préférée normalisée vers une locale supportée
+  // ('fr-CA'|'fr-FR'|'en'|'es'), ou null si absente/hors-liste (= défaut tenant).
+  preferred_language: string | null;
 }
 
 // Mapping par défaut : champ canonique → liste d'alias possibles (clés directes ou dot-path).
@@ -34,6 +38,8 @@ const DEFAULT_MAPPING: Record<string, string[]> = {
   message: ['message', 'note', 'notes', 'comment', 'commentaire', 'fields.message'],
   type: ['type', 'lead_type'],
   company: ['company', 'entreprise', 'societe', 'société', 'organization', 'contact.company'],
+  // Sprint MULTILANG-B — langue préférée du contact (capture opt-in ingestion).
+  preferred_language: ['preferred_language', 'language', 'langue', 'locale', 'lang'],
 };
 
 const ATTRIBUTION_ALIASES: Record<string, string[]> = {
@@ -171,5 +177,9 @@ export function applyLeadMapping(
     customFields,
     attribution,
     consent: asBoolOrNull(consentRaw),
+    // Langue préférée : valeur du payload normalisée vers une locale supportée
+    // (ou null). Le fallback Accept-Language (quand le payload n'en porte pas)
+    // est appliqué côté handler d'ingestion (ingestLead) qui détient la Request.
+    preferred_language: normalizeLeadLocale(pick('preferred_language')),
   };
 }

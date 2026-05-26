@@ -16,101 +16,95 @@
 //
 // Endpoint : GET /api/admin/overview?period=30d (stub)
 
-import { useState, useEffect, useMemo, lazy, Suspense } from 'react';
+import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
+import { t } from '@/lib/i18n';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { PageHero, KpiStrip, type KpiItem, Card, Skeleton, Icon } from '@/components/ui';
+import { PageHero, KpiStrip, type KpiItem, Card, Skeleton, Icon, Tag, Button } from '@/components/ui';
 import { UserActivityHeatmap } from '@/components/admin/UserActivityHeatmap';
 import { FeatureUsageTable } from '@/components/admin/FeatureUsageTable';
 import {
   Users, Activity, TrendingUp, Target, DollarSign,
-  BarChart3, LineChart as LineChartIcon,
+  BarChart3, RefreshCw,
 } from 'lucide-react';
 
-// Lazy charts pour ne pas tirer recharts sur le bundle initial admin
-const LazyUsersGrowthChart = lazy(() => import('@/components/admin/charts/UsersGrowthChart'));
+// Lazy chart pour ne pas tirer recharts sur le bundle initial admin.
+// [§6.C.4] UsersGrowthChart retiré : la série usersGrowth était 100%
+// Math.random côté worker (aucune source réelle d'« active » historique).
 const LazyLeadsConversionsChart = lazy(() => import('@/components/admin/charts/LeadsConversionsChart'));
 
 type OverviewPeriod = '7d' | '30d' | '90d' | '1y';
 
-const PERIOD_LABELS: Record<OverviewPeriod, string> = {
-  '7d': '7 jours',
-  '30d': '30 jours',
-  '90d': '90 jours',
-  '1y': '1 an',
-};
+function periodLabel(p: OverviewPeriod): string {
+  switch (p) {
+    case '7d': return t('admin.period_7d');
+    case '30d': return t('admin.period_30d');
+    case '90d': return t('admin.period_90d');
+    case '1y': return t('admin.period_1y');
+  }
+}
 
-const PERIOD_POINTS: Record<OverviewPeriod, number> = {
-  '7d': 7,
-  '30d': 30,
-  '90d': 12,   // 12 buckets de ~7j
-  '1y': 12,    // 12 mois
-};
 
+// [LOT RÉEL §6.C.4] Les champs honnêtes peuvent être `null` quand aucune
+// source réelle n'existe (mrr, deltas, activeMonthly si feature_events absente,
+// conversionRate si aucun lead). Le front affiche un état honnête, JAMAIS un
+// chiffre fabriqué (generateMockOverview supprimé).
 interface OverviewData {
   totalUsers: number;
-  activeMonthly: number;
+  activeMonthly: number | null;
   leadsThisMonth: number;
-  conversionRate: number; // 0-1
-  mrr: number;            // CAD
-  // Deltas vs période précédente (en %)
-  deltaTotalUsers: number;
-  deltaActiveMonthly: number;
-  deltaLeads: number;
-  deltaConversion: number;
-  deltaMrr: number;
-  // Charts data
-  usersGrowth: { label: string; users: number; active: number }[];
+  conversionRate: number | null; // 0-1 | null si aucun lead ce mois
+  mrr: number | null;            // null tant qu'aucune facturation réelle
+  // Deltas vs période précédente (en %) — null si non calculables
+  deltaTotalUsers: number | null;
+  deltaActiveMonthly: number | null;
+  deltaLeads: number | null;
+  deltaConversion: number | null;
+  deltaMrr: number | null;
+  // Charts data — série réelle (GROUP BY date côté worker)
   leadsConversions: { label: string; leads: number; conversions: number }[];
 }
 
-function generateMockOverview(period: OverviewPeriod): OverviewData {
-  const points = PERIOD_POINTS[period];
-  const usersGrowth: { label: string; users: number; active: number }[] = [];
-  const leadsConversions: { label: string; leads: number; conversions: number }[] = [];
-  let users = 142;
-  for (let i = 0; i < points; i++) {
-    users += Math.floor(Math.random() * 6 + 1);
-    const active = Math.floor(users * (0.62 + Math.random() * 0.12));
-    const leads = Math.floor(50 + Math.random() * 80 + i * 4);
-    const conversions = Math.floor(leads * (0.18 + Math.random() * 0.10));
-    const label = period === '1y'
-      ? ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'][i % 12]!
-      : period === '90d'
-      ? `S${i + 1}`
-      : `J${i + 1}`;
-    usersGrowth.push({ label, users, active });
-    leadsConversions.push({ label, leads, conversions });
-  }
-  return {
-    totalUsers: users,
-    activeMonthly: Math.floor(users * 0.68),
-    leadsThisMonth: leadsConversions.reduce((a, b) => a + b.leads, 0),
-    conversionRate: 0.22,
-    mrr: 8420,
-    deltaTotalUsers: 12,
-    deltaActiveMonthly: 8,
-    deltaLeads: 18,
-    deltaConversion: -3,
-    deltaMrr: 14,
-    usersGrowth,
-    leadsConversions,
-  };
-}
+// [LOT RÉEL §6.C.4] Plus de fallback silencieux fabriqué : si l'API échoue ou
+// renvoie une forme invalide ⇒ `null` (état honnête "pas encore de données"),
+// jamais des chiffres inventés.
+// [Sprint reinforcement] Discrimination : `error` distingue panne réseau / 5xx
+// d'un état "pas encore de données" honnête (200 OK + payload vide).
+type FetchOverviewResult =
+  | { ok: true; data: OverviewData | null }
+  | { ok: false; error: true };
 
-async function fetchOverview(period: OverviewPeriod, token: string | null): Promise<OverviewData> {
+async function fetchOverview(
+  period: OverviewPeriod,
+  token: string | null,
+): Promise<FetchOverviewResult> {
   try {
     const res = await fetch(`/api/admin/overview?period=${period}`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
-    if (!res.ok) throw new Error('fetch failed');
-    const data = await res.json() as { data?: OverviewData } & OverviewData;
+    if (!res.ok) return { ok: false, error: true };
+    const data = await res.json() as { data?: Partial<OverviewData> } & Partial<OverviewData>;
     const payload = (data.data ?? data) as Partial<OverviewData>;
     if (payload && typeof payload.totalUsers === 'number') {
-      return payload as OverviewData;
+      return {
+        ok: true,
+        data: {
+          totalUsers: payload.totalUsers,
+          activeMonthly: payload.activeMonthly ?? null,
+          leadsThisMonth: typeof payload.leadsThisMonth === 'number' ? payload.leadsThisMonth : 0,
+          conversionRate: payload.conversionRate ?? null,
+          mrr: payload.mrr ?? null,
+          deltaTotalUsers: payload.deltaTotalUsers ?? null,
+          deltaActiveMonthly: payload.deltaActiveMonthly ?? null,
+          deltaLeads: payload.deltaLeads ?? null,
+          deltaConversion: payload.deltaConversion ?? null,
+          deltaMrr: payload.deltaMrr ?? null,
+          leadsConversions: Array.isArray(payload.leadsConversions) ? payload.leadsConversions : [],
+        },
+      };
     }
-    throw new Error('invalid shape');
+    return { ok: true, data: null };
   } catch {
-    return generateMockOverview(period);
+    return { ok: false, error: true };
   }
 }
 
@@ -130,76 +124,91 @@ export function AdminOverviewPage() {
   const [period, setPeriod] = useState<OverviewPeriod>('30d');
   const [data, setData] = useState<OverviewData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  // [Sprint reinforcement] État erreur distinct de "no data" (200 OK + vide).
+  const [hasError, setHasError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  const reload = useCallback(() => setReloadKey((k) => k + 1), []);
 
   useEffect(() => {
     let cancelled = false;
     setIsLoading(true);
+    setHasError(false);
     const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-    fetchOverview(period, token).then(d => {
-      if (!cancelled) {
-        setData(d);
-        setIsLoading(false);
+    fetchOverview(period, token).then(r => {
+      if (cancelled) return;
+      if (!r.ok) {
+        setData(null);
+        setHasError(true);
+      } else {
+        setData(r.data);
+        setHasError(false);
       }
+      setIsLoading(false);
     });
     return () => { cancelled = true; };
-  }, [period]);
+  }, [period, reloadKey]);
+
+  // delta affiché UNIQUEMENT s'il est réellement calculé (number). null ⇒ pas
+  // de delta (on n'invente pas de % de croissance).
+  const deltaProps = (d: number | null) =>
+    typeof d === 'number'
+      ? { delta: `${d > 0 ? '+' : ''}${d}%`, deltaUp: d >= 0 }
+      : {};
 
   const kpiItems: KpiItem[] = useMemo(() => {
     if (!data) return [];
     return [
       {
-        label: 'Utilisateurs',
+        label: t('admin.kpi_users'),
         value: data.totalUsers,
         icon: <Icon as={Users} size={14} />,
         color: 'brand',
-        delta: `${data.deltaTotalUsers > 0 ? '+' : ''}${data.deltaTotalUsers}%`,
-        deltaUp: data.deltaTotalUsers >= 0,
+        ...deltaProps(data.deltaTotalUsers),
       },
       {
-        label: 'Actifs / mois',
-        value: data.activeMonthly,
+        label: t('admin.kpi_active_monthly'),
+        // activeMonthly null ⇒ état honnête, pas un proxy inventé.
+        value: data.activeMonthly === null ? t('admin.no_data_yet') : data.activeMonthly,
         icon: <Icon as={Activity} size={14} />,
         color: 'success',
-        delta: `${data.deltaActiveMonthly > 0 ? '+' : ''}${data.deltaActiveMonthly}%`,
-        deltaUp: data.deltaActiveMonthly >= 0,
+        ...deltaProps(data.deltaActiveMonthly),
       },
       {
-        label: 'Leads ce mois',
+        label: t('admin.kpi_leads_month'),
         value: data.leadsThisMonth,
         icon: <Icon as={TrendingUp} size={14} />,
         color: 'info',
-        delta: `${data.deltaLeads > 0 ? '+' : ''}${data.deltaLeads}%`,
-        deltaUp: data.deltaLeads >= 0,
+        ...deltaProps(data.deltaLeads),
       },
       {
-        label: 'Conversion',
-        value: `${Math.round(data.conversionRate * 100)}%`,
+        label: t('admin.kpi_conversion'),
+        value: data.conversionRate === null ? t('admin.no_data_yet') : `${Math.round(data.conversionRate * 100)}%`,
         icon: <Icon as={Target} size={14} />,
         color: 'warning',
-        delta: `${data.deltaConversion > 0 ? '+' : ''}${data.deltaConversion}%`,
-        deltaUp: data.deltaConversion >= 0,
+        ...deltaProps(data.deltaConversion),
       },
       {
-        label: 'MRR',
-        value: formatCurrency(data.mrr),
+        label: t('admin.kpi_mrr'),
+        // §6.C : mrr reste null tant qu'aucune facturation réelle.
+        value: data.mrr === null ? t('admin.mrr_unavailable') : formatCurrency(data.mrr),
         icon: <Icon as={DollarSign} size={14} />,
         color: 'accent',
-        delta: `${data.deltaMrr > 0 ? '+' : ''}${data.deltaMrr}%`,
-        deltaUp: data.deltaMrr >= 0,
+        ...deltaProps(data.deltaMrr),
       },
     ];
   }, [data]);
 
   return (
-    <AppLayout title="Administration">
+    <AppLayout title={t('admin.layout_title')}>
       <div className="p-6 max-w-7xl mx-auto space-y-6">
         <PageHero
-          meta="Administration"
-          title="Vue d'ensemble"
-          description="Pilotage organisationnel : adoption, croissance, et activité utilisateurs."
+          meta={t('admin.hero_meta')}
+          title={t('admin.hero_title')}
+          description={t('admin.hero_desc')}
           compact
           actions={
-            <div role="tablist" aria-label="Période overview" className="inline-flex rounded-md border border-[var(--border)] overflow-hidden text-[12px] bg-[var(--bg-surface)]">
+            <div role="tablist" aria-label={t('admin.period_aria')} className="inline-flex rounded-md border border-[var(--border)] overflow-hidden text-[12px] bg-[var(--bg-surface)]">
               {(['7d', '30d', '90d', '1y'] as OverviewPeriod[]).map(p => (
                 <button
                   key={p}
@@ -213,54 +222,72 @@ export function AdminOverviewPage() {
                       : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
                   }`}
                 >
-                  {PERIOD_LABELS[p]}
+                  {periodLabel(p)}
                 </button>
               ))}
             </div>
           }
         />
 
-        {isLoading || !data ? (
-          <Skeleton className="h-24 w-full" />
+        {isLoading ? (
+          <Skeleton className="h-24 w-full" aria-busy="true" data-testid="admin-overview-loading" />
+        ) : hasError ? (
+          // [Sprint reinforcement] État erreur explicite : panne réseau / 5xx
+          // distinct de "no data" (200 OK + payload vide). Bouton retry.
+          <Card
+            className="p-8 text-center border-dashed"
+            aria-live="polite"
+            data-testid="admin-overview-error"
+          >
+            <p className="t-h3 text-[var(--danger-text)] mb-2">{t('admin.error.load_failed')}</p>
+            <Button
+              variant="secondary"
+              size="sm"
+              leftIcon={<Icon as={RefreshCw} size={14} />}
+              onClick={reload}
+              aria-label={t('action.retry')}
+              data-testid="admin-overview-retry"
+            >
+              {t('action.retry')}
+            </Button>
+          </Card>
+        ) : !data ? (
+          // [§6.C.4] État honnête : aucune donnée réelle dispo (API OK + vide).
+          // Plus de chiffres fabriqués.
+          <Card className="p-8 text-center text-[var(--text-muted)] border-dashed" data-testid="admin-overview-empty">
+            <p className="t-h3 text-[var(--text-primary)] mb-1">{t('admin.no_data_yet')}</p>
+          </Card>
         ) : (
           <Card className="p-5">
+            <div className="flex items-center justify-between mb-3">
+              <Tag variant="success" size="sm">{t('admin.data_real_badge')}</Tag>
+            </div>
             <KpiStrip items={kpiItems} />
-            <p className="t-caption text-[var(--text-muted)] mt-2">
-              Comparaison vs période précédente ({PERIOD_LABELS[period]}).
-            </p>
           </Card>
         )}
 
-        {/* 2 charts en grille responsive */}
-        <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
-          <Card className="p-5">
-            <header className="flex items-center gap-2 mb-3">
-              <Icon as={LineChartIcon} size={14} className="text-[var(--primary)]" />
-              <h3 className="t-h3">Croissance utilisateurs</h3>
-            </header>
-            {isLoading || !data ? (
-              <ChartSkeleton />
-            ) : (
-              <Suspense fallback={<ChartSkeleton />}>
-                <LazyUsersGrowthChart data={data.usersGrowth} />
-              </Suspense>
-            )}
-          </Card>
-
-          <Card className="p-5">
-            <header className="flex items-center gap-2 mb-3">
-              <Icon as={BarChart3} size={14} className="text-[var(--primary)]" />
-              <h3 className="t-h3">Leads & conversions</h3>
-            </header>
-            {isLoading || !data ? (
-              <ChartSkeleton />
-            ) : (
-              <Suspense fallback={<ChartSkeleton />}>
-                <LazyLeadsConversionsChart data={data.leadsConversions} />
-              </Suspense>
-            )}
-          </Card>
-        </div>
+        {/* Série conversions RÉELLE (GROUP BY date côté worker). Le chart
+            "users growth" a été retiré : il était 100% Math.random sans source
+            réelle (§6.C.4 — ne plus afficher de chiffre inventé). */}
+        {!isLoading && data && (
+          <div className="grid gap-4 grid-cols-1">
+            <Card className="p-5">
+              <header className="flex items-center gap-2 mb-3">
+                <Icon as={BarChart3} size={14} className="text-[var(--primary)]" />
+                <h3 className="t-h3">{t('admin.chart_leads_conversions')}</h3>
+              </header>
+              {data.leadsConversions.length === 0 ? (
+                <div className="py-8 text-center text-[var(--text-muted)] text-[13px]">
+                  {t('admin.no_data_yet')}
+                </div>
+              ) : (
+                <Suspense fallback={<ChartSkeleton />}>
+                  <LazyLeadsConversionsChart data={data.leadsConversions} />
+                </Suspense>
+              )}
+            </Card>
+          </div>
+        )}
 
         {/* Heatmap activité — M2.3 */}
         <UserActivityHeatmap defaultPeriod="7d" />

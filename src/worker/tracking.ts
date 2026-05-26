@@ -1,6 +1,7 @@
 import type { Env } from './types';
 import { json } from './helpers';
 import { autoEnrollForTrigger } from './workflows';
+import { fetchWithTimeout } from './lib/fetch-timeout';
 
 // Hash function for Facebook CAPI (SHA-256)
 async function hashData(data: string): Promise<string> {
@@ -68,7 +69,7 @@ export async function handleTrackConversion(request: Request, env: Env): Promise
     };
 
     try {
-      const res = await fetch(`https://graph.facebook.com/v18.0/${integrations.meta_pixel_id}/events?access_token=${integrations.meta_access_token}`, {
+      const res = await fetchWithTimeout(`https://graph.facebook.com/v18.0/${integrations.meta_pixel_id}/events?access_token=${integrations.meta_access_token}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(fbPayload)

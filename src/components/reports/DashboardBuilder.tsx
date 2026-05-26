@@ -51,6 +51,7 @@ import {
   Card, Button, SlidePanel, Tag, Select, Switch, Input, Icon,
 } from '@/components/ui';
 import { cn } from '@/lib/cn';
+import { t } from '@/lib/i18n';
 
 // Recharts lazy-loaded inline (vendor chunk recharts existe déjà Sprint 43)
 const RechartsLazy = lazy(() => import('./_dashboardCharts'));
@@ -102,38 +103,48 @@ export interface DashboardBuilderProps {
   value: DashboardBuilderValue;
   onChange: (next: DashboardBuilderValue) => void;
   readOnly?: boolean;
+  /**
+   * LOT D Phase B Manager-C — scope-bound badge (dégradation gracieuse) :
+   *   - 'client' : dashboard lié à un sous-compte → Tag vert
+   *   - 'agency' : dashboard lié à toute l'agence → Tag info
+   *   - 'legacy' : dashboard sans périmètre (créé avant Sprint 46 ou avant LOT D)
+   *   - undefined : pas de badge affiché (rétro-compat Sprint 46 préservée)
+   * La donnée scope viendra du backend Manager-B (via `dashboard_scopes`
+   * compagnon, seq 88) → propagée depuis Reports.tsx best-effort.
+   */
+  scope?: 'client' | 'agency' | 'legacy';
 }
 
 // ── Catalogue widgets ────────────────────────────────────────
 
 const WIDGET_CATALOG: Array<{
-  type: WidgetType; label: string; icon: typeof BarChart3; defaultSize: WidgetSize;
+  type: WidgetType; labelKey: string; icon: typeof BarChart3; defaultSize: WidgetSize;
 }> = [
-  { type: 'kpi',       label: 'KPI',           icon: TrendingUp, defaultSize: '1x1' },
-  { type: 'barchart',  label: 'Bar chart',     icon: BarChart3,  defaultSize: '2x1' },
-  { type: 'linechart', label: 'Line chart',    icon: LineIcon,   defaultSize: '2x1' },
-  { type: 'donut',     label: 'Donut',         icon: PieIcon,    defaultSize: '1x1' },
-  { type: 'table',     label: 'Table',         icon: Table2,     defaultSize: '2x2' },
-  { type: 'map',       label: 'Carte',         icon: MapIcon,    defaultSize: '2x2' },
-  { type: 'funnel',    label: 'Funnel',        icon: Gauge,      defaultSize: '2x1' },
-  { type: 'heatmap',   label: 'Heatmap',       icon: Sparkles,   defaultSize: '2x2' },
+  { type: 'kpi',       labelKey: 'integrations.db_w_kpi',       icon: TrendingUp, defaultSize: '1x1' },
+  { type: 'barchart',  labelKey: 'integrations.db_w_barchart',  icon: BarChart3,  defaultSize: '2x1' },
+  { type: 'linechart', labelKey: 'integrations.db_w_linechart', icon: LineIcon,   defaultSize: '2x1' },
+  { type: 'donut',     labelKey: 'integrations.db_w_donut',     icon: PieIcon,    defaultSize: '1x1' },
+  { type: 'table',     labelKey: 'integrations.db_w_table',     icon: Table2,     defaultSize: '2x2' },
+  { type: 'map',       labelKey: 'integrations.db_w_map',       icon: MapIcon,    defaultSize: '2x2' },
+  { type: 'funnel',    labelKey: 'integrations.db_w_funnel',    icon: Gauge,      defaultSize: '2x1' },
+  { type: 'heatmap',   labelKey: 'integrations.db_w_heatmap',   icon: Sparkles,   defaultSize: '2x2' },
 ];
 
-const DATA_SOURCES: Array<{ value: WidgetDataSource; label: string }> = [
-  { value: 'leads',         label: 'Leads' },
-  { value: 'tasks',         label: 'Tâches' },
-  { value: 'conversations', label: 'Conversations' },
-  { value: 'events',        label: 'Rendez-vous' },
-  { value: 'invoices',      label: 'Factures' },
+const DATA_SOURCES: Array<{ value: WidgetDataSource; labelKey: string }> = [
+  { value: 'leads',         labelKey: 'integrations.db_src_leads' },
+  { value: 'tasks',         labelKey: 'integrations.db_src_tasks' },
+  { value: 'conversations', labelKey: 'integrations.db_src_conversations' },
+  { value: 'events',        labelKey: 'integrations.db_src_events' },
+  { value: 'invoices',      labelKey: 'integrations.db_src_invoices' },
 ];
 
-const METRICS: Array<{ value: WidgetMetric; label: string }> = [
-  { value: 'count',  label: 'Compte (count)' },
-  { value: 'sum',    label: 'Somme (sum)' },
-  { value: 'avg',    label: 'Moyenne (avg)' },
-  { value: 'median', label: 'Médiane (median)' },
-  { value: 'min',    label: 'Minimum (min)' },
-  { value: 'max',    label: 'Maximum (max)' },
+const METRICS: Array<{ value: WidgetMetric; labelKey: string }> = [
+  { value: 'count',  labelKey: 'integrations.db_m_count' },
+  { value: 'sum',    labelKey: 'integrations.db_m_sum' },
+  { value: 'avg',    labelKey: 'integrations.db_m_avg' },
+  { value: 'median', labelKey: 'integrations.db_m_median' },
+  { value: 'min',    labelKey: 'integrations.db_m_min' },
+  { value: 'max',    labelKey: 'integrations.db_m_max' },
 ];
 
 const SIZE_TO_GRID: Record<WidgetSize, { cols: number; rows: number }> = {
@@ -155,7 +166,7 @@ function defaultWidget(type: WidgetType): WidgetConfig {
   return {
     id: genId(),
     type,
-    title: cat.label,
+    title: t(cat.labelKey),
     size: cat.defaultSize,
     source: 'leads',
     filters: { dateRange: '30d' },
@@ -223,8 +234,8 @@ function SortableWidget({ widget, selected, readOnly, onSelect, onDelete, onResi
               type="button"
               className="db-widget-card__btn"
               onClick={(e) => { e.stopPropagation(); cycleSize(); }}
-              aria-label={`Redimensionner (actuel : ${widget.size})`}
-              title="Redimensionner"
+              aria-label={t('integrations.db_resize').replace('{size}', widget.size)}
+              title={t('integrations.db_resize_title')}
             >
               <Icon as={widget.size === '2x2' ? Minimize2 : Maximize2} size={14} />
             </button>
@@ -232,8 +243,8 @@ function SortableWidget({ widget, selected, readOnly, onSelect, onDelete, onResi
               type="button"
               className="db-widget-card__btn"
               onClick={(e) => { e.stopPropagation(); onSelect(); }}
-              aria-label="Configurer le widget"
-              title="Configurer"
+              aria-label={t('integrations.db_configure')}
+              title={t('integrations.db_configure_title')}
             >
               <Icon as={Settings2} size={14} />
             </button>
@@ -241,8 +252,8 @@ function SortableWidget({ widget, selected, readOnly, onSelect, onDelete, onResi
               type="button"
               className="db-widget-card__btn db-widget-card__btn--danger"
               onClick={(e) => { e.stopPropagation(); onDelete(); }}
-              aria-label="Supprimer le widget"
-              title="Supprimer"
+              aria-label={t('integrations.db_delete')}
+              title={t('integrations.db_delete_title')}
             >
               <Icon as={Trash2} size={14} />
             </button>
@@ -251,8 +262,8 @@ function SortableWidget({ widget, selected, readOnly, onSelect, onDelete, onResi
               className="db-widget-card__handle"
               {...attributes}
               {...listeners}
-              aria-label="Déplacer le widget (Espace pour activer, flèches pour bouger, Entrée pour déposer)"
-              title="Déplacer"
+              aria-label={t('integrations.db_move')}
+              title={t('integrations.db_move_title')}
             >
               <Icon as={GripVertical} size={14} />
             </button>
@@ -308,7 +319,7 @@ function AddWidgetMenu({ onAdd }: AddWidgetMenuProps) {
         aria-expanded={open}
         ref={btnRef as any}
       >
-        <Icon as={Plus} size={14} /> Ajouter widget
+        <Icon as={Plus} size={14} /> {t('integrations.db_add_widget')}
       </Button>
       {open && (
         <div ref={menuRef} role="menu" className="db-add-widget-menu__list">
@@ -321,7 +332,7 @@ function AddWidgetMenu({ onAdd }: AddWidgetMenuProps) {
               onClick={() => { onAdd(w.type); setOpen(false); }}
             >
               <Icon as={w.icon} size="sm" />
-              <span>{w.label}</span>
+              <span>{t(w.labelKey)}</span>
               <span className="db-add-widget-menu__hint">{w.defaultSize}</span>
             </button>
           ))}
@@ -345,7 +356,7 @@ function ConfigPanel({ widget, onClose, onApply }: ConfigPanelProps) {
 
   if (!draft) {
     return (
-      <SlidePanel open={false} onOpenChange={onClose} title="Configurer le widget">
+      <SlidePanel open={false} onOpenChange={onClose} title={t('integrations.db_config_title')}>
         <div />
       </SlidePanel>
     );
@@ -362,20 +373,20 @@ function ConfigPanel({ widget, onClose, onApply }: ConfigPanelProps) {
     <SlidePanel
       open={!!widget}
       onOpenChange={(o) => { if (!o) onClose(); }}
-      title={`Configurer · ${draft.title}`}
-      description="Source de données, filtres, dimensions, métriques et affichage."
+      title={t('integrations.db_config_with').replace('{title}', draft.title)}
+      description={t('integrations.db_config_desc')}
       size="md"
       footer={
         <div className="flex items-center justify-end gap-2">
-          <Button variant="secondary" onClick={onClose} className="text-xs">Annuler</Button>
-          <Button variant="primary" onClick={() => onApply(draft)} className="text-xs">Appliquer</Button>
+          <Button variant="secondary" onClick={onClose} className="text-xs">{t('integrations.db_cancel')}</Button>
+          <Button variant="primary" onClick={() => onApply(draft)} className="text-xs">{t('integrations.db_apply')}</Button>
         </div>
       }
     >
       <div className="db-cfg">
         {/* Titre */}
         <label className="db-cfg__field">
-          <span className="db-cfg__label">Titre</span>
+          <span className="db-cfg__label">{t('integrations.db_title_label')}</span>
           <Input
             value={draft.title}
             onChange={(e) => update('title', (e.target as HTMLInputElement).value)}
@@ -385,8 +396,8 @@ function ConfigPanel({ widget, onClose, onApply }: ConfigPanelProps) {
 
         {/* Data source — segmented */}
         <div className="db-cfg__field">
-          <span className="db-cfg__label">Source de données</span>
-          <div role="radiogroup" aria-label="Source de données" className="db-cfg__segmented">
+          <span className="db-cfg__label">{t('integrations.db_source_label')}</span>
+          <div role="radiogroup" aria-label={t('integrations.db_source_aria')} className="db-cfg__segmented">
             {DATA_SOURCES.map(s => (
               <button
                 key={s.value}
@@ -396,7 +407,7 @@ function ConfigPanel({ widget, onClose, onApply }: ConfigPanelProps) {
                 className={cn('db-cfg__seg-btn', draft.source === s.value && 'db-cfg__seg-btn--active')}
                 onClick={() => update('source', s.value)}
               >
-                {s.label}
+                {t(s.labelKey)}
               </button>
             ))}
           </div>
@@ -404,36 +415,36 @@ function ConfigPanel({ widget, onClose, onApply }: ConfigPanelProps) {
 
         {/* Filtres */}
         <div className="db-cfg__field">
-          <span className="db-cfg__label">Filtres</span>
+          <span className="db-cfg__label">{t('integrations.db_filters_label')}</span>
           <div className="db-cfg__row">
             <Select
-              label="Période"
+              label={t('integrations.db_period')}
               value={draft.filters.dateRange || '30d'}
               onChange={(e) => updateFilters({ dateRange: (e.target as HTMLSelectElement).value as any })}
             >
-              <option value="7d">7 derniers jours</option>
-              <option value="30d">30 derniers jours</option>
-              <option value="90d">90 derniers jours</option>
-              <option value="12m">12 derniers mois</option>
-              <option value="all">Toute la période</option>
+              <option value="7d">{t('integrations.db_period_7d')}</option>
+              <option value="30d">{t('integrations.db_period_30d')}</option>
+              <option value="90d">{t('integrations.db_period_90d')}</option>
+              <option value="12m">{t('integrations.db_period_12m')}</option>
+              <option value="all">{t('integrations.db_period_all')}</option>
             </Select>
             <Input
-              label="Source (lead)"
-              placeholder="ex : google, facebook"
+              label={t('integrations.db_src_lead')}
+              placeholder={t('integrations.db_src_lead_ph')}
               value={draft.filters.source || ''}
               onChange={(e) => updateFilters({ source: (e.target as HTMLInputElement).value || null })}
             />
           </div>
           <div className="db-cfg__row">
             <Input
-              label="Statut"
-              placeholder="ex : new, won"
+              label={t('integrations.db_status')}
+              placeholder={t('integrations.db_status_ph')}
               value={draft.filters.status || ''}
               onChange={(e) => updateFilters({ status: (e.target as HTMLInputElement).value || null })}
             />
             <Input
-              label="Tags (séparés par virgule)"
-              placeholder="ex : vip, chaud"
+              label={t('integrations.db_tags')}
+              placeholder={t('integrations.db_tags_ph')}
               value={(draft.filters.tags || []).join(', ')}
               onChange={(e) => {
                 const raw = (e.target as HTMLInputElement).value;
@@ -447,25 +458,25 @@ function ConfigPanel({ widget, onClose, onApply }: ConfigPanelProps) {
         {/* Dimensions */}
         <div className="db-cfg__field">
           <Select
-            label="Dimension (axe)"
+            label={t('integrations.db_dimension')}
             value={draft.dimension || 'source'}
             onChange={(e) => update('dimension', (e.target as HTMLSelectElement).value)}
           >
-            <option value="source">Source</option>
-            <option value="status">Statut</option>
-            <option value="type">Type</option>
-            <option value="owner">Propriétaire</option>
-            <option value="client">Sous-compte</option>
-            <option value="date">Date (jour)</option>
-            <option value="week">Semaine</option>
-            <option value="month">Mois</option>
+            <option value="source">{t('integrations.db_dim_source')}</option>
+            <option value="status">{t('integrations.db_dim_status')}</option>
+            <option value="type">{t('integrations.db_dim_type')}</option>
+            <option value="owner">{t('integrations.db_dim_owner')}</option>
+            <option value="client">{t('integrations.db_dim_client')}</option>
+            <option value="date">{t('integrations.db_dim_date')}</option>
+            <option value="week">{t('integrations.db_dim_week')}</option>
+            <option value="month">{t('integrations.db_dim_month')}</option>
           </Select>
         </div>
 
         {/* Metric */}
         <div className="db-cfg__field">
-          <span className="db-cfg__label">Métrique</span>
-          <div role="radiogroup" aria-label="Métrique" className="db-cfg__segmented db-cfg__segmented--wrap">
+          <span className="db-cfg__label">{t('integrations.db_metric')}</span>
+          <div role="radiogroup" aria-label={t('integrations.db_metric_aria')} className="db-cfg__segmented db-cfg__segmented--wrap">
             {METRICS.map(m => (
               <button
                 key={m.value}
@@ -475,7 +486,7 @@ function ConfigPanel({ widget, onClose, onApply }: ConfigPanelProps) {
                 className={cn('db-cfg__seg-btn', draft.metric === m.value && 'db-cfg__seg-btn--active')}
                 onClick={() => update('metric', m.value)}
               >
-                {m.label}
+                {t(m.labelKey)}
               </button>
             ))}
           </div>
@@ -483,10 +494,10 @@ function ConfigPanel({ widget, onClose, onApply }: ConfigPanelProps) {
 
         {/* Display */}
         <div className="db-cfg__field">
-          <span className="db-cfg__label">Affichage</span>
+          <span className="db-cfg__label">{t('integrations.db_display')}</span>
           <div className="db-cfg__row">
             <Select
-              label="Thème couleur"
+              label={t('integrations.db_color_theme')}
               value={draft.display.color || 'brand'}
               onChange={(e) => updateDisplay({ color: (e.target as HTMLSelectElement).value })}
             >
@@ -496,19 +507,19 @@ function ConfigPanel({ widget, onClose, onApply }: ConfigPanelProps) {
               <Switch
                 checked={!!draft.display.showLegend}
                 onCheckedChange={(v) => updateDisplay({ showLegend: v })}
-                label="Légende"
+                label={t('integrations.db_legend')}
               />
               <Switch
                 checked={!!draft.display.showLabels}
                 onCheckedChange={(v) => updateDisplay({ showLabels: v })}
-                label="Étiquettes"
+                label={t('integrations.db_labels')}
               />
             </div>
           </div>
         </div>
 
         {/* Aperçu type */}
-        <div className="db-cfg__preview" aria-label="Aperçu du widget">
+        <div className="db-cfg__preview" aria-label={t('integrations.db_preview_aria')}>
           <Tag size="sm" variant="brand">{draft.type}</Tag>
           <Tag size="sm">{draft.size}</Tag>
         </div>
@@ -519,8 +530,15 @@ function ConfigPanel({ widget, onClose, onApply }: ConfigPanelProps) {
 
 // ── Main builder ─────────────────────────────────────────────
 
-export function DashboardBuilder({ value, onChange, readOnly = false }: DashboardBuilderProps) {
+export function DashboardBuilder({ value, onChange, readOnly = false, scope }: DashboardBuilderProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // LOT D Phase B Manager-C — scope-bound badge (rendu uniquement si prop fournie)
+  const scopeBadge = scope ? (() => {
+    if (scope === 'client') return <Tag size="sm" variant="success">{t('reports.scope.bound_to_client')}</Tag>;
+    if (scope === 'agency') return <Tag size="sm" variant="brand">{t('reports.scope.bound_to_agency')}</Tag>;
+    return <Tag size="sm">{t('reports.scope.legacy')}</Tag>;
+  })() : null;
 
   // dnd-kit sensors — pointer + keyboard
   const sensors = useSensors(
@@ -568,23 +586,31 @@ export function DashboardBuilder({ value, onChange, readOnly = false }: Dashboar
     <div className="db-builder">
       {/* Toolbar */}
       {!readOnly && (
-        <div className="db-builder__toolbar" role="toolbar" aria-label="Outils dashboard">
+        <div className="db-builder__toolbar" role="toolbar" aria-label={t('integrations.db_toolbar_aria')}>
           <AddWidgetMenu onAdd={handleAdd} />
           <span className="db-builder__count" aria-live="polite">
-            {value.widgets.length} widget{value.widgets.length > 1 ? 's' : ''}
+            {(value.widgets.length > 1
+              ? t('integrations.db_count_many')
+              : t('integrations.db_count_one')
+            ).replace('{n}', String(value.widgets.length))}
           </span>
+          {scopeBadge && <span className="db-builder__scope">{scopeBadge}</span>}
         </div>
+      )}
+      {/* Read-only (public share) : on affiche le scope badge même sans toolbar */}
+      {readOnly && scopeBadge && (
+        <div className="db-builder__scope db-builder__scope--readonly">{scopeBadge}</div>
       )}
 
       {/* Grid */}
       {value.widgets.length === 0 ? (
         <Card className="db-builder__empty">
           <Icon as={BarChart3} size="xl" className="db-builder__empty-icon" aria-hidden />
-          <h3 className="db-builder__empty-title">Aucun widget</h3>
+          <h3 className="db-builder__empty-title">{t('integrations.db_empty_title')}</h3>
           <p className="db-builder__empty-desc">
             {readOnly
-              ? 'Ce tableau de bord ne contient pas encore de widgets.'
-              : 'Clique sur « Ajouter widget » pour commencer à construire ton tableau de bord.'}
+              ? t('integrations.db_empty_ro')
+              : t('integrations.db_empty_edit')}
           </p>
         </Card>
       ) : (

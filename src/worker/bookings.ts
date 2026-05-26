@@ -2,6 +2,8 @@
 import type { Env } from './types';
 import { sanitizeInput, json, audit, createNotification } from './helpers';
 import { autoEnrollForTrigger } from './workflows';
+// Sprint P0-2 — helpers PURS partagés (validateSlot pre-INSERT additif).
+import { validateSlot, validateBookingInput, BOOKING_ERROR_CODES } from './lib/booking-engine';
 
 export async function handlePublicBookingPage(env: Env, url: URL): Promise<Response> {
   const slug = url.pathname.replace('/api/book/', '');
@@ -25,6 +27,20 @@ export async function handlePublicCreateBooking(request: Request, env: Env): Pro
   if (!body.booking_page_id || !body.guest_name || !body.guest_email || !body.start_time) {
     return json({ error: 'booking_page_id, guest_name, guest_email et start_time requis' }, 400);
   }
+  // Sprint P0-2 — anti-bot honeypot + input shape (additif, soft).
+  // Si honeypot rempli OU input clairement invalide → 400 silencieux. Les
+  // payloads légitimes (validés ci-dessus) traversent sans changement.
+  const inputCheck = validateBookingInput({
+    guest_name: body.guest_name,
+    guest_email: body.guest_email,
+    guest_phone: body.guest_phone,
+    start_time: body.start_time,
+    honeypot: (body as Record<string, unknown>).honeypot ?? (body as Record<string, unknown>).website,
+  });
+  if (!inputCheck.ok && inputCheck.error === BOOKING_ERROR_CODES.HONEYPOT_TRIPPED) {
+    // Bot signal — réponse silencieuse 200 OK trompeuse (sans INSERT).
+    return json({ data: { ok: true } });
+  }
   const page = await env.DB.prepare(
     'SELECT * FROM booking_pages WHERE id = ? AND is_active = 1'
   ).bind(body.booking_page_id).first() as Record<string, unknown> | null;
@@ -33,6 +49,12 @@ export async function handlePublicCreateBooking(request: Request, env: Env): Pro
   const duration = (page.duration_minutes as number) || 30;
   const startTime = new Date(body.start_time);
   const endTime = new Date(startTime.getTime() + duration * 60000);
+
+  // Sprint P0-2 — validation slot canonique (start<end + durée 15..480min).
+  const slotCheck = validateSlot({ startAt: startTime.getTime(), endAt: endTime.getTime() });
+  if (!slotCheck.ok) {
+    return json({ error: `Créneau invalide (${slotCheck.error || BOOKING_ERROR_CODES.SLOT_INVALID})` }, 400);
+  }
 
   const conflict = await env.DB.prepare(
     "SELECT id FROM bookings WHERE booking_page_id = ? AND status = 'confirmed' AND start_time < ? AND end_time > ?"
@@ -48,12 +70,52 @@ export async function handlePublicCreateBooking(request: Request, env: Env): Pro
     sanitizeInput(body.guest_phone || '', 30), startTime.toISOString(), endTime.toISOString(),
     sanitizeInput(body.notes || '', 500)).run();
 
-  const leadId = crypto.randomUUID();
-  await env.DB.prepare(
-    `INSERT OR IGNORE INTO leads (id, client_id, name, email, phone, source, status, pipeline_id, stage_id)
-     VALUES (?, ?, ?, ?, ?, 'booking', 'qualified', 'pipeline-default', 'stage-qualified')`
-  ).bind(leadId, page.client_id as string, sanitizeInput(body.guest_name, 100),
-    sanitizeInput(body.guest_email, 200).toLowerCase(), sanitizeInput(body.guest_phone || '', 30)).run();
+  // §6.F (LOT BOOKING) — réalignement Phase B Manager-B : l'ancien
+  // `INSERT OR IGNORE INTO leads (... 'booking')` BRUT sans dedup est
+  // remplacé par le pipeline canonique forms.ts (dedup + attribution +
+  // consent). RÉUTILISE les MÊMES helpers (zéro duplication de la logique
+  // dedup) : applyLeadMapping / resolveDedup / mergeIntoLead /
+  // logIngestConsent. source='booking'. Rétro-compat : ce handler legacy
+  // reste fonctionnel ; seule la partie lead passe par le pipeline propre.
+  const gName = sanitizeInput(body.guest_name, 100);
+  const gEmail = sanitizeInput(body.guest_email, 200).toLowerCase();
+  const gPhone = sanitizeInput(body.guest_phone || '', 30);
+  let leadId: string = crypto.randomUUID();
+  try {
+    const { applyLeadMapping } = await import('./lead-mapping');
+    const { logIngestConsent } = await import('./leads');
+    const { resolveDedup, mergeIntoLead } = await import('./lead-dedup');
+    const m = applyLeadMapping(body as unknown as Record<string, unknown>, null);
+    const consentStatus =
+      m.consent === true ? 'granted' : m.consent === false ? 'denied' : 'unknown';
+    const attr = m.attribution;
+    const decision = await resolveDedup(env, 'email_phone', {
+      clientId: page.client_id as string, email: gEmail, phone: gPhone,
+    });
+    if (decision.action !== 'create' && decision.existingId) {
+      leadId = decision.existingId;
+      if (decision.action === 'merge') {
+        await mergeIntoLead(env, leadId, { name: gName, phone: gPhone, ...attr });
+      }
+      await logIngestConsent(env, request, leadId, m.consent, consentStatus);
+    } else {
+      await env.DB.prepare(
+        `INSERT INTO leads (id, client_id, name, email, phone, source, status, pipeline_id, stage_id,
+           utm_source, utm_medium, utm_campaign, utm_term, utm_content, gclid, fbclid, referrer, consent_status)
+         VALUES (?, ?, ?, ?, ?, 'booking', 'qualified', 'pipeline-default', 'stage-qualified', ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      ).bind(leadId, page.client_id as string, gName, gEmail, gPhone,
+        attr.utm_source, attr.utm_medium, attr.utm_campaign, attr.utm_term,
+        attr.utm_content, attr.gclid, attr.fbclid, attr.referrer, consentStatus).run();
+      await logIngestConsent(env, request, leadId, m.consent, consentStatus);
+    }
+  } catch {
+    // Best-effort : si une colonne consent/utm est absente (schéma ancien),
+    // repli rétro-compat byte-équivalent (INSERT OR IGNORE source='booking').
+    await env.DB.prepare(
+      `INSERT OR IGNORE INTO leads (id, client_id, name, email, phone, source, status, pipeline_id, stage_id)
+       VALUES (?, ?, ?, ?, ?, 'booking', 'qualified', 'pipeline-default', 'stage-qualified')`
+    ).bind(leadId, page.client_id as string, gName, gEmail, gPhone).run();
+  }
 
   await autoEnrollForTrigger(env, 'appointment_booked', leadId);
 

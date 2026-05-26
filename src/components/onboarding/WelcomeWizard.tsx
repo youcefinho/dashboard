@@ -24,7 +24,7 @@
 //
 // Le composant gère son propre state ; AppLayout / parent fournit `open` + `onClose`.
 
-import { useState, type ChangeEvent } from 'react';
+import { useState, useEffect, type ChangeEvent } from 'react';
 import {
   Wizard,
   useToast,
@@ -41,7 +41,7 @@ import {
 import { importDemoData } from '@/lib/demoData';
 // Sprint E1 M2.4 — pré-activation module e-commerce selon le type d'activité
 // Sprint S8 — OnboardingState pour hydratation reprise multi-appareil
-import { patchModule, type OnboardingState } from '@/lib/api';
+import { patchModule, apiFetch, type OnboardingState } from '@/lib/api';
 import { announceSR } from '@/lib/announce';
 import { cn } from '@/lib/cn';
 // Sprint 48 M2.4 — sync langue wizard avec préférence i18n globale
@@ -275,6 +275,46 @@ export function WelcomeWizard({
   // ne voit JAMAIS ces étapes (rétro-compat stricte Sprint 45).
   const isShopJourney = businessType === 'shop' || businessType === 'hybrid';
 
+  // ── SaaS Lot 4 §6.21 — encart agence (best-effort, conditionnel additif) ────
+  // Détection best-effort via GET /api/agency/plan (route figée Lot 3 §6.15).
+  // 200 ⇒ compte agence ⇒ encart affiché en HAUT de l'étape profile.
+  // 403 AGENCY_ONLY / toute erreur / panne ⇒ PAS d'encart = chemin legacy
+  // BYTE-IDENTIQUE (rétro-compat S8 stricte : user non-agence voit EXACTEMENT
+  // les 4 étapes CRM inchangées). Calque le best-effort `onPersist`/S8 :
+  // jamais bloquant, n'altère ni stepOrder ni isValid ni le rendu des 4 étapes.
+  const [isAgency, setIsAgency] = useState(false);
+  // null = illimité (réponse §6.15 Infinity→null) → libellé "illimité" via la
+  // clé figée onboarding.agency.plan (fallback texte, AUCUNE clé hors §6.19).
+  const [agencyLimits, setAgencyLimits] = useState<{
+    maxSubAccounts: number | null;
+    maxLeads: number | null;
+  } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await apiFetch<{
+          plan?: string;
+          limits?: { maxSubAccounts: number | null; maxLeads: number | null };
+        }>('/agency/plan');
+        // apiFetch : 200 ⇒ { data }, 403/erreur/réseau ⇒ { error } sans data.
+        // On exige data.limits ⇒ seul un vrai 200 agence affiche l'encart.
+        if (cancelled || res.error || !res.data || !res.data.limits) return;
+        setIsAgency(true);
+        setAgencyLimits({
+          maxSubAccounts: res.data.limits.maxSubAccounts ?? null,
+          maxLeads: res.data.limits.maxLeads ?? null,
+        });
+      } catch {
+        /* best-effort — aucun encart, wizard inchangé (jamais bloquant) */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const toggleChannel = (type: WelcomeChannelType) => {
     setChannels((prev) =>
       prev.some((c) => c.type === type)
@@ -478,6 +518,47 @@ export function WelcomeWizard({
       isValid: () => name.trim().length >= 2 && EMAIL_RE.test(email.trim()),
       content: (
         <div className="welcome-step-profile space-y-5 pt-1">
+          {/* SaaS Lot 4 §6.21 — encart agence : bloc ADDITIF conditionnel
+              (isAgency) rendu EN HAUT de l'étape profile. PAS une étape :
+              n'altère ni le nombre d'étapes ni isValid. Un user non-agence
+              (403 /agency/plan) ne voit RIEN ici ⇒ étape profile (et les 3
+              autres) byte-identiques au comportement legacy S8/Sprint 45.
+              null limite = illimité → glyphe « ∞ » locale-neutre interpolé
+              dans la clé figée onboarding.agency.plan (zéro clé hors §6.19,
+              zéro string FR hardcodée). */}
+          {isAgency && (
+            <div className="welcome-agency-banner" role="note">
+              <span className="welcome-agency-banner__icon" aria-hidden>
+                <Icon as={Users} size={18} />
+              </span>
+              <div className="welcome-agency-banner__body">
+                <h4 className="welcome-agency-banner__title">
+                  {t('onboarding.agency.welcome')}
+                </h4>
+                <p className="welcome-agency-banner__text">
+                  {t('onboarding.agency.subaccounts')}
+                </p>
+                {agencyLimits && (
+                  <p className="welcome-agency-banner__plan">
+                    {t('onboarding.agency.plan', {
+                      subAccounts:
+                        agencyLimits.maxSubAccounts === null
+                          ? '∞'
+                          : agencyLimits.maxSubAccounts,
+                      leads:
+                        agencyLimits.maxLeads === null
+                          ? '∞'
+                          : agencyLimits.maxLeads,
+                    })}
+                  </p>
+                )}
+                <a href="/agencies" className="welcome-agency-banner__cta">
+                  {t('onboarding.agency.cta')}
+                </a>
+              </div>
+            </div>
+          )}
+
           <div>
             <h3 className="t-h2 mb-1">{t('onboarding.profile.title')}</h3>
             <p className="text-xs text-[var(--text-muted)]">

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { MessageSquarePlus, X, Send, Sparkles, Star } from 'lucide-react';
 import { toast } from 'sonner';
 import { Textarea, Icon } from '@/components/ui';
+import { t } from '@/lib/i18n';
 
 export function FeedbackWidget() {
   const [isOpen, setIsOpen] = useState(false);
@@ -14,7 +15,7 @@ export function FeedbackWidget() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (rating === 0) {
-      toast.error('Veuillez sélectionner une note.');
+      toast.error(t('feedback.fw_select_rating'));
       return;
     }
 
@@ -31,7 +32,7 @@ export function FeedbackWidget() {
       setSubmitted(true);
       setTimeout(() => setIsOpen(false), 3000);
     } catch (err) {
-      toast.error('Erreur lors de l\'envoi.');
+      toast.error(t('feedback.fw_send_error'));
     } finally {
       setIsSubmitting(false);
     }
@@ -68,12 +69,12 @@ export function FeedbackWidget() {
               >
                 <Icon as={Sparkles} size="md" className="text-white" />
               </span>
-              <h3 className="font-bold text-[var(--text-primary)]">Votre avis compte</h3>
+              <h3 className="font-bold text-[var(--text-primary)]">{t('feedback.fw_title')}</h3>
             </div>
             <button
               onClick={() => setIsOpen(false)}
               className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors p-1 rounded-md hover:bg-[rgba(0,0,0,0.04)]"
-              aria-label="Fermer"
+              aria-label={t('feedback.fw_close')}
             >
               <Icon as={X} size={18} />
             </button>
@@ -92,14 +93,14 @@ export function FeedbackWidget() {
                 >
                   <Icon as={Send} size={24} className="text-[var(--success)]" />
                 </div>
-                <h4 className="font-bold text-[var(--text-primary)] mb-1">Merci !</h4>
-                <p className="text-sm text-[var(--text-secondary)]">Vos retours nous aident à améliorer Intralys.</p>
+                <h4 className="font-bold text-[var(--text-primary)] mb-1">{t('feedback.fw_thanks_title')}</h4>
+                <p className="text-sm text-[var(--text-secondary)]">{t('feedback.fw_thanks_body')}</p>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2 text-center">
-                    Comment évaluez-vous votre expérience ?
+                    {t('feedback.fw_rate_label')}
                   </label>
                   <div className="flex justify-center gap-1.5">
                     {[1, 2, 3, 4, 5].map((star) => {
@@ -112,7 +113,7 @@ export function FeedbackWidget() {
                           onMouseEnter={() => setHoverRating(star)}
                           onMouseLeave={() => setHoverRating(0)}
                           className={`chip-btn chip-btn--sm transition-all duration-200 ${active ? 'is-active' : ''}`}
-                          aria-label={`${star} étoile${star > 1 ? 's' : ''}`}
+                          aria-label={star > 1 ? t('feedback.fw_star_aria').replace('{n}', String(star)) : t('feedback.fw_star_aria_one')}
                           style={
                             active
                               ? {
@@ -132,7 +133,7 @@ export function FeedbackWidget() {
                   </div>
                   {rating > 0 && (
                     <p className="text-center text-xs text-[var(--text-muted)] mt-2">
-                      {rating === 5 ? 'Excellent ' : rating === 4 ? 'Très bien ' : rating === 3 ? 'Correct' : rating === 2 ? 'À améliorer' : 'Décevant'}
+                      {rating === 5 ? t('feedback.fw_r5') : rating === 4 ? t('feedback.fw_r4') : rating === 3 ? t('feedback.fw_r3') : rating === 2 ? t('feedback.fw_r2') : t('feedback.fw_r1')}
                     </p>
                   )}
                 </div>
@@ -140,7 +141,7 @@ export function FeedbackWidget() {
                 <Textarea
                   value={comment}
                   onChange={e => setComment(e.target.value)}
-                  placeholder="Dites-nous ce qui fonctionne bien, ou ce qu'on pourrait améliorer..."
+                  placeholder={t('feedback.fw_comment_ph')}
                   maxLength={500}
                   showCounter
                   rows={4}
@@ -156,7 +157,7 @@ export function FeedbackWidget() {
                     boxShadow: '0 4px 14px -2px rgba(0,157,219,0.45)',
                   }}
                 >
-                  {isSubmitting ? 'Envoi...' : 'Envoyer'}
+                  {isSubmitting ? t('feedback.fw_sending') : t('feedback.fw_send')}
                 </button>
               </form>
             )}
@@ -170,7 +171,7 @@ export function FeedbackWidget() {
             background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
             boxShadow: '0 6px 20px -2px rgba(0,157,219,0.50), 0 0 0 4px rgba(0,157,219,0.10)',
           }}
-          aria-label="Donner votre avis"
+          aria-label={t('feedback.fw_fab_aria')}
         >
           <Icon as={MessageSquarePlus} size={22} />
         </button>

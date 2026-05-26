@@ -1,8 +1,19 @@
 import type { Env } from './types';
 import { json, audit } from './helpers';
 import { getClientModules } from './modules';
-import { validate, onboardingStateSchema } from '../lib/schemas';
+import {
+  validate,
+  onboardingStateSchema,
+  onboardingChecklistCompleteSchema,
+  onboardingChecklistSkipSchema,
+} from '../lib/schemas';
 import { validationError } from './lib/validate-response';
+import { requireCapability, type Capability } from './capabilities';
+import type {
+  OnboardingChecklistItemKey,
+  OnboardingChecklistItemState,
+  OnboardingChecklistResponse,
+} from '../lib/types';
 
 // ── Sprint S8 — État d'onboarding persistant (table onboarding_state) ─────────
 //
@@ -305,5 +316,510 @@ export async function handleWelcomeOnboarding(request: Request, env: Env, auth: 
     });
   } catch (err: any) {
     return json({ error: err?.message || 'onboarding-failed' }, 500);
+  }
+}
+
+// ── Sprint 21 — Onboarding durci : checklist serveur (Phase A stubs) ────────
+//
+// Migration seq119 : migration-onboarding-harden-seq119.sql.
+// Phase A FIGÉE (cf. docs/LOT-ONBOARDING-HARDEN.md §6.7) : ces 4 handlers sont
+// des SQUELETTES TYPÉS qui retournent un shape vide valide pour permettre au
+// front (Manager-C) de coder contre un contrat stable. Manager-B remplira la
+// persistance D1 (onboarding_state.checklist_items_json + skipped_items_json)
+// et l'audit (onboarding_events).
+//
+// Garde capability CONDITIONNELLE (calque catalog.ts:41-49 / billing.ts:11-19) :
+// enforce settings.manage UNIQUEMENT en mode-agence (tenant.agencyId != null +
+// capabilities Set). Legacy/mono-tenant ⇒ skip ⇒ byte-identique.
+//
+// Best-effort dégradé : la migration seq119 peut ne pas être jouée — TOUT
+// throw (table/colonnes absentes, JSON malformé) ⇒ retour EMPTY_CHECKLIST,
+// JAMAIS 500. Le front (Manager-C) garde un fallback localStorage.
+
+// auth = CapAuth enrichi choke-point (worker.ts) — calque CatalogAuth.
+type ChecklistAuth = {
+  userId: string;
+  role: string;
+  clientId?: string;
+  tenant?: { agencyId?: string | null; accessibleClientIds?: string[] };
+  capabilities?: Set<string>;
+};
+
+function checklistCapGuard(
+  auth: { tenant?: { agencyId?: string | null }; capabilities?: Set<string> },
+  cap: Capability,
+): Response | undefined {
+  if (auth?.tenant?.agencyId != null && auth.capabilities) {
+    return requireCapability(auth.capabilities, cap);
+  }
+  return undefined;
+}
+
+const EMPTY_CHECKLIST: OnboardingChecklistResponse = {
+  items: {},
+  total: 0,
+  completed: 0,
+  skipped: 0,
+  pct: 0,
+  lastActiveAt: null,
+};
+
+const VALID_ITEM_KEYS: ReadonlyArray<OnboardingChecklistItemKey> = [
+  'profile_completed',
+  'leads_imported',
+  'pipeline_configured',
+  'team_invited',
+  'integration_connected',
+  'docs_visited',
+  'ecommerce_catalog',
+  'ecommerce_first_product',
+  'ecommerce_channel',
+];
+
+// 6 items CRM toujours présents (socle non désactivable).
+const CRM_ITEM_KEYS: ReadonlyArray<OnboardingChecklistItemKey> = [
+  'profile_completed',
+  'leads_imported',
+  'pipeline_configured',
+  'team_invited',
+  'integration_connected',
+  'docs_visited',
+];
+
+// 3 items e-commerce additifs (présents seulement si module 'ecommerce' actif).
+const ECOM_ITEM_KEYS: ReadonlyArray<OnboardingChecklistItemKey> = [
+  'ecommerce_catalog',
+  'ecommerce_first_product',
+  'ecommerce_channel',
+];
+
+/** Détecte une erreur SQLite "no such column" (migration seq119 non jouée). */
+function isMissingColumnError(err: unknown): boolean {
+  const msg = String((err as { message?: string })?.message || err || '').toLowerCase();
+  return (
+    msg.includes('no such column') ||
+    msg.includes('has no column') ||
+    msg.includes('no such table')
+  );
+}
+
+/** Parse JSON safe en map d'items. Tout JSON invalide ⇒ {}. */
+function parseItemsMap(
+  raw: string | null | undefined,
+): Partial<Record<OnboardingChecklistItemKey, OnboardingChecklistItemState>> {
+  if (!raw) return {};
+  try {
+    const v = JSON.parse(raw);
+    if (!v || typeof v !== 'object' || Array.isArray(v)) return {};
+    const out: Partial<Record<OnboardingChecklistItemKey, OnboardingChecklistItemState>> = {};
+    for (const [k, raw2] of Object.entries(v as Record<string, unknown>)) {
+      if (!VALID_ITEM_KEYS.includes(k as OnboardingChecklistItemKey)) continue;
+      if (!raw2 || typeof raw2 !== 'object') continue;
+      const r = raw2 as Record<string, unknown>;
+      out[k as OnboardingChecklistItemKey] = {
+        done: r.done === true,
+        skipped: r.skipped === true,
+        completedAt: typeof r.completedAt === 'string' ? r.completedAt : null,
+        skippedAt: typeof r.skippedAt === 'string' ? r.skippedAt : null,
+        skipReason: typeof r.skipReason === 'string' ? r.skipReason : undefined,
+      };
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Calcule l'état checklist côté serveur pour un tenant.
+ *
+ * Lecture : onboarding_state.checklist_items_json (source de vérité fusionnée
+ * done + skipped) + last_active_at.
+ *   - total = 6 (CRM socle) + 3 si module 'ecommerce' actif.
+ *   - completed = items dont done===true && !skipped.
+ *   - skipped = items dont skipped===true && !done.
+ *   - pct = round((completed + skipped) / total * 100), capé 0..100.
+ *
+ * Dégradation : si la colonne checklist_items_json n'existe pas (seq119 non
+ * jouée) ⇒ EMPTY_CHECKLIST (PAS 500). Toute autre panne (JSON corrompu,
+ * tenant absent) ⇒ shape vide valide.
+ */
+async function computeChecklist(
+  env: Env,
+  clientId: string,
+  userId: string,
+  modules: ReadonlyArray<string>,
+): Promise<OnboardingChecklistResponse> {
+  let row: {
+    checklist_items_json: string | null;
+    last_active_at: string | null;
+  } | null = null;
+  try {
+    row = (await env.DB.prepare(
+      `SELECT checklist_items_json, last_active_at
+         FROM onboarding_state
+        WHERE client_id = ? AND user_id = ?`,
+    )
+      .bind(clientId, userId)
+      .first()) as
+      | { checklist_items_json: string | null; last_active_at: string | null }
+      | null;
+  } catch (err) {
+    if (isMissingColumnError(err)) return { ...EMPTY_CHECKLIST };
+    return { ...EMPTY_CHECKLIST };
+  }
+
+  const items = parseItemsMap(row?.checklist_items_json);
+  const lastActiveAt = row?.last_active_at || null;
+
+  const hasEcom = modules.includes('ecommerce');
+  const total = CRM_ITEM_KEYS.length + (hasEcom ? ECOM_ITEM_KEYS.length : 0);
+
+  let completed = 0;
+  let skipped = 0;
+  for (const [key, state] of Object.entries(items) as Array<
+    [OnboardingChecklistItemKey, OnboardingChecklistItemState]
+  >) {
+    // On ne compte que les items du périmètre actif (un item ecommerce stocké
+    // mais module désactivé est ignoré pour le total/pct, mais reste exposé
+    // dans `items` pour info — comportement défensif additif).
+    const inScope =
+      CRM_ITEM_KEYS.includes(key) || (hasEcom && ECOM_ITEM_KEYS.includes(key));
+    if (!inScope) continue;
+    if (state.done && !state.skipped) completed += 1;
+    else if (state.skipped && !state.done) skipped += 1;
+  }
+
+  const denom = total > 0 ? total : 1;
+  let pct = Math.round(((completed + skipped) / denom) * 100);
+  if (pct < 0) pct = 0;
+  if (pct > 100) pct = 100;
+
+  return { items, total, completed, skipped, pct, lastActiveAt };
+}
+
+/**
+ * Persistance UPSERT de l'état checklist + miroir skipped.
+ * Source de vérité = checklist_items_json (done+skipped fusionnés).
+ * skipped_items_json = miroir des items skipped uniquement (analytics rapide).
+ * Catch "no such column" ⇒ no-op silencieux (rétro-compat seq119 non jouée).
+ */
+async function persistChecklistItems(
+  env: Env,
+  clientId: string,
+  userId: string,
+  items: Partial<Record<OnboardingChecklistItemKey, OnboardingChecklistItemState>>,
+  opts: { resetDismissed?: boolean } = {},
+): Promise<{ ok: boolean }> {
+  const skippedOnly: Partial<Record<OnboardingChecklistItemKey, OnboardingChecklistItemState>> = {};
+  for (const [k, v] of Object.entries(items)) {
+    if (v && v.skipped && !v.done) {
+      skippedOnly[k as OnboardingChecklistItemKey] = v;
+    }
+  }
+  const itemsJson = JSON.stringify(items);
+  const skippedJson = JSON.stringify(skippedOnly);
+  try {
+    // UPSERT : si la row onboarding_state n'existe pas pour ce tenant, on
+    // l'insère avec les valeurs S8 par défaut + colonnes seq119. Sinon on
+    // met à jour uniquement les colonnes checklist (rétro-compat S8 stricte).
+    if (opts.resetDismissed) {
+      await env.DB.prepare(
+        `INSERT INTO onboarding_state
+           (client_id, user_id, current_step, completed_steps_json, payload_json, ecommerce_opted_in,
+            checklist_items_json, skipped_items_json, last_active_at, dismissed_at, updated_at)
+         VALUES (?, ?, 0, '[]', NULL, 0, ?, ?, datetime('now'), NULL, datetime('now'))
+         ON CONFLICT(client_id, user_id) DO UPDATE SET
+           checklist_items_json = excluded.checklist_items_json,
+           skipped_items_json = excluded.skipped_items_json,
+           last_active_at = datetime('now'),
+           dismissed_at = NULL,
+           updated_at = datetime('now')`,
+      )
+        .bind(clientId, userId, itemsJson, skippedJson)
+        .run();
+    } else {
+      await env.DB.prepare(
+        `INSERT INTO onboarding_state
+           (client_id, user_id, current_step, completed_steps_json, payload_json, ecommerce_opted_in,
+            checklist_items_json, skipped_items_json, last_active_at, updated_at)
+         VALUES (?, ?, 0, '[]', NULL, 0, ?, ?, datetime('now'), datetime('now'))
+         ON CONFLICT(client_id, user_id) DO UPDATE SET
+           checklist_items_json = excluded.checklist_items_json,
+           skipped_items_json = excluded.skipped_items_json,
+           last_active_at = datetime('now'),
+           updated_at = datetime('now')`,
+      )
+        .bind(clientId, userId, itemsJson, skippedJson)
+        .run();
+    }
+    return { ok: true };
+  } catch (err) {
+    if (isMissingColumnError(err)) return { ok: false };
+    return { ok: false };
+  }
+}
+
+/** Reset complet : NULL sur les 2 colonnes JSON + dismissed_at + last_active_at. */
+async function persistChecklistReset(
+  env: Env,
+  clientId: string,
+  userId: string,
+): Promise<{ ok: boolean }> {
+  try {
+    await env.DB.prepare(
+      `UPDATE onboarding_state
+          SET checklist_items_json = NULL,
+              skipped_items_json = NULL,
+              dismissed_at = NULL,
+              last_active_at = datetime('now'),
+              updated_at = datetime('now')
+        WHERE client_id = ? AND user_id = ?`,
+    )
+      .bind(clientId, userId)
+      .run();
+    return { ok: true };
+  } catch (err) {
+    if (isMissingColumnError(err)) return { ok: false };
+    return { ok: false };
+  }
+}
+
+/** INSERT best-effort dans onboarding_events. event_type validé HANDLER. */
+async function logChecklistEvent(
+  env: Env,
+  clientId: string,
+  userId: string,
+  eventType: 'item.completed' | 'item.skipped' | 'checklist.reset',
+  itemKey: OnboardingChecklistItemKey | null,
+  metadata: Record<string, unknown> | null,
+): Promise<void> {
+  try {
+    await env.DB.prepare(
+      `INSERT INTO onboarding_events
+         (client_id, user_id, event_type, item_key, metadata_json, created_at)
+       VALUES (?, ?, ?, ?, ?, datetime('now'))`,
+    )
+      .bind(
+        clientId,
+        userId,
+        eventType,
+        itemKey,
+        metadata ? JSON.stringify(metadata) : null,
+      )
+      .run();
+  } catch {
+    /* table seq119 absente ou autre — non critique (le state reste lu OK). */
+  }
+}
+
+/**
+ * GET /api/onboarding/checklist — état de la checklist serveur du tenant courant.
+ *
+ * Lit onboarding_state.(checklist_items_json, last_active_at), parse safe,
+ * calcule total (6 CRM + 3 ecom si module actif), completed, skipped, pct.
+ *
+ * Best-effort : tenant absent ⇒ EMPTY_CHECKLIST. Migration seq119 non jouée
+ * ⇒ EMPTY_CHECKLIST (PAS 500). Cross-tenant impossible (filtre strict
+ * client_id+user_id).
+ */
+export async function handleGetChecklist(
+  _request: Request,
+  env: Env,
+  auth: ChecklistAuth,
+): Promise<Response> {
+  const cg = checklistCapGuard(auth, 'settings.manage');
+  if (cg) return cg;
+  try {
+    const { clientId, modules } = await getClientModules(env, auth.userId);
+    if (!clientId) return json({ data: { ...EMPTY_CHECKLIST } });
+    const data = await computeChecklist(env, clientId, auth.userId, modules);
+    return json({ data });
+  } catch {
+    return json({ data: { ...EMPTY_CHECKLIST } });
+  }
+}
+
+/**
+ * POST /api/onboarding/checklist/complete — marque un item comme fait.
+ * Body : { itemKey: OnboardingChecklistItemKey }.
+ *
+ * Idempotent : si l'item est déjà `done`, on conserve le `completedAt`
+ * initial (pas de réécriture du timestamp). Insère un event analytics
+ * 'item.completed' et met à jour last_active_at.
+ *
+ * Best-effort : migration seq119 non jouée ⇒ EMPTY_CHECKLIST (PAS 500).
+ */
+export async function handleCompleteChecklistItem(
+  request: Request,
+  env: Env,
+  auth: ChecklistAuth,
+): Promise<Response> {
+  const cg = checklistCapGuard(auth, 'settings.manage');
+  if (cg) return cg;
+  try {
+    const body = await request.json().catch(() => ({}));
+    const v = validate(onboardingChecklistCompleteSchema, body);
+    if (!v.success) return validationError(v.error);
+    const itemKey = v.data.itemKey;
+    if (!VALID_ITEM_KEYS.includes(itemKey as OnboardingChecklistItemKey)) {
+      return json({ error: 'Unknown itemKey' }, 400);
+    }
+    const typedKey = itemKey as OnboardingChecklistItemKey;
+
+    const { clientId, modules } = await getClientModules(env, auth.userId);
+    if (!clientId) return json({ data: { ...EMPTY_CHECKLIST } });
+
+    // Lit l'état actuel pour idempotence (préserve completedAt si déjà done).
+    const current = await computeChecklist(env, clientId, auth.userId, modules);
+    const existing = current.items[typedKey];
+    const nowIso = new Date().toISOString();
+    const completedAt =
+      existing && existing.done && existing.completedAt
+        ? existing.completedAt
+        : nowIso;
+
+    const nextItems = { ...current.items };
+    nextItems[typedKey] = {
+      done: true,
+      skipped: false,
+      completedAt,
+      skippedAt: null,
+      // skipReason omis (undefined) — pas de fuite d'un ancien skip.
+    };
+
+    const persisted = await persistChecklistItems(env, clientId, auth.userId, nextItems);
+    if (!persisted.ok) {
+      // Migration seq119 absente : dégrade silencieusement (le front garde
+      // un fallback localStorage). Pas d'event, pas d'audit.
+      return json({ data: { ...EMPTY_CHECKLIST } });
+    }
+
+    await logChecklistEvent(env, clientId, auth.userId, 'item.completed', typedKey, null);
+    await audit(
+      env,
+      auth.userId,
+      'onboarding.checklist.item_completed',
+      'onboarding_state',
+      clientId,
+      { itemKey: typedKey },
+    );
+
+    const next = await computeChecklist(env, clientId, auth.userId, modules);
+    return json({ data: next });
+  } catch {
+    return json({ data: { ...EMPTY_CHECKLIST } });
+  }
+}
+
+/**
+ * POST /api/onboarding/checklist/skip — marque un item comme passé.
+ * Body : { itemKey: OnboardingChecklistItemKey, reason?: string }.
+ *
+ * Skip remplace l'état précédent (done passe à false, skipped=true, raison
+ * tronquée à 280 chars par le schema). Insère un event 'item.skipped'
+ * avec metadata { reason } et met à jour last_active_at.
+ */
+export async function handleSkipChecklistItem(
+  request: Request,
+  env: Env,
+  auth: ChecklistAuth,
+): Promise<Response> {
+  const cg = checklistCapGuard(auth, 'settings.manage');
+  if (cg) return cg;
+  try {
+    const body = await request.json().catch(() => ({}));
+    const v = validate(onboardingChecklistSkipSchema, body);
+    if (!v.success) return validationError(v.error);
+    const itemKey = v.data.itemKey;
+    if (!VALID_ITEM_KEYS.includes(itemKey as OnboardingChecklistItemKey)) {
+      return json({ error: 'Unknown itemKey' }, 400);
+    }
+    const typedKey = itemKey as OnboardingChecklistItemKey;
+    const reason = v.data.reason || undefined;
+
+    const { clientId, modules } = await getClientModules(env, auth.userId);
+    if (!clientId) return json({ data: { ...EMPTY_CHECKLIST } });
+
+    const current = await computeChecklist(env, clientId, auth.userId, modules);
+    const nowIso = new Date().toISOString();
+
+    const nextItems = { ...current.items };
+    nextItems[typedKey] = {
+      done: false,
+      skipped: true,
+      completedAt: null,
+      skippedAt: nowIso,
+      skipReason: reason,
+    };
+
+    const persisted = await persistChecklistItems(env, clientId, auth.userId, nextItems);
+    if (!persisted.ok) {
+      return json({ data: { ...EMPTY_CHECKLIST } });
+    }
+
+    await logChecklistEvent(
+      env,
+      clientId,
+      auth.userId,
+      'item.skipped',
+      typedKey,
+      reason ? { reason } : null,
+    );
+    await audit(
+      env,
+      auth.userId,
+      'onboarding.checklist.item_skipped',
+      'onboarding_state',
+      clientId,
+      { itemKey: typedKey, hasReason: !!reason },
+    );
+
+    const next = await computeChecklist(env, clientId, auth.userId, modules);
+    return json({ data: next });
+  } catch {
+    return json({ data: { ...EMPTY_CHECKLIST } });
+  }
+}
+
+/**
+ * POST /api/onboarding/checklist/reset — réinitialise la checklist.
+ *
+ * UPDATE onboarding_state SET checklist_items_json=NULL,
+ *   skipped_items_json=NULL, dismissed_at=NULL,
+ *   last_active_at=datetime('now'). Insère event 'checklist.reset'.
+ *
+ * Best-effort : migration seq119 non jouée ⇒ EMPTY_CHECKLIST (PAS 500).
+ */
+export async function handleResetChecklist(
+  _request: Request,
+  env: Env,
+  auth: ChecklistAuth,
+): Promise<Response> {
+  const cg = checklistCapGuard(auth, 'settings.manage');
+  if (cg) return cg;
+  try {
+    const { clientId, modules } = await getClientModules(env, auth.userId);
+    if (!clientId) return json({ data: { ...EMPTY_CHECKLIST } });
+
+    const persisted = await persistChecklistReset(env, clientId, auth.userId);
+    if (!persisted.ok) {
+      return json({ data: { ...EMPTY_CHECKLIST } });
+    }
+
+    await logChecklistEvent(env, clientId, auth.userId, 'checklist.reset', null, null);
+    await audit(
+      env,
+      auth.userId,
+      'onboarding.checklist.reset',
+      'onboarding_state',
+      clientId,
+      {},
+    );
+
+    const next = await computeChecklist(env, clientId, auth.userId, modules);
+    return json({ data: next });
+  } catch {
+    return json({ data: { ...EMPTY_CHECKLIST } });
   }
 }

@@ -1,0 +1,61 @@
+-- ════════════════════════════════════════════════════════════════════════════
+-- Migration seq 98 — LOT MULTILANG-B Multi-langue sortant (fondations)
+-- (2026-05-20)
+-- 1 colonne ADDITIVE NULLABLE sur `leads` pour stocker la langue préférée d'un
+-- contact (`preferred_language`). v1 : capture manuelle (sélecteur LeadDetail) +
+-- opt-in ingestion (alias + fallback Accept-Language). USAGE v1 = stocker /
+-- exposer / segmenter / traduire les LIBELLÉS SYSTÈME-TRANSACTIONNELS (footer
+-- CASL, désabonnement, confirmations) via le résolveur worker tLead. AUCUNE
+-- traduction auto du contenu marketing libre (v2). SMS = v2.
+--
+-- ⚠ NULL = défaut tenant (fr-CA). Valeurs supportées 'fr-CA'|'fr-FR'|'en'|'es'
+--   validées CÔTÉ HANDLER (whitelist JS), JAMAIS par CHECK SQL. Hors-liste OU
+--   chaîne vide ⇒ NULL ("repasser au défaut").
+--
+-- ⚠ BORNAGE TENANT — la colonne est portée par `leads` (déjà borné client_id
+--   depuis l'auth, JAMAIS le body, par tous les handlers existants). Aucune
+--   nouvelle capability : leads.read / leads.write (déjà dans ALL_CAPABILITIES)
+--   suffisent — ZÉRO ajout.
+--
+-- depends_on : migration-scheduled-reports-seq97.sql (seq 97 — dernière migration
+--              du manifest avant ce lot ; chaînage SÉQUENTIEL pour l'ordre,
+--              AUCUNE dépendance de SCHÉMA réelle sur seq 97). La table `leads`
+--              existe depuis seq 1 (migration-phase1.sql).
+--
+-- ⚠ STRICTEMENT ADDITIF — INTERDIT : tout DROP / RENAME / rebuild / ALTER d'une
+--   contrainte existante. Ce lot N'AJOUTE QUE :
+--     - 1 `ALTER TABLE leads ADD COLUMN` NULLABLE SANS DEFAULT non-NULL ;
+--     - 1 `CREATE INDEX IF NOT EXISTS` — neuf, idempotent.
+--   AUCUN NOT NULL. AUCUN DEFAULT non-NULL. AUCUN CHECK. AUCUNE FK. AUCUN
+--   rebuild. AUCUN touch clients / agencies / users / admin_sessions /
+--   industry_packs / dashboards. AUCUN touch tables E4/E6 régulées. Le CHECK
+--   role users seq 59 (rebuild:users) est INTOUCHÉ.
+--
+-- TOLÉRANCE rejeu — exécution best-effort :
+--   `CREATE INDEX IF NOT EXISTS` est idempotent. `ALTER TABLE ADD COLUMN` n'est
+--   PAS idempotent sous SQLite/D1 (erreur "duplicate column" au rejeu) : c'est
+--   le comportement standard des ALTER additifs du repo (calque alter:leads
+--   seq 22 / seq 56 / seq 57) ; le runner applique chaque migration UNE fois.
+--   scripts/migrate.ts est FIGÉ et N'EST PAS modifié.
+--
+-- Exécution manuelle :
+--   npx wrangler d1 execute intralys-crm --file=migration-multilang-out-seq98.sql --remote
+-- ════════════════════════════════════════════════════════════════════════════
+
+-- 1) leads.preferred_language — langue préférée du contact pour les libellés
+--    système-transactionnels sortants. NULLABLE, défaut implicite NULL (=
+--    fr-CA tenant). Valeurs 'fr-CA'|'fr-FR'|'en'|'es' validées HANDLER (pas
+--    par CHECK SQL). Capture v1 : sélecteur LeadDetail (PATCH) + opt-in
+--    ingestion (alias preferred_language|language|langue|locale|lang +
+--    fallback Accept-Language). INSERT manuel (handleCreateLead) laisse NULL.
+ALTER TABLE leads ADD COLUMN preferred_language TEXT;
+
+-- Index ADDITIF idempotent — segmentation par langue bornée tenant
+-- (client_id, preferred_language).
+CREATE INDEX IF NOT EXISTS idx_leads_preferred_language ON leads(client_id, preferred_language);
+
+-- NB : 1 ALTER additif NULLABLE (leads.preferred_language), 1 INDEX NEUF, AUCUN
+-- NOT NULL, AUCUN DEFAULT non-NULL, AUCUN CHECK, AUCUNE FK, AUCUN DROP / RENAME /
+-- rebuild. Valeurs locales validées HANDLER. NULL = défaut tenant. Bornage tenant
+-- = leads.client_id (déjà borné depuis l'auth par les handlers). ZÉRO ajout
+-- ALL_CAPABILITIES (leads.read / leads.write). Choix figés docs/LOT-MULTILANG-B.md §6.

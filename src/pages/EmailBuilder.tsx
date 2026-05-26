@@ -30,7 +30,12 @@ function SortableBlock({ block, isSelected, onSelect, onDelete }: {
         <span className="block-icon">{blockLabel?.icon || '📦'}</span>
         <span>{blockLabel?.label || block.type}</span>
       </div>
-      <button className="block-delete-btn" onClick={(e) => { e.stopPropagation(); onDelete(); }} title="Supprimer"><Trash2 size={14} /></button>
+      <button
+        className="block-delete-btn"
+        onClick={(e) => { e.stopPropagation(); onDelete(); }}
+        title={t('eb.block.delete_aria')}
+        aria-label={t('eb.block.delete_aria')}
+      ><Trash2 size={14} /></button>
     </div>
   );
 }
@@ -53,85 +58,86 @@ function BlockProperties({ block, onChange }: { block: EmailBlock | null; onChan
 
       {block.type === 'header' && (
         <>
-          <label className="prop-label">Texte</label>
-          <Input value={(block.config.text as string) || ''} onChange={e => updateConfig('text', e.target.value)} />
-          <label className="prop-label">Niveau</label>
-          <Select size="sm" value={(block.config.level as number) || 2} onChange={e => updateConfig('level', Number(e.target.value))}>
-            <option value={1}>H1 — Grand</option><option value={2}>H2 — Moyen</option><option value={3}>H3 — Petit</option>
+          <label className="prop-label">{t('eb.prop.text')}</label>
+          <Input value={(block.config.text as string) || ''} onChange={e => updateConfig('text', e.target.value)} aria-label={t('eb.prop.text')} />
+          <label className="prop-label">{t('email_builder.prop.level')}</label>
+          <Select size="sm" value={(block.config.level as number) || 2} onChange={e => updateConfig('level', Number(e.target.value))} aria-label={t('email_builder.prop.level')}>
+            <option value={1}>H1 — {t('eb.prop.level_large')}</option><option value={2}>H2 — {t('eb.prop.level_medium')}</option><option value={3}>H3 — {t('eb.prop.level_small')}</option>
           </Select>
-          <label className="prop-label">Couleur texte</label>
+          <label className="prop-label">{t('email_builder.prop.text_color')}</label>
           <ColorSwatch size="sm" value={(block.config.color as string) || '#1a1a2e'} onChange={v => updateConfig('color', v)} presets={BRAND_PRESETS} />
-          <label className="prop-label">Fond</label>
+          <label className="prop-label">{t('eb.prop.background')}</label>
           <ColorSwatch size="sm" value={(block.config.backgroundColor as string) || '#FFFFFF'} onChange={v => updateConfig('backgroundColor', v)} presets={BRAND_PRESETS} />
-          <label className="prop-label">Alignement</label>
+          <label className="prop-label">{t('email_builder.prop.alignment')}</label>
           <Select size="sm" value={(block.config.align as string) || 'left'} onChange={e => updateConfig('align', e.target.value)}>
-            <option value="left">Gauche</option><option value="center">Centre</option><option value="right">Droite</option>
+            <option value="left">{t('email_builder.align_left')}</option><option value="center">{t('email_builder.align_center')}</option><option value="right">{t('email_builder.align_right')}</option>
           </Select>
         </>
       )}
 
       {block.type === 'text' && (
         <>
-          <label className="prop-label">Contenu HTML</label>
+          <label className="prop-label">{t('email_builder.prop.html_content')}</label>
           <Textarea rows={6} className="font-mono text-xs" value={(block.config.html as string) || ''} onChange={e => updateConfig('html', e.target.value)} />
-          <label className="prop-label">Couleur</label>
+          <label className="prop-label">{t('email_builder.prop.color')}</label>
           <ColorSwatch size="sm" value={(block.config.color as string) || '#374151'} onChange={v => updateConfig('color', v)} presets={BRAND_PRESETS} />
-          <label className="prop-label">Taille police</label>
+          <label className="prop-label">{t('email_builder.prop.font_size')}</label>
           <Input value={(block.config.fontSize as string) || '15px'} onChange={e => updateConfig('fontSize', e.target.value)} />
         </>
       )}
 
       {block.type === 'image' && (
         <>
-          <label className="prop-label">URL image</label>
-          <Input value={(block.config.src as string) || ''} onChange={e => updateConfig('src', e.target.value)} placeholder="https://..." />
-          <label className="prop-label">Texte alt</label>
-          <Input value={(block.config.alt as string) || ''} onChange={e => updateConfig('alt', e.target.value)} />
-          <label className="prop-label">Lien (optionnel)</label>
-          <Input value={(block.config.link as string) || ''} onChange={e => updateConfig('link', e.target.value)} placeholder="https://..." />
+          <label className="prop-label">{t('eb.prop.image_url')}</label>
+          <Input value={(block.config.src as string) || ''} onChange={e => updateConfig('src', e.target.value)} placeholder="https://..." aria-label={t('eb.prop.image_url')} />
+          <label className="prop-label">{t('email_builder.prop.alt_text')}</label>
+          <Input value={(block.config.alt as string) || ''} onChange={e => updateConfig('alt', e.target.value)} aria-label={t('email_builder.prop.alt_text')} />
+          <label className="prop-label">{t('eb.prop.link_optional')}</label>
+          <Input value={(block.config.link as string) || ''} onChange={e => updateConfig('link', e.target.value)} placeholder="https://..." aria-label={t('eb.prop.link_optional')} />
         </>
       )}
 
       {block.type === 'button' && (
         <>
-          <label className="prop-label">Texte</label>
-          <Input value={(block.config.text as string) || ''} onChange={e => updateConfig('text', e.target.value)} />
+          <label className="prop-label">{t('eb.prop.text')}</label>
+          <Input value={(block.config.text as string) || ''} onChange={e => updateConfig('text', e.target.value)} aria-label={t('eb.prop.text')} />
           <label className="prop-label">URL</label>
-          <Input value={(block.config.url as string) || '#'} onChange={e => updateConfig('url', e.target.value)} />
-          <label className="prop-label">Couleur fond</label>
+          <Input value={(block.config.url as string) || '#'} onChange={e => updateConfig('url', e.target.value)} aria-label="URL" />
+          <label className="prop-label">{t('email_builder.prop.bg_color')}</label>
           <ColorSwatch size="sm" value={(block.config.backgroundColor as string) || '#009DDB'} onChange={v => updateConfig('backgroundColor', v)} presets={BRAND_PRESETS} />
-          <label className="prop-label">Couleur texte</label>
+          <label className="prop-label">{t('email_builder.prop.text_color')}</label>
           <ColorSwatch size="sm" value={(block.config.color as string) || '#FFFFFF'} onChange={v => updateConfig('color', v)} presets={BRAND_PRESETS} />
         </>
       )}
 
       {block.type === 'divider' && (
         <>
-          <label className="prop-label">Couleur</label>
+          <label className="prop-label">{t('email_builder.prop.color')}</label>
           <ColorSwatch size="sm" value={(block.config.color as string) || '#e5e7eb'} onChange={v => updateConfig('color', v)} presets={BRAND_PRESETS} />
         </>
       )}
 
       {block.type === 'spacer' && (
         <>
-          <label className="prop-label">Hauteur</label>
+          <label className="prop-label">{t('email_builder.prop.height')}</label>
           <Input value={(block.config.height as string) || '20px'} onChange={e => updateConfig('height', e.target.value)} />
         </>
       )}
 
       {block.type === 'footer' && (
         <>
-          <label className="prop-label">Contenu HTML</label>
+          <label className="prop-label">{t('email_builder.prop.html_content')}</label>
           <Textarea rows={4} className="font-mono text-xs" value={(block.config.html as string) || ''} onChange={e => updateConfig('html', e.target.value)} />
-          <label className="prop-label">Couleur</label>
+          <label className="prop-label">{t('email_builder.prop.color')}</label>
           <ColorSwatch size="sm" value={(block.config.color as string) || '#9ca3af'} onChange={v => updateConfig('color', v)} presets={BRAND_PRESETS} />
         </>
       )}
 
       {block.type === 'columns' && (
         <>
-          <label className="prop-label">Colonne 1 (HTML)</label>
+          <label className="prop-label">{t('eb.prop.column1_html')}</label>
           <Textarea rows={3} className="font-mono text-xs"
+            aria-label={t('eb.prop.column1_html')}
             value={((block.config.columns as Array<{html: string}>)?.[0]?.html) || ''}
             onChange={e => {
               const cols = [...((block.config.columns as Array<{html: string; width: string}>) || [])];
@@ -140,8 +146,9 @@ function BlockProperties({ block, onChange }: { block: EmailBlock | null; onChan
               updateConfig('columns', cols);
             }}
           />
-          <label className="prop-label">Colonne 2 (HTML)</label>
+          <label className="prop-label">{t('eb.prop.column2_html')}</label>
           <Textarea rows={3} className="font-mono text-xs"
+            aria-label={t('eb.prop.column2_html')}
             value={((block.config.columns as Array<{html: string}>)?.[1]?.html) || ''}
             onChange={e => {
               const cols = [...((block.config.columns as Array<{html: string; width: string}>) || [])];
@@ -172,11 +179,14 @@ export function EmailBuilderPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  // S6 M1.1 — erreur chargement template : surfacée via role="alert" + retry.
+  const [loadError, setLoadError] = useState<string>('');
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const loadTemplate = useCallback(async () => {
     if (!templateId) { setIsLoading(false); return; }
     setIsLoading(true);
+    setLoadError('');
     const result = await getTemplate(templateId);
     if (result.data) {
       setTemplateName(result.data.name || '');
@@ -187,6 +197,8 @@ export function EmailBuilderPage() {
       if (d.blocks_json) {
         try { setBlocks(JSON.parse(d.blocks_json as string)); } catch { /* ignore */ }
       }
+    } else {
+      setLoadError(result.error || t('eb.error.load'));
     }
     setIsLoading(false);
   }, [templateId]);
@@ -241,12 +253,12 @@ export function EmailBuilderPage() {
     setIsSending(true);
     const res = await sendTestEmail(templateId, email);
     setIsSending(false);
-    if (res.error) toastError(`Échec de l'envoi: ${res.error}`);
-    else success(`Email test envoyé à ${email}`);
+    if (res.error) toastError(`${t('eb.send_failed')}${res.error}`);
+    else success(`${t('eb.send_test_sent')}${email}`);
   };
 
   return (
-    <AppLayout title="Email Builder">
+    <AppLayout title={t('eb.title')}>
       <DesktopOnlyBanner />
       <div className="hidden lg:block">
       <style>{emailBuilderStyles}</style>
@@ -257,30 +269,46 @@ export function EmailBuilderPage() {
             <Icon as={ArrowLeft} size="md" /> {t('fb.back')}
           </Button>
           <div className="builder-meta">
-            <Input value={templateName} onChange={e => setTemplateName(e.target.value)} placeholder="Nom du template"
+            <Input value={templateName} onChange={e => setTemplateName(e.target.value)} placeholder={t('eb.template_name_placeholder')}
+              aria-label={t('eb.template_name_placeholder')}
               style={{ fontWeight: 600, fontSize: '15px', background: 'transparent', border: 'none', padding: 0 }} />
-            <Input value={templateSubject} onChange={e => setTemplateSubject(e.target.value)} placeholder="Sujet de l'email"
+            <Input value={templateSubject} onChange={e => setTemplateSubject(e.target.value)} placeholder={t('eb.template_subject_placeholder')}
+              aria-label={t('eb.template_subject_placeholder')}
               style={{ fontSize: '13px', color: 'var(--text-secondary)', background: 'transparent', border: 'none', padding: 0 }} />
           </div>
         </div>
         <div className="builder-topbar-actions">
-          <div className="preview-toggle">
-            <button className={previewMode === 'desktop' ? 'active' : ''} onClick={() => setPreviewMode('desktop')} aria-label="Preview desktop"><Icon as={Monitor} size="md" /></button>
-            <button className={previewMode === 'mobile' ? 'active' : ''} onClick={() => setPreviewMode('mobile')} aria-label="Preview mobile"><Icon as={Smartphone} size="md" /></button>
-            <button className={previewMode === 'source' ? 'active' : ''} onClick={() => setPreviewMode('source')} aria-label="Preview source"><Icon as={Code} size="md" /></button>
+          <div className="preview-toggle" role="group" aria-label={t('eb.preview_label')}>
+            <button className={previewMode === 'desktop' ? 'active' : ''} onClick={() => setPreviewMode('desktop')} aria-label={t('eb.preview_desktop')} aria-pressed={previewMode === 'desktop'}><Icon as={Monitor} size="md" /></button>
+            <button className={previewMode === 'mobile' ? 'active' : ''} onClick={() => setPreviewMode('mobile')} aria-label={t('eb.preview_mobile')} aria-pressed={previewMode === 'mobile'}><Icon as={Smartphone} size="md" /></button>
+            <button className={previewMode === 'source' ? 'active' : ''} onClick={() => setPreviewMode('source')} aria-label={t('eb.preview_source')} aria-pressed={previewMode === 'source'}><Icon as={Code} size="md" /></button>
           </div>
-          <Button variant="ghost" size="sm" onClick={handleSendTest} disabled={isSending}>
-            <Icon as={Send} size="sm" /> {isSending ? 'Envoi...' : 'Test'}
+          <Button variant="ghost" size="sm" onClick={handleSendTest} disabled={isSending} aria-busy={isSending}>
+            <Icon as={Send} size="sm" /> {isSending ? t('eb.test_sending') : t('eb.test')}
           </Button>
-          <Button variant="primary" size="sm" onClick={handleSave} disabled={isSaving}>
-            <Icon as={Save} size="sm" /> {isSaving ? '...' : t('fb.save')}
+          <Button variant="primary" size="sm" onClick={handleSave} disabled={isSaving} aria-busy={isSaving}>
+            <Icon as={Save} size="sm" /> {isSaving ? t('eb.saving') : t('fb.save')}
           </Button>
         </div>
       </div>
 
+      {loadError && !isLoading && (
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="px-5 py-3 mx-5 mt-3 rounded-[var(--radius-md)] flex items-center justify-between gap-3"
+          style={{ background: 'color-mix(in srgb, var(--danger) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--danger) 30%, transparent)' }}
+        >
+          <span className="text-sm" style={{ color: 'var(--danger)' }}>{loadError}</span>
+          <Button variant="ghost" size="sm" onClick={() => void loadTemplate()} aria-label={t('action.retry')}>
+            {t('action.retry')}
+          </Button>
+        </div>
+      )}
+
       {isLoading ? (
         /* Skeleton matche layout EmailBuilder : palette gauche + canvas centre + props droite */
-        <div className="builder-layout">
+        <div className="builder-layout" aria-busy="true" aria-live="polite" role="status">
           <div className="builder-palette">
             <Skeleton className="h-3 w-12 mb-3 ml-1" />
             {Array.from({ length: 8 }).map((_, i) => (
@@ -339,8 +367,8 @@ export function EmailBuilderPage() {
             </button>
           ))}
           <div style={{ marginTop: '16px', padding: '0 8px' }}>
-            <label className="prop-label">Preheader</label>
-            <Input value={preheader} onChange={e => setPreheader(e.target.value)} placeholder="Texte preview inbox" />
+            <label className="prop-label">{t('email_builder.prop.preheader')}</label>
+            <Input value={preheader} onChange={e => setPreheader(e.target.value)} placeholder={t('eb.preheader_placeholder')} aria-label={t('email_builder.prop.preheader')} />
           </div>
         </div>
 
@@ -358,7 +386,7 @@ export function EmailBuilderPage() {
             </DndContext>
           </div>
           <div className="builder-preview">
-            <div className="preview-label"><Icon as={Eye} size="sm" /> Aperçu {previewMode}</div>
+            <div className="preview-label"><Icon as={Eye} size="sm" /> {t('eb.preview_label')} {previewMode}</div>
             {previewMode === 'source' ? (
               <pre className="preview-source">{compiledHtml}</pre>
             ) : previewMode === 'mobile' ? (
@@ -366,7 +394,7 @@ export function EmailBuilderPage() {
                 <div className="phone-bezel">
                   <div className="phone-bezel-speaker" aria-hidden />
                   <div className="phone-bezel-screen">
-                    <iframe ref={iframeRef} className="preview-iframe" sandbox="allow-same-origin" title="Email preview" />
+                    <iframe ref={iframeRef} className="preview-iframe" sandbox="allow-same-origin" title={t('eb.preview_email_alt')} />
                   </div>
                   <div className="phone-bezel-indicator" aria-hidden />
                 </div>

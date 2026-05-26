@@ -10,8 +10,8 @@ const NAV_ITEMS = [
   { path: '/dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
   { path: '/leads', label: t('nav.leads'), icon: Users },
   { path: '/pipeline', label: t('nav.pipeline'), icon: Briefcase },
-  { path: '/conversations', label: 'Inbox', icon: MessageSquare },
-  { path: '/settings', label: '+', icon: MoreHorizontal },
+  { path: '/conversations', label: t('nav.inbox'), icon: MessageSquare },
+  { path: '/settings', label: t('nav.more'), icon: MoreHorizontal },
 ];
 
 export function MobileBottomNav() {

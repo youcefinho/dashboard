@@ -3,7 +3,7 @@ import type { Message } from '@/lib/types';
 import { MessageBubble } from './MessageBubble';
 // Sprint 48 M3.2 — Intl date formatter (locale-aware)
 import { formatDateShort } from '@/lib/i18n/datetime';
-import { getLocale } from '@/lib/i18n';
+import { getLocale, t } from '@/lib/i18n';
 
 interface Props {
   messages: Message[];
@@ -40,7 +40,7 @@ export const MessageThread = forwardRef<HTMLDivElement, Props>(({ messages, onRe
   if (messages.length === 0) {
     return (
       <div className="flex items-center justify-center h-full text-[var(--text-muted)]">
-        <p className="text-xs">Aucun message dans cette conversation</p>
+        <p className="text-xs">{t('inbox.thread.empty_message')}</p>
       </div>
     );
   }
@@ -95,6 +95,15 @@ export const MessageThread = forwardRef<HTMLDivElement, Props>(({ messages, onRe
                 // sens que pour les messages reçus (inbound). Pour outbound on
                 // n'expose pas la gesture (cohérent iMessage / WhatsApp).
                 onReply={onReply && !isOut ? () => onReply(msg) : undefined}
+                // LOT SMS/WHATSAPP seq 104 (Phase C) — badge canal whatsapp +
+                // accusé de livraison SMS sortant. delivery_status n'est PAS
+                // (encore) dans le type front Message (posé par le worker,
+                // Manager-B) ⇒ lecture défensive via cast/optional chaining,
+                // SANS modifier types.ts (signalé au rapport).
+                channel={msg.channel}
+                deliveryStatus={
+                  (msg as { delivery_status?: string }).delivery_status ?? undefined
+                }
               />
             );
           })}

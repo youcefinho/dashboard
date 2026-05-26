@@ -1,0 +1,73 @@
+-- ════════════════════════════════════════════════════════════════════════════
+-- Migration seq 107 — LOT MEMBERSHIP ENROLL (Sprint 6 « fermeture boucle
+-- inscription », 2026-05-21). FERME la boucle d'inscription du module
+-- Memberships (seq 87) : aujourd'hui ABOUTI mais MORT — AUCUN endpoint
+-- d'inscription n'existe (`INSERT INTO course_enrollments` introuvable) ⇒
+-- loadGatedLesson (memberships.ts) renvoie 403 à TOUS les membres. Ce lot pose
+-- le SOCLE pour câbler l'inscription (membre + PRO) et l'affichage de l'arbre
+-- modules→leçons. INSCRIPTION GRATUITE (E4 inactif — price_cents cosmétique).
+--
+-- Cette migration N'AJOUTE QUE 3 INDEX de LECTURE (accélération des lookups
+-- d'inscription/listing). AUCUNE table, AUCUNE colonne, AUCUN ALTER, AUCUN
+-- CHECK, AUCUNE FK. Les 9 tables Memberships (members / member_sessions /
+-- membership_sites / membership_plans / courses / course_modules / lessons /
+-- course_enrollments / lesson_progress) sont posées par seq 87 — NON recréées,
+-- NON altérées ici.
+--
+-- depends_on : migration-forms-xl-seq106.sql (seq 106 — dernière migration du
+--              manifest avant ce lot ; chaînage SÉQUENTIEL pour l'ordre,
+--              AUCUNE dépendance de SCHÉMA réelle sur seq 106).
+--
+-- ⚠ STRICTEMENT ADDITIF — INTERDIT : tout DROP / RENAME / rebuild / ALTER d'une
+--   CONTRAINTE existante. Ce lot N'AJOUTE QUE des `CREATE INDEX IF NOT EXISTS`.
+--
+--   CHECK INTOUCHABLES (VOLONTAIREMENT sans CHECK seq 87 — ne JAMAIS en
+--   ajouter, rebuild INTERDIT) : `members.status`, `lessons.content_type`,
+--   `course_enrollments.status`, `lesson_progress.status`. AUCUN ALTER ici.
+--
+--   AUCUNE FK (D1/SQLite : FK ⇒ rebuild au moindre ALTER ⇒ interdit). Les liens
+--   course_enrollments.course_id ↔ courses(id), course_enrollments.member_id ↔
+--   members(id), courses.site_id ↔ membership_sites(id) restent APPLICATIFS
+--   (colonnes TEXT renseignées par les handlers, lecture bornée serveur).
+--
+--   `course_enrollments` reste un NAMESPACE DISTINCT de `workflow_enrollments`
+--   (seq 3 / rebuild seq 73) — JAMAIS touché/lu par ce lot.
+--
+-- RÉTRO-COMPAT BYTE : aucune colonne ajoutée ⇒ toutes les rows legacy restent
+--   valides bit-pour-bit. Index = lecture pure, transparents au runtime.
+--
+-- TOLÉRANCE best-effort : `CREATE INDEX IF NOT EXISTS` est idempotent (rejouable
+--   sans erreur). scripts/migrate.ts est FIGÉ et N'EST PAS modifié.
+--   ⚠ `migration-member-*` ∈ FALLBACK_UNSUPPORTED_PATTERNS de migrate.ts ⇒
+--   l'entrée manifest seq 107 est OBLIGATOIRE (ajoutée Phase A) sinon STOP.
+--
+-- Noms de colonnes VÉRIFIÉS sur migration-member-seq87.sql :
+--   course_enrollments(id, member_id, course_id, client_id, enrolled_at, status)
+--   courses(id, client_id, agency_id, site_id, plan_id, title, description,
+--           is_published, created_at)
+--
+-- Exécution manuelle :
+--   npx wrangler d1 execute intralys-crm --file=migration-member-enroll-seq107.sql --remote
+-- ════════════════════════════════════════════════════════════════════════════
+
+-- 1) idx_course_enrollments_course — lookup des inscriptions d'un cours
+--    (handleListEnrollments PRO + vérif idempotence enroll). seq 87 n'indexait
+--    QUE course_enrollments(member_id) ; le listing par cours scannait.
+CREATE INDEX IF NOT EXISTS idx_course_enrollments_course ON course_enrollments(course_id);
+
+-- 2) idx_course_enrollments_member — lookup des inscriptions d'un membre.
+--    NOTE : seq 87 pose DÉJÀ `idx_course_enrollments_member` (même nom, même
+--    colonne) — ce CREATE IF NOT EXISTS est donc idempotent/no-op si seq 87 a
+--    été jouée. Conservé pour robustesse (lot autonome, ordre best-effort).
+CREATE INDEX IF NOT EXISTS idx_course_enrollments_member ON course_enrollments(member_id);
+
+-- 3) idx_courses_site — résolution catalogue d'un espace membre
+--    (courses.site_id ↔ membership_sites.id, jointure applicative).
+CREATE INDEX IF NOT EXISTS idx_courses_site ON courses(site_id);
+
+-- NB : 3 index ADDITIFS de LECTURE. AUCUNE table/colonne ajoutée. AUCUN CHECK
+-- modifié (members.status / lessons.content_type / course_enrollments.status /
+-- lesson_progress.status INTOUCHÉS — VOLONTAIREMENT sans CHECK). AUCUNE FK.
+-- AUCUN DROP / RENAME / rebuild. AUCUNE capability ajoutée (handlers PRO via
+-- membershipCapGuard → 'workflows.manage' EXISTANT). Inscription GRATUITE (E4
+-- inactif, price_cents cosmétique). Contrat figé docs/LOT-MEMBERSHIP-ENROLL.md §6.

@@ -13,12 +13,14 @@ export function ClientLeadsPage() {
   const { clientId } = useParams({ strict: false }) as { clientId: string };
   const [leads, setLeads] = useState<Lead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
 
   const loadLeads = useCallback(async () => {
     setIsLoading(true);
+    setLoadError(null);
     const result = await getClientLeads(clientId, {
       status: statusFilter || undefined,
       type: typeFilter || undefined,
@@ -26,6 +28,8 @@ export function ClientLeadsPage() {
     });
     if (result.data) {
       setLeads(result.data);
+    } else if (result.error) {
+      setLoadError(result.error || t('client_leads.error_load'));
     }
     setIsLoading(false);
   }, [clientId, statusFilter, typeFilter, search]);
@@ -55,11 +59,11 @@ export function ClientLeadsPage() {
   return (
     <AppLayout title={t('client_leads.page.title')}>
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-[var(--text-muted)] mb-4">
-        <Link to="/clients" className="hover:text-[var(--primary)] transition-colors">Clients</Link>
-        <span>/</span>
-        <span className="text-[var(--text-primary)]">Leads</span>
-      </div>
+      <nav aria-label={t('client_leads.breadcrumb.aria')} className="flex items-center gap-2 text-sm text-[var(--text-muted)] mb-4">
+        <Link to="/clients" className="hover:text-[var(--primary)] transition-colors">{t('client_leads.breadcrumb.clients')}</Link>
+        <span aria-hidden>/</span>
+        <span className="text-[var(--text-primary)]" aria-current="page">{t('client_leads.breadcrumb.leads')}</span>
+      </nav>
 
       {/* KPI Strip — leads du client */}
       {!isLoading && leads.length > 0 && <KpiStrip items={kpis} />}
@@ -100,7 +104,7 @@ export function ClientLeadsPage() {
 
       {/* Tableau */}
       {isLoading ? (
-        <Card className="p-0 overflow-hidden">
+        <Card className="p-0 overflow-hidden" aria-busy="true" aria-live="polite">
           <div className="px-4 py-3 border-b border-[var(--border-subtle)] bg-[var(--bg-subtle)] flex items-center gap-6">
             {[1,2,3,4,5].map(i => (
               <Skeleton key={i} className="h-3 w-20 rounded" />
@@ -124,6 +128,17 @@ export function ClientLeadsPage() {
             ))}
           </div>
         </Card>
+      ) : loadError ? (
+        <EmptyState
+          icon={<Icon as={Users} size={40} />}
+          title={t('client_leads.error_load')}
+          description={t('client_leads.error_load_desc')}
+          action={
+            <Button variant="primary" onClick={() => void loadLeads()}>
+              {t('client_leads.error_retry')}
+            </Button>
+          }
+        />
       ) : leads.length === 0 ? (
         <EmptyState
           variant="filtered"
@@ -170,6 +185,7 @@ export function ClientLeadsPage() {
                         value={lead.status}
                         onChange={(e) => void handleStatusChange(lead.id, e.target.value as LeadStatus)}
                         style={{ color: STATUS_COLORS[lead.status], fontWeight: 600 }}
+                        aria-label={t('client_leads.status_select_aria', { name: lead.name })}
                       >
                         {LEAD_STATUSES.map(s => (
                           <option key={s} value={s}>{STATUS_LABELS[s]}</option>

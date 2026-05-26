@@ -12,6 +12,12 @@
 //   - best-effort INSERT dans `web_vitals` (migration-sprintS9-m1.sql)
 //   - client_id best-effort si dispo, sinon NULL (la table l'autorise)
 import type { Env } from './types';
+// ── Sprint 25 — Perf budget side-effect (best-effort, never blocks 204).
+// Si le beacon contient un Web Vital >= seuil 'fail' (LCP/CLS/INP TRACKED),
+// logPerfBudget consigne un audit_log('perf.budget_exceeded'). Le traitement
+// est lancé via ctx.waitUntil quand ctx dispo (route depuis worker.ts), sinon
+// fire-and-forget — l'INSERT web_vitals reste inchangé.
+import { logPerfBudget } from './perf-budget-log';
 
 // Whitelist alignée src/lib/webVitals.ts:14 (WebVitalName).
 const KNOWN_VITALS = new Set(['LCP', 'CLS', 'INP', 'TTFB', 'FCP']);
@@ -42,8 +48,15 @@ interface WebVitalBeacon {
  *
  * @param request requête entrante (body JSON envoyé via sendBeacon)
  * @param env     bindings worker (env.DB)
+ * @param ctx    ExecutionContext optionnel — utilisé Sprint 25 pour fire-and-
+ *               forget `logPerfBudget` (audit perf.budget_exceeded best-effort).
+ *               Signature OPTIONNELLE (rétro-compat appels existants).
  */
-export async function handlePostWebVitals(request: Request, env: Env): Promise<Response> {
+export async function handlePostWebVitals(
+  request: Request,
+  env: Env,
+  ctx?: ExecutionContext,
+): Promise<Response> {
   // 204 = réponse canonique d'un beacon. On la renvoie dans TOUS les cas.
   // 204 No Content ne peut PAS avoir de body (spec HTTP) → new Response(null).
   const ack = (): Response => new Response(null, { status: 204 });
@@ -93,6 +106,24 @@ export async function handlePostWebVitals(request: Request, env: Env): Promise<R
   } catch {
     // best-effort : table absente (migration non jouée) ou DB indispo → on
     // avale. Un beacon ne doit JAMAIS faire échouer la requête.
+  }
+
+  // ── Sprint 25 — Perf budget : audit best-effort si Web Vital tracked >= fail.
+  // Filtré côté perf-budget-log (TRACKED = LCP/CLS/INP, severity === 'fail'
+  // uniquement). Userless (beacon non authentifié → userId = undefined → 'system'
+  // côté audit). Lancé via ctx.waitUntil si dispo (non bloquant), sinon
+  // fire-and-forget (la promesse peut être interrompue après ack mais le worker
+  // tient assez longtemps pour l'INSERT dans la pratique). NEVER throws.
+  try {
+    const payload = { name, value, rating: rating ?? undefined };
+    if (ctx) {
+      ctx.waitUntil(logPerfBudget(env, payload));
+    } else {
+      // Fallback sans ctx : on lance la promesse sans l'attendre (best-effort).
+      void logPerfBudget(env, payload);
+    }
+  } catch {
+    /* never throws */
   }
 
   return ack();

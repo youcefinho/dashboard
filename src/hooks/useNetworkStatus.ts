@@ -54,3 +54,14 @@ export function useNetworkStatus(): NetworkStatus {
 
   return { isOnline, lastChange };
 }
+
+/**
+ * Alias public de `useNetworkStatus` pour sémantique "online/offline" claire.
+ * Comportement byte-identique : retourne `{ isOnline: boolean; lastChange: Date }`.
+ * `lastChange` est initialisé à la date du mount (jamais null).
+ *
+ * @example
+ *   const { isOnline } = useOnlineStatus();
+ *   if (!isOnline) return <OfflineBanner />;
+ */
+export const useOnlineStatus = useNetworkStatus;

@@ -25,6 +25,45 @@ describe('Health Check - Phase C.1', () => {
     expect(json.uptime_s).toBe(5);
   });
 
+  // ── LOT RÉEL §6.1 — champ additif ai_mock ────────────────────────────────
+  it('exposes ai_mock=true when no Anthropic key (mock IA) without regressing shape', async () => {
+    mockDb.first.mockResolvedValueOnce({ val: 1 });
+    const env = { DB: mockDb } as unknown as Env; // pas de ANTHROPIC_API_KEY
+
+    const response = await handleHealth(env, 7);
+    const json = await response.json() as any;
+
+    // Non-régression : champs existants intacts
+    expect(response.status).toBe(200);
+    expect(json.status).toBe('ok');
+    expect(json.db).toBe('ok');
+    expect(json.version).toBe('2.1.0');
+    expect(json.uptime_s).toBe(7);
+    // Champ additif
+    expect(json.ai_mock).toBe(true);
+  });
+
+  it('exposes ai_mock=false when a real Anthropic key is configured', async () => {
+    mockDb.first.mockResolvedValueOnce({ val: 1 });
+    const env = { DB: mockDb, ANTHROPIC_API_KEY: 'sk-ant-real' } as unknown as Env;
+
+    const response = await handleHealth(env, 3);
+    const json = await response.json() as any;
+
+    expect(json.status).toBe('ok');
+    expect(json.ai_mock).toBe(false);
+  });
+
+  it('forces ai_mock=true when USE_MOCKS=true even with a key', async () => {
+    mockDb.first.mockResolvedValueOnce({ val: 1 });
+    const env = { DB: mockDb, ANTHROPIC_API_KEY: 'sk-ant-real', USE_MOCKS: 'true' } as unknown as Env;
+
+    const response = await handleHealth(env, 1);
+    const json = await response.json() as any;
+
+    expect(json.ai_mock).toBe(true);
+  });
+
   it('returns error when DB prepare throws', async () => {
     mockDb.first.mockRejectedValueOnce(new Error('DB connection failed'));
 

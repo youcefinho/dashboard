@@ -1,0 +1,74 @@
+-- ════════════════════════════════════════════════════════════════════════════
+-- Migration seq 108 — LOT STOREFRONT CHECKOUT (Sprint 7 « E-comm checkout —
+-- tunnel acheteur public », 2026-05-21). OUVRE le tunnel acheteur PUBLIC du
+-- module e-commerce (E1-E9), aujourd'hui 100% back-office : toutes les routes
+-- `/boutique/*` sont admin-only, les handlers cart/order exigent `auth.userId`.
+-- AUCUN storefront public n'existe. Ce lot pose le SOCLE : storefront par slug
+-- → panier anonyme (token) → checkout → paiement MOCK → confirmation, en
+-- RÉUTILISANT les cœurs existants (createOrderCore / resolveShippingRate /
+-- computeTax / resolveCouponDiscount / logique cart). Calque EXACT du pattern
+-- public booking (`/api/book/:slug/*`) + funnel (`/api/p/:slug`).
+--
+-- Cette migration N'AJOUTE QUE 2 COLONNES sur `clients` + 1 INDEX de LECTURE
+-- (résolution slug→client_id, borne tenant des routes publiques). AUCUNE table,
+-- AUCUN CHECK, AUCUNE FK, AUCUN DROP/RENAME/rebuild.
+--
+-- depends_on : migration-member-enroll-seq107.sql (seq 107 — dernière migration
+--              du manifest avant ce lot ; chaînage SÉQUENTIEL pour l'ordre,
+--              AUCUNE dépendance de SCHÉMA réelle sur seq 107).
+--
+-- ⚠ STRICTEMENT ADDITIF — INTERDIT : tout DROP / RENAME / rebuild / ALTER d'une
+--   CONTRAINTE existante. `ADD COLUMN` (sans CHECK, sans NOT NULL, sans FK,
+--   défaut NULL) NE déclenche PAS de rebuild SQLite (additif pur, rétro-compat
+--   byte : toutes les rows clients legacy restent valides bit-pour-bit, la
+--   colonne y vaut NULL).
+--
+--   CHECK e-commerce INTOUCHABLES (rebuild INTERDIT — le checkout public produit
+--   EXACTEMENT les statuts que createOrderCore produit déjà) : `orders.status`
+--   ('pending'), `orders.financial_status` ('unpaid'), `orders.fulfillment_status`
+--   ('unfulfilled'), `payments.status`. AUCUN ALTER ici. Le tunnel public
+--   N'INVENTE AUCUN statut.
+--
+--   AUCUNE FK (D1/SQLite : FK ⇒ rebuild au moindre ALTER ⇒ interdit). Le lien
+--   carts.client_id ↔ clients(id), orders.client_id ↔ clients(id) reste
+--   APPLICATIF (borné serveur via resolveStoreClientId(slug)).
+--
+-- NOTE — choix `store_slug` : la table `clients` (schema.sql + ALTERs seq 14 /
+--   27 / E1-m2 / E-R-m2 / LOT1 / lotC) N'A PAS de slug boutique. Il existe un
+--   `slug` au niveau PRODUIT (products.slug) et un catalogue public API-key-scopé
+--   (handlePublicListProducts), MAIS AUCUN identifiant de vitrine au niveau
+--   CLIENT. On AJOUTE donc `store_slug` (résolution storefront `/store/:slug` →
+--   client_id). store_settings_json = config vitrine (activée, nom affiché,
+--   devise…), défaut NULL.
+--
+-- TOLÉRANCE best-effort : `ADD COLUMN` n'est PAS idempotent sur SQLite/D1 (rejeu
+--   ⇒ « duplicate column ») ; jouer UNE SEULE FOIS. `CREATE INDEX IF NOT EXISTS`
+--   reste idempotent. scripts/migrate.ts est FIGÉ, NON modifié — l'entrée
+--   manifest seq 108 est OBLIGATOIRE (ajoutée Phase A).
+--
+-- Noms de colonnes VÉRIFIÉS (clients) : schema.sql + ALTERs existants ne
+--   contiennent NI store_slug NI store_settings_json (grep ligne-à-ligne).
+--
+-- Exécution manuelle :
+--   npx wrangler d1 execute intralys-crm --file=migration-storefront-seq108.sql --remote
+-- ════════════════════════════════════════════════════════════════════════════
+
+-- 1) store_slug — identifiant de vitrine publique (résolution /store/:slug →
+--    clients.id). Défaut NULL : un tenant sans vitrine reste invisible au public
+--    (resolveStoreClientId renvoie null ⇒ 404, anti-fuite cross-tenant).
+ALTER TABLE clients ADD COLUMN store_slug TEXT;
+
+-- 2) store_settings_json — config vitrine (JSON : { enabled, name, currency… }).
+--    Défaut NULL = vitrine non configurée. Lu/écrit par les handlers settings PRO.
+ALTER TABLE clients ADD COLUMN store_settings_json TEXT;
+
+-- 3) idx_clients_store_slug — lookup O(index) du slug→client_id sur CHAQUE route
+--    publique storefront (resolveStoreClientId). Sans index : full scan clients.
+CREATE INDEX IF NOT EXISTS idx_clients_store_slug ON clients(store_slug);
+
+-- NB : 2 colonnes ADDITIVES (NULL, sans CHECK/NOT NULL/FK) + 1 index de LECTURE.
+-- AUCUN CHECK modifié (orders.status / financial_status / fulfillment_status /
+-- payments.status INTOUCHÉS). AUCUNE FK. AUCUN DROP / RENAME / rebuild. AUCUNE
+-- capability ajoutée (routes publiques = sans capability, bornées par slug ;
+-- settings PRO = capability boutique EXISTANTE). Paiement MOCK impératif (E4/E6
+-- INACTIF — payments_live_enabled=0). Contrat figé docs/LOT-STOREFRONT-CHECKOUT.md §6.

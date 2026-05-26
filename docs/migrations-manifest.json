@@ -4,87 +4,2039 @@
     "generated": "2026-05-16",
     "read_only": true,
     "source_of_truth": "contenu SQL réel (grep ligne-à-ligne), pas commentaires d'ordre",
-    "bootstrap_hors_tracker": ["schema.sql", "seed.sql"],
-    "redondants_a_ne_pas_jouer": ["deploy-migrations.sql", "deploy-safe.sql"],
+    "bootstrap_hors_tracker": [
+      "schema.sql",
+      "seed.sql"
+    ],
+    "redondants_a_ne_pas_jouer": [
+      "deploy-migrations.sql",
+      "deploy-safe.sql"
+    ],
     "runner_bug": "scripts/migrate.ts:53-69 getOrderedMigrations — 25 fichiers (sprint43+/sprintE*/sprintER*) scannes mais jamais ordonnes => jamais appliques. Corriger en S2. Voir docs/MIGRATIONS-ORDER.md."
   },
   "migrations": [
-    { "seq": 1,  "file": "migration-phase1.sql",  "depends_on": [], "objects": ["table:lead_tags", "table:activity_log", "alter:leads"], "risk": "low" },
-    { "seq": 2,  "file": "migration-phase2.sql",  "depends_on": [], "objects": ["table:messages", "table:email_templates"], "risk": "low" },
-    { "seq": 3,  "file": "migration-phase3.sql",  "depends_on": ["migration-phase1.sql"], "objects": ["table:workflows", "table:workflow_steps", "table:workflow_enrollments", "table:workflow_execution_log"], "risk": "medium" },
-    { "seq": 4,  "file": "migration-phase4.sql",  "depends_on": ["migration-phase1.sql"], "objects": ["table:appointments"], "risk": "low" },
-    { "seq": 5,  "file": "migration-phase5.sql",  "depends_on": ["migration-phase1.sql"], "objects": ["table:audit_log", "table:notifications", "table:tasks", "alter:users"], "risk": "medium" },
-    { "seq": 6,  "file": "migration-phase6.sql",  "depends_on": ["migration-phase1.sql"], "objects": ["table:pipelines", "table:pipeline_stages", "alter:leads"], "risk": "medium" },
-    { "seq": 7,  "file": "migration-phase7.sql",  "depends_on": ["migration-phase1.sql"], "objects": ["table:booking_pages", "table:bookings", "table:forms", "table:form_submissions", "alter:users", "table:ai_conversations", "table:ai_messages"], "risk": "medium" },
-    { "seq": 8,  "file": "migration-phase8.sql",  "depends_on": [], "objects": ["table:unsubscribes", "table:consent_log"], "risk": "low" },
-    { "seq": 9,  "file": "migration-phase9.sql",  "depends_on": ["migration-phase1.sql"], "objects": ["table:custom_field_defs", "table:custom_field_values", "table:smart_lists"], "risk": "low" },
-    { "seq": 10, "file": "migration-phase10.sql", "depends_on": ["migration-phase1.sql"], "objects": ["alter:leads"], "risk": "medium" },
-    { "seq": 11, "file": "migration-phase11.sql", "depends_on": ["migration-phase1.sql"], "objects": ["table:files", "table:document_templates", "table:documents"], "risk": "low" },
-    { "seq": 12, "file": "migration-phase12.sql", "depends_on": ["migration-phase1.sql"], "objects": ["table:review_requests", "table:reviews_cache"], "risk": "low" },
-    { "seq": 13, "file": "migration-phase13.sql", "depends_on": [], "objects": ["table:migration_jobs", "table:migration_field_map"], "risk": "low" },
-    { "seq": 14, "file": "migration_p3_1.sql",   "depends_on": [], "objects": ["alter:clients"], "risk": "low" },
-    { "seq": 15, "file": "migration_p3_2.sql",   "depends_on": ["migration-phase1.sql"], "objects": ["table:files", "table:document_templates", "table:documents"], "risk": "low" },
-    { "seq": 16, "file": "migration_p3_4.sql",   "depends_on": ["migration-phase1.sql"], "objects": ["table:custom_field_defs", "table:custom_field_values", "table:smart_lists"], "risk": "low" },
-    { "seq": 17, "file": "migration_p3_7.sql",   "depends_on": ["migration-phase3.sql"], "objects": ["alter:workflow_steps"], "risk": "medium" },
-    { "seq": 18, "file": "migration_p3_8.sql",   "depends_on": [], "objects": ["table:invoices", "table:coupons"], "risk": "low" },
-    { "seq": 19, "file": "migration_p3_9.sql",   "depends_on": ["migration-phase5.sql"], "objects": ["table:agencies", "table:subscriptions", "alter:users"], "risk": "medium" },
-    { "seq": 20, "file": "migration_p3_10.sql",  "depends_on": ["migration-phase1.sql"], "objects": ["alter:leads", "table:device_tokens", "table:api_keys"], "risk": "high" },
-    { "seq": 21, "file": "migration-sprint2-phase0.sql", "depends_on": ["migration-phase1.sql"], "objects": ["table:score_profiles", "table:lead_scores", "table:lead_notes", "table:lead_attributions", "table:smart_lists", "table:user_preferences"], "risk": "low" },
-    { "seq": 22, "file": "migration-sprint2-phase1.sql", "depends_on": ["migration-sprint2-phase0.sql"], "objects": ["alter:leads"], "risk": "medium" },
-    { "seq": 23, "file": "migration-sprint3.sql", "depends_on": ["migration-phase2.sql"], "objects": ["table:conversations", "alter:messages"], "risk": "low" },
-    { "seq": 24, "file": "migration-phase14.sql", "depends_on": ["migration-phase5.sql"], "objects": ["table:broadcasts"], "risk": "low" },
-    { "seq": 25, "file": "migration-phase15.sql", "depends_on": ["migration-phase1.sql"], "objects": ["table:webchat_widgets", "table:webchat_sessions"], "risk": "low" },
-    { "seq": 26, "file": "migration-phase16.sql", "depends_on": [], "objects": ["table:meta_connections"], "risk": "low" },
-    { "seq": 27, "file": "migration-phase17.sql", "depends_on": ["migration-phase5.sql"], "objects": ["table:saved_replies", "alter:users"], "risk": "medium" },
-    { "seq": 28, "file": "migration-phase18.sql", "depends_on": [], "objects": ["table:scheduled_messages"], "risk": "low" },
-    { "seq": 29, "file": "migration-phase21.sql", "depends_on": [], "objects": [], "risk": "low" },
-    { "seq": 30, "file": "migration-phase22.sql", "depends_on": ["migration-phase1.sql", "migration-phase6.sql"], "objects": ["table:pipelines", "table:pipeline_stages", "table:lost_reasons", "alter:leads"], "risk": "medium" },
-    { "seq": 31, "file": "migration-phase23.sql", "depends_on": ["migration-phase3.sql"], "objects": ["alter:workflows", "table:workflow_folders", "alter:workflow_steps", "table:trigger_links", "table:trigger_link_clicks", "table:message_events"], "risk": "medium" },
-    { "seq": 32, "file": "migration-phase24.sql", "depends_on": ["migration-phase4.sql"], "objects": ["table:calendars", "table:availability_rules", "table:date_overrides", "alter:appointments"], "risk": "medium" },
-    { "seq": 33, "file": "migration-phase25.sql", "depends_on": ["migration-phase5.sql"], "objects": ["table:subtasks", "table:task_comments", "table:task_attachments", "table:task_templates", "alter:tasks"], "risk": "medium" },
-    { "seq": 34, "file": "migration-phase26.sql", "depends_on": ["migration-phase2.sql"], "objects": ["table:snippets", "alter:email_templates"], "risk": "low" },
-    { "seq": 35, "file": "migration-phase27.sql", "depends_on": ["migration-phase1.sql"], "objects": ["alter:clients", "alter:leads", "table:signing_tokens", "table:dashboard_layouts", "table:industry_packs"], "risk": "medium" },
-    { "seq": 36, "file": "migration-phase28.sql", "depends_on": [], "objects": ["alter:admin_sessions", "table:backup_codes"], "risk": "low" },
-    { "seq": 37, "file": "migration-phase29.sql", "depends_on": ["migration-phase5.sql"], "objects": ["table:notification_preferences", "alter:users"], "risk": "medium" },
-    { "seq": 38, "file": "migration-phase30.sql", "depends_on": ["migration-phase2.sql"], "objects": ["alter:email_templates", "table:template_folders"], "risk": "low" },
-    { "seq": 39, "file": "migration-phase31.sql", "depends_on": ["migration-phase7.sql"], "objects": ["alter:forms", "table:form_views", "table:form_field_options"], "risk": "low" },
-    { "seq": 40, "file": "migration-phase32.sql", "depends_on": [], "objects": ["table:user_preferences", "table:api_keys", "table:webhook_subscriptions", "drop:totp_backup_codes"], "risk": "medium" },
-    { "seq": 41, "file": "migration-phase33.sql", "depends_on": [], "objects": ["table:saved_reports"], "risk": "low" },
-    { "seq": 42, "file": "migration-phase34.sql", "depends_on": [], "objects": ["table:properties"], "risk": "low" },
-    { "seq": 43, "file": "migration-phase35.sql", "depends_on": [], "objects": ["table:beta_invite_codes", "table:feedback", "table:nps_responses"], "risk": "low" },
-    { "seq": 44, "file": "migration-phase36.sql", "depends_on": ["migration-phase5.sql"], "objects": ["table:device_tokens"], "risk": "low" },
-    { "seq": 45, "file": "migration-phase37.sql", "depends_on": [], "objects": ["table:password_reset_tokens"], "risk": "low" },
-    { "seq": 46, "file": "migration-phase38.sql", "depends_on": ["migration-phase32.sql"], "objects": ["table:webhook_deliveries"], "risk": "low" },
-    { "seq": 47, "file": "migration-phase39.sql", "depends_on": [], "objects": ["drop:totp_backup_codes"], "risk": "low" },
-    { "seq": 48, "file": "migration-phase40.sql", "depends_on": [], "objects": ["table:migration_sessions", "table:migration_id_map", "table:ghl_tokens"], "risk": "low" },
-    { "seq": 49, "file": "migration-phase41.sql", "depends_on": ["migration-phase2.sql", "migration-phase40.sql"], "objects": ["rebuild:messages"], "risk": "high" },
-    { "seq": 50, "file": "migration-sprint43.sql", "depends_on": ["migration-phase2.sql", "migration-phase1.sql"], "objects": ["table:message_reactions", "table:quick_replies", "table:lead_score_cache"], "risk": "low" },
-    { "seq": 51, "file": "migration-sprint46.sql", "depends_on": ["migration-phase5.sql"], "objects": ["table:dashboards"], "risk": "low" },
-    { "seq": 52, "file": "migration-sprint46-m2.sql", "depends_on": [], "objects": ["table:feature_events"], "risk": "low" },
-    { "seq": 53, "file": "migration-sprint46-m3.sql", "depends_on": ["migration-phase29.sql"], "objects": ["index:notifications", "table:notification_preferences_v2"], "risk": "medium" },
-    { "seq": 54, "file": "migration-sprint49-m2.sql", "depends_on": ["migration-phase1.sql"], "objects": ["table:lead_predictions"], "risk": "low" },
-    { "seq": 55, "file": "migration-sprint50-m3.sql", "depends_on": [], "objects": ["table:beta_signups", "table:magic_tokens", "table:beta_feedback", "table:roadmap_items", "table:roadmap_votes"], "risk": "low" },
-    { "seq": 56, "file": "migration-sprint51-m1.sql", "depends_on": ["migration-phase1.sql"], "objects": ["table:meta_lead_connections", "table:google_lead_connections", "alter:leads"], "risk": "high" },
-    { "seq": 57, "file": "migration-sprint51-m2.sql", "depends_on": ["migration-sprint51-m1.sql"], "objects": ["table:lead_sources", "alter:leads"], "risk": "high" },
-    { "seq": 58, "file": "migration-sprintE1-m1-ecommerce-schema.sql", "depends_on": [], "objects": ["table:products", "table:product_categories", "table:product_category_links", "table:product_variants", "table:product_images", "table:inventory", "table:inventory_movements", "table:orders", "table:order_items", "table:customers", "table:carts"], "risk": "medium" },
-    { "seq": 59, "file": "migration-sprintE1-m2-modules-role.sql", "depends_on": ["migration-phase5.sql", "migration-phase7.sql", "migration-phase17.sql", "migration-phase29.sql", "migration_p3_9.sql"], "objects": ["alter:clients", "rebuild:users"], "risk": "high" },
-    { "seq": 60, "file": "migration-sprintE2-m2.sql", "depends_on": ["migration-sprintE1-m1-ecommerce-schema.sql"], "objects": ["alter:inventory"], "risk": "low" },
-    { "seq": 61, "file": "migration-sprintE3-m1.sql", "depends_on": ["migration-sprintE1-m1-ecommerce-schema.sql"], "objects": ["table:order_number_counters", "alter:orders"], "risk": "medium" },
-    { "seq": 62, "file": "migration-sprintE4-m1.sql", "depends_on": ["migration-sprintE3-m1.sql"], "objects": ["table:payments", "table:payment_events", "table:payment_provider_config"], "risk": "high" },
-    { "seq": 63, "file": "migration-sprintE5-m1.sql", "depends_on": ["migration-sprintE3-m1.sql"], "objects": ["table:shipments", "table:shipment_items"], "risk": "medium" },
-    { "seq": 64, "file": "migration-sprintE5-m2.sql", "depends_on": ["migration-sprintE5-m1.sql"], "objects": ["table:shipping_zones", "table:shipping_rates"], "risk": "low" },
-    { "seq": 65, "file": "migration-sprintE6-m1.sql", "depends_on": ["migration-sprintE4-m1.sql"], "objects": ["table:refunds"], "risk": "high" },
-    { "seq": 66, "file": "migration-sprintE6-m2.sql", "depends_on": ["migration-sprintE6-m1.sql"], "objects": ["table:disputes", "table:return_requests", "table:rma_items"], "risk": "high" },
-    { "seq": 67, "file": "migration-sprintE7-m1.sql", "depends_on": ["migration-sprintE1-m1-ecommerce-schema.sql"], "objects": ["index:orders", "index:carts"], "risk": "low" },
-    { "seq": 68, "file": "migration-sprintE7-m2.sql", "depends_on": ["migration-sprintE1-m1-ecommerce-schema.sql"], "objects": ["table:customer_segment_config"], "risk": "low" },
-    { "seq": 69, "file": "migration-sprintE8-m1.sql", "depends_on": ["migration-sprintE1-m1-ecommerce-schema.sql"], "objects": ["table:sales_channels", "table:channel_inventory_allocation"], "risk": "medium" },
-    { "seq": 70, "file": "migration-sprintE8-m2.sql", "depends_on": ["migration-sprintE8-m1.sql"], "objects": ["table:channel_product_map", "table:channel_sync_log"], "risk": "medium" },
-    { "seq": 71, "file": "migration-sprintER-m1.sql", "depends_on": ["migration-sprintE3-m1.sql"], "objects": ["alter:orders", "alter:order_items"], "risk": "medium" },
-    { "seq": 72, "file": "migration-sprintER-m2.sql", "depends_on": ["migration-sprintE1-m1-ecommerce-schema.sql"], "objects": ["alter:clients"], "risk": "medium" },
-    { "seq": 73, "file": "migration-sprintE9-m1.sql", "depends_on": ["migration-phase3.sql", "migration-sprintE1-m1-ecommerce-schema.sql"], "objects": ["rebuild:workflow_enrollments"], "risk": "high" },
-    { "seq": 74, "file": "migration-sprintE9-m3.sql", "depends_on": ["migration-phase27.sql"], "objects": ["seed:industry_packs"], "risk": "low" },
-    { "seq": 75, "file": "migration-sprintS7-m1.sql", "depends_on": ["migration-sprintE8-m1.sql"], "objects": ["table:integration_secrets"], "risk": "low" },
-    { "seq": 76, "file": "migration-sprintS8-m1.sql", "depends_on": ["migration-sprintE1-m2-modules-role.sql"], "objects": ["table:onboarding_state"], "risk": "low" },
-    { "seq": 77, "file": "migration-sprintS9-m1.sql", "depends_on": ["migration-phase5.sql", "migration-sprintE1-m1-ecommerce-schema.sql"], "objects": ["index:leads", "index:tasks", "index:order_items", "table:web_vitals"], "risk": "low" }
+    {
+      "seq": 1,
+      "file": "migration-phase1.sql",
+      "depends_on": [],
+      "objects": [
+        "table:lead_tags",
+        "table:activity_log",
+        "alter:leads"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 2,
+      "file": "migration-phase2.sql",
+      "depends_on": [],
+      "objects": [
+        "table:messages",
+        "table:email_templates"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 3,
+      "file": "migration-phase3.sql",
+      "depends_on": [
+        "migration-phase1.sql"
+      ],
+      "objects": [
+        "table:workflows",
+        "table:workflow_steps",
+        "table:workflow_enrollments",
+        "table:workflow_execution_log"
+      ],
+      "risk": "medium"
+    },
+    {
+      "seq": 4,
+      "file": "migration-phase4.sql",
+      "depends_on": [
+        "migration-phase1.sql"
+      ],
+      "objects": [
+        "table:appointments"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 5,
+      "file": "migration-phase5.sql",
+      "depends_on": [
+        "migration-phase1.sql"
+      ],
+      "objects": [
+        "table:audit_log",
+        "table:notifications",
+        "table:tasks",
+        "alter:users"
+      ],
+      "risk": "medium"
+    },
+    {
+      "seq": 6,
+      "file": "migration-phase6.sql",
+      "depends_on": [
+        "migration-phase1.sql"
+      ],
+      "objects": [
+        "table:pipelines",
+        "table:pipeline_stages",
+        "alter:leads"
+      ],
+      "risk": "medium"
+    },
+    {
+      "seq": 7,
+      "file": "migration-phase7.sql",
+      "depends_on": [
+        "migration-phase1.sql"
+      ],
+      "objects": [
+        "table:booking_pages",
+        "table:bookings",
+        "table:forms",
+        "table:form_submissions",
+        "alter:users",
+        "table:ai_conversations",
+        "table:ai_messages"
+      ],
+      "risk": "medium"
+    },
+    {
+      "seq": 8,
+      "file": "migration-phase8.sql",
+      "depends_on": [],
+      "objects": [
+        "table:unsubscribes",
+        "table:consent_log"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 9,
+      "file": "migration-phase9.sql",
+      "depends_on": [
+        "migration-phase1.sql"
+      ],
+      "objects": [
+        "table:custom_field_defs",
+        "table:custom_field_values",
+        "table:smart_lists"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 10,
+      "file": "migration-phase10.sql",
+      "depends_on": [
+        "migration-phase1.sql"
+      ],
+      "objects": [
+        "alter:leads"
+      ],
+      "risk": "medium"
+    },
+    {
+      "seq": 11,
+      "file": "migration-phase11.sql",
+      "depends_on": [
+        "migration-phase1.sql"
+      ],
+      "objects": [
+        "table:files",
+        "table:document_templates",
+        "table:documents"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 12,
+      "file": "migration-phase12.sql",
+      "depends_on": [
+        "migration-phase1.sql"
+      ],
+      "objects": [
+        "table:review_requests",
+        "table:reviews_cache"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 13,
+      "file": "migration-phase13.sql",
+      "depends_on": [],
+      "objects": [
+        "table:migration_jobs",
+        "table:migration_field_map"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 14,
+      "file": "migration_p3_1.sql",
+      "depends_on": [],
+      "objects": [
+        "alter:clients"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 15,
+      "file": "migration_p3_2.sql",
+      "depends_on": [
+        "migration-phase1.sql"
+      ],
+      "objects": [
+        "table:files",
+        "table:document_templates",
+        "table:documents"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 16,
+      "file": "migration_p3_4.sql",
+      "depends_on": [
+        "migration-phase1.sql"
+      ],
+      "objects": [
+        "table:custom_field_defs",
+        "table:custom_field_values",
+        "table:smart_lists"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 17,
+      "file": "migration_p3_7.sql",
+      "depends_on": [
+        "migration-phase3.sql"
+      ],
+      "objects": [
+        "alter:workflow_steps"
+      ],
+      "risk": "medium"
+    },
+    {
+      "seq": 18,
+      "file": "migration_p3_8.sql",
+      "depends_on": [],
+      "objects": [
+        "table:invoices",
+        "table:coupons"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 19,
+      "file": "migration_p3_9.sql",
+      "depends_on": [
+        "migration-phase5.sql"
+      ],
+      "objects": [
+        "table:agencies",
+        "table:subscriptions",
+        "alter:users"
+      ],
+      "risk": "medium"
+    },
+    {
+      "seq": 20,
+      "file": "migration_p3_10.sql",
+      "depends_on": [
+        "migration-phase1.sql"
+      ],
+      "objects": [
+        "alter:leads",
+        "table:device_tokens",
+        "table:api_keys"
+      ],
+      "risk": "high"
+    },
+    {
+      "seq": 21,
+      "file": "migration-sprint2-phase0.sql",
+      "depends_on": [
+        "migration-phase1.sql"
+      ],
+      "objects": [
+        "table:score_profiles",
+        "table:lead_scores",
+        "table:lead_notes",
+        "table:lead_attributions",
+        "table:smart_lists",
+        "table:user_preferences"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 22,
+      "file": "migration-sprint2-phase1.sql",
+      "depends_on": [
+        "migration-sprint2-phase0.sql"
+      ],
+      "objects": [
+        "alter:leads"
+      ],
+      "risk": "medium"
+    },
+    {
+      "seq": 23,
+      "file": "migration-sprint3.sql",
+      "depends_on": [
+        "migration-phase2.sql"
+      ],
+      "objects": [
+        "table:conversations",
+        "alter:messages"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 24,
+      "file": "migration-phase14.sql",
+      "depends_on": [
+        "migration-phase5.sql"
+      ],
+      "objects": [
+        "table:broadcasts"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 25,
+      "file": "migration-phase15.sql",
+      "depends_on": [
+        "migration-phase1.sql"
+      ],
+      "objects": [
+        "table:webchat_widgets",
+        "table:webchat_sessions"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 26,
+      "file": "migration-phase16.sql",
+      "depends_on": [],
+      "objects": [
+        "table:meta_connections"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 27,
+      "file": "migration-phase17.sql",
+      "depends_on": [
+        "migration-phase5.sql"
+      ],
+      "objects": [
+        "table:saved_replies",
+        "alter:users"
+      ],
+      "risk": "medium"
+    },
+    {
+      "seq": 28,
+      "file": "migration-phase18.sql",
+      "depends_on": [],
+      "objects": [
+        "table:scheduled_messages"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 29,
+      "file": "migration-phase21.sql",
+      "depends_on": [],
+      "objects": [],
+      "risk": "low"
+    },
+    {
+      "seq": 30,
+      "file": "migration-phase22.sql",
+      "depends_on": [
+        "migration-phase1.sql",
+        "migration-phase6.sql"
+      ],
+      "objects": [
+        "table:pipelines",
+        "table:pipeline_stages",
+        "table:lost_reasons",
+        "alter:leads"
+      ],
+      "risk": "medium"
+    },
+    {
+      "seq": 31,
+      "file": "migration-phase23.sql",
+      "depends_on": [
+        "migration-phase3.sql"
+      ],
+      "objects": [
+        "alter:workflows",
+        "table:workflow_folders",
+        "alter:workflow_steps",
+        "table:trigger_links",
+        "table:trigger_link_clicks",
+        "table:message_events"
+      ],
+      "risk": "medium"
+    },
+    {
+      "seq": 32,
+      "file": "migration-phase24.sql",
+      "depends_on": [
+        "migration-phase4.sql"
+      ],
+      "objects": [
+        "table:calendars",
+        "table:availability_rules",
+        "table:date_overrides",
+        "alter:appointments"
+      ],
+      "risk": "medium"
+    },
+    {
+      "seq": 33,
+      "file": "migration-phase25.sql",
+      "depends_on": [
+        "migration-phase5.sql"
+      ],
+      "objects": [
+        "table:subtasks",
+        "table:task_comments",
+        "table:task_attachments",
+        "table:task_templates",
+        "alter:tasks"
+      ],
+      "risk": "medium"
+    },
+    {
+      "seq": 34,
+      "file": "migration-phase26.sql",
+      "depends_on": [
+        "migration-phase2.sql"
+      ],
+      "objects": [
+        "table:snippets",
+        "alter:email_templates"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 35,
+      "file": "migration-phase27.sql",
+      "depends_on": [
+        "migration-phase1.sql"
+      ],
+      "objects": [
+        "alter:clients",
+        "alter:leads",
+        "table:signing_tokens",
+        "table:dashboard_layouts",
+        "table:industry_packs"
+      ],
+      "risk": "medium"
+    },
+    {
+      "seq": 36,
+      "file": "migration-phase28.sql",
+      "depends_on": [],
+      "objects": [
+        "alter:admin_sessions",
+        "table:backup_codes"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 37,
+      "file": "migration-phase29.sql",
+      "depends_on": [
+        "migration-phase5.sql"
+      ],
+      "objects": [
+        "table:notification_preferences",
+        "alter:users"
+      ],
+      "risk": "medium"
+    },
+    {
+      "seq": 38,
+      "file": "migration-phase30.sql",
+      "depends_on": [
+        "migration-phase2.sql"
+      ],
+      "objects": [
+        "alter:email_templates",
+        "table:template_folders"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 39,
+      "file": "migration-phase31.sql",
+      "depends_on": [
+        "migration-phase7.sql"
+      ],
+      "objects": [
+        "alter:forms",
+        "table:form_views",
+        "table:form_field_options"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 40,
+      "file": "migration-phase32.sql",
+      "depends_on": [],
+      "objects": [
+        "table:user_preferences",
+        "table:api_keys",
+        "table:webhook_subscriptions",
+        "drop:totp_backup_codes"
+      ],
+      "risk": "medium"
+    },
+    {
+      "seq": 41,
+      "file": "migration-phase33.sql",
+      "depends_on": [],
+      "objects": [
+        "table:saved_reports"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 42,
+      "file": "migration-phase34.sql",
+      "depends_on": [],
+      "objects": [
+        "table:properties"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 43,
+      "file": "migration-phase35.sql",
+      "depends_on": [],
+      "objects": [
+        "table:beta_invite_codes",
+        "table:feedback",
+        "table:nps_responses"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 44,
+      "file": "migration-phase36.sql",
+      "depends_on": [
+        "migration-phase5.sql"
+      ],
+      "objects": [
+        "table:device_tokens"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 45,
+      "file": "migration-phase37.sql",
+      "depends_on": [],
+      "objects": [
+        "table:password_reset_tokens"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 46,
+      "file": "migration-phase38.sql",
+      "depends_on": [
+        "migration-phase32.sql"
+      ],
+      "objects": [
+        "table:webhook_deliveries"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 47,
+      "file": "migration-phase39.sql",
+      "depends_on": [],
+      "objects": [
+        "drop:totp_backup_codes"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 48,
+      "file": "migration-phase40.sql",
+      "depends_on": [],
+      "objects": [
+        "table:migration_sessions",
+        "table:migration_id_map",
+        "table:ghl_tokens"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 49,
+      "file": "migration-phase41.sql",
+      "depends_on": [
+        "migration-phase2.sql",
+        "migration-phase40.sql"
+      ],
+      "objects": [
+        "rebuild:messages"
+      ],
+      "risk": "high"
+    },
+    {
+      "seq": 50,
+      "file": "migration-sprint43.sql",
+      "depends_on": [
+        "migration-phase2.sql",
+        "migration-phase1.sql"
+      ],
+      "objects": [
+        "table:message_reactions",
+        "table:quick_replies",
+        "table:lead_score_cache"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 51,
+      "file": "migration-sprint46.sql",
+      "depends_on": [
+        "migration-phase5.sql"
+      ],
+      "objects": [
+        "table:dashboards"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 52,
+      "file": "migration-sprint46-m2.sql",
+      "depends_on": [],
+      "objects": [
+        "table:feature_events"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 53,
+      "file": "migration-sprint46-m3.sql",
+      "depends_on": [
+        "migration-phase29.sql"
+      ],
+      "objects": [
+        "index:notifications",
+        "table:notification_preferences_v2"
+      ],
+      "risk": "medium"
+    },
+    {
+      "seq": 54,
+      "file": "migration-sprint49-m2.sql",
+      "depends_on": [
+        "migration-phase1.sql"
+      ],
+      "objects": [
+        "table:lead_predictions"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 55,
+      "file": "migration-sprint50-m3.sql",
+      "depends_on": [],
+      "objects": [
+        "table:beta_signups",
+        "table:magic_tokens",
+        "table:beta_feedback",
+        "table:roadmap_items",
+        "table:roadmap_votes"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 56,
+      "file": "migration-sprint51-m1.sql",
+      "depends_on": [
+        "migration-phase1.sql"
+      ],
+      "objects": [
+        "table:meta_lead_connections",
+        "table:google_lead_connections",
+        "alter:leads"
+      ],
+      "risk": "high"
+    },
+    {
+      "seq": 57,
+      "file": "migration-sprint51-m2.sql",
+      "depends_on": [
+        "migration-sprint51-m1.sql"
+      ],
+      "objects": [
+        "table:lead_sources",
+        "alter:leads"
+      ],
+      "risk": "high"
+    },
+    {
+      "seq": 58,
+      "file": "migration-sprintE1-m1-ecommerce-schema.sql",
+      "depends_on": [],
+      "objects": [
+        "table:products",
+        "table:product_categories",
+        "table:product_category_links",
+        "table:product_variants",
+        "table:product_images",
+        "table:inventory",
+        "table:inventory_movements",
+        "table:orders",
+        "table:order_items",
+        "table:customers",
+        "table:carts"
+      ],
+      "risk": "medium"
+    },
+    {
+      "seq": 59,
+      "file": "migration-sprintE1-m2-modules-role.sql",
+      "depends_on": [
+        "migration-phase5.sql",
+        "migration-phase7.sql",
+        "migration-phase17.sql",
+        "migration-phase29.sql",
+        "migration_p3_9.sql"
+      ],
+      "objects": [
+        "alter:clients",
+        "rebuild:users"
+      ],
+      "risk": "high"
+    },
+    {
+      "seq": 60,
+      "file": "migration-sprintE2-m2.sql",
+      "depends_on": [
+        "migration-sprintE1-m1-ecommerce-schema.sql"
+      ],
+      "objects": [
+        "alter:inventory"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 61,
+      "file": "migration-sprintE3-m1.sql",
+      "depends_on": [
+        "migration-sprintE1-m1-ecommerce-schema.sql"
+      ],
+      "objects": [
+        "table:order_number_counters",
+        "alter:orders"
+      ],
+      "risk": "medium"
+    },
+    {
+      "seq": 62,
+      "file": "migration-sprintE4-m1.sql",
+      "depends_on": [
+        "migration-sprintE3-m1.sql"
+      ],
+      "objects": [
+        "table:payments",
+        "table:payment_events",
+        "table:payment_provider_config"
+      ],
+      "risk": "high"
+    },
+    {
+      "seq": 63,
+      "file": "migration-sprintE5-m1.sql",
+      "depends_on": [
+        "migration-sprintE3-m1.sql"
+      ],
+      "objects": [
+        "table:shipments",
+        "table:shipment_items"
+      ],
+      "risk": "medium"
+    },
+    {
+      "seq": 64,
+      "file": "migration-sprintE5-m2.sql",
+      "depends_on": [
+        "migration-sprintE5-m1.sql"
+      ],
+      "objects": [
+        "table:shipping_zones",
+        "table:shipping_rates"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 65,
+      "file": "migration-sprintE6-m1.sql",
+      "depends_on": [
+        "migration-sprintE4-m1.sql"
+      ],
+      "objects": [
+        "table:refunds"
+      ],
+      "risk": "high"
+    },
+    {
+      "seq": 66,
+      "file": "migration-sprintE6-m2.sql",
+      "depends_on": [
+        "migration-sprintE6-m1.sql"
+      ],
+      "objects": [
+        "table:disputes",
+        "table:return_requests",
+        "table:rma_items"
+      ],
+      "risk": "high"
+    },
+    {
+      "seq": 67,
+      "file": "migration-sprintE7-m1.sql",
+      "depends_on": [
+        "migration-sprintE1-m1-ecommerce-schema.sql"
+      ],
+      "objects": [
+        "index:orders",
+        "index:carts"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 68,
+      "file": "migration-sprintE7-m2.sql",
+      "depends_on": [
+        "migration-sprintE1-m1-ecommerce-schema.sql"
+      ],
+      "objects": [
+        "table:customer_segment_config"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 69,
+      "file": "migration-sprintE8-m1.sql",
+      "depends_on": [
+        "migration-sprintE1-m1-ecommerce-schema.sql"
+      ],
+      "objects": [
+        "table:sales_channels",
+        "table:channel_inventory_allocation"
+      ],
+      "risk": "medium"
+    },
+    {
+      "seq": 70,
+      "file": "migration-sprintE8-m2.sql",
+      "depends_on": [
+        "migration-sprintE8-m1.sql"
+      ],
+      "objects": [
+        "table:channel_product_map",
+        "table:channel_sync_log"
+      ],
+      "risk": "medium"
+    },
+    {
+      "seq": 71,
+      "file": "migration-sprintER-m1.sql",
+      "depends_on": [
+        "migration-sprintE3-m1.sql"
+      ],
+      "objects": [
+        "alter:orders",
+        "alter:order_items"
+      ],
+      "risk": "medium"
+    },
+    {
+      "seq": 72,
+      "file": "migration-sprintER-m2.sql",
+      "depends_on": [
+        "migration-sprintE1-m1-ecommerce-schema.sql"
+      ],
+      "objects": [
+        "alter:clients"
+      ],
+      "risk": "medium"
+    },
+    {
+      "seq": 73,
+      "file": "migration-sprintE9-m1.sql",
+      "depends_on": [
+        "migration-phase3.sql",
+        "migration-sprintE1-m1-ecommerce-schema.sql"
+      ],
+      "objects": [
+        "rebuild:workflow_enrollments"
+      ],
+      "risk": "high"
+    },
+    {
+      "seq": 74,
+      "file": "migration-sprintE9-m3.sql",
+      "depends_on": [
+        "migration-phase27.sql"
+      ],
+      "objects": [
+        "seed:industry_packs"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 75,
+      "file": "migration-sprintS7-m1.sql",
+      "depends_on": [
+        "migration-sprintE8-m1.sql"
+      ],
+      "objects": [
+        "table:integration_secrets"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 76,
+      "file": "migration-sprintS8-m1.sql",
+      "depends_on": [
+        "migration-sprintE1-m2-modules-role.sql"
+      ],
+      "objects": [
+        "table:onboarding_state"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 77,
+      "file": "migration-sprintS9-m1.sql",
+      "depends_on": [
+        "migration-phase5.sql",
+        "migration-sprintE1-m1-ecommerce-schema.sql"
+      ],
+      "objects": [
+        "index:leads",
+        "index:tasks",
+        "index:order_items",
+        "table:web_vitals"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 78,
+      "file": "migration-sprintLOT1-m1.sql",
+      "depends_on": [
+        "migration-sprintE1-m2-modules-role.sql"
+      ],
+      "objects": [
+        "alter:clients",
+        "table:user_sub_accounts",
+        "alter:users"
+      ],
+      "risk": "high"
+    },
+    {
+      "seq": 79,
+      "file": "migration-team-lotA-seq79.sql",
+      "depends_on": [
+        "migration-sprintLOT1-m1.sql"
+      ],
+      "objects": [
+        "table:user_invitations",
+        "alter:users"
+      ],
+      "risk": "medium"
+    },
+    {
+      "seq": 80,
+      "file": "migration-team-lotB-seq80.sql",
+      "depends_on": [
+        "migration-team-lotA-seq79.sql"
+      ],
+      "objects": [
+        "table:role_capabilities",
+        "table:user_capability_overrides",
+        "seed:role_capabilities"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 81,
+      "file": "migration-team-lotC-seq81.sql",
+      "depends_on": [
+        "migration-sprintLOT1-m1.sql"
+      ],
+      "objects": [
+        "alter:clients"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 82,
+      "file": "migration-invoice-real-seq82.sql",
+      "depends_on": [
+        "migration-team-lotC-seq81.sql"
+      ],
+      "objects": [
+        "alter:invoices",
+        "table:invoice_items",
+        "table:quotes",
+        "table:quote_items"
+      ],
+      "risk": "medium"
+    },
+    {
+      "seq": 83,
+      "file": "migration-funnel-seq83.sql",
+      "depends_on": [
+        "migration-invoice-real-seq82.sql"
+      ],
+      "objects": [
+        "table:funnels",
+        "table:funnel_steps",
+        "table:funnel_pages",
+        "table:funnel_publications",
+        "table:funnel_analytics"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 84,
+      "file": "migration-booking-seq84.sql",
+      "depends_on": [
+        "migration-funnel-seq83.sql"
+      ],
+      "objects": [
+        "alter:booking_pages",
+        "alter:bookings",
+        "table:booking_event_types"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 85,
+      "file": "migration-promo-seq85.sql",
+      "depends_on": [
+        "migration-booking-seq84.sql"
+      ],
+      "objects": [
+        "alter:coupons",
+        "table:product_subscriptions"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 86,
+      "file": "migration-emailseq-seq86.sql",
+      "depends_on": [
+        "migration-booking-seq84.sql"
+      ],
+      "objects": [
+        "alter:broadcasts",
+        "alter:workflows",
+        "alter:messages",
+        "index:messages",
+        "index:broadcasts",
+        "index:workflows"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 87,
+      "file": "migration-member-seq87.sql",
+      "depends_on": [
+        "migration-emailseq-seq86.sql"
+      ],
+      "objects": [
+        "table:members",
+        "table:member_sessions",
+        "table:membership_sites",
+        "table:membership_plans",
+        "table:courses",
+        "table:course_modules",
+        "table:lessons",
+        "table:course_enrollments",
+        "table:lesson_progress"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 88,
+      "file": "migration-reports-d-seq88.sql",
+      "depends_on": [
+        "migration-member-seq87.sql"
+      ],
+      "objects": [
+        "table:dashboard_scopes",
+        "table:dashboard_audit_log",
+        "index:dashboard_scopes",
+        "index:dashboard_audit_log"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 89,
+      "file": "migration-helpdesk-seq89.sql",
+      "depends_on": [
+        "migration-reports-d-seq88.sql"
+      ],
+      "objects": [
+        "table:support_tickets",
+        "table:ticket_messages",
+        "table:kb_articles",
+        "index:support_tickets",
+        "index:ticket_messages",
+        "index:kb_articles"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 90,
+      "file": "migration-segment-abtest-seq90.sql",
+      "depends_on": [
+        "migration-helpdesk-seq89.sql"
+      ],
+      "objects": [
+        "table:lead_segments",
+        "table:broadcast_variants",
+        "alter:broadcasts",
+        "alter:messages",
+        "index:lead_segments",
+        "index:broadcast_variants"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 91,
+      "file": "migration-aiworkspace-seq91.sql",
+      "depends_on": [
+        "migration-segment-abtest-seq90.sql"
+      ],
+      "objects": [
+        "table:ai_chat_threads",
+        "table:ai_chat_messages",
+        "index:ai_chat_threads",
+        "index:ai_chat_messages"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 92,
+      "file": "migration-affiliate-seq92.sql",
+      "depends_on": [
+        "migration-aiworkspace-seq91.sql"
+      ],
+      "objects": [
+        "table:affiliates",
+        "table:affiliate_programs",
+        "table:affiliate_clicks",
+        "table:affiliate_referrals",
+        "table:affiliate_commissions",
+        "index:affiliates",
+        "index:affiliate_referrals",
+        "index:affiliate_commissions",
+        "index:affiliate_clicks"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 93,
+      "file": "migration-community-seq93.sql",
+      "depends_on": [
+        "migration-affiliate-seq92.sql"
+      ],
+      "objects": [
+        "table:community_threads",
+        "table:community_posts",
+        "table:lesson_comments",
+        "index:community_threads",
+        "index:community_posts",
+        "index:lesson_comments"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 94,
+      "file": "migration-whitelabel-seq94.sql",
+      "depends_on": [
+        "migration-community-seq93.sql"
+      ],
+      "objects": [
+        "table:custom_hostnames",
+        "index:custom_hostnames"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 95,
+      "file": "migration-oauth-connections-seq95.sql",
+      "depends_on": [
+        "migration-whitelabel-seq94.sql"
+      ],
+      "objects": [
+        "table:oauth_connections",
+        "index:oauth_connections"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 96,
+      "file": "migration-marketplace-seq96.sql",
+      "depends_on": [
+        "migration-oauth-connections-seq95.sql"
+      ],
+      "objects": [
+        "table:marketplace_listings",
+        "table:marketplace_reviews",
+        "table:marketplace_installs",
+        "index:marketplace_listings",
+        "index:marketplace_reviews",
+        "index:marketplace_installs"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 97,
+      "file": "migration-scheduled-reports-seq97.sql",
+      "depends_on": [
+        "migration-marketplace-seq96.sql"
+      ],
+      "objects": [
+        "table:scheduled_reports",
+        "index:scheduled_reports"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 98,
+      "file": "migration-multilang-out-seq98.sql",
+      "depends_on": [
+        "migration-scheduled-reports-seq97.sql"
+      ],
+      "objects": [
+        "alter:leads",
+        "index:leads"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 99,
+      "file": "migration-proactive-ai-seq99.sql",
+      "depends_on": [
+        "migration-multilang-out-seq98.sql"
+      ],
+      "objects": [
+        "table:churn_scores",
+        "table:proactive_alerts",
+        "index:churn_scores",
+        "index:proactive_alerts"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 100,
+      "file": "migration-attribution-cohort-seq100.sql",
+      "depends_on": [
+        "migration-proactive-ai-seq99.sql"
+      ],
+      "objects": [
+        "table:lead_touchpoints",
+        "index:lead_touchpoints"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 101,
+      "file": "migration-portal-seq101.sql",
+      "depends_on": [
+        "migration-attribution-cohort-seq100.sql"
+      ],
+      "objects": [
+        "table:portal_users",
+        "table:portal_sessions",
+        "table:portal_sites",
+        "index:portal_sessions",
+        "index:portal_users",
+        "index:portal_sites"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 102,
+      "file": "migration-telephony-seq102.sql",
+      "depends_on": [
+        "migration-portal-seq101.sql"
+      ],
+      "objects": [
+        "table:call_logs",
+        "table:ivr_menus",
+        "index:call_logs",
+        "index:ivr_menus"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 103,
+      "file": "migration-booking-reminders-seq103.sql",
+      "depends_on": [
+        "migration-telephony-seq102.sql"
+      ],
+      "objects": [
+        "alter:booking_event_types",
+        "alter:bookings"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 104,
+      "file": "migration-sms-whatsapp-seq104.sql",
+      "depends_on": [
+        "migration-booking-reminders-seq103.sql"
+      ],
+      "objects": [
+        "alter:broadcasts",
+        "alter:messages",
+        "table:sms_templates",
+        "table:whatsapp_connections",
+        "index:sms_templates",
+        "index:whatsapp_connections"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 105,
+      "file": "migration-automation-seq105.sql",
+      "depends_on": [
+        "migration-sms-whatsapp-seq104.sql"
+      ],
+      "objects": [
+        "alter:workflows",
+        "alter:workflow_execution_log",
+        "index:workflow_execution_log"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 106,
+      "file": "migration-forms-xl-seq106.sql",
+      "depends_on": [
+        "migration-automation-seq105.sql"
+      ],
+      "objects": [
+        "table:form_field_events",
+        "index:form_field_events"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 107,
+      "file": "migration-member-enroll-seq107.sql",
+      "depends_on": [
+        "migration-forms-xl-seq106.sql"
+      ],
+      "objects": [
+        "index:course_enrollments",
+        "index:courses"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 108,
+      "file": "migration-storefront-seq108.sql",
+      "depends_on": [
+        "migration-member-enroll-seq107.sql"
+      ],
+      "objects": [
+        "alter:clients",
+        "index:clients"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 109,
+      "file": "migration-reputation-seq109.sql",
+      "depends_on": [
+        "migration-storefront-seq108.sql"
+      ],
+      "objects": [
+        "table:review_invitations",
+        "table:private_feedback",
+        "table:reputation_settings",
+        "alter:reviews_cache",
+        "index:review_invitations",
+        "index:private_feedback"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 110,
+      "file": "migration-social-seq110.sql",
+      "depends_on": [
+        "migration-reputation-seq109.sql"
+      ],
+      "objects": [
+        "table:social_accounts",
+        "table:social_posts",
+        "index:social_posts",
+        "index:social_accounts"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 111,
+      "file": "migration-sitebuilder-seq111.sql",
+      "depends_on": [
+        "migration-social-seq110.sql"
+      ],
+      "objects": [
+        "table:sites",
+        "table:site_pages",
+        "table:site_publications",
+        "index:site_pages",
+        "index:site_publications",
+        "index:sites"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 112,
+      "file": "migration-aicontent-seq112.sql",
+      "depends_on": [
+        "migration-sitebuilder-seq111.sql"
+      ],
+      "objects": [
+        "table:ai_content_items",
+        "table:ai_brand_voices",
+        "index:ai_content_items",
+        "index:ai_brand_voices"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 113,
+      "file": "migration-conversion-scoring-seq113.sql",
+      "depends_on": [
+        "migration-aicontent-seq112.sql"
+      ],
+      "objects": [
+        "table:conversion_baselines",
+        "table:conversion_predictions",
+        "index:conversion_baselines",
+        "index:conversion_predictions"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 114,
+      "file": "migration-forecast-seq114.sql",
+      "depends_on": [
+        "migration-conversion-scoring-seq113.sql"
+      ],
+      "objects": [
+        "table:forecast_targets",
+        "index:forecast_targets"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 115,
+      "file": "migration-reporttemplates-seq115.sql",
+      "depends_on": [
+        "migration-forecast-seq114.sql"
+      ],
+      "objects": [
+        "table:report_templates",
+        "index:report_templates"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 116,
+      "file": "migration-telephony-disposition-seq116.sql",
+      "depends_on": [
+        "migration-reporttemplates-seq115.sql"
+      ],
+      "objects": [
+        "alter:call_logs",
+        "index:call_logs"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 117,
+      "file": "migration-proposals-esign-seq117.sql",
+      "depends_on": [
+        "migration-telephony-disposition-seq116.sql"
+      ],
+      "objects": [
+        "alter:documents",
+        "alter:quotes",
+        "index:documents"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 118,
+      "file": "migration-catalog-seq118.sql",
+      "depends_on": [
+        "migration-proposals-esign-seq117.sql"
+      ],
+      "objects": [
+        "table:catalog_items",
+        "alter:quote_items",
+        "index:catalog_items"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 119,
+      "file": "migration-onboarding-harden-seq119.sql",
+      "depends_on": [
+        "migration-sprintS8-m1.sql",
+        "migration-catalog-seq118.sql"
+      ],
+      "objects": [
+        "alter:onboarding_state",
+        "table:onboarding_events",
+        "index:onboarding_events"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 120,
+      "file": "migration-billing-stripe-mock-seq120.sql",
+      "depends_on": [
+        "migration_p3_9.sql",
+        "migration-onboarding-harden-seq119.sql"
+      ],
+      "objects": [
+        "alter:subscriptions",
+        "table:billing_plans",
+        "table:billing_events",
+        "table:billing_invoices_mock"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 121,
+      "file": "migration-security-compliance-seq121.sql",
+      "depends_on": [
+        "migration-phase5.sql",
+        "migration-billing-stripe-mock-seq120.sql"
+      ],
+      "objects": [
+        "table:rate_limit_buckets",
+        "alter:audit_log",
+        "table:cookie_consent_log",
+        "table:account_deletion_requests",
+        "table:data_export_requests",
+        "index:audit_log",
+        "index:rate_limit_buckets",
+        "index:cookie_consent_log",
+        "index:account_deletion_requests",
+        "index:data_export_requests"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 122,
+      "file": "migration-observability-seq122.sql",
+      "depends_on": [
+        "migration-sprintS9-m1.sql",
+        "migration-security-compliance-seq121.sql"
+      ],
+      "objects": [
+        "table:request_metrics",
+        "table:alert_rules",
+        "table:alert_events",
+        "index:request_metrics",
+        "index:alert_rules",
+        "index:alert_events"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 123,
+      "file": "migration-perf-indexes-seq123.sql",
+      "depends_on": [
+        "migration-observability-seq122.sql",
+        "migration-security-compliance-seq121.sql",
+        "migration-sprintS9-m1.sql"
+      ],
+      "objects": [
+        "index:audit_log",
+        "index:request_metrics",
+        "index:web_vitals"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 124,
+      "file": "migration-mobile-harden-seq124.sql",
+      "depends_on": [
+        "migration_p3_10.sql",
+        "migration-perf-indexes-seq123.sql"
+      ],
+      "objects": [
+        "alter:device_tokens",
+        "index:device_tokens"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 125,
+      "file": "migration-release-gates-seq125.sql",
+      "depends_on": [
+        "migration-mobile-harden-seq124.sql"
+      ],
+      "objects": [
+        "table:release_gates_runs",
+        "table:beta_invite_codes",
+        "index:release_gates_runs"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 126,
+      "file": "migration-billing-stripe-live-seq126.sql",
+      "depends_on": [
+        "migration-billing-stripe-mock-seq120.sql",
+        "migration-sprintE4-m1.sql"
+      ],
+      "objects": [
+        "alter:subscriptions",
+        "table:payment_methods",
+        "table:stripe_connect_accounts",
+        "index:payment_methods",
+        "index:stripe_connect_accounts"
+      ],
+      "risk": "medium"
+    },
+    {
+      "seq": 127,
+      "file": "migration-gbp-seq127.sql",
+      "depends_on": [
+        "migration-billing-stripe-live-seq126.sql",
+        "migration-oauth-connections-seq95.sql",
+        "migration-reputation-seq109.sql",
+        "migration-social-seq110.sql"
+      ],
+      "objects": [
+        "table:gbp_connections",
+        "table:gbp_locations",
+        "table:gbp_posts_sync",
+        "table:gbp_reviews_sync",
+        "index:gbp_connections",
+        "index:gbp_locations",
+        "index:gbp_posts_sync",
+        "index:gbp_reviews_sync"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 128,
+      "file": "migration-calendar-sync-seq128.sql",
+      "depends_on": [
+        "migration-gbp-seq127.sql",
+        "migration-oauth-connections-seq95.sql",
+        "migration-phase24.sql"
+      ],
+      "objects": [
+        "table:calendar_connections",
+        "table:calendar_external_events",
+        "table:appointment_sync",
+        "index:calendar_connections",
+        "index:calendar_external_events",
+        "index:appointment_sync"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 129,
+      "file": "migration-twilio-voice-seq129.sql",
+      "depends_on": [
+        "migration-telephony-seq102.sql",
+        "migration-telephony-disposition-seq116.sql",
+        "migration-calendar-sync-seq128.sql"
+      ],
+      "objects": [
+        "alter:call_logs",
+        "table:voicemails",
+        "table:call_recordings_metadata",
+        "index:voicemails_client",
+        "index:voicemails_call_log",
+        "index:voicemails_lead",
+        "index:call_recordings_metadata_call_log",
+        "index:call_recordings_metadata_sid"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 130,
+      "file": "migration-snapshots-seq130.sql",
+      "depends_on": [
+        "migration-twilio-voice-seq129.sql"
+      ],
+      "objects": [
+        "table:snapshots",
+        "table:snapshot_imports",
+        "index:idx_snapshots_client",
+        "index:idx_snapshots_agency",
+        "index:idx_snapshot_imports_target",
+        "index:idx_snapshot_imports_snapshot",
+        "index:idx_snapshot_imports_status"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 131,
+      "file": "migration-webchat-widget-s36-seq131.sql",
+      "depends_on": [
+        "migration-snapshots-seq130.sql",
+        "migration-phase15.sql"
+      ],
+      "objects": [
+        "alter:webchat_widgets",
+        "alter:webchat_sessions",
+        "table:webchat_agent_presence",
+        "index:idx_webchat_widgets_client",
+        "index:idx_webchat_widgets_agency",
+        "index:idx_webchat_sessions_conv",
+        "index:idx_webchat_sessions_started",
+        "index:idx_webchat_presence_user_client"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 132,
+      "file": "migration-pos-seq132.sql",
+      "depends_on": [
+        "migration-webchat-widget-s36-seq131.sql",
+        "migration-sprintE1-m1-ecommerce-schema.sql"
+      ],
+      "objects": [
+        "table:pos_registers",
+        "table:pos_sessions",
+        "table:pos_transactions",
+        "alter:orders",
+        "alter:orders",
+        "index:idx_pos_registers_client",
+        "index:idx_pos_sessions_register",
+        "index:idx_pos_sessions_client",
+        "index:idx_pos_transactions_session",
+        "index:idx_pos_transactions_order",
+        "index:idx_pos_transactions_client",
+        "index:idx_product_variants_barcode"
+      ],
+      "risk": "medium"
+    },
+    {
+      "seq": 133,
+      "file": "migration-giftcards-loyalty-seq133.sql",
+      "depends_on": [
+        "migration-pos-seq132.sql"
+      ],
+      "objects": [
+        "table:gift_cards",
+        "table:gift_card_transactions",
+        "table:loyalty_programs",
+        "table:loyalty_ledger",
+        "table:loyalty_customer_state",
+        "index:uniq_gift_cards_client_code",
+        "index:idx_gift_cards_status_expires",
+        "index:idx_gc_tx_card",
+        "index:idx_gc_tx_order",
+        "index:idx_gc_tx_client_created",
+        "index:idx_loyalty_programs_client",
+        "index:idx_loyalty_ledger_customer",
+        "index:idx_loyalty_ledger_expires",
+        "index:idx_loyalty_ledger_client_created",
+        "index:uniq_loyalty_state_prog_cust",
+        "index:idx_loyalty_state_client_tier"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 134,
+      "file": "migration-multicurrency-tax-seq134.sql",
+      "depends_on": [
+        "migration-giftcards-loyalty-seq133.sql",
+        "migration-sprintER-m1.sql"
+      ],
+      "objects": [
+        "table:currency_rates",
+        "table:tax_regions",
+        "table:tax_rules",
+        "alter:products",
+        "alter:orders",
+        "alter:orders",
+        "index:idx_currency_rates_pair",
+        "index:idx_currency_rates_fetched",
+        "index:idx_tax_regions_client",
+        "index:idx_tax_regions_code",
+        "index:idx_tax_rules_region",
+        "index:idx_tax_rules_category"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 135,
+      "file": "migration-product-reviews-abandoned-seq135.sql",
+      "depends_on": [
+        "migration-multicurrency-tax-seq134.sql",
+        "migration-sprintE1-m1-ecommerce-schema.sql"
+      ],
+      "objects": [
+        "table:product_reviews",
+        "table:product_review_helpful_votes",
+        "alter:products",
+        "alter:customers",
+        "alter:carts",
+        "index:idx_product_reviews_client",
+        "index:idx_product_reviews_product",
+        "index:idx_product_reviews_status",
+        "index:idx_product_reviews_customer",
+        "index:uniq_product_review_helpful",
+        "index:idx_carts_recovery_state"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 136,
+      "file": "migration-voice-agent-seq136.sql",
+      "depends_on": [
+        "migration-product-reviews-abandoned-seq135.sql",
+        "migration-twilio-voice-seq129.sql"
+      ],
+      "objects": [
+        "table:voice_agent_scripts",
+        "table:voice_agent_calls",
+        "alter:call_logs",
+        "alter:call_logs",
+        "index:idx_voice_agent_scripts_client",
+        "index:idx_voice_agent_calls_call_log",
+        "index:idx_voice_agent_calls_client_created"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 137,
+      "file": "migration-chat-bot-seq137.sql",
+      "depends_on": [
+        "migration-voice-agent-seq136.sql",
+        "migration-webchat-widget-s36-seq131.sql"
+      ],
+      "objects": [
+        "table:chat_knowledge_base",
+        "table:chat_bot_config",
+        "alter:webchat_sessions",
+        "alter:webchat_sessions",
+        "index:idx_chat_kb_client",
+        "index:uniq_chat_bot_config_client"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 138,
+      "file": "migration-courses-lms-seq138.sql",
+      "depends_on": [
+        "migration-chat-bot-seq137.sql",
+        "migration-member-enroll-seq107.sql"
+      ],
+      "objects": [
+        "table:course_lessons",
+        "table:course_quizzes",
+        "table:quiz_questions",
+        "table:quiz_attempts",
+        "table:lesson_progress",
+        "table:course_certificates",
+        "alter:courses",
+        "alter:courses",
+        "alter:courses",
+        "index:idx_course_lessons_course",
+        "index:idx_course_quizzes_lesson",
+        "index:idx_quiz_questions_quiz",
+        "index:idx_quiz_attempts_enrollment",
+        "index:uniq_lesson_progress",
+        "index:idx_course_certificates_enrollment"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 139,
+      "file": "migration-funnels-seq139.sql",
+      "depends_on": [
+        "migration-courses-lms-seq138.sql"
+      ],
+      "objects": [
+        "table:fb_funnels",
+        "table:fb_steps",
+        "table:fb_step_variants",
+        "table:fb_step_views",
+        "table:fb_step_conversions",
+        "index:uniq_fb_funnels_client_slug",
+        "index:idx_fb_funnels_client",
+        "index:idx_fb_steps_funnel",
+        "index:idx_fb_step_variants_step",
+        "index:idx_fb_step_views_step",
+        "index:idx_fb_step_views_variant",
+        "index:idx_fb_step_conversions_step"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 140,
+      "file": "migration-community-seq140.sql",
+      "depends_on": [
+        "migration-funnels-seq139.sql"
+      ],
+      "objects": [
+        "table:community_threads",
+        "table:community_comments",
+        "table:community_votes",
+        "table:community_moderation_actions",
+        "alter:users",
+        "alter:users",
+        "index:idx_community_threads_client_status",
+        "index:idx_community_threads_category",
+        "index:idx_community_comments_thread",
+        "index:uniq_community_votes",
+        "index:idx_community_moderation_target"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 141,
+      "file": "migration-subscriptions-advanced-seq141.sql",
+      "depends_on": [
+        "migration-community-seq140.sql",
+        "migration-billing-stripe-mock-seq120.sql",
+        "migration-billing-stripe-live-seq126.sql"
+      ],
+      "objects": [
+        "alter:subscriptions",
+        "alter:billing_plans",
+        "table:subscription_changes",
+        "table:mrr_snapshots",
+        "index:idx_subscription_changes_sub",
+        "index:idx_subscription_changes_client_created",
+        "index:uniq_mrr_snapshots_date"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 142,
+      "file": "migration-warehouse-dropship-seq142.sql",
+      "depends_on": [
+        "migration-subscriptions-advanced-seq141.sql",
+        "migration-sprintE1-m1-ecommerce-schema.sql"
+      ],
+      "objects": [
+        "table:warehouses",
+        "table:inventory_transfers",
+        "table:dropship_suppliers",
+        "table:dropship_routings",
+        "table:dropship_orders",
+        "alter:inventory",
+        "index:idx_warehouses_client",
+        "index:idx_inventory_transfers_client_status",
+        "index:idx_dropship_suppliers_client",
+        "index:uniq_dropship_routings_variant",
+        "index:idx_dropship_orders_order",
+        "index:idx_dropship_orders_supplier_status"
+      ],
+      "risk": "medium"
+    },
+    {
+      "seq": 143,
+      "file": "migration-b2b-bundles-preorders-seq143.sql",
+      "depends_on": [
+        "migration-warehouse-dropship-seq142.sql",
+        "migration-sprintE1-m1-ecommerce-schema.sql"
+      ],
+      "objects": [
+        "table:customer_groups",
+        "table:customer_group_assignments",
+        "table:tier_prices",
+        "table:product_bundles",
+        "table:bundle_items",
+        "table:preorder_queue",
+        "index:idx_customer_groups_client",
+        "index:uniq_customer_group_assignments",
+        "index:uniq_tier_prices_variant_group_qty",
+        "index:idx_product_bundles_client",
+        "index:idx_bundle_items_bundle",
+        "index:idx_preorder_queue_variant_status",
+        "index:idx_preorder_queue_customer"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 144,
+      "file": "migration-affiliates-seq144.sql",
+      "depends_on": [
+        "migration-b2b-bundles-preorders-seq143.sql",
+        "migration-sprintE1-m1-ecommerce-schema.sql"
+      ],
+      "objects": [
+        "table:affiliates",
+        "table:affiliate_referrals",
+        "table:affiliate_payouts",
+        "table:affiliate_clicks",
+        "alter:orders",
+        "alter:orders",
+        "index:uniq_affiliates_client_code",
+        "index:idx_affiliates_client_status",
+        "index:idx_affiliates_customer",
+        "index:idx_affiliate_referrals_affiliate",
+        "index:idx_affiliate_referrals_order",
+        "index:idx_affiliate_payouts_affiliate_status",
+        "index:idx_affiliate_payouts_client_period",
+        "index:idx_affiliate_clicks_affiliate"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 145,
+      "file": "migration-surveys-dns-seq145.sql",
+      "depends_on": [
+        "migration-affiliates-seq144.sql"
+      ],
+      "objects": [
+        "table:surveys",
+        "table:survey_questions",
+        "table:survey_branches",
+        "table:survey_responses",
+        "table:survey_response_answers",
+        "table:nps_aggregates",
+        "table:custom_domains",
+        "table:dns_records",
+        "index:idx_surveys_client",
+        "index:idx_survey_questions_survey",
+        "index:idx_survey_branches_question",
+        "index:idx_survey_responses_survey_status",
+        "index:idx_survey_response_answers_response",
+        "index:idx_nps_aggregates_client_period",
+        "index:uniq_custom_domains_domain",
+        "index:idx_custom_domains_client",
+        "index:idx_dns_records_domain"
+      ],
+      "risk": "low"
+    }
   ]
 }

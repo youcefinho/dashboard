@@ -1,0 +1,72 @@
+-- ════════════════════════════════════════════════════════════════════════════
+-- Migration seq 116 — SPRINT 16 « Téléphonie — disposition + notes + journal
+-- global » (2026-05-22)
+-- La TÉLÉPHONIE 2-WAY existe DÉJÀ (seq 102 : call_logs + ivr_menus, telephony.ts
+-- placeCall flag inactif, handlePlaceCall click-to-call, handleGetCallLogs journal
+-- + filtres, handleVoiceIvrTwiml, handleCallStatusCallback + recording_url +
+-- transcription Whisper ; UI journal + click-to-call dans LeadDetail.tsx ;
+-- TelephonySettings ; 17 clés telephony.* ×4). CE LOT NE RECONSTRUIT RIEN — il
+-- AJOUTE seulement, sur la table EXISTANTE `call_logs` (seq 102), la DISPOSITION
+-- post-appel (résultat qualitatif) + les NOTES libres de l'agent, plus l'index de
+-- filtre. Côté HANDLER (Phase B Manager-B), il câble : l'UPDATE disposition/notes
+-- borné tenant, l'exposition disposition/notes + filtre ?disposition= dans
+-- handleGetCallLogs, et le wiring « appel manqué → tâche » dans
+-- handleCallStatusCallback (status no-answer/failed/busy).
+--
+-- ⚠ STRICTEMENT ADDITIF — INTERDIT : tout DROP / RENAME / rebuild / CREATE TABLE
+--   call_logs / ALTER d'une contrainte existante. recording_url ET transcription
+--   EXISTENT DÉJÀ (seq 102, l.58) — NE PAS les re-ajouter. Ce lot N'AJOUTE QUE :
+--     - 2 `ALTER TABLE call_logs ADD COLUMN` — colonnes NULLABLES, sans DEFAULT
+--       non-NULL, sans CHECK (la valeur de `disposition` est validée HANDLER —
+--       interested|callback|voicemail|wrong_number|not_interested… — JAMAIS par
+--       CHECK SQL) ;
+--     - 1 `CREATE INDEX IF NOT EXISTS` — neuf, idempotent.
+--   AUCUN CHECK. AUCUNE FK. AUCUN rebuild. AUCUN touch ivr_menus / clients /
+--   agencies / users / leads / conversations / messages / activity_log / tasks /
+--   sub_accounts. AUCUN touch tables E4/E6 régulées.
+--
+-- ⚠ ADD COLUMN sur SQLite/D1 : ajout de colonne NULLABLE = opération in-place
+--   (PAS de rebuild de table tant qu'il n'y a ni DEFAULT non-constant ni CHECK ni
+--   FK). On reste donc sur le contrat « zéro rebuild call_logs ».
+--
+-- ⚠ BORNAGE TENANT — `call_logs.client_id` (seq 102) porte le tenant propriétaire.
+--   L'UPDATE disposition/notes (Phase B) est borné `WHERE id = ? AND client_id = ?`
+--   (client_id résolu serveur via resolveClientId, JAMAIS depuis le body).
+--
+-- depends_on : migration-reporttemplates-seq115.sql (seq 115 — dernière migration
+--              du manifest avant ce lot ; chaînage SÉQUENTIEL pour l'ordre, AUCUNE
+--              dépendance de SCHÉMA réelle sur seq 115). La table `call_logs`
+--              ciblée a été créée seq 102 ; jointure leads/tasks APPLICATIVE.
+--
+-- TOLÉRANCE rejeu — exécution best-effort :
+--   `ALTER TABLE … ADD COLUMN` n'est PAS idempotent sur D1 (échoue si la colonne
+--   existe déjà). En cas de rejeu, retirer manuellement les 2 ADD COLUMN déjà
+--   appliqués. `CREATE INDEX IF NOT EXISTS` est idempotent (rejeu = no-op).
+--   scripts/migrate.ts est FIGÉ et N'EST PAS modifié.
+--
+-- Exécution manuelle :
+--   npx wrangler d1 execute intralys-crm --file=migration-telephony-disposition-seq116.sql --remote
+-- ════════════════════════════════════════════════════════════════════════════
+
+-- 1) disposition — résultat qualitatif de l'appel, posé post-appel par l'agent.
+--    NULLABLE (un appel peut ne jamais être qualifié). Valeur LIBRE validée
+--    HANDLER (whitelist JS : interested|callback|voicemail|wrong_number|
+--    not_interested…), JAMAIS par CHECK SQL.
+ALTER TABLE call_logs ADD COLUMN disposition TEXT;
+
+-- 2) notes — note libre de l'agent attachée à l'appel. NULLABLE. sanitizeInput
+--    côté HANDLER.
+ALTER TABLE call_logs ADD COLUMN notes TEXT;
+
+-- Index ADDITIF idempotent — filtre du journal par disposition, borné tenant
+-- (chemin chaud handleGetCallLogs ?disposition= + page Téléphonie globale).
+CREATE INDEX IF NOT EXISTS idx_call_logs_disposition ON call_logs(client_id, disposition);
+
+-- NB : 2 ALTER ADD COLUMN (NULLABLES, sans DEFAULT non-NULL, sans CHECK), 1 INDEX
+-- neuf, AUCUN CHECK, AUCUNE FK, AUCUN DROP / RENAME / rebuild / CREATE TABLE
+-- call_logs. recording_url / transcription NON re-ajoutées (seq 102). disposition
+-- validée HANDLER (whitelist JS). UPDATE borné tenant (client_id résolu serveur,
+-- JAMAIS body). AUCUN touch ivr_menus / leads / tasks / activity_log / clients /
+-- users / tables E4/E6. Capabilities leads.write (disposition) / settings.manage
+-- (IVR) RÉUTILISÉES — ZÉRO ajout ALL_CAPABILITIES. Choix figés
+-- docs/LOT-TELEPHONY-DISPOSITION.md §6.

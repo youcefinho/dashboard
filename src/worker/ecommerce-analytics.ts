@@ -450,3 +450,91 @@ export async function handleEcommerceTopProducts(
     return json({ data: { window_days: DEFAULT_WINDOW_DAYS, products: [] as TopProductRow[] } });
   }
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+// Sprint 4 LOT-ECOM4 §6.G — EXTENSION ADDITIVE (Manager-C), LECTURE SEULE
+// GET /api/ecommerce/analytics/sales-by-channel (handler PRÊT — câblage route
+// GELÉ Phase A : worker.ts ne sera PAS modifié par Phase C ; aucune route
+// n'est encore câblée pour cet endpoint, la fonction est exportée prête à
+// l'emploi pour un câblage Phase A ultérieur).
+//
+// ⚠ STRICTEMENT ADDITIF : aucun handler analytics existant ci-dessus n'est
+//   modifié. CA par PÉRIODE (mois) × CANAL (orders.source) VENTILÉ PAR DEVISE
+//   — JAMAIS sommé cross-devise (garde-fou figé :10-14). Données RÉELLES
+//   uniquement (orders comptées, zéro chiffre fabriqué). Garde défensive :
+//   vide ⇒ structure vide, JAMAIS 500 (calque :163-164). Bornage tenant
+//   WHERE client_id = ? systématique. Lecture seule (zéro écriture/ALTER).
+// ════════════════════════════════════════════════════════════════════════════
+
+interface SalesByChannelRow {
+  period: string;     // 'YYYY-MM' (mois d'enregistrement de la commande)
+  channel: string;    // orders.source (web / subscription / manual / …)
+  currency: string;   // devise de la commande (jamais agrégée cross-devise)
+  orders: number;     // nb de commandes comptées de ce (mois, canal, devise)
+  gross_cents: number;// somme total_cents — UNIQUEMENT au sein d'une devise
+}
+
+/**
+ * CA par période (mois) × canal (orders.source) VENTILÉ PAR DEVISE. Net pas
+ * calculé ici (pas de jointure refunds — extension gross volontairement
+ * simple ; le NET-of-refunds par devise reste l'apanage de /revenue). Fenêtre
+ * ?days= bornée (réutilise resolveWindowStart, plafond 730j). GROUP BY
+ * (mois, source, devise) ⇒ aucune somme cross-devise. Garde défensive.
+ */
+export async function handleEcommerceSalesByChannel(
+  env: Env,
+  auth: Auth,
+  url: URL,
+): Promise<Response> {
+  try {
+    const clientId = await resolveClientId(env, auth);
+    if (!clientId) return noClient();
+
+    const { days, sinceIso } = resolveWindowStart(url);
+    const ph = COUNTED_STATUSES.map(() => '?').join(', ');
+
+    // GROUP BY mois × source × devise — ventilation STRICTE par devise. La
+    // devise NULL legacy ⇒ 'CAD' (rétro-compat E3, calque loadCountedOrders).
+    // Source vide ⇒ 'web' (défaut createOrderCore). Borné tenant + fenêtre +
+    // LIMIT dur (≤ 24 mois × ~quelques canaux × ≤3 devises).
+    const { results } = await env.DB.prepare(
+      `SELECT substr(COALESCE(placed_at, created_at), 1, 7) AS period,
+              LOWER(COALESCE(NULLIF(source, ''), 'web')) AS channel,
+              UPPER(COALESCE(NULLIF(currency, ''), 'CAD')) AS currency,
+              COUNT(*) AS orders,
+              SUM(total_cents) AS gross_cents
+         FROM orders
+        WHERE client_id = ?
+          AND status IN (${ph})
+          AND COALESCE(placed_at, created_at) >= ?
+        GROUP BY substr(COALESCE(placed_at, created_at), 1, 7),
+                 LOWER(COALESCE(NULLIF(source, ''), 'web')),
+                 UPPER(COALESCE(NULLIF(currency, ''), 'CAD'))
+        ORDER BY period DESC, gross_cents DESC
+        LIMIT 500`,
+    )
+      .bind(clientId, ...COUNTED_STATUSES, sinceIso)
+      .all();
+
+    const rows: SalesByChannelRow[] = ((results || []) as Array<{
+      period: string | null;
+      channel: string;
+      currency: string;
+      orders: number;
+      gross_cents: number;
+    }>)
+      .filter((r) => r.period)
+      .map((r) => ({
+        period: String(r.period),
+        channel: String(r.channel || 'web'),
+        currency: (r.currency || 'CAD').toUpperCase(),
+        orders: Math.max(0, Math.round(r.orders || 0)),
+        gross_cents: Math.max(0, Math.round(r.gross_cents || 0)),
+      }));
+
+    return json({ data: { window_days: days, by_channel: rows } });
+  } catch (err) {
+    console.error('handleEcommerceSalesByChannel failed', err);
+    return json({ data: { window_days: DEFAULT_WINDOW_DAYS, by_channel: [] as SalesByChannelRow[] } });
+  }
+}

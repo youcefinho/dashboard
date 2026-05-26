@@ -15,6 +15,7 @@ import {
   type MessageChannel,
 } from '@/lib/types';
 import { Mail, Phone, Globe, MessageSquare, StickyNote } from 'lucide-react';
+import { t } from '@/lib/i18n';
 
 const PREVIEW_WIDTH = 360;
 const PREVIEW_HEIGHT = 320;
@@ -118,12 +119,12 @@ function relTime(iso: string): string {
   if (!iso) return '';
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'maintenant';
-  if (mins < 60) return `il y a ${mins}m`;
+  if (mins < 1) return t('panels.conv_now');
+  if (mins < 60) return t('panels.conv_min').replace('{n}', String(mins));
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `il y a ${hrs}h`;
+  if (hrs < 24) return t('panels.conv_hour').replace('{n}', String(hrs));
   const days = Math.floor(hrs / 24);
-  return `il y a ${days}j`;
+  return t('panels.conv_day').replace('{n}', String(days));
 }
 
 function ConversationPreviewCard({
@@ -143,7 +144,7 @@ function ConversationPreviewCard({
   // Si lastMessages fournis : on prend les 2 derniers ; sinon fallback preview
   const recent =
     (lastMessages || []).slice(-2).map((m) => ({
-      sender: m.direction === 'outbound' ? 'Vous' : conversation.lead_name || 'Contact',
+      sender: m.direction === 'outbound' ? t('panels.conv_you') : conversation.lead_name || t('panels.conv_contact'),
       body: (m.body || '').slice(0, 80),
       truncated: (m.body || '').length > 80,
       time: relTime(m.created_at),
@@ -185,7 +186,7 @@ function ConversationPreviewCard({
                 className="text-[14px] font-bold truncate"
                 style={{ color: 'var(--text-primary)', letterSpacing: '-0.01em' }}
               >
-                {conversation.lead_name || 'Inconnu'}
+                {conversation.lead_name || t('panels.conv_unknown')}
               </h3>
               {hasUnread && (
                 <span
@@ -267,7 +268,7 @@ function ConversationPreviewCard({
               </p>
             </div>
           ) : (
-            <p className="text-[11px] italic text-[var(--text-muted)]">Aucun message récent.</p>
+            <p className="text-[11px] italic text-[var(--text-muted)]">{t('panels.conv_no_recent')}</p>
           )}
         </div>
 
@@ -277,10 +278,10 @@ function ConversationPreviewCard({
           style={{ borderColor: 'rgba(0,157,219,0.10)' }}
         >
           <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-[var(--text-muted)]">
-            Aperçu
+            {t('panels.conv_preview')}
           </span>
           <span className="text-[10px] font-semibold" style={{ color: 'var(--primary)' }}>
-            Cliquer pour ouvrir →
+            {t('panels.conv_click_open')}
           </span>
         </div>
       </div>

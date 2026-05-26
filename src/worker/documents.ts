@@ -507,7 +507,251 @@ export async function handlePublicSignDocument(
     }
   }
 
+  // ── Sprint 17 PROPOSALS E-SIGN — pont signature → acceptation du devis ───────
+  // SI le document est lié à un devis (doc.quote_id), appliquer la LOGIQUE de
+  // handleAcceptQuote (recalc taxes SERVEUR depuis quote_items, INSERT facture +
+  // invoice_items, UPDATE quotes status='accepted'+invoice_id, notif). best-effort
+  // (try/catch global) : la signature reste un succès même si l'accept échoue.
+  // Bornage : pas de QuoteAuth en public → borné par le devis lié au document.
+  if (doc.quote_id) {
+    try {
+      await acceptQuoteFromSignature(env, String(doc.quote_id), doc);
+    } catch {
+      // best-effort : la signature reste valide même si l'accept échoue.
+    }
+  }
+
   return json({ data: { success: true, signed_at: timestamp, document_hash: docHash } });
+}
+
+// Arrondi monétaire 2 décimales (calque quotes.ts round2 — §6.C).
+function round2Doc(x: number): number {
+  return Math.round(x * 100) / 100;
+}
+
+// Logique d'acceptation depuis la signature publique (PAS de QuoteAuth). Borné
+// par le devis lié au document (doc.quote_id). Réplique la logique de
+// handleAcceptQuote : recalcul taxes SERVEUR depuis quote_items (JAMAIS les
+// montants stockés), INSERT facture + invoice_items, UPDATE quotes
+// status='accepted' (valeur DÉJÀ dans le CHECK seq 82) + invoice_id, notif.
+// best-effort : jette en cas d'échec, capté par l'appelant (signature reste OK).
+async function acceptQuoteFromSignature(
+  env: Env,
+  quoteId: string,
+  doc: Record<string, unknown>,
+): Promise<void> {
+  // 1) Charger le devis borné par le lien document↔devis. Vérifier en plus que
+  //    le document référence bien ce devis (cohérence) + tenant via client_id.
+  const quote = (await env.DB.prepare('SELECT * FROM quotes WHERE id = ?')
+    .bind(quoteId)
+    .first()) as Record<string, unknown> | null;
+  if (!quote) return;
+
+  // 2) Idempotence : ne ré-accepter que depuis draft/sent (calque handleAcceptQuote).
+  const status = String(quote.status ?? '');
+  if (status !== 'sent' && status !== 'draft') return;
+
+  // 3) Recalcul taxes SERVEUR depuis quote_items (jamais les montants stockés).
+  let quoteItems: Array<Record<string, unknown>> = [];
+  try {
+    const { results } = await env.DB.prepare(
+      'SELECT * FROM quote_items WHERE quote_id = ? ORDER BY created_at ASC',
+    )
+      .bind(quoteId)
+      .all();
+    quoteItems = (results || []) as Array<Record<string, unknown>>;
+  } catch {
+    quoteItems = [];
+  }
+  const lines: Array<{ label: string; qty: number; unit_price: number; line_total: number }> = [];
+  for (const it of quoteItems) {
+    const label = sanitizeInput(String(it.label ?? ''), 300);
+    const qty = Number(it.qty);
+    const unit_price = Number(it.unit_price);
+    if (!label || !isFinite(qty) || !isFinite(unit_price)) continue;
+    lines.push({ label, qty, unit_price, line_total: round2Doc(qty * unit_price) });
+  }
+  if (lines.length === 0) return;
+  const subtotal = round2Doc(lines.reduce((s, l) => s + l.line_total, 0));
+  const tax_tps = round2Doc(subtotal * 0.05);
+  const tax_tvq = round2Doc(subtotal * 0.09975);
+  const total = round2Doc(subtotal + tax_tps + tax_tvq);
+
+  const clientId = quote.client_id == null ? null : String(quote.client_id);
+  const leadId = quote.lead_id == null ? null : String(quote.lead_id);
+  const tpsNumber = quote.tps_number == null ? null : String(quote.tps_number);
+  const tvqNumber = quote.tvq_number == null ? null : String(quote.tvq_number);
+  const description = quote.description == null ? null : String(quote.description);
+
+  // 4) Numéro de facture borné scope tenant (client_id ; invoices n'a pas
+  //    d'agency_id — calque handleAcceptQuote).
+  const year = new Date().getFullYear();
+  let count = 0;
+  try {
+    let sql = 'SELECT COUNT(*) AS n FROM invoices WHERE invoice_number LIKE ?';
+    const binds: unknown[] = [`INV-${year}-%`];
+    if (clientId != null) {
+      sql += ' AND client_id = ?';
+      binds.push(clientId);
+    }
+    const row = (await env.DB.prepare(sql).bind(...binds).first()) as { n: number } | null;
+    count = Number(row?.n) || 0;
+  } catch {
+    count = 0;
+  }
+  const invoiceNumber = `INV-${year}-${String(count + 1).padStart(4, '0')}`;
+  const invoiceId = `inv_${crypto.randomUUID()}`;
+
+  // 5) INSERT facture liée + invoice_items (calque handleAcceptQuote).
+  await env.DB.prepare(
+    `INSERT INTO invoices
+       (id, client_id, lead_id, amount, description, status, payment_url,
+        invoice_number, subtotal, tax_tps, tax_tvq, total, quote_id,
+        tps_number, tvq_number)
+     VALUES (?, ?, ?, ?, ?, 'draft', NULL, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  )
+    .bind(
+      invoiceId,
+      clientId,
+      leadId,
+      total,
+      description,
+      invoiceNumber,
+      subtotal,
+      tax_tps,
+      tax_tvq,
+      total,
+      quoteId,
+      tpsNumber,
+      tvqNumber,
+    )
+    .run();
+
+  for (const l of lines) {
+    await env.DB.prepare(
+      `INSERT INTO invoice_items (invoice_id, label, qty, unit_price, line_total)
+       VALUES (?, ?, ?, ?, ?)`,
+    )
+      .bind(invoiceId, l.label, l.qty, l.unit_price, l.line_total)
+      .run();
+  }
+
+  // 6) UPDATE devis APRÈS l'INSERT facture (jamais un devis accepted sans
+  //    invoice_id). status='accepted' DÉJÀ dans le CHECK seq 82.
+  await env.DB.prepare(
+    `UPDATE quotes
+        SET status = 'accepted', accepted_at = datetime('now'),
+            invoice_id = ?, updated_at = datetime('now')
+      WHERE id = ?`,
+  )
+    .bind(invoiceId, quoteId)
+    .run();
+
+  // 7) Notif créateur du document (best-effort).
+  if (doc.created_by) {
+    try {
+      await env.DB.prepare(
+        `INSERT INTO notifications (id, user_id, client_id, icon, title, description, link)
+         VALUES (?, ?, ?, '✅', 'Devis accepté', ?, ?)`,
+      )
+        .bind(
+          crypto.randomUUID(),
+          String(doc.created_by),
+          clientId || '',
+          `Le devis lié à "${doc.title == null ? '' : String(doc.title)}" a été accepté (facture ${invoiceNumber})`,
+          `/invoices`,
+        )
+        .run();
+    } catch {
+      /* best-effort */
+    }
+  }
+}
+
+// ── Sprint 17 PROPOSALS E-SIGN — refus public d'un document ──────────────────
+// STUB Phase A — signature FIGÉE (docs/LOT-PROPOSALS-ESIGN.md §6.E/§6.H).
+// Corps réel = Manager-B. PUBLIC (hors auth, calque handlePublicSignDocument) —
+// bornage par token (PAS de capGuard, PAS de resolveClientId). Le doc est
+// retrouvé par token (status IN ('sent','viewed')).
+// Manager-B: corps réel — charger le doc par token (status sent/viewed),
+// vérifier expiration, UPDATE documents SET status='declined',
+// declined_at=datetime('now'), audit_trail append { action:'declined', ip, ua,
+// timestamp, reason } ; SI doc.quote_id → UPDATE quotes SET status='declined'
+// (valeur DÉJÀ dans le CHECK seq 82) borné par l'id du devis (best-effort).
+// GARDER la réponse publique propre, jamais 500 brut. NE PAS casser le filtre
+// sent/viewed de handlePublicGetDocument (documents.status LIBRE).
+export async function handlePublicDeclineDocument(
+  request: Request,
+  env: Env,
+  token: string,
+): Promise<Response> {
+  // 1) Charger le doc par token (status IN ('sent','viewed')) — token-borné,
+  //    PAS de capGuard/resolveClientId. NE PAS casser le filtre sent/viewed.
+  const doc = (await env.DB.prepare(
+    "SELECT * FROM documents WHERE token = ? AND status IN ('sent', 'viewed')",
+  )
+    .bind(token)
+    .first()) as Record<string, unknown> | null;
+
+  if (!doc) return json({ error: 'Document introuvable ou déjà traité' }, 404);
+
+  // 2) Vérifier expiration (calque handlePublicGetDocument → 410).
+  if (doc.expires_at && new Date(doc.expires_at as string) < new Date()) {
+    return json({ error: 'Ce document a expiré' }, 410);
+  }
+
+  // 3) reason optionnel.
+  let reason = '';
+  try {
+    const body = (await request.json()) as { reason?: string };
+    reason = sanitizeInput(body?.reason as string, 500) || '';
+  } catch {
+    reason = '';
+  }
+
+  // 4) Capture audit (Loi 25 : action declined + IP/UA/timestamp + reason).
+  const ip =
+    request.headers.get('CF-Connecting-IP') ||
+    request.headers.get('X-Forwarded-For') ||
+    'unknown';
+  const userAgent = request.headers.get('User-Agent') || 'unknown';
+  const timestamp = new Date().toISOString();
+
+  try {
+    const trail = JSON.parse((doc.audit_trail as string) || '[]') as Array<Record<string, unknown>>;
+    trail.push({ action: 'declined', ip, user_agent: userAgent, timestamp, reason });
+
+    // 5) UPDATE documents SET status='declined', declined_at, audit_trail.
+    //    documents.status LIBRE (pas de CHECK seq 11).
+    await env.DB.prepare(
+      `UPDATE documents
+          SET status = 'declined', declined_at = datetime('now'), audit_trail = ?
+        WHERE id = ?`,
+    )
+      .bind(JSON.stringify(trail), doc.id as string)
+      .run();
+
+    // 6) SI doc.quote_id → UPDATE quotes SET status='declined' (valeur DÉJÀ
+    //    dans le CHECK seq 82) borné par l'id du devis lié. best-effort.
+    if (doc.quote_id) {
+      try {
+        await env.DB.prepare(
+          `UPDATE quotes
+              SET status = 'declined', updated_at = datetime('now')
+            WHERE id = ?`,
+        )
+          .bind(String(doc.quote_id))
+          .run();
+      } catch {
+        /* best-effort : le refus du document reste un succès. */
+      }
+    }
+  } catch {
+    // Panne D1 : réponse propre, jamais 500 brut.
+    return json({ error: 'Refus impossible' }, 400);
+  }
+
+  return json({ data: { success: true } });
 }
 
 // ── D5 : Envoi SMS lien signature 1-clic ────────────────────

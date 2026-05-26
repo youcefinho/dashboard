@@ -2,6 +2,10 @@
 import { Resend } from 'resend';
 import type { Env } from './types';
 import { sanitizeInput, json, audit, isLeadDnd } from './helpers';
+// Sprint MULTILANG-B Phase B (Manager-B) : libellé SYSTÈME (demande d'avis)
+// localisé selon la langue du contact. tLead pur (i18n-server.ts, gelé Phase A).
+// On NE traduit QUE le libellé système ; le reste du courriel marketing est FR.
+import { tLead, normalizeLeadLocale, DEFAULT_LEAD_LOCALE } from './i18n-server';
 
 // ── Review Requests ─────────────────────────────────────────
 
@@ -73,6 +77,14 @@ export async function handleCreateReviewRequest(
 
   // Envoyer la demande
   const leadName = lead.name as string || '';
+  // MULTILANG-B : libellé SYSTÈME "demande d'avis" localisé. Garde-fou byte-
+  // identique : langue NULL/non renseignée ⇒ résolution sur le défaut fr-CA ⇒
+  // on conserve EXACTEMENT l'ancienne phrase FR. Seule une locale non-fr-CA
+  // réellement résolue (en/es/fr-FR) bascule sur tLead. Best-effort.
+  const reviewLocale = normalizeLeadLocale(lead.preferred_language) ?? DEFAULT_LEAD_LOCALE;
+  const reviewLine = reviewLocale === 'fr-CA'
+    ? 'Merci de nous avoir fait confiance ! Votre avis nous aide à nous améliorer et à aider d\'autres personnes comme vous.'
+    : tLead(reviewLocale, 'system.review_request');
   if (channel === 'email' && env.RESEND_API_KEY && lead.email) {
     try {
       const resend = new Resend(env.RESEND_API_KEY);
@@ -84,7 +96,7 @@ export async function handleCreateReviewRequest(
           <div style="font-family: -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
             <h2 style="color: #1a1a2e;">⭐ Comment s'est passée votre expérience ?</h2>
             <p>Bonjour ${leadName},</p>
-            <p>Merci de nous avoir fait confiance ! Votre avis nous aide à nous améliorer et à aider d'autres personnes comme vous.</p>
+            <p>${reviewLine}</p>
             <p>Cela ne prend que 30 secondes :</p>
             ${finalReviewUrl ? `
             <p style="text-align: center; margin: 30px 0;">

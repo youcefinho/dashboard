@@ -10,16 +10,19 @@
 // par bucket 0-5 mappé sur gray-100 → primary-soft → primary-700.
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { t } from '@/lib/i18n';
 import { Card, Icon, Skeleton, Tooltip } from '@/components/ui';
 import { Flame } from 'lucide-react';
 
 type HeatmapPeriod = '7d' | '30d' | '90d';
 
-const PERIOD_LABELS: Record<HeatmapPeriod, string> = {
-  '7d': '7 jours',
-  '30d': '30 jours',
-  '90d': '90 jours',
-};
+function periodLabel(p: HeatmapPeriod): string {
+  switch (p) {
+    case '7d': return t('admin.period_7d');
+    case '30d': return t('admin.period_30d');
+    case '90d': return t('admin.period_90d');
+  }
+}
 
 const DAY_LABELS_SHORT = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'] as const;
 const DAY_LABELS_FULL = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'] as const;
@@ -48,27 +51,11 @@ function colorForIntensity(level: number): string {
   }
 }
 
-// Génère un heatmap synthétique (fallback hors-ligne / pre-backend) — réaliste :
-// peak business hours (9-12h, 14-17h), low overnight, plateau weekend.
-function generateMockHeatmap(): number[][] {
-  const grid: number[][] = [];
-  for (let d = 0; d < 7; d++) {
-    const row: number[] = [];
-    const isWeekend = d >= 5;
-    for (let h = 0; h < 24; h++) {
-      let base = 2;
-      if (h >= 9 && h <= 12) base = isWeekend ? 6 : 28;
-      else if (h >= 14 && h <= 17) base = isWeekend ? 8 : 36;
-      else if (h >= 18 && h <= 21) base = isWeekend ? 12 : 14;
-      else if (h >= 0 && h <= 6) base = 1;
-      else if (h === 13) base = isWeekend ? 4 : 18;
-      else base = isWeekend ? 3 : 8;
-      const jitter = Math.floor(Math.random() * Math.max(3, base * 0.3));
-      row.push(Math.max(0, base + jitter));
-    }
-    grid.push(row);
-  }
-  return grid;
+// [LOT RÉEL-bis] Grille honnête vide : 7×24 zéros (JAMAIS de Math.random).
+// Utilisée si l'API échoue ou renvoie une forme invalide — l'UI affiche alors
+// l'état « pas encore de données » au lieu de fabriquer une heatmap.
+function emptyHeatmap(): number[][] {
+  return Array.from({ length: 7 }, () => Array.from({ length: 24 }, () => 0));
 }
 
 async function fetchHeatmap(period: HeatmapPeriod, token: string | null): Promise<number[][]> {
@@ -84,7 +71,8 @@ async function fetchHeatmap(period: HeatmapPeriod, token: string | null): Promis
     }
     throw new Error('invalid shape');
   } catch {
-    return generateMockHeatmap();
+    // Pas de fallback fabriqué : grille vide honnête (l'UI montre no_data_yet).
+    return emptyHeatmap();
   }
 }
 
@@ -111,7 +99,7 @@ export function UserActivityHeatmap({ defaultPeriod = '7d', className = '' }: Us
       }
     }).catch(() => {
       if (!cancelled) {
-        setGrid(generateMockHeatmap());
+        setGrid(emptyHeatmap());
         setIsLoading(false);
       }
     });
@@ -155,11 +143,11 @@ export function UserActivityHeatmap({ defaultPeriod = '7d', className = '' }: Us
         <div className="flex items-center gap-2 min-w-0">
           <Icon as={Flame} size={16} className="text-[var(--primary)] shrink-0" />
           <div className="min-w-0">
-            <h3 className="t-h3">Heatmap activité</h3>
-            <p className="t-caption text-[var(--text-muted)]">Répartition par jour × heure.</p>
+            <h3 className="t-h3">{t('admin.heat_title')}</h3>
+            <p className="t-caption text-[var(--text-muted)]">{t('admin.heat_subtitle')}</p>
           </div>
         </div>
-        <div role="tablist" aria-label="Période heatmap" className="inline-flex rounded-md border border-[var(--border)] overflow-hidden text-[12px]">
+        <div role="tablist" aria-label={t('admin.heat_period_aria')} className="inline-flex rounded-md border border-[var(--border)] overflow-hidden text-[12px]">
           {(['7d', '30d', '90d'] as HeatmapPeriod[]).map(p => (
             <button
               key={p}
@@ -173,7 +161,7 @@ export function UserActivityHeatmap({ defaultPeriod = '7d', className = '' }: Us
                   : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
               }`}
             >
-              {PERIOD_LABELS[p]}
+              {periodLabel(p)}
             </button>
           ))}
         </div>
@@ -185,8 +173,14 @@ export function UserActivityHeatmap({ defaultPeriod = '7d', className = '' }: Us
             <Skeleton key={i} className="h-6 w-full" />
           ))}
         </div>
+      ) : maxValue <= 0 ? (
+        // [LOT RÉEL-bis] État honnête : aucune activité réelle enregistrée.
+        // On NE rend PAS une heatmap vide muette ni des chiffres fabriqués.
+        <p className="t-caption text-[var(--text-muted)] py-6 text-center">
+          {t('admin.no_data_yet')}
+        </p>
       ) : (
-        <div className="heatmap-wrap" role="grid" aria-label="Heatmap activité utilisateurs">
+        <div className="heatmap-wrap" role="grid" aria-label={t('admin.heat_grid_aria')}>
           {/* Header heures 0-23 — affiche 0, 6, 12, 18 pour ne pas surcharger */}
           <div className="heatmap-header" aria-hidden>
             <span className="heatmap-day-label" />
@@ -204,7 +198,7 @@ export function UserActivityHeatmap({ defaultPeriod = '7d', className = '' }: Us
           ))}
           {/* Légende intensity */}
           <div className="heatmap-legend">
-            <span className="t-caption text-[var(--text-muted)]">Moins</span>
+            <span className="t-caption text-[var(--text-muted)]">{t('admin.heat_less')}</span>
             {[0, 1, 2, 3, 4, 5].map(lvl => (
               <span
                 key={lvl}
@@ -216,7 +210,7 @@ export function UserActivityHeatmap({ defaultPeriod = '7d', className = '' }: Us
                 aria-hidden
               />
             ))}
-            <span className="t-caption text-[var(--text-muted)]">Plus</span>
+            <span className="t-caption text-[var(--text-muted)]">{t('admin.heat_more')}</span>
           </div>
         </div>
       )}

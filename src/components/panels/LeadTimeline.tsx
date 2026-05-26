@@ -10,7 +10,7 @@ import { ACTIVITY_LABELS, NOTE_CATEGORY_LABELS, NOTE_CATEGORY_ICONS, APPOINTMENT
 import { Tag, Avatar, Icon as UIcon } from '@/components/ui';
 // Sprint 48 M3.2 — relative time + locale-aware date
 import { formatRelativeTime, formatDate, formatDateTime } from '@/lib/i18n/datetime';
-import { getLocale } from '@/lib/i18n';
+import { getLocale, t } from '@/lib/i18n';
 
 interface TimelineEvent {
   id: string;
@@ -144,7 +144,7 @@ export function LeadTimeline({ lead, notes, appointments, tasks }: LeadTimelineP
   }, [events]);
 
   if (events.length === 0) {
-    return <p className="text-sm text-[var(--text-muted)] py-4">Aucune activité enregistrée pour ce lead.</p>;
+    return <p className="text-sm text-[var(--text-muted)] py-4">{t('lead_timeline.empty_activity')}</p>;
   }
 
   return (

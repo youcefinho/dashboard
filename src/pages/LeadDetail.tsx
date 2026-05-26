@@ -3,13 +3,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Badge, Skeleton, EmptyState, useToast, useConfirm, AiSparkles, usePanelStack } from '@/components/ui';
+import { Card, Button, Badge, Skeleton, EmptyState, Select, useToast, useConfirm, AiSparkles, usePanelStack } from '@/components/ui';
 import { t } from '@/lib/i18n';
 import { Avatar } from '@/components/ui/Avatar';
-import { getLeadDetail, updateLead, addTag, removeTag, getAppointments, getTasks, updateTask, getLeadNotes, createLeadNote, deleteLeadNote, getLeadScores, getLeadCustomFields, softDeleteLead, restoreLead, apiFetch, getPipelines, getLeadMessages } from '@/lib/api';
+import { getLeadDetail, updateLead, addTag, removeTag, getAppointments, getTasks, updateTask, getLeadNotes, createLeadNote, deleteLeadNote, getLeadScores, getLeadCustomFields, softDeleteLead, restoreLead, apiFetch, getPipelines, getLeadMessages, getCallLogs, placeCall, setCallDisposition, getLeadConversionScore, type CallLog } from '@/lib/api';
 import { getCachedLead, setCachedLead } from '@/lib/prefetch';
 import { confettiBurst } from '@/lib/confetti';
 import { AiNextActionCard } from '@/components/panels/AiNextActionCard';
+import { LeadPredictionCard } from '@/components/panels/LeadPredictionCard';
 import { LeadTimeline } from '@/components/panels/LeadTimeline';
 import { ConversationPanel } from '@/components/conversations/ConversationPanel';
 import {
@@ -19,10 +20,73 @@ import {
   TASK_PRIORITY_ICONS, TASK_STATUS_ICONS, TASK_STATUS_LABELS,
   type LeadDetail, type LeadStatus, type Appointment, type Task,
   type LeadNote, type LeadScore, type CustomFieldValue, type LifecycleStage,
-  type PipelineStage,
+  type PipelineStage, type ConversionPrediction,
 } from '@/lib/types';
-import { ArrowLeft, Star, Phone, Mail, CalendarPlus, CheckSquare, Trash2, Compass } from 'lucide-react';
+import { ArrowLeft, Star, Phone, Mail, CalendarPlus, CheckSquare, Trash2, Compass, PhoneIncoming, PhoneOutgoing } from 'lucide-react';
 import { PhoneLink } from '@/components/ui/PhoneLink';
+
+// ── Sprint 16 (seq 116) — dispositions post-appel (whitelist alignée HANDLER) ──
+//   Libellés via clés i18n FIGÉES Phase A (telephony.disposition.*).
+const DISPOSITION_OPTIONS = ['interested', 'callback', 'voicemail', 'wrong_number', 'not_interested'] as const;
+
+/**
+ * Sprint 16 — éditeur de disposition + notes post-appel sur une entrée du journal.
+ *   Best-effort : sélecteur disposition (telephony.disposition.*) + champ notes
+ *   (telephony.notes.label/.save) → setCallDisposition(id, { disposition, notes }).
+ *   Affiche la disposition/notes persistées. Aucun crash : KO ⇒ toast discret.
+ */
+function CallDispositionEditor({ call, onSaved }: { call: CallLog; onSaved: (id: string, disposition: string, notes: string) => void }) {
+  const { success, error: toastError } = useToast();
+  const [disposition, setDisposition] = useState(call.disposition || '');
+  const [notes, setNotes] = useState(call.notes || '');
+  const [saving, setSaving] = useState(false);
+  const dirty = disposition !== (call.disposition || '') || notes !== (call.notes || '');
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const res = await setCallDisposition(call.id, { disposition: disposition || undefined, notes: notes || undefined });
+      if (res.error) {
+        toastError(res.error);
+      } else {
+        success(t('telephony.notes.save'));
+        onSaved(call.id, disposition, notes);
+      }
+    } catch {
+      /* best-effort : pas de crash */
+    }
+    setSaving(false);
+  };
+
+  return (
+    <div className="mt-2 pt-2 border-t border-[var(--border-subtle)] space-y-1.5">
+      <Select
+        size="sm"
+        value={disposition}
+        aria-label={t('telephony.disposition.label')}
+        onChange={(e) => setDisposition(e.target.value)}
+      >
+        <option value="">{t('telephony.disposition.label')}</option>
+        {DISPOSITION_OPTIONS.map((opt) => (
+          <option key={opt} value={opt}>{t(`telephony.disposition.${opt}`)}</option>
+        ))}
+      </Select>
+      <textarea
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
+        placeholder={t('telephony.notes.label')}
+        rows={2}
+        aria-label={t('telephony.notes.label')}
+        className="w-full text-xs rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-surface)] px-2 py-1.5 text-[var(--text-primary)] resize-y focus:border-[var(--primary)] focus:outline-none focus:shadow-[0_0_0_3px_var(--primary-ring)]"
+      />
+      <div className="flex justify-end">
+        <Button size="sm" variant="secondary" disabled={saving || !dirty} onClick={() => void handleSave()}>
+          {t('telephony.notes.save')}
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 /**
  * Corps de la fiche lead — utilisable en page complète (via LeadDetailPage)
@@ -53,6 +117,11 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
   const [messagesCount, setMessagesCount] = useState(0);
   const [newNoteBody, setNewNoteBody] = useState('');
   const [newNoteCategory, setNewNoteCategory] = useState('general');
+  // Sprint F Téléphonie — journal d'appels + click-to-call (additif, ultra-ciblé)
+  const [callLogs, setCallLogs] = useState<CallLog[]>([]);
+  const [isCalling, setIsCalling] = useState(false);
+  // Sprint 13 — score de conversion CALIBRÉ tenant (best-effort, optionnel).
+  const [conversion, setConversion] = useState<ConversionPrediction | null>(null);
 
   const loadLead = useCallback(async () => {
     // Si on a déjà un cache frais, on continue à afficher pendant le refresh background
@@ -85,7 +154,36 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
       }
     }).catch(() => {});
     getLeadMessages(leadId).then(r => { if (r.data) setMessagesCount(r.data.length); }).catch(() => {});
+    // Sprint F Téléphonie — journal d'appels du lead
+    getCallLogs(leadId).then(r => { if (r.data) setCallLogs(r.data); }).catch(() => {});
+    // Sprint 13 — score de conversion calibré (best-effort : KO/absent ⇒ pas d'affichage)
+    setConversion(null);
+    getLeadConversionScore(leadId).then(r => { if (r.data) setConversion(r.data); }).catch(() => {});
   }, [loadLead, leadId]);
+
+  // Sprint F Téléphonie — click-to-call (gère le cas mock/non-configuré)
+  const handlePlaceCall = async () => {
+    setIsCalling(true);
+    const res = await placeCall(leadId);
+    setIsCalling(false);
+    if (res.error) {
+      // Téléphonie non configurée / credentials absents → message discret
+      if (res.error.toLowerCase().includes('not configured') || res.error.toLowerCase().includes('non config')) {
+        toastError(t('telephony.notconfigured'));
+      } else {
+        toastError(res.error);
+      }
+      return;
+    }
+    if (res.data?.mock) {
+      // Worker en mode simulé (sans credentials Twilio) → on l'indique discrètement
+      success(`${t('telephony.clicktocall.action')} · ${t('telephony.status.mock')}`);
+    } else {
+      success(t('telephony.clicktocall.action'));
+    }
+    // Rafraîchir le journal pour faire apparaître le nouvel appel
+    getCallLogs(leadId).then(r => { if (r.data) setCallLogs(r.data); }).catch(() => {});
+  };
 
   // ── Optimistic mutations : UI update immédiate, rollback en cas d'erreur ──
   const handleStatusChange = async (status: LeadStatus) => {
@@ -684,6 +782,29 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
                   )}
                 </div>
               ))}
+              {/* Sprint MULTILANG-B — sélecteur langue préférée (additif, à côté de country/timezone) */}
+              <div className="flex items-center justify-between">
+                <span className="text-[var(--text-muted)]">{t('leads.language.label')}</span>
+                <select
+                  value={lead.preferred_language || ''}
+                  onChange={async (e) => {
+                    if (!lead) return;
+                    const value = e.target.value;
+                    const prev = lead;
+                    setLead({ ...lead, preferred_language: value || null });
+                    const res = await updateLead(leadId, { preferred_language: value } as Record<string, unknown>);
+                    if (res.error) { setLead(prev); toastError(`Erreur de mise à jour de la langue : ${res.error}`); }
+                    else { void loadLead(); }
+                  }}
+                  className="w-40 px-1.5 py-0.5 text-xs bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] text-right text-[var(--text-secondary)] focus:border-[var(--brand-primary)] focus:outline-none cursor-pointer">
+                  <option value="">{t('leads.language.default')}</option>
+                  <option value="fr-CA">Français (QC)</option>
+                  <option value="fr-FR">Français (FR)</option>
+                  <option value="en">English</option>
+                  <option value="es">Español</option>
+                </select>
+              </div>
+              <p className="col-span-full text-[10px] text-[var(--text-muted)] leading-snug">{t('leads.language.help')}</p>
             </div>
           </Card>
 
@@ -720,6 +841,72 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
             )}
           </Card>
 
+          {/* Sprint F Téléphonie — Journal d'appels + click-to-call (additif) */}
+          <Card className="p-4">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t('telephony.calllog.title')}</h3>
+              <Button size="sm" variant="secondary" disabled={isCalling} onClick={() => void handlePlaceCall()}>
+                <Phone size={13} className="mr-1" /> {t('telephony.clicktocall.action')}
+              </Button>
+            </div>
+            {callLogs.length > 0 ? (
+              <div className="space-y-2">
+                {callLogs.map((call) => {
+                  const isInbound = call.direction === 'inbound';
+                  const number = isInbound ? call.from_number : call.to_number;
+                  // Statut color-coded (réutilise tokens), fallback neutre
+                  const statusColor =
+                    call.status === 'completed' ? 'var(--success)' :
+                    call.status === 'failed' || call.status === 'no-answer' || call.status === 'noanswer' ? 'var(--danger)' :
+                    call.status === 'ringing' || call.status === 'queued' ? 'var(--warning)' : 'var(--text-muted)';
+                  // i18n status (clés Phase A) — normalise no-answer → noanswer
+                  const statusKey = `telephony.status.${(call.status || '').replace('-', '')}`;
+                  const statusTr = t(statusKey);
+                  // t() renvoie la clé brute si absente → fallback sur le statut réel
+                  const statusLabel = statusTr === statusKey ? (call.status || '—') : statusTr;
+                  const mins = Math.floor((call.duration_sec || 0) / 60);
+                  const secs = (call.duration_sec || 0) % 60;
+                  const durationFmt = call.duration_sec ? `${mins}:${String(secs).padStart(2, '0')}` : null;
+                  return (
+                    <div key={call.id} className="p-2 bg-[var(--bg-subtle)] rounded-[var(--radius-sm)]">
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        {isInbound
+                          ? <PhoneIncoming size={12} className="text-[var(--success)] shrink-0" aria-label={t('telephony.direction.inbound')} />
+                          : <PhoneOutgoing size={12} className="text-[var(--brand-primary)] shrink-0" aria-label={t('telephony.direction.outbound')} />}
+                        <span className="text-xs font-medium truncate">{number || (isInbound ? t('telephony.direction.inbound') : t('telephony.direction.outbound'))}</span>
+                        {durationFmt && <span className="text-[10px] text-[var(--text-muted)] ml-auto tabular-nums">{durationFmt}</span>}
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[10px] text-[var(--text-muted)]">
+                          {call.created_at ? new Date(call.created_at + (call.created_at.endsWith('Z') ? '' : 'Z')).toLocaleString('fr-CA', { dateStyle: 'short', timeStyle: 'short' }) : '—'}
+                        </span>
+                        <Badge color={statusColor}>{statusLabel}</Badge>
+                      </div>
+                      {call.recording_url && (
+                        <audio controls preload="none" src={call.recording_url} className="w-full mt-1.5 h-7" />
+                      )}
+                      {call.transcription && (
+                        <details className="mt-1 group">
+                          <summary className="text-[10px] text-[var(--brand-primary)] cursor-pointer hover:underline list-none">
+                            {t('telephony.transcription')}
+                          </summary>
+                          <p className="text-[11px] text-[var(--text-secondary)] mt-1 whitespace-pre-wrap leading-snug">{call.transcription}</p>
+                        </details>
+                      )}
+                      {/* Sprint 16 — disposition + notes post-appel (additif, best-effort) */}
+                      <CallDispositionEditor
+                        call={call}
+                        onSaved={(id, disposition, notes) => setCallLogs((prev) => prev.map((c) => c.id === id ? { ...c, disposition: disposition || null, notes: notes || null } : c))}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-xs text-[var(--text-muted)]">{t('telephony.calllog.empty')}</p>
+            )}
+          </Card>
+
           {/* Score visuel */}
           <Card className="p-4">
             <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">{t('lead.sidebar.lead_score')}</h3>
@@ -740,6 +927,29 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
               {lead.score >= 70 ? t('lead.score.hot') : lead.score >= 40 ? t('lead.score.warm') : t('lead.score.cold')}
             </p>
           </Card>
+
+          {/* Sprint 13 — Prévision de conversion CALIBRÉE tenant. Réutilise
+              LeadPredictionCard (gauge + facteurs + actions) et lui passe le
+              score calibré (badge « calibré » + facteur « taux historique »).
+              Best-effort : si getLeadConversionScore est KO, conversion=null →
+              la carte retombe sur sa prévision Sprint 49 sans rien casser. */}
+          <LeadPredictionCard
+            leadId={leadId}
+            localInput={{
+              score: lead.score,
+              status: lead.status,
+              source: lead.source,
+              deal_value: lead.deal_value,
+              updated_at: lead.updated_at,
+              created_at: lead.created_at,
+              last_activity_at: lead.last_activity_at,
+              tags: lead.tags,
+              activity: lead.activity,
+              messagesCount,
+              stageProbability: probability,
+            }}
+            conversion={conversion}
+          />
 
           {/* Sprint 20 : suggestion AI prochaine étape — affichée seulement si lead inactif >7j */}
           {(() => {
@@ -791,7 +1001,7 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
             <div className="space-y-2 text-xs">
               <div className="flex justify-between"><span className="text-[var(--text-muted)]">{t('lead.sidebar.created')}</span><span>{new Date(lead.created_at).toLocaleDateString('fr-CA')}</span></div>
               <div className="flex justify-between"><span className="text-[var(--text-muted)]">{t('lead.sidebar.updated')}</span><span>{new Date(lead.updated_at).toLocaleDateString('fr-CA')}</span></div>
-              <div className="flex justify-between"><span className="text-[var(--text-muted)]">Source</span><span>{SOURCE_LABELS[lead.source] || lead.source}</span></div>
+              <div className="flex justify-between"><span className="text-[var(--text-muted)]">{t('lead_detail.source_label')}</span><span>{SOURCE_LABELS[lead.source] || lead.source}</span></div>
               <div className="flex justify-between"><span className="text-[var(--text-muted)]">ID</span><span className="font-mono truncate ml-2">{lead.id.slice(0, 8)}</span></div>
             </div>
           </Card>

@@ -91,6 +91,21 @@ export interface MessageBubbleProps {
   onDelete?: () => void;
   /** Texte exposé pour quick-copy. Si non fourni utilise `text`. */
   copyableText?: string;
+  /**
+   * LOT SMS/WHATSAPP seq 104 (Phase C) — canal du message. Si 'whatsapp',
+   * affiche un petit badge canal sobre. Optionnel : absent ⇒ aucun badge
+   * (comportement legacy inchangé).
+   */
+  channel?: string;
+  /**
+   * LOT SMS/WHATSAPP seq 104 (Phase C) — accusé de livraison SMS sortant
+   * (colonne messages.delivery_status posée par handleSmsStatusCallback côté
+   * worker, Manager-B). DISTINCT de `status`. Optionnel/défensif : le type
+   * front Message n'expose pas encore ce champ (signalé au rapport) ⇒ lecture
+   * via optional chaining côté MessageThread. Valeurs libres (sans CHECK) :
+   * ex 'queued' | 'sent' | 'delivered' | 'undelivered' | 'failed'.
+   */
+  deliveryStatus?: string;
 }
 
 const SWIPE_REPLY_THRESHOLD = 40;
@@ -121,6 +136,8 @@ export function MessageBubble({
   onForward,
   onDelete,
   copyableText,
+  channel,
+  deliveryStatus,
 }: MessageBubbleProps) {
   const isSent = direction === 'sent';
   const isFailed = status === 'failed';
@@ -452,9 +469,21 @@ export function MessageBubble({
             )}
             {!isSending && !isFailed && (
               <>
+                {/* LOT SMS/WHATSAPP seq 104 — badge canal WhatsApp (sobre). */}
+                {channel === 'whatsapp' && (
+                  <span className="text-[9px] font-semibold" aria-label="WhatsApp">
+                    WhatsApp
+                  </span>
+                )}
                 <span className="text-[9px] t-mono-num">{formatTime(timestamp)}</span>
                 {senderName && <span className="text-[9px]">· {senderName}</span>}
                 {isSent && status && <StatusIcon status={status} />}
+                {/* LOT SMS/WHATSAPP seq 104 — accusé de livraison SMS sortant.
+                    DISTINCT de status ; n'apparaît que sur les messages sortants
+                    et seulement si le worker a posé delivery_status. */}
+                {isSent && deliveryStatus && (
+                  <DeliveryStatusBadge deliveryStatus={deliveryStatus} />
+                )}
               </>
             )}
           </div>
@@ -499,6 +528,36 @@ export function MessageBubble({
         />
       )}
     </div>
+  );
+}
+
+// ── LOT SMS/WHATSAPP seq 104 — accusé de livraison SMS (Phase C) ─────────────
+// Petit badge sobre dérivé de messages.delivery_status (valeurs libres, sans
+// CHECK côté DB — posées par handleSmsStatusCallback). On normalise vers 3
+// familles d'icônes (envoyé / livré / échec) + un libellé court ; toute valeur
+// inconnue retombe sur un affichage texte brut neutre (jamais d'erreur).
+function DeliveryStatusBadge({ deliveryStatus }: { deliveryStatus: string }) {
+  const s = deliveryStatus.toLowerCase();
+  const isDelivered = s === 'delivered';
+  const isFailed = s === 'failed' || s === 'undelivered';
+  const Ico = isDelivered ? CheckCheck : isFailed ? AlertCircle : Check;
+  const label = isDelivered
+    ? 'Livré'
+    : isFailed
+      ? 'Échec'
+      : s === 'sent'
+        ? 'Envoyé'
+        : deliveryStatus;
+  return (
+    <span
+      className="inline-flex items-center gap-0.5 text-[9px]"
+      style={isFailed ? { color: 'var(--danger)' } : undefined}
+      aria-label={`Livraison SMS : ${label}`}
+      title={`Livraison SMS : ${label}`}
+    >
+      <Icon as={Ico} size="xs" />
+      <span>{label}</span>
+    </span>
   );
 }
 

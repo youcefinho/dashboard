@@ -22,22 +22,31 @@ interface TrashItem {
 }
 
 export function TrashPage() {
-  const { success: toastSuccess } = useToast();
+  const { success: toastSuccess, error: toastError } = useToast();
   const [items, setItems] = useState<TrashItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showConfirm, setShowConfirm] = useState(false);
   const [restoringId, setRestoringId] = useState<string | null>(null);
   const [lastRestored, setLastRestored] = useState<TrashItem | null>(null);
+  // Renforcement — error state
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [isEmptying, setIsEmptying] = useState(false);
   // Sprint 32 vague 32-3A — Expand inline (deleted_at + days_remaining_purge + restore action)
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const fetchTrash = async () => {
     setIsLoading(true);
+    setLoadError(null);
     try {
       const res = await getTrash();
-      if (res.data) setItems(res.data as unknown as TrashItem[]);
+      if (res.error) {
+        setLoadError(res.error);
+      } else if (res.data) {
+        setItems(res.data as unknown as TrashItem[]);
+      }
     } catch (err) {
       console.error(err);
+      setLoadError(err instanceof Error ? err.message : t('trash.error.load_failed'));
     } finally {
       setIsLoading(false);
     }
@@ -67,12 +76,20 @@ export function TrashPage() {
   };
 
   const handleEmptyTrash = async () => {
+    setIsEmptying(true);
     try {
-      await emptyTrash();
-      setShowConfirm(false);
-      void fetchTrash();
+      const res = await emptyTrash();
+      if (res && (res as { error?: string }).error) {
+        toastError((res as { error: string }).error);
+      } else {
+        setShowConfirm(false);
+        void fetchTrash();
+      }
     } catch (err) {
       console.error(err);
+      toastError(err instanceof Error ? err.message : t('trash.error.empty_failed'));
+    } finally {
+      setIsEmptying(false);
     }
   };
 
@@ -138,18 +155,33 @@ export function TrashPage() {
       )}
 
       {lastRestored && (
-        <SmartBanner
-          variant="success"
-          title={t('trash.banner.restored', { name: lastRestored.name })}
-          description={t('trash.banner.restored_desc')}
-          action={{ label: 'Voir', onClick: () => { setLastRestored(null); } }}
-          secondaryLabel="Fermer"
-          onSecondaryClick={() => setLastRestored(null)}
-        />
+        <div role="status" aria-live="polite">
+          <SmartBanner
+            variant="success"
+            title={t('trash.banner.restored', { name: lastRestored.name })}
+            description={t('trash.banner.restored_desc')}
+            action={{ label: 'Voir', onClick: () => { setLastRestored(null); } }}
+            secondaryLabel="Fermer"
+            onSecondaryClick={() => setLastRestored(null)}
+          />
+        </div>
+      )}
+
+      {/* Renforcement — error state */}
+      {loadError && !isLoading && (
+        <Card className="p-6" role="alert" aria-live="assertive">
+          <p className="text-sm font-semibold text-[var(--danger)] mb-1">
+            {t('trash.error.load_failed')}
+          </p>
+          <p className="text-xs text-[var(--text-muted)] mb-3 break-all">{loadError}</p>
+          <Button variant="secondary" size="sm" onClick={() => { void fetchTrash(); }}>
+            {t('trash.action.retry')}
+          </Button>
+        </Card>
       )}
 
       {isLoading ? (
-        <Card className="p-0 overflow-hidden">
+        <Card className="p-0 overflow-hidden" aria-busy="true" aria-live="polite">
           <div className="px-4 py-3 border-b border-[var(--border-subtle)] bg-[var(--bg-subtle)] flex items-center gap-6">
             {[1,2,3,4,5,6].map(i => (
               <Skeleton key={i} className="h-3 w-20 rounded" />
@@ -171,7 +203,7 @@ export function TrashPage() {
             ))}
           </div>
         </Card>
-      ) : items.length === 0 ? (
+      ) : loadError ? null : items.length === 0 ? (
         <EmptyState
           variant="first-time"
           icon={<Icon as={Trash2} size={48} />}
@@ -289,8 +321,10 @@ export function TrashPage() {
             </div>
           </div>
           <div className="flex justify-end gap-3">
-            <Button variant="secondary" onClick={() => setShowConfirm(false)}>{t('trash.modal.cancel')}</Button>
-            <Button variant="destructive" onClick={handleEmptyTrash}>{t('trash.modal.confirm')}</Button>
+            <Button variant="secondary" onClick={() => setShowConfirm(false)} disabled={isEmptying}>{t('trash.modal.cancel')}</Button>
+            <Button variant="destructive" onClick={handleEmptyTrash} disabled={isEmptying} isLoading={isEmptying} aria-busy={isEmptying}>
+              {isEmptying ? t('trash.action.emptying') : t('trash.modal.confirm')}
+            </Button>
           </div>
         </div>
       </Modal>

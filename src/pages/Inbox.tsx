@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Tag, Skeleton, BulkActionBar, AppliedFiltersBar, type FilterDescriptor, Icon, useToast, EmptyStateIllustration } from '@/components/ui';
+import { Tag, Skeleton, BulkActionBar, AppliedFiltersBar, type FilterDescriptor, Icon, useToast, EmptyStateIllustration, EmptyState } from '@/components/ui';
 import { Avatar } from '@/components/ui/Avatar';
 
 import { getConversations, getConversation, sendConversationMessage, updateConversation, getSnippets, getTemplates, markConversationRead, aiSummarizeConversation, addTag } from '@/lib/api';
@@ -853,7 +853,7 @@ export function InboxPage() {
           <div className={`flex-1 flex-col min-w-0 bg-[var(--bg-canvas)] ${selectedConvId ? 'flex' : 'hidden md:flex'}`}>
           {isLoadingThread && !activeConv ? (
             /* Skeleton matche le layout thread : header + bulles alternées + composer */
-            <>
+            <div aria-busy="true" aria-live="polite" className="contents">
               <div className="flex items-center justify-between px-4 py-2.5 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <Skeleton className="h-8 w-8 rounded-full shrink-0" />
@@ -894,21 +894,16 @@ export function InboxPage() {
               <div className="border-t border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-3">
                 <Skeleton className="h-10 w-full rounded-lg" style={{ animationDelay: '320ms' }} />
               </div>
-            </>
+            </div>
           ) : !activeConv ? (
-            <div className="inbox-empty-center" role="status" aria-live="polite">
-              <div className="inbox-empty-card empty-state">
-                <div className="inbox-empty-icon empty-state-illustration" aria-hidden>
-                  {conversations.length === 0 ? (
-                    <EmptyStateIllustration kind="inbox" size={160} />
-                  ) : (
-                    <MessageSquare size={48} strokeWidth={1.5} />
-                  )}
-                </div>
-                {conversations.length === 0 ? (
-                  <>
-                    <h3 className="inbox-empty-title">{t('inbox.empty.none_title')}</h3>
-                    <p className="inbox-empty-body">{t('inbox.empty.none_body')}</p>
+            <div className="inbox-empty-center">
+              {conversations.length === 0 ? (
+                <EmptyState
+                  className="inbox-empty-card"
+                  illustration={<EmptyStateIllustration kind="inbox" size={160} />}
+                  title={t('inbox.empty.none_title')}
+                  description={t('inbox.empty.none_body')}
+                  action={
                     <button
                       type="button"
                       onClick={() => { setSelectedConvId(null); setIsComposingNew(true); }}
@@ -917,14 +912,16 @@ export function InboxPage() {
                       <Plus size={14} strokeWidth={2} />
                       <span>{t('inbox.empty.new_message')}</span>
                     </button>
-                  </>
-                ) : (
-                  <>
-                    <h3 className="inbox-empty-title">{t('inbox.empty.select_title')}</h3>
-                    <p className="inbox-empty-body">{t('inbox.empty.select_body')}</p>
-                  </>
-                )}
-              </div>
+                  }
+                />
+              ) : (
+                <EmptyState
+                  className="inbox-empty-card"
+                  icon={<MessageSquare size={48} strokeWidth={1.5} />}
+                  title={t('inbox.empty.select_title')}
+                  description={t('inbox.empty.select_body')}
+                />
+              )}
             </div>
           ) : (
             <>

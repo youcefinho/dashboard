@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from '@tanstack/react-router';
-import { apiFetch } from '@/lib/api';
-import { Button, Card, Tag, Input, useToast, Icon } from '@/components/ui';
-import { PenTool, CheckCircle, Shield, AlertTriangle } from 'lucide-react';
+import { apiFetch, declinePublicDocument } from '@/lib/api';
+import { Button, Card, Tag, Input, useToast, useConfirm, Icon } from '@/components/ui';
+import { PenTool, CheckCircle, Shield, AlertTriangle, XCircle } from 'lucide-react';
 import SignatureCanvas from 'react-signature-canvas';
 import { t } from '@/lib/i18n';
 
@@ -15,11 +15,14 @@ interface PublicDocument {
 
 export function SignDocumentPage() {
   const { warning } = useToast();
+  const confirm = useConfirm();
   const { token } = useParams({ strict: false }) as { token: string };
   const [doc, setDoc] = useState<PublicDocument | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSigning, setIsSigning] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [isDeclined, setIsDeclined] = useState(false);
+  const [isDeclining, setIsDeclining] = useState(false);
   const [signerName, setSignerName] = useState('');
   
   const sigCanvas = useRef<any>(null);
@@ -74,6 +77,34 @@ export function SignDocumentPage() {
     }
   };
 
+  // ── Sprint 17 PROPOSALS E-SIGN — refus public ──
+  // Confirmation puis declinePublicDocument(token, { reason }) (helper FIGÉ
+  // Phase A, calque l'appel public de signature). Best-effort — au succès,
+  // écran "refusé". Le flux de signature existant reste intact.
+  const handleDecline = async () => {
+    const ok = await confirm({
+      title: t('sign.decline'),
+      description: t('sign.decline_confirm'),
+      confirmLabel: t('sign.decline'),
+    });
+    if (!ok) return;
+
+    setIsDeclining(true);
+    try {
+      const reason = signerName.trim();
+      const res = await declinePublicDocument(token, reason ? { reason } : {});
+      if (res.error) {
+        setError(res.error);
+      } else {
+        setIsDeclined(true);
+      }
+    } catch (e: any) {
+      setError(e.message || 'Erreur lors du refus.');
+    } finally {
+      setIsDeclining(false);
+    }
+  };
+
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--bg-canvas)] p-4">
@@ -98,6 +129,17 @@ export function SignDocumentPage() {
           <div className="p-4 bg-[var(--bg-subtle)] rounded-[var(--radius-md)] flex items-center justify-center gap-2 text-sm text-[var(--text-muted)]">
             <Icon as={Shield} size="md" /> {t('sign.success.certified')}
           </div>
+        </Card>
+      </div>
+    );
+  }
+
+  if (isDeclined) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[var(--bg-canvas)] p-4">
+        <Card className="max-w-md w-full p-8 text-center border-[var(--danger)] shadow-lg">
+          <Icon as={XCircle} size={64} className="mx-auto text-[var(--danger)] mb-4" />
+          <h1 className="text-2xl font-bold">{t('proposal.declined')}</h1>
         </Card>
       </div>
     );
@@ -205,13 +247,21 @@ export function SignDocumentPage() {
             </div>
           </div>
 
-          <div className="mt-8">
-            <Button 
-              className="w-full py-4 text-lg justify-center shadow-lg hover:shadow-xl transition-all" 
+          <div className="mt-8 space-y-3">
+            <Button
+              className="w-full py-4 text-lg justify-center shadow-lg hover:shadow-xl transition-all"
               onClick={() => void handleSign()}
-              disabled={isSigning}
+              disabled={isSigning || isDeclining}
             >
               {isSigning ? t('sign.panel.submitting') : t('sign.panel.submit')}
+            </Button>
+            <Button
+              variant="secondary"
+              className="w-full justify-center"
+              onClick={() => void handleDecline()}
+              disabled={isSigning || isDeclining}
+            >
+              <Icon as={XCircle} size="sm" /> {t('sign.decline')}
             </Button>
           </div>
         </div>

@@ -240,7 +240,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={contextValue}>
       {children}
       <div
-        className="fixed bottom-0 right-0 p-4 space-y-3 z-[9999] max-w-[440px] w-full pointer-events-none flex flex-col items-end"
+        className="fixed bottom-0 right-0 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] space-y-3 z-[9999] max-w-[440px] w-full pointer-events-none flex flex-col items-end"
         role="region"
         aria-label="Notifications"
         aria-live="polite"

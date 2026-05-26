@@ -42,6 +42,8 @@ interface SlidePanelProps {
   onOpenFull?: () => void;
   /** Classe additionnelle sur le body scrollable */
   bodyClassName?: string;
+  /** LOT C — aria-label du bouton fermer (i18n). Défaut 'Fermer' (rétro-compat). */
+  closeLabel?: string;
 }
 
 const sizeMap: Record<SlidePanelSize, string> = {
@@ -64,6 +66,7 @@ export function SlidePanel({
   openFullHref,
   onOpenFull,
   bodyClassName,
+  closeLabel = 'Fermer',
 }: SlidePanelProps) {
   // Décalage visuel quand un panel est sous un autre (effet "carte sous carte")
   const offsetTransform = stackLevel > 0
@@ -132,7 +135,7 @@ export function SlidePanel({
               )}
               <DialogPrimitive.Close
                 className="rounded-[var(--radius-sm)] p-1.5 text-[var(--text-muted)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
-                aria-label="Fermer"
+                aria-label={closeLabel}
               >
                 <Icon as={X} size={16} />
               </DialogPrimitive.Close>
@@ -146,7 +149,10 @@ export function SlidePanel({
 
           {/* Footer optionnel sticky */}
           {footer && (
-            <div className="sticky bottom-0 z-10 px-5 py-3 border-t border-[var(--border-subtle)] bg-[var(--bg-surface)]">
+            <div
+              className="sticky bottom-0 z-10 px-5 py-3 border-t border-[var(--border-subtle)] bg-[var(--bg-surface)]"
+              style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
+            >
               {footer}
             </div>
           )}

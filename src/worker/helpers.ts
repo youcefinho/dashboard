@@ -1,6 +1,7 @@
 // ── Helpers partagés Worker ──────────────────────────────────
 
 import type { Env } from './types';
+import { auditRedact } from './lib/audit-redact';
 
 // ── Request context (stocké au début de fetch, utilisé partout) ─────
 let _currentRequest: Request | null = null;
@@ -13,6 +14,23 @@ export function setRequestContext(request: Request, env: Env): void {
 
 export function getRequestContext(): { request: Request | null; env: Env | null } {
   return { request: _currentRequest, env: _currentEnv };
+}
+
+// ── Sprint 24 — Observabilité : request_id corrélation ──────────────
+// `_currentRequestId` est positionné au chokepoint worker.ts:339 (juste après
+// `setRequestContext`). Lu par :
+//   - `json()` ci-dessous (header `X-Request-Id` en réponse).
+//   - `audit()` ci-dessous (colonne audit_log.request_id seq121).
+//   - `createCorrelatedLogger(env, requestId)` (logger.ts).
+// Convention : UUID v4 (ou reprise du header entrant si présent).
+let _currentRequestId: string | null = null;
+
+export function setRequestId(id: string): void {
+  _currentRequestId = id;
+}
+
+export function getRequestId(): string | null {
+  return _currentRequestId;
 }
 
 // ── Sanitisation ────────────────────────────────────────────
@@ -59,10 +77,15 @@ export function corsHeaders(): Record<string, string> {
 // ── JSON Response ───────────────────────────────────────────
 
 export function json(data: unknown, status = 200): Response {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { 'Content-Type': 'application/json', ...corsHeaders() },
-  });
+  // Sprint 24 — Observabilité : injection header `X-Request-Id` si présent.
+  // Signature publique INCHANGÉE (pas de nouveau param). Best-effort : si
+  // _currentRequestId est null (hors fetch), aucun header n'est ajouté.
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...corsHeaders(),
+  };
+  if (_currentRequestId) headers['X-Request-Id'] = _currentRequestId;
+  return new Response(JSON.stringify(data), { status, headers });
 }
 
 // ── Audit log helper (best-effort) ──────────────────────────
@@ -78,10 +101,53 @@ export async function audit(
   try {
     const ip = _currentRequest?.headers.get('CF-Connecting-IP') || 'unknown';
     const ua = _currentRequest?.headers.get('User-Agent') || '';
-    await env.DB.prepare(
-      `INSERT INTO audit_log (user_id, action, resource_type, resource_id, details, ip, user_agent)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
-    ).bind(userId, action, resourceType, resourceId, JSON.stringify(details), ip, ua).run();
+    // ── Sprint 23 — redaction PII (whitelist stricte) ─────────────────
+    // SENSITIVE_KEYS_REGEX dans lib/audit-redact.ts. La signature publique
+    // de audit() reste INCHANGÉE — les callers existants ne se rendent
+    // compte de rien. `redacted` = 1 si ≥1 clé sensible a été remplacée.
+    const { sanitized, redacted } = auditRedact(details);
+    const payload = JSON.stringify(sanitized);
+    // ── Sprint 24 — Observabilité : propagation `request_id` (seq121 colonne
+    // ajoutée, jamais écrite avant Sprint 24). Triple fallback rétro-compat :
+    //   9 cols (seq122+ : request_id + redacted) → nominal,
+    //   8 cols (seq121 only : redacted, pas de request_id écrit)              → fallback A,
+    //   7 cols (pré-seq121 : forme historique)                                → fallback B.
+    // Détection via /no such column/i.test(e.message). La signature publique
+    // de audit() reste INCHANGÉE.
+    const requestId = _currentRequestId;
+    try {
+      // Chemin nominal : colonnes `request_id` ET `redacted` présentes (seq121 jouée).
+      await env.DB.prepare(
+        `INSERT INTO audit_log (user_id, action, resource_type, resource_id, details, ip, user_agent, request_id, redacted)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      ).bind(userId, action, resourceType, resourceId, payload, ip, ua, requestId, redacted ? 1 : 0).run();
+    } catch (e9) {
+      const msg9 = String(e9 ?? '');
+      if (/no such column/i.test(msg9) || /has no column/i.test(msg9)) {
+        try {
+          // Fallback A : colonne `request_id` absente (seq121 partielle ou DB
+          // hors-séquence) mais `redacted` présente → forme Sprint 23.
+          await env.DB.prepare(
+            `INSERT INTO audit_log (user_id, action, resource_type, resource_id, details, ip, user_agent, redacted)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+          ).bind(userId, action, resourceType, resourceId, payload, ip, ua, redacted ? 1 : 0).run();
+        } catch (e8) {
+          const msg8 = String(e8 ?? '');
+          if (/no such column/i.test(msg8) || /has no column/i.test(msg8)) {
+            // Fallback B : forme historique pré-seq121 (sans redacted, sans
+            // request_id). Compat dev/test où aucune migration sécurité n'a tourné.
+            await env.DB.prepare(
+              `INSERT INTO audit_log (user_id, action, resource_type, resource_id, details, ip, user_agent)
+               VALUES (?, ?, ?, ?, ?, ?, ?)`
+            ).bind(userId, action, resourceType, resourceId, payload, ip, ua).run();
+          } else {
+            throw e8;
+          }
+        }
+      } else {
+        throw e9;
+      }
+    }
   } catch { /* non critique — ne jamais bloquer l'action principale */ }
 }
 

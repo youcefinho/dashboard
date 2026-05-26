@@ -25,7 +25,9 @@ import {
   // ── Sprint S8 — items e-commerce conditionnels (module Boutique) ──
   Package, ShoppingBag, Store,
 } from 'lucide-react';
-import { getLeads } from '@/lib/api';
+// ── Sprint 21 (Onboarding durci) — état serveur primaire (fallback localStorage) ──
+import { getLeads, getOnboardingChecklist } from '@/lib/api';
+import type { OnboardingChecklistResponse, OnboardingChecklistItemKey } from '@/lib/types';
 import { useHasModule } from '@/components/ecommerce/ModuleGuard';
 import { t } from '@/lib/i18n';
 import { cn } from '@/lib/cn';
@@ -56,14 +58,26 @@ export function OnboardingProgressChip({ collapsed = false }: OnboardingProgress
   const [open, setOpen] = useState(false);
   const [dismissed, setDismissed] = useState(() => readFlag(DISMISSED_KEY));
   const [leadsCount, setLeadsCount] = useState<number | null>(null);
+  // ── Sprint 21 (Onboarding durci) — état serveur primaire ────────────────
+  // Best-effort : si l'API fail, on garde null et on retombe sur les flags
+  // localStorage existants (comportement Sprint 45 préservé).
+  const [serverState, setServerState] = useState<OnboardingChecklistResponse | null>(null);
 
   // Flags lus à chaque render — pas besoin de state séparé (cheap reads).
   const [tick, setTick] = useState(0);
-  const profileDone = readFlag('profile_completed');
-  const pipelineDone = readFlag('pipeline_configured');
-  const teamDone = readFlag('team_invited');
-  const integrationDone = readFlag('integration_connected');
-  const leadsDone = (leadsCount ?? 0) >= 5;
+
+  // Helper : un item est "done" si le serveur le dit OU (fallback) si le flag
+  // localStorage est set. Permet de garder le chip à jour entre 2 polls API.
+  const isServerDone = useCallback(
+    (key: OnboardingChecklistItemKey): boolean => Boolean(serverState?.items?.[key]?.done),
+    [serverState],
+  );
+
+  const profileDone = isServerDone('profile_completed') || readFlag('profile_completed');
+  const pipelineDone = isServerDone('pipeline_configured') || readFlag('pipeline_configured');
+  const teamDone = isServerDone('team_invited') || readFlag('team_invited');
+  const integrationDone = isServerDone('integration_connected') || readFlag('integration_connected');
+  const leadsDone = isServerDone('leads_imported') || (leadsCount ?? 0) >= 5;
 
   // ── Sprint S8 — items e-commerce VISIBLES uniquement si module Boutique actif.
   // Réutilise le hook projet useHasModule (cache /api/modules partagé, pas de
@@ -72,9 +86,9 @@ export function OnboardingProgressChip({ collapsed = false }: OnboardingProgress
   // si le module est réellement actif pour le tenant).
   const ecommerceStatus = useHasModule('ecommerce');
   const ecommerceActive = ecommerceStatus === 'enabled';
-  const ecomCatalogDone = readFlag('ecommerce_catalog_created');
-  const ecomProductDone = readFlag('ecommerce_first_product');
-  const ecomChannelDone = readFlag('ecommerce_channel_connected');
+  const ecomCatalogDone = isServerDone('ecommerce_catalog') || readFlag('ecommerce_catalog_created');
+  const ecomProductDone = isServerDone('ecommerce_first_product') || readFlag('ecommerce_first_product');
+  const ecomChannelDone = isServerDone('ecommerce_channel') || readFlag('ecommerce_channel_connected');
 
   // Refresh leads count
   const refreshLeads = useCallback(async () => {
@@ -84,15 +98,26 @@ export function OnboardingProgressChip({ collapsed = false }: OnboardingProgress
     } catch { /* silent */ }
   }, []);
 
+  // ── Sprint 21 — fetch checklist serveur au mount + refresh sur le même
+  //    cycle 30s que les leads. Best-effort : silencieux si fail.
+  const refreshChecklist = useCallback(async () => {
+    try {
+      const res = await getOnboardingChecklist();
+      if (res.data) setServerState(res.data);
+    } catch { /* silent — fallback localStorage */ }
+  }, []);
+
   useEffect(() => {
     void refreshLeads();
+    void refreshChecklist();
     // Poll discret : 30s — l'user peut voir la progression sans refresh manuel.
     const id = setInterval(() => {
       setTick((t) => t + 1);
       void refreshLeads();
+      void refreshChecklist();
     }, 30_000);
     return () => clearInterval(id);
-  }, [refreshLeads]);
+  }, [refreshLeads, refreshChecklist]);
 
   // Listen storage changes (ex: autre onglet)
   useEffect(() => {
@@ -114,42 +139,45 @@ export function OnboardingProgressChip({ collapsed = false }: OnboardingProgress
   }, []);
 
   const items: ChecklistItem[] = [
+    // ── Sprint 21 — labels via i18n (`onboarding.checklist.crm_*.label/.desc`).
+    //    Sources : 4 catalogues Phase A figés. Les flags localStorage restent
+    //    le source de vérité local (fallback), mais le label/desc passent par t().
     {
       id: 'profile',
-      label: 'Compléter ton profil',
-      description: 'Nom, courriel, photo, langue',
+      label: t('onboarding.checklist.crm_profile.label'),
+      description: t('onboarding.checklist.crm_profile.desc'),
       icon: User,
       done: profileDone,
       to: '/settings',
     },
     {
       id: 'leads',
-      label: 'Importer ou créer 5 leads',
-      description: leadsCount === null ? 'Chargement...' : `Tu en as ${leadsCount} pour l'instant`,
+      label: t('onboarding.checklist.crm_leads.label'),
+      description: t('onboarding.checklist.crm_leads.desc'),
       icon: UserPlus,
       done: leadsDone,
       to: '/leads',
     },
     {
       id: 'pipeline',
-      label: 'Configurer ton pipeline',
-      description: 'Adapte les étapes à ton processus',
+      label: t('onboarding.checklist.crm_pipeline.label'),
+      description: t('onboarding.checklist.crm_pipeline.desc'),
       icon: Briefcase,
       done: pipelineDone,
       to: '/pipeline',
     },
     {
       id: 'team',
-      label: 'Inviter un membre d\'équipe',
-      description: 'Collabore avec ton équipe',
+      label: t('onboarding.checklist.crm_team.label'),
+      description: t('onboarding.checklist.crm_team.desc'),
       icon: Users,
       done: teamDone,
       to: '/settings',
     },
     {
       id: 'integration',
-      label: 'Connecter une intégration',
-      description: 'Email, calendrier, formulaires',
+      label: t('onboarding.checklist.crm_integration.label'),
+      description: t('onboarding.checklist.crm_integration.desc'),
       icon: Plug,
       done: integrationDone,
       to: '/integrations',
@@ -159,10 +187,10 @@ export function OnboardingProgressChip({ collapsed = false }: OnboardingProgress
     // `docs_visited` set par MarketingHelpPage à l'arrivée).
     {
       id: 'docs',
-      label: 'Explorer la documentation',
-      description: 'Guides, tutos et doc API',
+      label: t('onboarding.checklist.crm_docs.label'),
+      description: t('onboarding.checklist.crm_docs.desc'),
       icon: BookOpen,
-      done: readFlag('docs_visited'),
+      done: isServerDone('docs_visited') || readFlag('docs_visited'),
       to: '/help',
     },
     // ── Sprint S8 — items e-commerce (uniquement si module Boutique actif) ──
@@ -304,6 +332,9 @@ interface PanelProps {
 function OnboardingChecklistPanel({
   open, onOpenChange, items, completed, total, pct, onNavigate, onDismiss,
 }: PanelProps) {
+  // Sprint 21 — handler "Voir la page complète" pointe vers /getting-started
+  // (réutilise onNavigate qui ferme déjà le panel).
+  const handleSeeFullPage = () => onNavigate('/getting-started');
   return (
     <SlidePanel
       open={open}
@@ -374,10 +405,23 @@ function OnboardingChecklistPanel({
       {completed === total && (
         <div className="onboarding-panel-done">
           <Icon as={Check} size={20} strokeWidth={3} className="text-[var(--success)]" />
-          <p className="text-sm font-semibold text-[var(--text-primary)] mt-2">Tu es prêt!</p>
+          <p className="text-sm font-semibold text-[var(--text-primary)] mt-2">{t('onboarding.chip.ready')}</p>
           <p className="text-xs text-[var(--text-muted)] mt-1">Bonne utilisation d'Intralys.</p>
         </div>
       )}
+
+      {/* Sprint 21 — Cross-link vers la page dédiée /getting-started */}
+      <div className="mt-4 pt-3 border-t border-[var(--border)] flex justify-center">
+        <button
+          type="button"
+          onClick={handleSeeFullPage}
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--primary)] hover:underline cursor-pointer"
+          aria-label={t('onboarding.getting_started.title')}
+        >
+          {t('onboarding.getting_started.title')}
+          <Icon as={ChevronRight} size={12} />
+        </button>
+      </div>
     </SlidePanel>
   );
 }

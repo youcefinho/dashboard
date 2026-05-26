@@ -1,6 +1,11 @@
 // ── Module Custom Fields + Smart Lists — Intralys CRM ───────
 import type { Env } from './types';
 import { sanitizeInput, json, audit } from './helpers';
+import {
+  validateFieldSchema,
+  canAddFieldForTenant,
+  MAX_FIELDS_PER_TENANT,
+} from './lib/custom-fields-engine';
 
 // ── Custom Fields : définitions ─────────────────────────────
 
@@ -32,23 +37,43 @@ export async function handleCreateCustomField(
     options?: string[]; is_required?: boolean; sort_order?: number;
   };
 
-  if (!body.client_id || !body.name || !body.field_type) {
-    return json({ error: 'client_id, name et field_type requis' }, 400);
+  if (!body.client_id) {
+    return json({ error: 'client_id requis' }, 400);
   }
 
-  const allowedTypes = ['text', 'number', 'date', 'select', 'multiselect', 'boolean', 'url', 'phone', 'email'];
-  if (!allowedTypes.includes(body.field_type)) {
-    return json({ error: `field_type invalide. Valeurs : ${allowedTypes.join(', ')}` }, 400);
+  // Validation via engine PUR (whitelist type + options requis pour select +
+  // options interdits pour non-enum + dedupe options + cap MAX_SELECT_OPTIONS).
+  const schemaRes = validateFieldSchema({
+    name: body.name,
+    field_type: body.field_type,
+    options: body.options,
+    is_required: body.is_required,
+  });
+  if (!schemaRes.ok || !schemaRes.schema) {
+    return json({ error: schemaRes.message || 'Schema invalide', error_code: schemaRes.error }, 400);
+  }
+  const norm = schemaRes.schema;
+
+  // Cap tenant : MAX_FIELDS_PER_TENANT = 50 (Core CRM P0-3).
+  const countRow = await env.DB.prepare(
+    'SELECT COUNT(*) as n FROM custom_field_defs WHERE client_id = ?',
+  ).bind(body.client_id).first() as { n: number } | null;
+  const capRes = canAddFieldForTenant(countRow?.n ?? 0);
+  if (!capRes.ok) {
+    return json({
+      error: `Cap atteint : max ${MAX_FIELDS_PER_TENANT} custom fields par tenant`,
+      error_code: capRes.error,
+    }, 400);
   }
 
   const id = crypto.randomUUID();
-  const slug = body.name.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_');
+  const slug = norm.slug;
 
   await env.DB.prepare(
     'INSERT INTO custom_field_defs (id, client_id, name, slug, field_type, options, is_required, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
   ).bind(
-    id, body.client_id, sanitizeInput(body.name, 100), slug, body.field_type,
-    JSON.stringify(body.options || []), body.is_required ? 1 : 0, body.sort_order || 0
+    id, body.client_id, sanitizeInput(norm.name, 100), slug, norm.field_type,
+    JSON.stringify(norm.options), norm.is_required ? 1 : 0, body.sort_order || 0
   ).run();
 
   await audit(env, auth.userId, 'custom_field.create', 'custom_field', id, { name: body.name });

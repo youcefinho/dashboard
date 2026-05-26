@@ -2,9 +2,36 @@
 import type { Env } from './types';
 import { sanitizeInput, json, audit, corsHeaders, createNotification } from './helpers';
 import { applyLeadMapping } from './lead-mapping';
+import { normalizeLeadLocale, SUPPORTED_LEAD_LOCALES } from './i18n-server';
 import { resolveDedup, mergeIntoLead, type DedupStrategy } from './lead-dedup';
 import { validate, createLeadSchema, patchLeadSchemaS3, bulkLeadsSchemaS3, webhookLeadIngestSchema } from '../lib/schemas';
 import { validationError } from './lib/validate-response';
+import { requireQuota } from './plans';
+import { requireCapability, type Capability } from './capabilities';
+// Core CRM Sprint 1 — helpers PURS additifs (validation renforcée + normalization).
+// Adoption progressive : on enrichit handleCreateLead + bulk add_tag à ce stade.
+import {
+  validateEmail,
+  validatePhone,
+  computeInitialScore,
+  LEAD_ERROR_CODES,
+} from './lib/leads-engine';
+
+// ── LOT TEAM B-bis — garde de capability CONDITIONNELLE (mode-agence-only) ───
+// N'enforce QUE si l'auth porte un contexte agence (tenant.agencyId != null)
+// ET un set capabilities injecté au choke-point worker.ts. En legacy/mono-
+// tenant (tenant absent / agencyId == null), chemin API-key public
+// ({role:'api'}, sans tenant/capabilities) et suites de test (auth sans
+// .capabilities) ⇒ condition FALSE ⇒ skip ⇒ comportement BYTE-IDENTIQUE.
+function capGuard(
+  auth: { tenant?: { agencyId?: string | null }; capabilities?: Set<string> },
+  cap: Capability,
+): Response | undefined {
+  if (auth?.tenant?.agencyId != null && auth.capabilities) {
+    return requireCapability(auth.capabilities, cap);
+  }
+  return undefined;
+}
 
 // Référence externe (injectée par le routeur principal)
 let autoEnrollFn: ((env: Env, workflowId: string, leadId: string) => Promise<void>) | null = null;
@@ -70,6 +97,7 @@ export async function handleGetClientLeads(
   const status = url.searchParams.get('status');
   const type = url.searchParams.get('type');
   const search = url.searchParams.get('search');
+  const language = url.searchParams.get('language'); // Sprint MULTILANG-B (opt-in)
 
   let query = 'SELECT * FROM leads WHERE client_id = ?';
   const params: string[] = [clientId];
@@ -81,6 +109,13 @@ export async function handleGetClientLeads(
   if (type && ['inbound', 'qualified', 'customer'].includes(type)) {
     query += ' AND type = ?';
     params.push(type);
+  }
+  // Sprint MULTILANG-B — filtre opt-in par langue préférée (calque status,
+  // whitelist locales). Absent → comportement inchangé. SELECT * remonte déjà
+  // la colonne preferred_language.
+  if (language && (SUPPORTED_LEAD_LOCALES as string[]).includes(language)) {
+    query += ' AND preferred_language = ?';
+    params.push(language);
   }
   if (search) {
     const cleanSearch = sanitizeInput(search, 100);
@@ -138,6 +173,7 @@ export async function handleGetLeads(env: Env, auth: { role: string; clientId?: 
   const status = url.searchParams.get('status');
   const search = url.searchParams.get('search');
   const source = url.searchParams.get('source');
+  const language = url.searchParams.get('language'); // Sprint MULTILANG-B (opt-in)
   const clientId = url.searchParams.get('client_id');
   const sort = url.searchParams.get('sort') || 'newest';
   const cursor = url.searchParams.get('cursor');
@@ -154,6 +190,12 @@ export async function handleGetLeads(env: Env, auth: { role: string; clientId?: 
   if (source) {
     query += ' AND l.source = ?';
     params.push(sanitizeInput(source, 50));
+  }
+  // Sprint MULTILANG-B — filtre opt-in par langue préférée (calque status,
+  // whitelist locales). Absent → comportement inchangé.
+  if (language && (SUPPORTED_LEAD_LOCALES as string[]).includes(language)) {
+    query += ' AND l.preferred_language = ?';
+    params.push(language);
   }
   // Filtrage par client_id : obligatoire pour les API keys, optionnel pour admin
   const effectiveClientId = auth.role === 'api' && auth.clientId ? auth.clientId : clientId;
@@ -207,6 +249,8 @@ export async function handlePatchLead(
   if (auth.role !== 'admin' && auth.role !== 'api') {
     return json({ error: 'Accès réservé aux administrateurs' }, 403);
   }
+  const cg = capGuard(auth as never, 'leads.write');
+  if (cg) return cg;
 
   const rawBody = await request.json().catch(() => null);
   const v = validate(patchLeadSchemaS3, rawBody);
@@ -215,7 +259,9 @@ export async function handlePatchLead(
   const oldLead = await env.DB.prepare('SELECT pipeline_id, stage_id FROM leads WHERE id = ?').bind(leadId).first() as { pipeline_id: string | null; stage_id: string | null } | null;
   if (!oldLead) return json({ error: 'Lead introuvable' }, 404);
   const updates: string[] = [];
-  const params: (string | number)[] = [];
+  // null inclus : Sprint MULTILANG-B permet de remettre preferred_language à NULL
+  // (repasser au défaut tenant). D1 .bind() accepte null nativement.
+  const params: (string | number | null)[] = [];
   const activities: Array<{ action: string; details: string }> = [];
 
   if (body.status !== undefined) {
@@ -300,6 +346,16 @@ export async function handlePatchLead(
     params.push(sanitizeInput(body.timezone as string, 50));
   }
 
+  // Sprint MULTILANG-B — langue préférée (additif, calque country/timezone).
+  // Whitelist locales validée ICI (handler) : valeur supportée → set ;
+  // hors-liste OU chaîne vide → set NULL ("repasser au défaut tenant fr-CA").
+  if (body.preferred_language !== undefined) {
+    const normalized = normalizeLeadLocale(body.preferred_language as unknown);
+    updates.push('preferred_language = ?');
+    params.push(normalized); // null = repasser au défaut tenant (D1 .bind() accepte null)
+    activities.push({ action: 'language_changed', details: JSON.stringify({ preferred_language: normalized }) });
+  }
+
   if (updates.length === 0) {
     return json({ error: 'Aucune modification' }, 400);
   }
@@ -345,6 +401,19 @@ export async function handlePatchLead(
           await autoEnrollFn(env, wf.id, leadId);
         }
       } catch { /* non critique */ }
+    }
+
+    // ── LOT G2 AFFILIATION — hook commission best-effort (additif, ne modifie
+    //    JAMAIS le comportement existant). Quand le statut passe à 'won', si le
+    //    lead a une jonction affiliate_referrals, onLeadWon calcule la commission
+    //    SERVEUR (programme fixed/percent) et l'enregistre (status 'pending').
+    //    Import dynamique + try/catch TOTAL avalant : un échec n'altère JAMAIS
+    //    le patch. Corps réel de onLeadWon = Phase B (affiliates.ts).
+    if (body.status === 'won') {
+      try {
+        const { onLeadWon } = await import('./affiliates');
+        await onLeadWon(env, leadId);
+      } catch { /* best-effort : la commission affilié n'échoue jamais le patch */ }
     }
   }
 
@@ -425,6 +494,8 @@ export async function handleBulkLeads(
   if (auth.role !== 'admin') {
     return json({ error: 'Accès réservé aux administrateurs' }, 403);
   }
+  const cg = capGuard(auth as never, 'leads.write');
+  if (cg) return cg;
 
   const rawBody = await request.json().catch(() => null);
   const v = validate(bulkLeadsSchemaS3, rawBody);
@@ -496,6 +567,8 @@ export async function handleBulkLeads(
     }
 
     case 'delete': {
+      const cgDel = capGuard(auth as never, 'leads.delete');
+      if (cgDel) return cgDel;
       const placeholders = ids.map(() => '?').join(',');
       await env.DB.prepare(`UPDATE leads SET deleted_at = datetime('now') WHERE id IN (${placeholders})`).bind(...ids).run();
       affected = ids.length;
@@ -513,6 +586,8 @@ export async function handleCreateLead(
   if (auth.role !== 'admin') {
     return json({ error: 'Accès réservé aux administrateurs' }, 403);
   }
+  const cg = capGuard(auth as never, 'leads.write');
+  if (cg) return cg;
 
   const rawBody = await request.json().catch(() => null);
   const v = validate(createLeadSchema, rawBody);
@@ -531,8 +606,36 @@ export async function handleCreateLead(
   if (!name) return json({ error: 'Nom requis' }, 400);
   if (!email) return json({ error: 'Email requis' }, 400);
 
-  const client = await env.DB.prepare('SELECT id FROM clients WHERE id = ? AND is_active = 1').bind(clientId).first();
+  // Core CRM Sprint 1 — validation RFC 5322 additive (helpers PURS).
+  // Le sanitizeInput a déjà appliqué cap+escape ; on durcit avec un check
+  // format strict + retourne un error_code stable (`invalid_email`). Si
+  // l'email passe l'ancien filtre `if (!email)` mais échoue RFC, on rejette
+  // AVANT le 404 client (cohérent avec le 400 "Email requis").
+  const emailCheck = validateEmail(email);
+  if (!emailCheck.ok) {
+    return json({ error: 'Email invalide', error_code: emailCheck.error || LEAD_ERROR_CODES.INVALID_EMAIL }, 400);
+  }
+  // Phone optionnel : si fourni, on valide (ne FAIL pas le create si non-fourni).
+  // Best-effort — si le format est étrange on accepte tel quel (rétro-compat
+  // avec leads existants pré-validation). On expose le code stable seulement
+  // sur les payloads NOTOIREMENT invalides (lettres, > 15 chiffres).
+  if (phone) {
+    const phoneCheck = validatePhone(phone);
+    if (!phoneCheck.ok) {
+      return json({ error: 'Téléphone invalide', error_code: phoneCheck.error || LEAD_ERROR_CODES.INVALID_PHONE }, 400);
+    }
+  }
+
+  const client = await env.DB.prepare('SELECT id, agency_id FROM clients WHERE id = ? AND is_active = 1').bind(clientId).first();
   if (!client) return json({ error: 'Client introuvable' }, 404);
+
+  // LOT 3 SaaS M2 — enforcement quota leads (§6.16(b)). Inséré APRÈS le 404,
+  // AVANT l'INSERT. Garde-fou #1 ABSOLU : un client sans agence (agency_id
+  // NULL ⇒ legacy mono-tenant) ⇒ requireQuota retourne null IMMÉDIATEMENT
+  // (0 requête D1, 0 blocage) ⇒ handleCreateLead byte-identique au
+  // comportement actuel. Quota évalué UNIQUEMENT pour un client d'agence.
+  const q = await requireQuota(env, (client as { agency_id?: string | null }).agency_id, 'leads');
+  if (q) return q;
 
   const existing = await env.DB.prepare(
     'SELECT id FROM leads WHERE LOWER(email) = ? AND client_id = ?'
@@ -540,10 +643,14 @@ export async function handleCreateLead(
   if (existing) return json({ error: `Un lead avec l'email "${email}" existe déjà pour ce client` }, 409);
 
   const id = crypto.randomUUID();
+  // Core CRM Sprint 1 — score initial calculé serveur-side (helper PUR).
+  // Garde compatibilité schéma : la colonne `score` existe (default 0 dans la
+  // migration historique). On l'écrit explicitement maintenant.
+  const initialScore = computeInitialScore({ email, phone, source });
   await env.DB.prepare(
-    `INSERT INTO leads (id, client_id, name, email, phone, type, source, message, status, pipeline_id, stage_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'new', 'pipeline-default', 'stage-new')`
-  ).bind(id, clientId, name, email, phone, type, source, message).run();
+    `INSERT INTO leads (id, client_id, name, email, phone, type, source, message, status, pipeline_id, stage_id, score)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'new', 'pipeline-default', 'stage-new', ?)`
+  ).bind(id, clientId, name, email, phone, type, source, message, initialScore).run();
 
   await audit(env, auth.userId, 'lead.create', 'lead', id, { client_id: clientId, name, email, source });
 
@@ -701,6 +808,8 @@ export async function handleExportCsv(env: Env, auth: { role: string }, url: URL
   if (auth.role !== 'admin') {
     return json({ error: 'Accès réservé aux administrateurs' }, 403);
   }
+  const cg = capGuard(auth as never, 'export');
+  if (cg) return cg;
 
   const status = url.searchParams.get('status');
   const clientId = url.searchParams.get('client_id');
@@ -828,6 +937,7 @@ export async function ingestLead(
           type: m.type, company: m.company, source: sourceKey,
           consent_status: consentStatus, attribution: m.attribution,
           custom_fields: m.customFields,
+          preferred_language: m.preferred_language,
         },
       },
     }, 200);
@@ -846,7 +956,36 @@ export async function ingestLead(
     });
     await audit(env, decision.existingId, 'updated', `Lead enrichi via source "${sourceKey}"`, '');
     await logIngestConsent(env, request, decision.existingId, m.consent, consentStatus);
+
+    // ── LOT ATTRIBUTION-D — capture touchpoint best-effort (MERGE) ───────────
+    //    Lead ré-ingéré multi-source → touchpoint additionnel (touch_order=-1
+    //    SENTINEL « append » → Phase B résout SELECT MAX(touch_order)+1).
+    //    Import dynamique + try/catch TOTAL avalant (calque hook affiliation
+    //    plus bas:974-992) : n'échoue JAMAIS l'enrichissement du lead. Corps réel
+    //    de recordTouchpoint = Phase B (touchpoints.ts ; STUB no-op Phase A).
+    try {
+      const { recordTouchpoint } = await import('./touchpoints');
+      await recordTouchpoint(env, decision.existingId, clientId, {
+        utm_source: m.attribution.utm_source,
+        utm_medium: m.attribution.utm_medium,
+        utm_campaign: m.attribution.utm_campaign,
+        referrer: m.attribution.referrer,
+      }, -1);
+    } catch { /* best-effort : la capture de touchpoint n'échoue jamais l'ingestion */ }
+
     return json({ success: true, id: decision.existingId, merged: true }, 200);
+  }
+
+  // Sprint MULTILANG-B — langue préférée à la capture (opt-in). Le mapping a
+  // déjà normalisé un éventuel champ payload (preferred_language|language|
+  // langue|locale|lang). Fallback best-effort : si absent, on dérive de l'en-tête
+  // Accept-Language de la requête entrante (normalisé vers une locale supportée,
+  // sinon null = défaut tenant). JAMAIS de déduction heuristique au-delà de ça.
+  let preferredLanguage: string | null = m.preferred_language;
+  if (!preferredLanguage) {
+    const acceptLang = request.headers.get('Accept-Language') || '';
+    const firstTag = acceptLang.split(',')[0]?.split(';')[0]?.trim();
+    preferredLanguage = normalizeLeadLocale(firstTag);
   }
 
   // Création
@@ -855,14 +994,14 @@ export async function ingestLead(
     `INSERT INTO leads
        (id, client_id, name, email, phone, message, type, source, status, score,
         utm_source, utm_medium, utm_campaign, utm_term, utm_content,
-        gclid, fbclid, referrer, consent_status, lead_source_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'new', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        gclid, fbclid, referrer, consent_status, lead_source_id, preferred_language)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'new', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).bind(
     id, clientId, m.name, m.email, m.phone, m.message, m.type, sourceKey, baseScore,
     m.attribution.utm_source, m.attribution.utm_medium, m.attribution.utm_campaign,
     m.attribution.utm_term, m.attribution.utm_content,
     m.attribution.gclid, m.attribution.fbclid, m.attribution.referrer,
-    consentStatus, sourceId
+    consentStatus, sourceId, preferredLanguage
   ).run();
 
   // Custom fields perso (best-effort, ignore si table/colonne absente)
@@ -880,6 +1019,42 @@ export async function ingestLead(
   try {
     await createNotification(env, '', 'lead', `Nouveau lead : ${m.name}`, id);
   } catch { /* silencieux */ }
+
+  // ── LOT G2 AFFILIATION — hook attribution best-effort (additif, ne modifie
+  //    JAMAIS le comportement existant). Si le payload porte un code affilié
+  //    (`aff` à la racine OU sous `data.aff` — calque la double-arrivée
+  //    forms.ts:body.data), on rattache le lead à l'affilié via la table de
+  //    jonction affiliate_referrals (attribution `?aff=`, PAS `?ref=` — 'ref'
+  //    est avalé par ATTRIBUTION_ALIASES.referrer). Import dynamique + try/catch
+  //    TOTAL avalant : un échec n'échoue JAMAIS la création du lead. Corps réel
+  //    de attributeReferral = Phase B (affiliates.ts).
+  try {
+    const dataObj = (body && typeof body.data === 'object' && body.data)
+      ? (body.data as Record<string, unknown>)
+      : body;
+    const affRaw = (dataObj?.aff ?? (body as Record<string, unknown>)?.aff) as unknown;
+    const affCode = typeof affRaw === 'string' && affRaw.trim() ? affRaw.trim() : null;
+    if (affCode) {
+      const { attributeReferral } = await import('./affiliates');
+      await attributeReferral(env, id, affCode, clientId);
+    }
+  } catch { /* best-effort : l'attribution affilié n'échoue jamais l'ingestion */ }
+
+  // ── LOT ATTRIBUTION-D — capture touchpoint best-effort (CRÉATION) ──────────
+  //    Premier touch du lead (touch_order=0). Import dynamique + try/catch TOTAL
+  //    avalant (calque hook affiliation ci-dessus:982-992) : n'échoue JAMAIS la
+  //    création du lead. Corps réel de recordTouchpoint = Phase B (touchpoints.ts ;
+  //    STUB no-op Phase A). Multi-touch PROSPECTIF — les leads existants n'ont
+  //    aucun touch (cohortes couvrent l'historique, attribution le futur).
+  try {
+    const { recordTouchpoint } = await import('./touchpoints');
+    await recordTouchpoint(env, id, clientId, {
+      utm_source: m.attribution.utm_source,
+      utm_medium: m.attribution.utm_medium,
+      utm_campaign: m.attribution.utm_campaign,
+      referrer: m.attribution.referrer,
+    }, 0);
+  } catch { /* best-effort : la capture de touchpoint n'échoue jamais l'ingestion */ }
 
   if (autoEnrollFn) {
     const workflows = await env.DB.prepare(

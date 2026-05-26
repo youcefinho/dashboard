@@ -83,6 +83,9 @@ export interface Lead {
   date_of_birth: string;
   country: string;
   timezone: string;
+  // Sprint MULTILANG-B — langue préférée du contact (additif optionnel).
+  // 'fr-CA'|'fr-FR'|'en'|'es' ; null/absent = défaut tenant fr-CA.
+  preferred_language?: string | null;
   additional_emails: string; // JSON array
   additional_phones: string; // JSON array
   city: string;
@@ -224,6 +227,8 @@ export interface Message {
   external_id: string;
   metadata: string;
   created_at: string;
+  // Sprint 3 GIGA — statut de livraison SMS (delivery receipts Twilio ; NULL = legacy)
+  delivery_status?: string | null;
   // Jointures optionnelles
   lead_name?: string;
   sender_name?: string;
@@ -272,7 +277,13 @@ export const STEP_TYPES = [
   'change_status', 'assign', 'notify', 'webhook', 'update_pipeline', 'update_stage',
   'create_task', 'create_appointment', 'create_opportunity', 'update_opportunity',
   'update_custom_field', 'trigger_another_workflow', 'end_other_workflow', 'ai_action',
-  'math_operation', 'goal_reached', 'add_to_smart_list'
+  'math_operation', 'goal_reached', 'add_to_smart_list',
+  // ── LOT REPUTATION (Sprint 8) — ADDITIF. Action workflow de déclenchement AUTO
+  //    d'une demande d'avis 1st-party : crée une review_invitation + token et
+  //    envoie l'email (pattern reviews.ts/Resend + CASL isLeadDnd). Le `case
+  //    'request_review'` dans executeStep (src/worker/workflows.ts) est ajouté par
+  //    Manager-B (case ADDITIF, default inchangé). Valeurs existantes INTOUCHÉES.
+  'request_review'
 ] as const;
 export type StepType = typeof STEP_TYPES[number];
 
@@ -293,6 +304,10 @@ export interface Workflow {
   steps_count?: number;
   active_enrollments?: number;
   total_executions?: number;
+  // ── Sprint 4 (LOT AUTOMATION BUILDER seq 105) — ADDITIF FIGÉ Phase A ─────
+  // Clé du modèle WORKFLOW_TEMPLATES ayant instancié ce workflow (NULL =
+  // créé manuellement / legacy). Miroir de workflows.template_key (seq 105).
+  template_key?: string | null;
 }
 
 export interface WorkflowStep {
@@ -325,6 +340,88 @@ export interface WorkflowExecutionLog {
   status: 'executed' | 'skipped' | 'failed';
   result: string;
   executed_at: string;
+}
+
+// ── Sprint 4 (LOT AUTOMATION BUILDER seq 105) — interfaces ADDITIVES FIGÉES
+// Phase A (Manager-A). Phase B/C les CONSOMMENT verbatim, n'en créent AUCUNE.
+// Voir docs/LOT-AUTOMATION-BUILDER.md §6.
+
+// Modèle d'automation pré-configuré (catalogue serveur WORKFLOW_TEMPLATES,
+// src/worker/workflow-templates.ts + miroir front src/pages/workflow-templates.ts).
+// Calque l'esprit de FunnelTemplate (funnel-templates.ts) : DATA PURE.
+// Chaque step porte step_type + un objet config dont les clés sont EXACTEMENT
+// celles que executeStep (workflows.ts) sait lire (cf. §6.D du contrat).
+export interface WorkflowTemplateStep {
+  step_order: number;
+  step_type: StepType;
+  /** Config du step — clés conformes à executeStep (§6.D). */
+  config: Record<string, unknown>;
+  /** Branche de rattachement (sentinel 'trigger_1' pour le 1er step). */
+  branch?: 'main' | 'true' | 'false';
+  /** id du step parent dans le gabarit (placeholder, ré-indexé à l'instanciation). */
+  parent_step_id?: string | null;
+}
+
+export interface WorkflowTemplate {
+  /** Clé stable persistée dans workflows.template_key (ex 'immo-new-lead'). */
+  key: string;
+  /** Alias de `key` (compat consommateurs front attendant `id`). */
+  id?: string;
+  name: string;
+  /** Slug industrie (immobilier, dentiste, …) — TEXT libre. */
+  industry: string;
+  description: string;
+  trigger_type: TriggerType;
+  /** Config du trigger (JSON sérialisable, ex quiet_hours_*). */
+  trigger_config?: Record<string, unknown>;
+  steps: WorkflowTemplateStep[];
+}
+
+// Entrée de LECTURE du journal d'exécution (workflow_execution_log). ALIGNÉE
+// sur les colonnes RÉELLES (phase3 : id/enrollment_id/step_id/status/result/
+// executed_at) + lead_id ADDITIF (seq 105). Les handlers de lecture (Phase B)
+// peuvent enrichir par jointure (workflow_id via enrollment, step_type, lead_name).
+export interface ExecLogEntry {
+  id: number;
+  enrollment_id: string;
+  /** Renseigné par jointure workflow_enrollments (la table log n'a pas la colonne). */
+  workflow_id?: string;
+  /** Colonne ADDITIVE seq 105 (NULL = log legacy / entité non-lead). */
+  lead_id?: string | null;
+  step_id?: string;
+  /** Enrichissement de lecture optionnel (jointure workflow_steps). */
+  step_type?: StepType | string;
+  status: 'executed' | 'skipped' | 'failed';
+  /** Colonne timestamp RÉELLE = executed_at (PAS created_at). */
+  executed_at: string;
+  /** Colonne RÉELLE = `result` (JSON détails). Exposée ici sous l'alias detail. */
+  detail?: string;
+}
+
+// Résultat d'une SIMULATION read-only (parcours des steps SANS effet de bord,
+// chemin SÉPARÉ qui NE réutilise PAS executeStep — Phase B). `path` = suite des
+// steps traversés ; `reached_goal` = un step goal_reached a été atteint.
+export interface WorkflowSimulationResult {
+  path: Array<{
+    step_id: string;
+    step_type: StepType | string;
+    branch?: 'main' | 'true' | 'false';
+    outcome: string;
+  }>;
+  reached_goal?: boolean;
+}
+
+// ── Sprint 2 : Sequence Analytics (LECTURE PURE, additif) ────
+// Stats d'engagement agrégées au niveau séquence (messages.campaign_id =
+// sequenceId AND campaign_kind = 'sequence' + message_events open/click).
+// open_rate / click_rate sont des RATIOS 0..1 (front formatte en %). Voir
+// docs/LOT-SEQUENCE-ANALYTICS.md §6.A.
+export interface SequenceStats {
+  sent: number;
+  opened: number;
+  clicked: number;
+  open_rate: number;   // ratio 0..1 (opened / sent), 0 si sent = 0
+  click_rate: number;  // ratio 0..1 (clicked / sent), 0 si sent = 0
 }
 
 // ── Phase 7 : Tâches ────────────────────────────────────────
@@ -513,6 +610,64 @@ export interface ApiResponse<T> {
   success?: boolean;
 }
 
+// ── LOT G8 — AI Workspace conversationnel (assistant global cmd+/) ───────────
+// Threads + messages persistés (tables ai_chat_threads / ai_chat_messages seq
+// 91, PRÉFIXE ai_chat_* — distinct de ai_conversations/ai_messages seq 7).
+// v1 READ-ONLY / DRAFT-ONLY : l'assistant lit/calcule/rédige des brouillons,
+// aucune mutation auto. Corps des handlers worker = Phase B Manager-B.
+export interface AiChatThread {
+  id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AiChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  /** JSON sérialisé des tool-calls READ-ONLY exécutés worker-side (trace). */
+  tool_calls?: string;
+  created_at: string;
+  /**
+   * SPRINT 11 (Copilot v2, ADDITIF) — actions sûres PROPOSÉES par le LLM au tour
+   * courant. Optionnel : absent ⇒ message sans action (rétro-compat v1). Le LLM
+   * ne fait QU'EN PROPOSER ; l'exécution exige une confirmation humaine UI puis
+   * un POST worker dédié (confirmAiAction). JAMAIS d'exécution dans la boucle LLM.
+   */
+  proposed_actions?: AiProposedAction[];
+}
+
+// ── SPRINT 11 — Copilot v2 : actions sûres + contexte de page (100% ADDITIF) ──
+// Tout est optionnel/additif : aucune signature existante n'est cassée. La
+// SÉCURITÉ est worker-side : le `client_id` n'est JAMAIS porté ici (résolu via
+// scopeClientId(auth) côté worker), et toute action est RE-VALIDÉE worker-side
+// avant exécution via un handler MÉTIER EXISTANT (jamais nouveau chemin mutant).
+
+/**
+ * Action sûre/réversible PROPOSÉE par l'assistant (jamais exécutée
+ * automatiquement). Limitée à 3 opérations whitelistées. `args` ne contient
+ * JAMAIS de champ tenant (client_id résolu worker-side via l'auth).
+ * `label` = phrase de confirmation FR affichée sur la carte d'action.
+ */
+export interface AiProposedAction {
+  id: string;
+  tool: 'create_task' | 'update_lead_status' | 'add_lead_tag';
+  args: Record<string, unknown>;
+  label: string;
+}
+
+/**
+ * Contexte de la page courante envoyé par le front à l'envoi d'un message
+ * (best-effort, optionnel). RE-VALIDÉ + RE-BORNÉ tenant worker-side avant toute
+ * utilisation : aucune confiance accordée à ces valeurs telles quelles.
+ */
+export interface AiPageContext {
+  route?: string;
+  entity_type?: string;
+  entity_id?: string;
+}
+
 export interface PipelineData {
   [key: string]: Lead[];
 }
@@ -690,6 +845,7 @@ export const STEP_TYPE_ICONS: Record<StepType, string> = {
   math_operation: '➕',
   goal_reached: '🎯',
   add_to_smart_list: '📋',
+  request_review: '⭐',
 };
 
 export const ENROLLMENT_STATUS_LABELS: Record<EnrollmentStatus, string> = new Proxy({} as Record<EnrollmentStatus, string>, {
@@ -1384,6 +1540,24 @@ export interface EcommerceTopProducts {
   products: TopProductRow[];
 }
 
+/** Une ligne ventes par canal (mois × canal × devise — calque worker
+ *  ecommerce-analytics.ts:469 SalesByChannelRow, local là-bas). */
+export interface SalesByChannelRow {
+  period: string;
+  channel: string;
+  currency: string;
+  orders: number;
+  gross_cents: number;
+}
+
+/** Payload GET /api/ecommerce/analytics/sales-by-channel (MICRO-FIX
+ *  Sprint 4 — handler ecommerce-analytics.ts:484 déjà écrit, renvoie
+ *  { data: { window_days, by_channel } }). */
+export interface EcommerceSalesByChannel {
+  window_days: number;
+  by_channel: SalesByChannelRow[];
+}
+
 /** Une recommandation produit (cross-sell / up-sell, contrat M2). */
 export interface ProductReco {
   variant_id: string;
@@ -1413,3 +1587,1244 @@ export interface CustomerChurnPrediction {
   fallback: boolean;
 }
 
+// ── SPRINT 13 — Scoring prédictif calibré tenant (conversion-scoring) ────────
+/**
+ * Baseline de conversion agrégée sur l'historique won/lost RÉEL d'un tenant, par
+ * dimension (table conversion_baselines seq 113). DÉTERMINISTE, calculée par le
+ * cron Phase B. dimension ∈ 'source' | 'status' | 'score_bucket' | 'overall'
+ * (validée HANDLER, jamais CHECK SQL).
+ */
+export interface ConversionBaseline {
+  id: string;
+  client_id?: string | null;
+  agency_id?: string | null;
+  dimension: string;
+  dimension_value: string;
+  won_count: number;
+  lost_count: number;
+  /** won / (won + lost), 0..1. */
+  conversion_rate: number;
+  /** won_count + lost_count — sert au fallback coefficients fixes si < 10. */
+  sample_size: number;
+  computed_at?: string;
+}
+
+/**
+ * Prédiction de conversion CALIBRÉE d'un lead (cache conversion_predictions seq
+ * 113, DISTINCT du cache lead_predictions seq 54). Repart de la base déterministe
+ * lead-predict EN LECTURE, ajustée par le taux observé du tenant.
+ */
+export interface ConversionPrediction {
+  /** Probabilité de conversion calibrée, 0..100. */
+  probability: number;
+  /** 1 si la base tenant a servi à calibrer, 0 si fallback coefficients fixes. */
+  calibrated: number;
+  /** Facteurs explicables (ex « Source », « Taux historique source 32% »). */
+  factors: ConversionFactor[];
+  /** Confiance dérivée de la taille d'échantillon / richesse des signaux. */
+  confidence?: 'low' | 'medium' | 'high';
+}
+
+/** Facteur explicable d'une prédiction de conversion calibrée. */
+export interface ConversionFactor {
+  label: string;
+  impact: number;
+}
+
+// ── LOT FORECASTING — projection + objectifs + scénarios (Sprint 14, seq 114) ─
+// Le forecast pondéré NAÏF existe déjà (pipelines.ts handleGetPipelineForecast,
+// réponse { data, total_pipeline_value, weighted_total } — INTOUCHÉE). Ce lot
+// AJOUTE un moteur enrichi (DÉTERMINISTE, ZÉRO LLM) servi par /api/forecast*.
+
+/**
+ * Objectif / quota de revenu d'un tenant pour une période (table forecast_targets
+ * seq 114). pipeline_id null = tous pipelines ; assigned_to null = objectif
+ * d'équipe (sinon quota d'un commercial = users.id). target_amount en unité
+ * monétaire (même unité que leads.deal_value — PAS en cents).
+ */
+export interface ForecastTarget {
+  id: string;
+  client_id?: string | null;
+  agency_id?: string | null;
+  /** null = tous pipelines du tenant. */
+  pipeline_id?: string | null;
+  /** null = objectif d'équipe, sinon quota d'un commercial (users.id). */
+  assigned_to?: string | null;
+  /** Période ciblée, format 'YYYY-MM'. */
+  period_month: string;
+  /** Montant cible (unité monétaire, REAL — PAS en cents). */
+  target_amount: number;
+  created_at?: string;
+}
+
+/**
+ * Point de forecast pour une période (mois 'YYYY-MM'). weighted = revenu pondéré
+ * projeté (DÉTERMINISTE). target/actual optionnels (objectif vs réalisé).
+ */
+export interface ForecastPoint {
+  period_month: string;
+  /** Revenu pondéré projeté pour la période. */
+  weighted: number;
+  /** Objectif de la période (forecast_targets), si défini. */
+  target?: number;
+  /** Réalisé observé (leads won/closed × deal_value et/ou orders), si dispo. */
+  actual?: number;
+}
+
+/**
+ * Scénarios déterministes bornés (facteurs sur la probabilité). best ≥ likely ≥
+ * worst — montants pondérés totaux projetés.
+ */
+export interface ForecastScenario {
+  best: number;
+  likely: number;
+  worst: number;
+}
+
+/** Agrégat de forecast par dimension (commercial = assigned_to, source = utm_source). */
+export interface ForecastGroup {
+  /** Clé de la dimension (user_id / nom commercial OU valeur de source). */
+  key: string;
+  /** Revenu pondéré projeté pour ce groupe. */
+  weighted: number;
+}
+
+/**
+ * Réponse du moteur de forecast enrichi (GET /api/forecast). points[] = série
+ * temporelle pondérée (+ target/actual). scenarios = best/likely/worst. by_rep /
+ * by_source = group-by optionnels. trend = projection de tendance (moyenne
+ * mobile + régression linéaire simple, déterministe).
+ */
+export interface ForecastResponse {
+  points: ForecastPoint[];
+  scenarios: ForecastScenario;
+  /** Group-by commercial (group_by='rep'). */
+  by_rep?: ForecastGroup[];
+  /** Group-by source (group_by='source'). */
+  by_source?: ForecastGroup[];
+  /** Projection de tendance par période (déterministe). */
+  trend?: ForecastPoint[];
+}
+
+// ── SPRINT 15 — Reports builder : templates de dashboard clonables ───────────
+// Le Reports builder (DashboardBuilder.tsx + dashboards.ts + table dashboards
+// seq 51) existe DÉJÀ. Ce lot AJOUTE un catalogue de modèles clonables
+// (table report_templates seq 115). Le clone produit un nouveau `dashboards`
+// (POST /report-templates/:id/apply → handleCreateDashboard côté worker).
+
+/**
+ * Modèle de dashboard clonable (table report_templates seq 115). is_system=1 +
+ * client_id/agency_id null = template SYSTÈME global (catalogue, lecture pour
+ * tous). config = JSON au format DashboardBuilderValue ({ cols, widgets[] }),
+ * cloné tel quel dans dashboards.config par le handler après validation
+ * whitelist. category = regroupement validé HANDLER (jamais CHECK SQL).
+ */
+export interface ReportTemplate {
+  id: string;
+  name: string;
+  description?: string | null;
+  category?: string | null;
+  /** JSON au format DashboardBuilderValue : { cols: number; widgets: WidgetConfig[] }. */
+  config: unknown;
+  /** 1 = template système (catalogue global non éditable par le tenant). */
+  is_system: number;
+}
+
+// ── LOT G9 — White-label custom domain ──────────────────────────────────────
+/** Hostname personnalisé mappé sur un tenant (table custom_hostnames seq 94). */
+export interface CustomHostname {
+  id: string;
+  client_id: string | null;
+  agency_id: string | null;
+  hostname: string;
+  /** Statut de provisioning : 'pending' tant que le flag CF for SaaS est OFF. */
+  status: string;
+  /** Statut DKIM : 'pending' tant que le flag from/DKIM par tenant est OFF. */
+  dkim_status: string;
+  /** Référence externe Cloudflare for SaaS (null tant que non provisionné). */
+  provider_ref: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// ── LOT G4 — OAuth natives ───────────────────────────────────────────────────
+/**
+ * Connexion OAuth native d'un tenant (table oauth_connections seq 95).
+ * Projection SANS tokens (jamais exposés au front) : seuls les métadonnées
+ * d'affichage transitent. v1 = 'google' (Calendar) + 'slack'.
+ */
+export interface OauthConnection {
+  id: string;
+  client_id: string | null;
+  agency_id: string | null;
+  /** 'google' | 'slack' (v1). */
+  provider: string;
+  /** 'active' par défaut. */
+  status: string;
+  /** Scopes accordés (chaîne brute du provider), null si non renseigné. */
+  scopes: string | null;
+  /** Email du compte connecté (affichage UI), null si non récupéré. */
+  account_email: string | null;
+  /** Expiration de l'access token (ISO), null si non applicable. */
+  expires_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// ── LOT SMS/WHATSAPP seq 104 — miroirs front (FIGÉS Phase A) ────────────────
+// Miroir des interfaces worker (src/worker/types.ts). Phase C les CONSOMME tels
+// quels (Campaigns / SmsTemplates / Integrations). access_token JAMAIS exposé
+// par le backend (secret) — absent du miroir front WhatsAppConnection.
+
+/** Modèle de SMS réutilisable (table sms_templates seq 104). */
+export interface SmsTemplate {
+  id: string;
+  client_id?: string | null;
+  name: string;
+  body: string;
+  created_at?: string | null;
+}
+
+/** Connexion WhatsApp Business par tenant (table whatsapp_connections seq 104).
+ *  status 'inactive' tant que non configuré (carte « non configuré » côté UI). */
+export interface WhatsAppConnection {
+  id: string;
+  client_id?: string | null;
+  phone_number_id?: string | null;
+  status: string;
+  created_at?: string | null;
+}
+
+// ── LOT FORMS XL (Sprint 5) — type d'un champ de formulaire ────
+// Miroir EXACT de la structure JSON sérialisée dans `forms.fields` par
+// FormBuilder.tsx (l'écrivain canonique) et relue par PublicForm.tsx. Tous les
+// nouveaux attributs (conditional, step) sont OPTIONNELS ⇒ rétro-compat byte :
+// un formulaire existant sans ces clés rend EXACTEMENT comme avant. NE RIEN
+// rendre obligatoire ici. Manager-C produit/lit ces clés, Manager-B évalue
+// `conditional` côté serveur. Voir docs/LOT-FORMS-XL.md §6.B.
+export type FormFieldType =
+  | 'text' | 'email' | 'phone' | 'number' | 'date' | 'select'
+  | 'multiselect' | 'checkbox' | 'radio' | 'textarea' | 'file' | 'hidden';
+
+export type FormFieldConditionOperator =
+  | 'equals' | 'not_equals' | 'contains' | 'is_empty' | 'is_not_empty';
+
+export interface FormFieldCondition {
+  // Nom (clé `name`) du champ pilote dont dépend la visibilité de CE champ.
+  field_name: string;
+  operator: FormFieldConditionOperator;
+  // Valeur comparée. OPTIONNELLE : ignorée pour is_empty / is_not_empty.
+  value?: string;
+}
+
+export interface FormField {
+  id: string;
+  type: FormFieldType;
+  name: string;
+  label: string;
+  // Présents/écrits par FormBuilder.tsx (placeholder + required NON nullables
+  // côté builder, mais tolérés optionnels en lecture pour les rows legacy).
+  placeholder?: string;
+  required?: boolean;
+  validation?: string;
+  // string[] côté builder (1 option par ligne) ; PublicForm tolère aussi
+  // [{label,value}] pour le rendu — la source de vérité reste string[].
+  options?: string[];
+  custom_field_id?: string;
+  weight?: number;
+  // ── Sprint 5 « Forms XL » — ADDITIF OPTIONNEL (rétro-compat) ──
+  // show-if : le champ n'est rendu QUE si la condition est satisfaite. Absent =
+  // toujours visible (legacy). Manager-B: ne valider `required` que pour les
+  // champs VISIBLES selon ces conditions.
+  conditional?: FormFieldCondition;
+  // Multi-étapes : numéro d'étape (1-indexé). Absent ou 0 = étape 1 (legacy).
+  step?: number;
+}
+
+// Agrégat drop-off par champ retourné par GET /api/forms/:id/field-analytics
+// (corps Phase B). DATA pure. `reached` = sessions ayant atteint le champ ;
+// `completed` = sessions l'ayant rempli ; `dropoff_rate` = % d'abandon.
+export interface FormFieldAnalyticsRow {
+  field_name: string;
+  reached: number;
+  completed: number;
+  dropoff_rate: number;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// LOT STOREFRONT CHECKOUT (Sprint 7) — types tunnel acheteur PUBLIC (FIGÉS par
+// Manager-A Phase A). Miroir PUBLIC des entités e-commerce E1-E9 : on N'EXPOSE
+// QUE le strict nécessaire à la vitrine/checkout (zéro donnée tenant interne).
+// Money TOUJOURS en cents (INTEGER). Calque les types ecom existants (Product /
+// Order / Cart / CartItem ci-dessus). Phase B (worker storefront-public.ts) +
+// Phase C (pages PublicStore/PublicCheckout) les CONSOMMENT tels quels.
+// Contrat figé docs/LOT-STOREFRONT-CHECKOUT.md §6.B.
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Projection PUBLIQUE d'un produit (vitrine + fiche). Miroir minimal de
+ * `Product` : AUCUN champ tenant interne (client_id, coûts, SEO admin…). Le prix
+ * `price_cents` est le prix effectif (variante par défaut : price_override ??
+ * base_price). `in_stock` = agrégat best-effort (au moins une variante dispo).
+ */
+export interface StorefrontProduct {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  price_cents: number;
+  currency?: string;
+  image: string | null;
+  in_stock: boolean;
+  // Variantes exposées publiquement (fiche produit — ajout au panier par
+  // variant_id, calque createOrderCore qui prend des variant_id). OPTIONNEL :
+  // la vitrine (liste) peut s'en passer ; la fiche les renseigne.
+  variants?: Array<{
+    variant_id: string;
+    title: string | null;
+    price_cents: number;
+    in_stock: boolean;
+  }>;
+}
+
+/**
+ * Panier PUBLIC anonyme (token). Miroir de la forme renvoyée par shapeCart
+ * (ecommerce-cart.ts) MAIS résolu sans auth (clientId via slug). Le `token` est
+ * persisté côté front (localStorage) — JAMAIS de cookie/session admin.
+ */
+export interface PublicCart {
+  token: string;
+  items: Array<{
+    id?: string;            // id de cart_item (PATCH/DELETE ciblent cet id)
+    product_id?: string;
+    variant_id?: string;
+    name: string;
+    price_cents: number;
+    qty: number;
+  }>;
+  subtotal_cents: number;
+  currency?: string;
+}
+
+/** Réglages vitrine (lecture/écriture PRO). store_settings_json décodé. */
+export interface StoreSettings {
+  slug: string;
+  name: string;
+  currency: string;
+  enabled: boolean;
+}
+
+/**
+ * Payload de checkout PUBLIC. `cart_token` cible le panier anonyme. `email` =
+ * checkout guest (createOrderCore accepte un email sans customer_id). L'adresse
+ * sert au quote de livraison + au calcul de taxe (region/country passés à
+ * createOrderCore). ZÉRO donnée carte (PAN/CVV) — paiement MOCK (E4/E6 inactif).
+ */
+export interface CheckoutInput {
+  email: string;
+  name: string;
+  phone?: string;
+  address: {
+    line1: string;
+    line2?: string;
+    city: string;
+    region?: string;       // province/état (→ tax_region indicatif)
+    postal_code?: string;
+    country: string;       // ISO 3166-1 alpha-2 (→ resolveShippingRate / computeTax)
+  };
+  shipping_method?: string;
+  coupon_code?: string;
+  cart_token: string;
+}
+
+/**
+ * Résultat de checkout PUBLIC. `status` reflète EXACTEMENT ce que createOrderCore
+ * produit ('pending'/'unpaid') — le tunnel public n'invente AUCUN statut, le
+ * paiement reste MOCK tant que payments_live_enabled=0.
+ */
+export interface CheckoutResult {
+  order_id: string;
+  order_number: string;
+  total_cents: number;
+  status: string;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// LOT REPUTATION (Sprint 8) — collecte 1st-party + routing intelligent.
+//
+// Types ADDITIFS — FIGÉS Phase A (corps réels Phase B Manager-B dans
+// reputation-public.ts / reputation.ts ; front Phase C Manager-C dans
+// PublicReview.tsx / Reviews.tsx). ApiResponse INCHANGÉ (JAMAIS `code` — §6.A).
+//
+// Le différenciateur GHL = routing intelligent : un avis déposé sur la page
+// publique 1st-party (token) est ROUTÉ selon le seuil du tenant
+// (reputation_settings.rating_threshold) — note ≥ seuil → redirection PUBLIQUE
+// (Google/FB via URL configurée) + reviews_cache(source_origin='internal') ;
+// note < seuil → private_feedback (interne, JAMAIS exposé). Google/FB restent
+// INACTIFS (_v2-backlog) : le « public » se fait par URL CONFIGURÉE, pas par
+// une API GBP/FB live. Contrat figé docs/LOT-REPUTATION.md §6.
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Invitation d'avis 1st-party (review_invitations seq 109). Résolue par TOKEN
+ * sur la page publique /r/:token. Créée par l'action workflow `request_review`
+ * (Manager-B) ou manuellement. Les champs `*_submitted` / `routed_to` /
+ * `submitted_at` sont remplis au POST public (routing intelligent).
+ */
+export interface ReviewInvitation {
+  id: string;
+  client_id?: string | null;
+  lead_id?: string | null;
+  token: string;
+  channel?: string | null;
+  /** 'sent' (défaut) → 'submitted' (avis déposé). */
+  status: string;
+  rating_submitted?: number | null;
+  comment_submitted?: string | null;
+  /** 'public' (≥ seuil → redirigé Google/FB) | 'private' (< seuil → interne). */
+  routed_to?: string | null;
+  submitted_at?: string | null;
+  created_at?: string;
+}
+
+/**
+ * Feedback NÉGATIF capté en privé (private_feedback seq 109) : note < seuil ⇒
+ * ne part JAMAIS vers Google/FB, reste interne. Listé côté PRO (Reviews.tsx
+ * onglet « Feedback privé »).
+ */
+export interface PrivateFeedback {
+  id: string;
+  client_id?: string | null;
+  lead_id?: string | null;
+  invitation_id?: string | null;
+  rating?: number | null;
+  comment?: string | null;
+  /** 'new' (défaut) → traité. */
+  status: string;
+  created_at?: string;
+}
+
+/**
+ * Réglages réputation PAR tenant (reputation_settings seq 109, lecture/écriture
+ * PRO). `rating_threshold` pilote le routing intelligent ; `public_redirect_url`
+ * = URL de dépôt public (Google/FB) — fallback clients.google_place_id côté
+ * worker si NULL.
+ */
+export interface ReputationSettings {
+  client_id?: string | null;
+  /** Seuil de routing (défaut 4 ⇒ 4-5 → public, 1-3 → privé). */
+  rating_threshold: number;
+  public_redirect_url?: string | null;
+  /** 0/1 (flag d'affichage du widget). */
+  widget_enabled?: number;
+  /** 0/1 (notifier le tenant à chaque avis déposé). */
+  notify_on_review?: number;
+  updated_at?: string;
+}
+
+/**
+ * Ce que la page PUBLIQUE de dépôt d'avis reçoit (GET /api/r/:token). N'EXPOSE
+ * JAMAIS le seuil de routing (`rating_threshold` reste serveur — sinon un
+ * déposant pourrait deviner le routing). Le front affiche nom business +
+ * message, capte note + commentaire, puis POST → le worker route et renvoie
+ * éventuellement une URL de redirection publique.
+ */
+export interface PublicReviewPage {
+  /** Nom du business (affiché en en-tête de la page publique). */
+  business_name: string;
+  /** Message d'accueil/invitation (optionnel, configurable). */
+  message?: string | null;
+  /** Statut de l'invitation ('sent' = en attente ; autre = déjà soumise). */
+  status?: string;
+}
+
+// ── LOT SOCIAL PLANNER (Sprint 9) — types FIGÉS Phase A ─────────────────────
+// Social planner : composer + calendrier + file planifiée + cron de publication
+// MOCK + génération IA de posts + connexions sociales (flag INACTIF). Tables
+// social_accounts / social_posts (migration seq 110). Contrat figé
+// docs/LOT-SOCIAL-PLANNER.md §6. Publication réelle + analytics = MOCK / flag.
+
+/**
+ * Réseaux sociaux supportés (valeur APPLICATIVE, PAS de CHECK en base — calque
+ * seq 109). Tous INACTIFS par défaut (flag = présence des credentials OAuth
+ * social ; absent ⇒ authorize 400 propre, publishToNetwork mock).
+ */
+export type SocialProvider = 'facebook' | 'instagram' | 'linkedin' | 'google_business';
+
+/**
+ * Connexion sociale d'un tenant (OAuth tenant-borné, calque OauthConnection /
+ * social_accounts seq 110). access_token / refresh_token JAMAIS exposés au front
+ * (projection serveur sans tokens). status='inactive' tant que les credentials
+ * OAuth social ne sont pas posés.
+ */
+export interface SocialAccount {
+  id: string;
+  client_id?: string | null;
+  agency_id?: string | null;
+  provider: SocialProvider;
+  account_name?: string | null;
+  account_external_id?: string | null;
+  /** 'inactive' (flag par défaut) | 'active' (connecté). Valeur applicative. */
+  status?: string;
+  scopes?: string | null;
+  expires_at?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+/**
+ * Post du Social planner (composer + file planifiée — social_posts seq 110).
+ * status APPLICATIF draft|queued|processing|published|failed (SANS CHECK) :
+ * draft (composer) → queued (planifié) → processing (verrou cron) →
+ * published / failed (résultat MOCK). networks = providers ciblés ; media =
+ * URLs/médias attachés. published_at / error remplis par le cron mock.
+ */
+export interface SocialPost {
+  id: string;
+  client_id?: string | null;
+  content: string;
+  /** Médias attachés (URLs). Sérialisé media_json en base. */
+  media: string[];
+  /** Réseaux ciblés. Sérialisé networks_json en base. */
+  networks: SocialProvider[];
+  /** Échéance de publication (ISO). NULL/absent = brouillon non planifié. */
+  scheduled_at?: string | null;
+  /** draft | queued | processing | published | failed (valeur applicative). */
+  status: string;
+  published_at?: string | null;
+  error?: string | null;
+  created_by?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// ── SPRINT 12 « IA contenu — atelier centralisé » (FIGÉS Phase A) ───────────
+// Persistance de la bibliothèque + presets de voix de marque. Le moteur de
+// génération (ai.ts:handleAiGenerate, social-ai.ts, aiDrafts.ts) est RÉUTILISÉ.
+// `clients.brand_voice` legacy NON exposé ici (couche presets ADDITIVE).
+
+/** Format de contenu géré par l'atelier (validé HANDLER côté worker). */
+export type AiContentFormat = 'email' | 'sms' | 'social' | 'blog' | 'landing';
+
+/**
+ * Élément de la bibliothèque de contenus générés (table ai_content_items seq 112).
+ * client_id / user_id bornés tenant côté worker (depuis l'AUTH, jamais le body).
+ */
+export interface AiContentItem {
+  id: string;
+  client_id?: string | null;
+  user_id?: string | null;
+  format: AiContentFormat;
+  title?: string | null;
+  /** Consigne utilisateur ayant servi à la génération. */
+  brief?: string | null;
+  /** Contenu généré puis édité. */
+  content: string;
+  /** Jointure applicative → AiBrandVoice.id (preset de ton utilisé). */
+  tone_preset_id?: string | null;
+  /** Action du moteur (ex 'email_followup', 'rewrite:expand') — traçabilité. */
+  source_action?: string | null;
+  /** draft | … (valeur applicative validée HANDLER). */
+  status: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+/**
+ * Preset de voix de marque éditable (table ai_brand_voices seq 112). `description`
+ * = prompt de ton injecté dans le system prompt. is_default : un seul actif par
+ * tenant (unicité gérée applicativement). NE REMPLACE PAS clients.brand_voice.
+ */
+export interface AiBrandVoice {
+  id: string;
+  client_id?: string | null;
+  user_id?: string | null;
+  name: string;
+  /** Prompt de ton. */
+  description?: string | null;
+  is_default: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// ════════════════════════════════════════════════════════════
+// ── LOT WHITE-LABEL APPLY (Sprint 20) — métadonnées branding tenant
+// ════════════════════════════════════════════════════════════
+//
+// 100% ADDITIF — AUCUNE migration. Le branding est DÉJÀ stocké :
+//   • colonnes `clients.{logo_url,primary_color,accent_color}` (seq 81) ;
+//   • colonne `clients.branding` JSON EXTENSIBLE (seq 81) — sérialisée par
+//     BrandingSettings.buildBrandingBody (companyName/address/websiteUrl/
+//     shortDescription) et lue par getClientBranding.
+//
+// Ce sprint PROPAGE le branding stocké (front + footer email), il ne le
+// re-stocke PAS et n'ajoute AUCUNE colonne : les nouveaux champs (favicon,
+// sender_name, remove_powered_by) sont des CLÉS additionnelles de la même
+// colonne `branding` JSON extensible — aucun DDL requis.
+//
+// `ClientBranding` (colonnes seq 81) reste défini dans `src/lib/api.ts`
+// (FIGÉ — GET/PATCH /clients/:id/branding, garde clients.manage). On ne le
+// modifie PAS : on type ici UNIQUEMENT la forme du JSON `branding` désérialisé,
+// en interface OPTIONNELLE-partout (rétro-compat byte : un branding legacy
+// non-JSON ou vide ⇒ tous champs absents ⇒ comportement Intralys inchangé).
+
+/**
+ * Forme désérialisée de la colonne `clients.branding` (JSON extensible seq 81).
+ * TOUS les champs sont OPTIONNELS (rétro-compat : un tenant sans branding, ou
+ * une chaîne non-JSON legacy, donne un objet vide ⇒ défauts Intralys). Aucun
+ * champ ici n'est une colonne DB : ce sont des clés du JSON `branding`.
+ *
+ * `company_name` est l'alias canonique consommé par la propagation
+ * (applyTenantBranding / footer email). BrandingSettings sérialise
+ * historiquement `companyName` (camelCase) : les deux graphies sont tolérées en
+ * lecture (cf. ClientBrandingMeta.companyName), aucune migration de données.
+ */
+export interface ClientBrandingMeta {
+  /** Nom commercial du tenant (suffixe titre, footer, logo fallback). */
+  company_name?: string;
+  /** Graphie historique BrandingSettings.buildBrandingBody (camelCase) — lue en repli. */
+  companyName?: string;
+  /** URL/data-URI du favicon tenant (pose <link rel=icon>). null/absent = favicon Intralys. */
+  favicon?: string | null;
+  /** Nom d'expéditeur email (enrichit resolveFromAddress côté Manager-B si trivial). */
+  sender_name?: string | null;
+  /** true = masquer la mention « Généré par Intralys » (footer email + footer PDF). Défaut false. */
+  remove_powered_by?: boolean;
+  // ── Champs méta historiques DÉJÀ sérialisés par BrandingSettings (lecture). ──
+  address?: string;
+  websiteUrl?: string;
+  shortDescription?: string;
+}
+
+/**
+ * Branding tenant prêt à propager côté front (couleurs colonnes seq 81 + méta
+ * JSON fusionnée). Forme STRUCTURELLE acceptée par applyTenantBranding : c'est
+ * un SUPER-ENSEMBLE optionnel de `ClientBranding` (api.ts) + `ClientBrandingMeta`.
+ * Toute valeur null/absente = NO-OP sur la surface concernée (défaut Intralys).
+ */
+export interface TenantBranding {
+  /** Couleur primaire (#rrggbb) — colonne seq 81. Invalide/absent ⇒ var Intralys conservée. */
+  primary_color?: string | null;
+  /** Couleur accent (#rrggbb) — colonne seq 81. Invalide/absent ⇒ var Intralys conservée. */
+  accent_color?: string | null;
+  /** Logo tenant (url/data-URI) — colonne seq 81. */
+  logo_url?: string | null;
+  /** Métadonnées branding désérialisées (colonne `branding` JSON extensible). */
+  company_name?: string;
+  favicon?: string | null;
+  remove_powered_by?: boolean;
+}
+
+// ── Sprint 21 — Onboarding durci : items checklist côté serveur ─────────────
+// Persistance D1 via colonnes additives `onboarding_state.checklist_items_json`
+// + `skipped_items_json` (seq119). Audit léger via `onboarding_events` (idem).
+// Best-effort dégradé : si la migration seq119 n'est pas jouée, les handlers
+// renvoient { items:{}, total:0, ... } (PAS 500). Item keys = enum applicatif
+// (pas de CHECK SQL) — la validation est faite dans le HANDLER worker.
+
+export type OnboardingChecklistItemKey =
+  | 'profile_completed'
+  | 'leads_imported'
+  | 'pipeline_configured'
+  | 'team_invited'
+  | 'integration_connected'
+  | 'docs_visited'
+  | 'ecommerce_catalog'
+  | 'ecommerce_first_product'
+  | 'ecommerce_channel';
+
+export interface OnboardingChecklistItemState {
+  done: boolean;
+  skipped: boolean;
+  completedAt: string | null;
+  skippedAt: string | null;
+  skipReason?: string;
+}
+
+export interface OnboardingChecklistResponse {
+  items: Partial<Record<OnboardingChecklistItemKey, OnboardingChecklistItemState>>;
+  total: number;
+  completed: number;
+  skipped: number;
+  pct: number;
+  lastActiveAt: string | null;
+}
+
+// ── Sprint 22 — Billing Stripe prod (E4 flag mock) — types figés ────────────
+// DISTINCT du namespace E4 marchand (Payment*/PaymentStatus côté products).
+// Côté SaaS Intralys (abo agence → Intralys) on parle de billing_plans /
+// billing_events / billing_invoices_mock (seq120). En V1, isMock=true partout.
+export type PlanTier = 'free' | 'starter' | 'pro' | 'unlimited';
+export type BillingPeriod = 'monthly' | 'yearly';
+export type SubscriptionStatus =
+  | 'active' | 'trialing' | 'past_due' | 'canceled'
+  | 'incomplete' | 'incomplete_expired' | 'paused';
+export type BillingProvider = 'stripe' | 'mock';
+
+export interface BillingPlanLimits {
+  maxSubAccounts: number | null;
+  maxLeads: number | null;
+  maxUsers: number | null;
+}
+
+export interface BillingPlanCatalog {
+  id: string;
+  tier: PlanTier;
+  displayName: string;
+  description: string | null;
+  priceMonthlyCents: number;
+  priceYearlyCents: number;
+  currency: string;
+  limits: BillingPlanLimits;
+  features: string[];
+  displayOrder: number;
+  isActive: boolean;
+  isCurrent?: boolean;
+}
+
+export interface ClientSubscription {
+  id: string;
+  agencyId: string | null;
+  clientId: string;
+  planTier: PlanTier;
+  status: SubscriptionStatus;
+  billingPeriod: BillingPeriod | null;
+  provider: BillingProvider;
+  stripeCustomerId: string | null;
+  stripeSubscriptionId: string | null;
+  stripePriceId: string | null;
+  trialEndsAt: string | null;
+  currentPeriodStart: string | null;
+  currentPeriodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
+  canceledAt: string | null;
+  isMock: boolean;
+  createdAt: string;
+  updatedAt: string | null;
+}
+
+export interface BillingUsage {
+  subAccounts: { current: number; limit: number | null };
+  leads:       { current: number; limit: number | null };
+  users:       { current: number; limit: number | null };
+}
+
+export interface BillingPortalSession {
+  url: string;
+  expiresAt: string;
+  isMock: boolean;
+}
+
+export interface BillingInvoiceMock {
+  id: string;
+  number: string | null;
+  amountDueCents: number;
+  amountPaidCents: number;
+  currency: string;
+  status: 'draft' | 'open' | 'paid' | 'void' | 'uncollectible';
+  periodStart: string | null;
+  periodEnd: string | null;
+  hostedInvoiceUrl: string | null;
+  pdfUrl: string | null;
+  isMock: boolean;
+  createdAt: string;
+}
+
+export interface BillingWebhookConfig {
+  endpointUrl: string;
+  signingSecretConfigured: boolean;
+  stripeKeyConfigured: boolean;
+  modeMock: boolean;
+  supportedEvents: string[];
+}
+
+export interface StripeWebhookEventMock {
+  id: string;
+  type: string;
+  data: { object: Record<string, unknown> };
+  created?: number;
+  livemode?: boolean;
+}
+
+// ── Sprint 23 — Sécurité / conformité ────────────────────────────────────
+export type CookieCategory = 'essential' | 'preferences' | 'analytics' | 'marketing';
+export type CookieConsent = Record<CookieCategory, boolean>;
+
+export interface CookieConsentRecord {
+  id: string;
+  anonymous_id: string | null;
+  user_id: string | null;
+  categories: CookieConsent;
+  policy_version: string;
+  ip: string;
+  user_agent: string;
+  url: string;
+  granted_at: string;
+}
+
+export interface AccountDeletionRequest {
+  id: string;
+  user_id: string;
+  reason: string;
+  status: 'pending' | 'canceled' | 'executed';
+  requested_at: string;
+  scheduled_for: string;
+  executed_at: string | null;
+}
+
+export interface MyDataExport {
+  user: Record<string, unknown>;
+  sessions: Array<Record<string, unknown>>;
+  audit_log: Array<Record<string, unknown>>;
+  consents_given: Array<Record<string, unknown>>;
+  cookie_consents: Array<Record<string, unknown>>;
+  exported_at: string;
+  purpose: string;
+}
+
+export interface AuditLogEntry {
+  id: number;
+  user_id: string | null;
+  action: string;
+  resource_type: string | null;
+  resource_id: string | null;
+  details: Record<string, unknown>;
+  ip: string | null;
+  user_agent: string | null;
+  request_id: string | null;
+  tenant_id: string | null;
+  redacted: number;
+  created_at: string;
+}
+
+export interface AuditLogQuery {
+  action?: string;
+  user_id?: string;
+  resource_type?: string;
+  date_from?: string;
+  date_to?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface CapabilityOverride {
+  id: string;
+  user_id: string;
+  capability: string;
+  granted: 0 | 1;
+  created_at: string;
+}
+
+export interface RateLimitResult {
+  allowed: boolean;
+  remaining: number;
+  retry_after_seconds: number;
+  bucket_key: string;
+}
+
+// ── Sprint 24 — Observabilité (types front) ──────────────────────────────
+// Miroirs des types worker (src/worker/types.ts). `enabled` est bool côté
+// front (le worker le sérialise en bool dans la réponse JSON).
+export type AlertConditionType = 'error_rate' | 'p95_latency' | 'web_vital_p75';
+export type AlertChannel = 'log' | 'webhook';
+
+export interface AlertRule {
+  id: string;
+  name: string;
+  condition_type: AlertConditionType;
+  metric_name: string | null;
+  threshold: number;
+  window_minutes: number;
+  notification_channel: AlertChannel;
+  notification_target: string;
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AlertEvent {
+  id: string;
+  rule_id: string;
+  triggered_at: string;
+  payload: Record<string, unknown>;
+  resolved_at: string | null;
+}
+
+export interface ObservabilityHealth {
+  status: 'ok' | 'error';
+  db: 'ok' | 'error';
+  version: string;
+  uptime_s: number;
+  ai_mock: boolean;
+  migrations_count: number | null;
+  last_migration: string | null;
+}
+
+export interface RequestMetricsBucket {
+  route: string;
+  count: number;
+  error_count: number;
+  p50_ms: number;
+  p95_ms: number;
+  p99_ms: number;
+  error_rate_pct: number;
+}
+
+// ── Sprint 27 — Mobile / PWA : DeviceToken étendu (seq124) ────────────────
+// Aligné colonnes RÉELLES : base seq20 (migration_p3_10.sql:7-13) + colonnes
+// ADDITIVES seq124 (last_seen_at, app_version, enabled, device_label).
+// `enabled` = INTEGER NOT NULL DEFAULT 1 côté DB → 0 | 1 côté TS.
+// Les 3 autres colonnes additives sont nullables (TEXT sans DEFAULT).
+export interface DeviceToken {
+  id: string;
+  user_id: string;
+  token: string;
+  platform: 'ios' | 'android' | 'web';
+  last_seen_at: string | null;
+  app_version: string | null;
+  enabled: 0 | 1;
+  device_label: string | null;
+  created_at: string;
+}
+
+// ── Sprint 30 — Release Candidate / Beta ──────────────────────────────────
+export interface ReleaseGateCheck {
+  ok: boolean;
+  value?: unknown;
+  missing?: string[];
+  status?: number;
+  count?: number;
+}
+
+export interface ReleaseGatesStatus {
+  all_green: boolean;
+  checks: {
+    migrations_last_seq: ReleaseGateCheck;
+    env_critical_present: ReleaseGateCheck;
+    env_optional_present: ReleaseGateCheck;
+    dev_bypass_off: ReleaseGateCheck;
+    payments_live_disabled: ReleaseGateCheck;
+    health_endpoint: ReleaseGateCheck;
+    web_vitals_endpoint: ReleaseGateCheck;
+    beta_codes_seeded: ReleaseGateCheck;
+  };
+  checked_at: string;
+}
+
+export interface ReleaseGatesRun {
+  id: string;
+  ran_by: string | null;
+  all_green: 0 | 1;
+  payload: string;
+  created_at: string;
+}
+
+// ── Sprint 31 — Stripe live activation ───────────────────────────────────
+export type PaymentMethodBrand = 'visa'|'mastercard'|'amex'|'discover'|'diners'|'jcb'|'unionpay'|'unknown';
+export type PaymentMethodType = 'card'|'apple_pay'|'google_pay';
+
+export interface StripePaymentMethod {
+  id: string;
+  stripePaymentMethodId: string;
+  type: PaymentMethodType;
+  brand: PaymentMethodBrand | null;
+  last4: string | null;
+  expMonth: number | null;
+  expYear: number | null;
+  isDefault: boolean;
+  createdAt: string;
+}
+
+export interface StripeSetupIntent {
+  clientSecret: string;
+  setupIntentId: string;
+}
+
+export interface StripeConnectAccount {
+  id: string;
+  clientId: string;
+  stripeAccountId: string;
+  accountType: 'express'|'standard'|'custom';
+  chargesEnabled: boolean;
+  payoutsEnabled: boolean;
+  detailsSubmitted: boolean;
+  capabilities: Record<string, 'active'|'pending'|'inactive'>;
+  requirements: { currently_due: string[]; eventually_due: string[]; past_due: string[] };
+  onboardingCompletedAt: string | null;
+}
+
+export interface StripeConnectOnboardingLink {
+  url: string;
+  expiresAt: string;
+}
+
+// ── Sprint 32 — Google Business Profile (GBP) integration ─────────────────
+export interface GbpConnection {
+  id: string;
+  clientId: string;
+  agencyId: string | null;
+  oauthConnectionId: string | null;
+  gbpAccountId: string | null;
+  gbpAccountName: string | null;
+  status: 'active' | 'disconnected' | 'error';
+  lastSyncAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GbpLocation {
+  id: string;
+  gbpLocationId: string;
+  locationTitle: string | null;
+  primaryPhone: string | null;
+  primaryCategory: string | null;
+  storeCode: string | null;
+  isDefault: boolean;
+  metadata?: Record<string, unknown>;
+}
+
+export interface GbpReviewSync {
+  id: string;
+  reviewsCacheId: string | null;
+  gbpReviewName: string;
+  replyStatus: 'none' | 'pending' | 'sent' | 'failed';
+  replySyncedAt: string | null;
+  lastFetchedAt: string | null;
+}
+
+export interface GbpInsightsMetric {
+  metric: string;
+  value: number;
+  trend?: number;
+}
+
+export interface GbpInsights {
+  locationName: string;
+  startDate: string;
+  endDate: string;
+  metrics: GbpInsightsMetric[];
+}
+
+export interface GbpPostInput {
+  locationId: string;
+  summary: string;
+  topicType?: 'STANDARD' | 'OFFER' | 'EVENT';
+  callToAction?: { actionType: 'BOOK' | 'ORDER' | 'SHOP' | 'LEARN_MORE' | 'SIGN_UP' | 'CALL'; url?: string };
+  mediaUrl?: string;
+}
+
+// ── Sprint 33 — Calendar sync ──────────────────────────────────────────
+export type CalendarSyncProvider = 'google_calendar' | 'outlook';
+export type CalendarSyncStatus = 'active' | 'paused' | 'error' | 'revoked';
+export type AppointmentSyncStatus = 'pending' | 'synced' | 'conflict' | 'error' | 'deleted_remote';
+
+export interface CalendarConnection {
+  id: string;
+  clientId: string;
+  agencyId: string | null;
+  userId: string | null;
+  provider: CalendarSyncProvider;
+  externalAccountEmail: string | null;
+  externalCalendarId: string | null;
+  externalCalendarName: string | null;
+  syncDirection: 'push_only' | 'pull_only' | 'bidirectional';
+  status: CalendarSyncStatus;
+  lastPullAt: string | null;
+  lastPushAt: string | null;
+  lastError: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CalendarExternalEvent {
+  id: string;
+  externalEventId: string;
+  summary: string | null;
+  description: string | null;
+  startTime: string | null;
+  endTime: string | null;
+  location: string | null;
+  status: string | null;
+  externalUpdatedAt: string | null;
+}
+
+export interface AppointmentSync {
+  id: string;
+  appointmentId: string;
+  calendarConnectionId: string;
+  externalEventId: string | null;
+  syncStatus: AppointmentSyncStatus;
+  syncDirection: 'push' | 'pull';
+  lastSyncedAt: string | null;
+  lastError: string | null;
+  conflictResolution: string | null;
+}
+
+export interface CalendarConflict {
+  syncId: string;
+  appointmentId: string;
+  externalEventId: string;
+  provider: CalendarSyncProvider;
+  intralysUpdatedAt: string;
+  externalUpdatedAt: string;
+  intralysSummary: string;
+  externalSummary: string;
+}
+
+// ── Sprint 39 — Multi-currency + Tax extension (additif strict) ─────────────
+// PRÉSERVATION : SupportedCurrency existant ('CAD'|'EUR'|'DZD') reste FIGÉ
+// (consommé par RegionConfig + ecommerce-region.ts + tax-engine legacy 'qc'/'eu'/
+// 'dz'/'exempt'). On ajoute SupportedCurrencyExt (élargi USD + MAD) consommé
+// par le nouveau moteur multi-currency (currency_rates) ET TaxRegimeExt élargi
+// avec 'us_sales_tax' consommé par tax-engine-multi.ts (délégation legacy).
+//
+// Régression-zéro QC/EU/DZ : tout consumer qui type SupportedCurrency continue
+// d'accepter strictement 'CAD'|'EUR'|'DZD'. Le nouveau type 'Ext' est un SUR-
+// ensemble — un cast est requis pour passer d'un type Ext à legacy (intentionnel,
+// garde-fou TypeScript).
+export type SupportedCurrencyExt = 'CAD' | 'USD' | 'EUR' | 'DZD' | 'MAD';
+export type TaxRegimeExt = TaxRegime | 'us_sales_tax';
+
+/**
+ * Taux de change base→quote (cache `currency_rates` seq134).
+ * Source 'ecb'|'frankfurter' = fetch automatique cron, 'manual' = override admin.
+ */
+export interface CurrencyRate {
+  id: string;
+  base_currency: SupportedCurrencyExt;
+  quote_currency: SupportedCurrencyExt;
+  rate: number;
+  source: 'ecb' | 'frankfurter' | 'manual';
+  fetched_at: string;
+}
+
+/**
+ * Région fiscale admin-managed par tenant (table `tax_regions` seq134).
+ * code = identifiant tenant ('QC-CA', 'NY-US'). type pilote la stratégie
+ * délégation moteur multi : vat→eu | gst_pst→qc | sales_tax→us_sales_tax |
+ * tva_dz→dz | exempt→exempt.
+ */
+export interface TaxRegion {
+  id: string;
+  client_id: string;
+  code: string;
+  name: string;
+  country: string;
+  country_subdiv: string | null;
+  type: 'vat' | 'gst_pst' | 'sales_tax' | 'tva_dz' | 'exempt';
+  rates_json: Record<string, number>;
+  tax_inclusive: boolean;
+  active: boolean;
+}
+
+/**
+ * Règle taux par catégorie produit dans une région fiscale (`tax_rules` seq134).
+ * product_category match products.tax_category (DEFAULT 'standard').
+ * compound = taxe en cascade (rare : QC pré-2013 — TVQ sur TPS+sub).
+ */
+export interface TaxRule {
+  id: string;
+  region_id: string;
+  product_category: string;
+  rate: number;
+  compound: boolean;
+  applies_from: string;
+}
+
+// ════════════════════════════════════════════════════════════
+// ── Sprint 40 ── Product Reviews + Abandoned Carts Recovery (seq135)
+// ════════════════════════════════════════════════════════════
+
+/**
+ * Statut de modération d'un avis produit (`product_reviews.status` seq135).
+ * Validation enum HANDLER (pas de CHECK SQLite — rebuild interdit).
+ */
+export type ProductReviewStatus = 'pending' | 'approved' | 'rejected' | 'flagged';
+
+/**
+ * Avis produit déposé par un client (public submit + moderation admin).
+ * Source : table `product_reviews` seq135.
+ *
+ * verified_buyer = order_id non-NULL ET matché à une commande livrée du
+ * customer_id (checkVerifiedBuyer lib/review-moderation.ts). photos = array
+ * d'URLs uploadées (R2/storage), max 5 (validation HANDLER).
+ */
+export interface ProductReview {
+  id: string;
+  client_id: string;
+  product_id: string;
+  customer_id: string | null;
+  order_id: string | null;
+  rating: number; // 1..5 validation HANDLER
+  title: string;
+  body: string;
+  photos: string[] | null;
+  verified_buyer: boolean;
+  status: ProductReviewStatus;
+  moderation_notes: string | null;
+  helpful_count: number;
+  spam_score: number; // 0..100 heuristique HANDLER
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Input PUBLIC submit avis produit (POST /api/products/:id/reviews).
+ * website_url = honeypot anti-bot (champ caché frontend — toute valeur ≠ '' ⇒ rejet silencieux).
+ * email requis pour matching verified_buyer + envoi notif modération admin.
+ */
+export interface ProductReviewSubmitInput {
+  rating: number;
+  title?: string;
+  body: string;
+  email: string;
+  name?: string;
+  photos?: string[];
+  /** Honeypot anti-bot — DOIT être vide. Toute valeur ⇒ rejet 202 silencieux. */
+  website_url?: string;
+  order_id?: string;
+}
+
+/**
+ * Etat d'un panier dans la séquence de récupération multi-touch (seq135).
+ * Source : table `carts` ALTERs additifs (recovery_email_sent_count, etc.).
+ * cart_token = jeton public landing /api/recovery/:token (signé HMAC).
+ * attempts[] = historique tentatives (step, channel, sent_at, coupon_code).
+ */
+export interface RecoverySequenceState {
+  cart_id: string;
+  cart_token: string;
+  recovery_email_sent_count: number;
+  last_recovery_at: string | null;
+  next_recovery_due_at: string | null;
+  recovery_discount_code: string | null;
+  recovery_completed_at: string | null;
+  attempts: Array<{
+    step: 1 | 2 | 3;
+    channel: 'email' | 'sms';
+    sent_at: string;
+    coupon_code: string | null;
+  }>;
+}
+
+/**
+ * Délais (minutes) entre touches de la séquence multi-touch (FIGÉS seq135).
+ * Step 1 = 1h après abandon, Step 2 = 24h, Step 3 = 72h.
+ */
+export const RECOVERY_DELAYS_MIN = {
+  1: 60,
+  2: 1440,
+  3: 4320,
+} as const;
+
+/**
+ * Discount progressif (%) par touche (FIGÉ seq135).
+ * Step 1 = pas de coupon (juste rappel), Step 2 = 5%, Step 3 = 10%.
+ * Implémenté via engine `coupons` existant (seq18 + ALTER seq85) en
+ * Phase B via generateRecoveryCoupon().
+ */
+export const RECOVERY_DISCOUNT_PCT = {
+  1: 0,
+  2: 5,
+  3: 10,
+} as const;

@@ -1,0 +1,86 @@
+-- ════════════════════════════════════════════════════════════════════════════
+-- Migration seq 105 — LOT AUTOMATION BUILDER (Sprint 4 « Automations Builder —
+-- enrichissement », 2026-05-21). Pose le SOCLE DDL minimaliste de
+-- l'enrichissement du builder d'automations (config réelle des nodes, mode
+-- édition, exec-log/history/metrics, templates, simulation). Le MOTEUR
+-- (`src/worker/workflows.ts` : processWorkflowQueue / advanceEnrollment /
+-- executeStep / autoEnrollForTrigger) est DÉJÀ complet (26 triggers, 24 step
+-- types, branches main/true/false, quiet-hours, enrollment, queue) — cette
+-- migration N'AJOUTE QUE 2 colonnes additives + 2 index de lecture.
+--
+-- depends_on : migration-sms-whatsapp-seq104.sql (seq 104 — dernière migration
+--              du manifest avant ce lot ; chaînage SÉQUENTIEL pour l'ordre,
+--              AUCUNE dépendance de SCHÉMA réelle sur seq 104).
+--
+-- ⚠ STRICTEMENT ADDITIF — INTERDIT : tout DROP / RENAME / rebuild / ALTER d'une
+--   CONTRAINTE existante. Ce lot N'AJOUTE QUE des `ALTER TABLE ... ADD COLUMN`
+--   et des `CREATE INDEX IF NOT EXISTS` — additif pur.
+--   Les tables `workflows` (seq Phase 3, migration-phase3.sql, enrichie seq 86)
+--   et `workflow_execution_log` (seq Phase 3) EXISTENT DÉJÀ. AUCUNE n'est
+--   recréée.
+--
+--   CHECK INTOUCHABLES (aucun ALTER) : `workflows` (pas de CHECK status ici),
+--   `workflow_steps.branch` (main/true/false), `workflow_enrollments.status`
+--   (active/paused/completed/cancelled), `workflow_execution_log.status`
+--   (executed/skipped/failed). Les nouvelles colonnes sont NULLABLES et SANS
+--   CHECK ⇒ aucune contrainte existante n'est modifiée.
+--
+--   AUCUNE FK (D1/SQLite : FK ⇒ rebuild au moindre ALTER ⇒ interdit). Le lien
+--   workflow_execution_log.lead_id ↔ leads(id) reste APPLICATIF (colonne TEXT
+--   renseignée par le moteur en Phase B, lecture bornée serveur).
+--
+-- RÉTRO-COMPAT BYTE : `workflows.template_key` et
+--   `workflow_execution_log.lead_id` sont NULLABLES ⇒ toutes les rows legacy
+--   restent valides bit-pour-bit (NULL = workflow non issu d'un modèle / log
+--   antérieur au renseignement lead_id). Aucune valeur DEFAULT non-NULL.
+--
+-- NOTE SCHÉMA (vérifié migration-phase3.sql:51-58) — `workflow_execution_log` :
+--   id INTEGER PK AUTOINCREMENT, enrollment_id TEXT, step_id TEXT,
+--   status TEXT CHECK(executed/skipped/failed), result TEXT, executed_at TEXT
+--   DEFAULT (datetime('now')). La colonne timestamp s'appelle bien `executed_at`
+--   (PAS created_at) ⇒ l'index ci-dessous cible `executed_at`. La table N'A PAS
+--   de colonne `workflow_id` (la jointure workflow se fait via enrollment_id →
+--   workflow_enrollments.workflow_id, cf. handleGetWorkflows l.33-35) ; le lien
+--   au workflow reste donc via enrollment, et seul `lead_id` est ajouté ici.
+--
+-- TOLÉRANCE « duplicate column » — exécution best-effort : si seq 105 est
+--   rejouée, `ADD COLUMN` peut échouer (« duplicate column name »). L'erreur
+--   éventuelle est ATTENDUE et NON FATALE (scripts/migrate.ts reconnaît le motif
+--   bénin 'duplicate column' et enregistre/skip). scripts/migrate.ts est FIGÉ et
+--   N'EST PAS modifié ; la tolérance est une consigne d'exécution.
+--
+-- Conventions schema.sql (vérifiées seq 104 / seq 103) : timestamps TEXT DEFAULT
+--   (datetime('now')), id TEXT PRIMARY KEY. PAS d'unixepoch, PAS de FK.
+--
+-- Exécution manuelle :
+--   npx wrangler d1 execute intralys-crm --file=migration-automation-seq105.sql --remote
+-- ════════════════════════════════════════════════════════════════════════════
+
+-- 1) workflows — enrichissement ADDITIF (table Phase 3 INTOUCHÉE pour
+--    l'existant). template_key = clé du modèle (WORKFLOW_TEMPLATES) ayant servi
+--    à instancier le workflow ('immo-new-lead', 'dentist-recall', …). NULL =
+--    workflow créé manuellement / legacy (rétro-compat byte). SANS CHECK (clé
+--    applicative libre, posée par handleCreateWorkflowFromTemplate Phase B).
+ALTER TABLE workflows ADD COLUMN template_key TEXT;
+
+-- 2) workflow_execution_log — enrichissement ADDITIF. lead_id = dénormalisation
+--    du lead pour la LECTURE directe de l'historique automation par lead
+--    (handleGetLeadAutomationHistory Phase B) SANS jointure enrollment. NULL =
+--    log legacy (antérieur au renseignement) ou entité e-comm sans lead. La
+--    colonne `status` (CHECK executed/skipped/failed) reste INTOUCHÉE.
+--    Renseignée par les INSERT existants en Phase B (Manager-B) — additif, pas
+--    de FK.
+ALTER TABLE workflow_execution_log ADD COLUMN lead_id TEXT;
+
+-- 3) Index ADDITIFS (IF NOT EXISTS) — accélèrent la LECTURE de l'historique par
+--    lead (idx_exec_log_lead) et le tri chronologique du journal / métriques
+--    drop-off-conversion (idx_exec_log_executed_at). Lecture pure, aucun impact
+--    sur le moteur d'écriture.
+CREATE INDEX IF NOT EXISTS idx_exec_log_lead ON workflow_execution_log(lead_id);
+CREATE INDEX IF NOT EXISTS idx_exec_log_executed_at ON workflow_execution_log(executed_at);
+
+-- NB : AUCUNE colonne ajoutée à `workflow_steps` / `workflow_enrollments`
+-- (branch/status INTOUCHÉS). AUCUN CHECK existant modifié. AUCUNE FK. AUCUN
+-- DROP / RENAME / rebuild. AUCUNE capability ajoutée (réutilise
+-- 'workflows.manage' via le capGuard de workflows.ts, seq 80). Contrat figé
+-- docs/LOT-AUTOMATION-BUILDER.md §6.

@@ -9,6 +9,7 @@
 
 import type { Env } from './types';
 import { json } from './helpers';
+import type { TenantContext } from './tenant-context';
 
 export type ModuleId = 'crm' | 'ecommerce';
 
@@ -56,21 +57,67 @@ export function hasModule(
  * Résout les modules du client courant à partir de l'utilisateur authentifié.
  * Lit users.client_id → clients.modules_json (pattern projet, cf. dashboard.ts).
  * Retourne ['crm'] en fallback si client introuvable (jamais d'erreur).
+ *
+ * CONTRAT §6.2 (figé) — RÉTRO-COMPATIBLE DUR :
+ *   - `clientId` et `modules` : type ET sémantique STRICTEMENT inchangés.
+ *     Les 114 appelants existants (destructuring `{ clientId, modules }`)
+ *     restent intacts.
+ *   - Champs additifs `agencyId?` / `accountLevel?` / `accessibleClientIds?` :
+ *     présents seulement si un `ctx` (TenantContext) est fourni ; sinon
+ *     `undefined` (les anciens appelants ne les lisent pas).
+ *   - `ctx?` optionnel : si fourni, on RÉUTILISE son `clientId` (pas de
+ *     re-SELECT users) ; si absent, chemin LEGACY EXACT (SELECT client_id
+ *     FROM users) — byte-identique à l'ancienne implémentation.
  */
 export async function getClientModules(
   env: Env,
   userId: string,
-): Promise<{ clientId: string | null; modules: ModuleId[] }> {
-  const user = await env.DB.prepare('SELECT client_id FROM users WHERE id = ?')
-    .bind(userId)
-    .first() as { client_id: string | null } | null;
-  const clientId = user?.client_id || null;
-  if (!clientId) return { clientId: null, modules: [...ALWAYS_ON] };
+  ctx?: TenantContext,
+): Promise<{
+  clientId: string | null;
+  modules: ModuleId[];
+  agencyId?: string | null;
+  accountLevel?: string;
+  accessibleClientIds?: string[];
+}> {
+  let clientId: string | null;
+  if (ctx) {
+    // Réutilise le contexte déjà résolu au choke-point (0 req users).
+    clientId = ctx.clientId;
+  } else {
+    // Chemin LEGACY EXACT — inchangé (114 appelants).
+    const user = (await env.DB.prepare('SELECT client_id FROM users WHERE id = ?')
+      .bind(userId)
+      .first()) as { client_id: string | null } | null;
+    clientId = user?.client_id || null;
+  }
 
-  const client = await env.DB.prepare('SELECT modules_json FROM clients WHERE id = ?')
+  if (!clientId) {
+    return ctx
+      ? {
+          clientId: null,
+          modules: [...ALWAYS_ON],
+          agencyId: ctx.agencyId,
+          accountLevel: ctx.accountLevel,
+          accessibleClientIds: ctx.accessibleClientIds,
+        }
+      : { clientId: null, modules: [...ALWAYS_ON] };
+  }
+
+  const client = (await env.DB.prepare('SELECT modules_json FROM clients WHERE id = ?')
     .bind(clientId)
-    .first() as { modules_json: string | null } | null;
-  return { clientId, modules: parseModules(client?.modules_json) };
+    .first()) as { modules_json: string | null } | null;
+  const modules = parseModules(client?.modules_json);
+
+  return ctx
+    ? {
+        clientId,
+        modules,
+        agencyId: ctx.agencyId,
+        accountLevel: ctx.accountLevel,
+        accessibleClientIds: ctx.accessibleClientIds,
+      }
+    : { clientId, modules };
 }
 
 /**

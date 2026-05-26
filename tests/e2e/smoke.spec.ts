@@ -73,6 +73,7 @@ async function setupAuth(page: Page) {
   // Injection auth AVANT chargement React (cf. snapshots.spec.ts)
   await page.addInitScript(() => {
     localStorage.setItem('intralys_token', 'dev-bypass-token');
+    localStorage.setItem('intralys_locale', 'fr-CA');
     localStorage.setItem('intralys_user', JSON.stringify({
       id: 'admin',
       name: 'Rochdi (Dev)',

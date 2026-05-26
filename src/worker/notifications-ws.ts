@@ -32,14 +32,12 @@ interface BroadcastPayload {
 
 export class NotificationsRoom {
   private state: DurableObjectState;
-  // @ts-expect-error — env est un binding Durable Object stocké par convention (utilisé indirectement)
-  private env: Env;
   private sessions: Set<WebSocket> = new Set();
   private userId: string | null = null;
 
   constructor(state: DurableObjectState, env: Env) {
     this.state = state;
-    this.env = env;
+    void env; // binding conventionnel Durable Object — non utilisé v1
   }
 
   async fetch(request: Request): Promise<Response> {

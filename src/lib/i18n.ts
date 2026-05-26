@@ -147,7 +147,15 @@ export function setLocale(locale: Locale, options?: { reloadAfterChange?: boolea
 export function t(key: string, vars?: Record<string, string | number>): string {
   const primary = DICTIONARIES[_currentLocale];
   const fallback = DICTIONARIES[FALLBACK_LOCALE];
-  let str = primary?.[key] ?? fallback?.[key] ?? key;
+  const primaryHit = primary?.[key];
+  const fallbackHit = fallback?.[key];
+  if (import.meta.env.DEV && primaryHit === undefined && fallbackHit === undefined) {
+    // Sprint 28 — dev-only warn pour catcher les clés missing.
+    // Comportement prod inchangé (gate import.meta.env.DEV).
+    // eslint-disable-next-line no-console
+    console.warn('[i18n] missing key:', key);
+  }
+  let str = primaryHit ?? fallbackHit ?? key;
   if (vars) {
     for (const [k, v] of Object.entries(vars)) {
       str = str.replace(new RegExp(`\\{\\{\\s*${k}\\s*\\}\\}`, 'g'), String(v));

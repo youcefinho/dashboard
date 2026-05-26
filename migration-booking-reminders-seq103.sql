@@ -1,0 +1,73 @@
+-- ════════════════════════════════════════════════════════════════════════════
+-- Migration seq 103 — LOT BOOKING REMINDERS / NO-SHOW (Sprint « Booking pro
+-- completion », 2026-05-21). Ferme 3 gaps du moteur de réservation seq 84 :
+--   1) Rappels automatiques avant RDV (cron dédié processBookingReminders) :
+--      offset + canal configurés PAR TYPE DE RDV (booking_event_types).
+--   2) Liens self-service cancel/reschedule dans l'email de confirmation
+--      (GAP #2 — logique Phase B dans booking-public.ts, AUCUN schéma requis ici).
+--   3) No-show tracking côté `bookings` (horodatage du marquage).
+-- 100% ADDITIF, sans rien casser.
+--
+-- depends_on : migration-telephony-seq102.sql (seq 102 — dernière migration du
+--              manifest avant ce lot ; chaînage SÉQUENTIEL pour l'ordre,
+--              AUCUNE dépendance de SCHÉMA réelle sur seq 102).
+--
+-- ⚠ STRICTEMENT ADDITIF — INTERDIT : tout DROP / RENAME / rebuild / ALTER
+--   d'une CONTRAINTE existante.
+--   Ce lot N'AJOUTE QUE des `ALTER TABLE ... ADD COLUMN` (booking_event_types /
+--   bookings) — additif pur, jamais de modification de CHECK/PK/FK existante.
+--   Les tables `booking_event_types` (seq 84, migration-booking-seq84.sql) et
+--   `bookings` (seq 7, migration-phase7.sql, enrichie seq 84) EXISTENT DÉJÀ.
+--   AUCUNE n'est recréée.
+--
+--   Le CHECK status de `bookings` seq 7
+--     status TEXT CHECK (status IN ('confirmed','cancelled','completed','no_show'))
+--   est INTOUCHABLE : modifier un CHECK ⇒ rebuild SQLite ⇒ INTERDIT. Il
+--   contient DÉJÀ 'no_show' — le tracking no-show n'exige donc AUCUN ALTER de
+--   CHECK, seulement la colonne timestamp `no_show_at`.
+--   AUCUN touch tables E4/E6 régulées (`payments`, `payment_events`,
+--   `payment_provider_config`, `refunds`, `disputes`, `return_requests`).
+--   AUCUN touch `users` / `clients`. AUCUNE colonne `price_cents` modifiée
+--   (E4/E6 INACTIFS — aucune logique paiement).
+--
+--   AUCUNE FK (D1/SQLite : FK ⇒ rebuild au moindre ALTER ⇒ interdit). Les
+--   jointures booking↔event_type restent APPLICATIVES (colonne TEXT seq 84).
+--
+--   `bookings.reminder_sent_at` EXISTE DÉJÀ (seq 84) : on le RÉUTILISE pour
+--   l'idempotence des rappels — il N'EST PAS ré-ajouté ici.
+--
+-- TOLÉRANCE « duplicate column » — exécution best-effort : si seq 103 est
+--   rejouée, `ADD COLUMN` peut échouer (« duplicate column name »). L'erreur
+--   éventuelle est ATTENDUE et NON FATALE (scripts/migrate.ts:21-30 reconnaît
+--   le motif bénin 'duplicate column' et enregistre/skip). scripts/migrate.ts
+--   est FIGÉ et N'EST PAS modifié ; la tolérance est une consigne d'exécution.
+--
+-- Conventions schema.sql (vérifiées sur migration-booking-seq84.sql) :
+--   timestamps TEXT, INTEGER NOT NULL DEFAULT pour les compteurs. PAS
+--   d'unixepoch, PAS d'INTEGER autoincrement, PAS de FK.
+--
+-- Exécution manuelle :
+--   npx wrangler d1 execute intralys-crm --file=migration-booking-reminders-seq103.sql --remote
+-- ════════════════════════════════════════════════════════════════════════════
+
+-- 1) booking_event_types — enrichissement ADDITIF (table seq 84 INTOUCHÉE pour
+--    l'existant). reminder_offset_min = minutes AVANT le RDV pour déclencher le
+--    rappel (0 = pas de rappel ; >0 = rappel actif). reminder_channel = canal
+--    d'envoi (NULL | 'email' | 'sms' | 'both'). Le cron dédié
+--    (processBookingReminders, Phase B) lit ces 2 colonnes par jointure
+--    applicative bookings.event_type_id → booking_event_types.id (PAS de FK).
+ALTER TABLE booking_event_types ADD COLUMN reminder_offset_min INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE booking_event_types ADD COLUMN reminder_channel TEXT;
+
+-- 2) bookings — enrichissement ADDITIF. Le CHECK status seq 7
+--    ('confirmed','cancelled','completed','no_show') reste INTOUCHABLE et
+--    contient DÉJÀ 'no_show' — AUCUN ALTER de CHECK. no_show_at = horodatage
+--    du marquage no-show (UTC datetime('now')), posé par markBookingNoShow
+--    (Phase B). `reminder_sent_at` (seq 84) N'EST PAS ré-ajouté — réutilisé
+--    pour l'idempotence du rappel.
+ALTER TABLE bookings ADD COLUMN no_show_at TEXT;
+
+-- NB : AUCUNE colonne ajoutée à `users` / `clients` / tables E4/E6 régulées.
+-- AUCUN CHECK existant modifié (status bookings seq 7 INTOUCHÉ — déjà 'no_show').
+-- AUCUNE FK. AUCUN DROP / RENAME / rebuild. AUCUNE capability ajoutée
+-- (réutilise 'workflows.manage' seq 80). Contrat figé docs/LOT-BOOKING-REMINDERS.md §6.

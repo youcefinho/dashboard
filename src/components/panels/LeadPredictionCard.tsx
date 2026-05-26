@@ -10,27 +10,38 @@
 
 import { useEffect, useState } from 'react';
 import { Card, Tag, Icon } from '@/components/ui';
-import { Sparkles, TrendingUp, TrendingDown } from 'lucide-react';
+import { Sparkles, TrendingUp, TrendingDown, ShieldCheck } from 'lucide-react';
+import { t } from '@/lib/i18n';
 import {
   fetchLeadPredict,
   predictLeadLocal,
   type LeadPrediction,
   type PredictConfidence,
 } from '@/lib/leadPredict';
+import type { ConversionPrediction } from '@/lib/types';
 
 interface LeadPredictionCardProps {
   leadId: string;
   /** Données du lead pour le fallback local déterministe. */
   localInput: Parameters<typeof predictLeadLocal>[0];
+  /**
+   * Sprint 13 — score de conversion CALIBRÉ tenant (getLeadConversionScore).
+   * Optionnel : absent ⇒ comportement Sprint 49 byte-identique (rétro-compat).
+   * Présent ⇒ affiche le badge « calibré » + le facteur « taux historique »
+   * issus de l'agrégat won/lost réel du tenant. Best-effort : si la proba
+   * calibrée est indisponible (probability 0 + factors vides), on ignore.
+   */
+  conversion?: ConversionPrediction | null;
 }
 
+// LOT C — label résolu AU RENDER via t(labelKey)
 const CONFIDENCE_META: Record<
   PredictConfidence,
-  { label: string; variant: 'success' | 'warning' | 'default' }
+  { labelKey: string; variant: 'success' | 'warning' | 'default' }
 > = {
-  high: { label: 'Confiance élevée', variant: 'success' },
-  medium: { label: 'Confiance moyenne', variant: 'warning' },
-  low: { label: 'Confiance faible', variant: 'default' },
+  high: { labelKey: 'panels.predict_conf_high', variant: 'success' },
+  medium: { labelKey: 'panels.predict_conf_medium', variant: 'warning' },
+  low: { labelKey: 'panels.predict_conf_low', variant: 'default' },
 };
 
 function PredictionGauge({ value }: { value: number }) {
@@ -45,7 +56,7 @@ function PredictionGauge({ value }: { value: number }) {
     <div
       className="lead-predict-gauge"
       role="img"
-      aria-label={`Probabilité de conversion sous 30 jours : ${pct}%`}
+      aria-label={t('panels.predict_gauge_aria').replace('{pct}', String(pct))}
     >
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
         <circle
@@ -72,7 +83,7 @@ function PredictionGauge({ value }: { value: number }) {
       </svg>
       <div className="lead-predict-gauge__label">
         <span className="lead-predict-gauge__value t-mono-num">{pct}%</span>
-        <span className="lead-predict-gauge__sub">sous 30j</span>
+        <span className="lead-predict-gauge__sub">{t('panels.predict_under_30d')}</span>
       </div>
     </div>
   );
@@ -81,9 +92,18 @@ function PredictionGauge({ value }: { value: number }) {
 export function LeadPredictionCard({
   leadId,
   localInput,
+  conversion,
 }: LeadPredictionCardProps) {
   const [prediction, setPrediction] = useState<LeadPrediction | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Sprint 13 — la couche calibrée n'est exploitable que si elle porte un signal
+  // réel : proba > 0 OU au moins un facteur. Sinon (stub backend / score absent)
+  // on reste sur la prévision Sprint 49 sans rien casser (best-effort).
+  const hasCalibration =
+    !!conversion &&
+    (conversion.probability > 0 || (conversion.factors?.length ?? 0) > 0);
+  const isCalibrated = hasCalibration && conversion!.calibrated === 1;
 
   useEffect(() => {
     let active = true;
@@ -121,13 +141,51 @@ export function LeadPredictionCard({
       <div className="flex items-center justify-between mb-3">
         <SectionLabel />
         <Tag size="sm" variant={conf.variant}>
-          {conf.label}
+          {t(conf.labelKey)}
         </Tag>
       </div>
 
       <div className="flex flex-col items-center gap-1 mb-3">
         <PredictionGauge value={prediction.probability30d} />
       </div>
+
+      {/* Sprint 13 — calibration tenant (badge calibré + facteurs « taux
+          historique »). Affiché seulement si la couche calibrée porte un signal
+          réel. Best-effort : aucune dépendance si conversion absent. */}
+      {hasCalibration && (
+        <div className="lead-predict-calibration mb-3">
+          {isCalibrated && (
+            <div className="flex items-center justify-center mb-2">
+              <Tag size="sm" variant="success" leftIcon={<Icon as={ShieldCheck} size={11} />}>
+                {t('conversion.calibrated')}
+              </Tag>
+            </div>
+          )}
+          {conversion!.factors.length > 0 && (
+            <div className="lead-predict-factors">
+              {conversion!.factors.map((f) => {
+                const pos = f.impact >= 0;
+                return (
+                  <div key={f.label} className="lead-predict-factor">
+                    <span className="lead-predict-factor__label">{f.label}</span>
+                    <span
+                      className={`lead-predict-factor__impact ${
+                        pos
+                          ? 'lead-predict-factor__impact--pos'
+                          : 'lead-predict-factor__impact--neg'
+                      }`}
+                    >
+                      <Icon as={pos ? TrendingUp : TrendingDown} size={11} />
+                      {pos ? '+' : ''}
+                      {f.impact}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Facteurs (top 3, +/-) */}
       {prediction.factors.length > 0 && (
@@ -160,7 +218,7 @@ export function LeadPredictionCard({
       {/* Actions suggérées */}
       {prediction.suggestedActions.length > 0 && (
         <div className="lead-predict-actions">
-          <p className="lead-predict-actions__title">Actions suggérées</p>
+          <p className="lead-predict-actions__title">{t('panels.predict_actions')}</p>
           <ul className="lead-predict-actions__list">
             {prediction.suggestedActions.map((a, i) => (
               <li key={i} className="lead-predict-action">
@@ -173,8 +231,8 @@ export function LeadPredictionCard({
 
       <p className="lead-predict-foot">
         {prediction.local
-          ? 'Estimation locale (hors-ligne)'
-          : 'Estimé par Claude Haiku 4.5'}
+          ? t('panels.predict_foot_local')
+          : t('panels.predict_foot_ai')}
       </p>
     </Card>
   );
@@ -184,7 +242,7 @@ function SectionLabel() {
   return (
     <span className="lead-predict-title">
       <Icon as={Sparkles} size={11} className="text-[var(--primary)]" />
-      Prévision 30 jours
+      {t('panels.predict_title')}
     </span>
   );
 }

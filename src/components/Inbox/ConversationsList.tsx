@@ -11,6 +11,7 @@ import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { PullToRefreshIndicator } from '@/components/ui/PullToRefreshIndicator';
 // Sprint 35 vague 35-2C — Swipe-to-delete sur rows conversations (mobile)
 import { SwipeAction } from '@/components/ui/SwipeAction';
+import { t } from '@/lib/i18n';
 
 export const CHANNEL_ICON_MAP: Record<string, typeof Mail> = {
   email: Mail, sms: Phone, webchat: Globe,
@@ -68,7 +69,7 @@ export function ConversationsList({
     if (!d) return '';
     const diff = Date.now() - new Date(d).getTime();
     const mins = Math.floor(diff / 60000);
-    if (mins < 1) return 'maintenant';
+    if (mins < 1) return t('inbox.list_now');
     if (mins < 60) return `${mins}m`;
     const hrs = Math.floor(mins / 60);
     if (hrs < 24) return `${hrs}h`;
@@ -81,12 +82,12 @@ export function ConversationsList({
       {/* Sprint 41 M1.4 — Header + search Stripe-clean */}
       <div className="inbox-list-header">
         <div className="inbox-list-header-row">
-          <h2 className="inbox-list-title">Boîte de réception</h2>
+          <h2 className="inbox-list-title">{t('inbox.list_title')}</h2>
           <button
             onClick={onNew}
             className="inbox-list-new-btn"
-            title="Nouvelle conversation"
-            aria-label="Nouvelle conversation"
+            title={t('inbox.list_new_conv')}
+            aria-label={t('inbox.list_new_conv')}
           >
             <Icon as={Mail} size="sm" />
           </button>
@@ -96,14 +97,14 @@ export function ConversationsList({
           <input
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Rechercher..."
+            placeholder={t('inbox.list_search_ph')}
             className="inbox-list-search-input"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
               className="inbox-list-search-clear"
-              aria-label="Effacer la recherche"
+              aria-label={t('inbox.list_search_clear')}
             >
               <Icon as={X} size="xs" />
             </button>
@@ -120,7 +121,7 @@ export function ConversationsList({
               onClick={() => setStatusFilter(s)}
               className={`flex-1 ${statusFilter === s ? 'is-active' : ''}`}
             >
-              <span className="truncate">{s === 'all' ? 'Toutes' : CONVERSATION_STATUS_LABELS[s]}</span>
+              <span className="truncate">{s === 'all' ? t('inbox.list_tab_all') : CONVERSATION_STATUS_LABELS[s]}</span>
               {s !== 'all' && statusCounts[s] ? (
                 <span className={`inbox-list-count-chip ${statusFilter === s ? 'is-active' : ''}`}>
                   {statusCounts[s]}
@@ -133,7 +134,7 @@ export function ConversationsList({
 
       {/* Sprint 41 M1.4 — Channel filter chips Stripe-clean */}
       <div className="inbox-list-channels no-scrollbar">
-        {[{ v: '' as MessageChannel | '', l: 'Tous' }, { v: 'email' as MessageChannel, l: 'Email' }, { v: 'sms' as MessageChannel, l: 'SMS' }, { v: 'webchat' as MessageChannel, l: 'Chat' }, { v: 'facebook' as MessageChannel, l: 'Meta' }].map(f => {
+        {[{ v: '' as MessageChannel | '', l: t('inbox.list_ch_all') }, { v: 'email' as MessageChannel, l: t('inbox.list_ch_email') }, { v: 'sms' as MessageChannel, l: t('inbox.list_ch_sms') }, { v: 'webchat' as MessageChannel, l: t('inbox.list_ch_chat') }, { v: 'facebook' as MessageChannel, l: t('inbox.list_ch_meta') }].map(f => {
           const isActive = channelFilter === f.v;
           return (
             <button
@@ -181,12 +182,12 @@ export function ConversationsList({
             <div className="inbox-list-empty-icon" aria-hidden>
               <Icon as={MessageSquare} size="lg" />
             </div>
-            <p className="inbox-list-empty-title">Aucune conversation</p>
-            <p className="inbox-list-empty-body">Connecte un canal pour recevoir tes premiers messages.</p>
+            <p className="inbox-list-empty-title">{t('inbox.list_empty_title')}</p>
+            <p className="inbox-list-empty-body">{t('inbox.list_empty_body')}</p>
             {onNew && (
               <button type="button" onClick={onNew} className="inbox-list-empty-cta">
                 <Mail size={13} strokeWidth={2} />
-                <span>Nouvelle conversation</span>
+                <span>{t('inbox.list_empty_cta')}</span>
               </button>
             )}
           </div>
@@ -221,8 +222,8 @@ export function ConversationsList({
                     background: 'linear-gradient(135deg, var(--text-secondary) 0%, var(--text-muted) 100%)',
                     boxShadow: '0 2px 8px rgba(15,23,42,0.20)',
                   }}
-                  aria-label="Archiver la conversation"
-                  title="Archiver"
+                  aria-label={t('inbox.list_archive_aria')}
+                  title={t('inbox.list_archive_title')}
                 >
                   <Archive size={16} strokeWidth={2.2} />
                 </button>
@@ -234,8 +235,8 @@ export function ConversationsList({
                     background: 'linear-gradient(135deg, #E5484D 0%, #C9303A 100%)',
                     boxShadow: '0 2px 10px rgba(229,72,77,0.45)',
                   }}
-                  aria-label="Supprimer la conversation"
-                  title="Supprimer"
+                  aria-label={t('inbox.list_delete_aria')}
+                  title={t('inbox.list_delete_title')}
                 >
                   <Trash2 size={16} strokeWidth={2.2} />
                 </button>
@@ -286,7 +287,7 @@ export function ConversationsList({
                       checked={isBulkSelected}
                       onChange={() => { /* noop */ }}
                       className="rounded cursor-pointer accent-[var(--primary)] w-4 h-4"
-                      aria-label={`Sélectionner la conversation avec ${conv.lead_name || 'Inconnu'}`}
+                      aria-label={t('inbox.list_select_aria').replace('{name}', conv.lead_name || t('inbox.list_unknown'))}
                       tabIndex={-1}
                     />
                   </span>
@@ -295,7 +296,7 @@ export function ConversationsList({
                 <div className="inbox-list-row-body">
                   <div className="inbox-list-row-line1">
                     <span className={`inbox-list-row-name ${hasUnread ? 'is-unread' : ''}`}>
-                      {conv.lead_name || 'Inconnu'}
+                      {conv.lead_name || t('inbox.list_unknown')}
                     </span>
                     <span className={`inbox-list-row-time ${hasUnread ? 'is-unread' : ''}`}>
                       {timeAgo(conv.last_message_at)}
@@ -314,7 +315,7 @@ export function ConversationsList({
                       </span>
                     )}
                     {conv.is_starred ? (
-                      <button onClick={(e) => void toggleStar(conv, e)} className="inbox-list-row-star" aria-label="Retirer le marquage étoilé" aria-pressed="true">
+                      <button onClick={(e) => void toggleStar(conv, e)} className="inbox-list-row-star" aria-label={t('inbox.list_unstar_aria')} aria-pressed="true">
                         <Star size={10} className="text-[var(--warning)] fill-[var(--warning)]" />
                       </button>
                     ) : null}

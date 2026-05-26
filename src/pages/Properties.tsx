@@ -36,6 +36,7 @@ export function PropertiesPage() {
   const { error: toastError, success } = useToast();
   const [properties, setProperties] = useState<Property[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
   const [mlsInput, setMlsInput] = useState('');
@@ -54,11 +55,13 @@ export function PropertiesPage() {
 
   const loadProperties = async () => {
     setIsLoading(true);
+    setLoadError(null);
     try {
       const res = await apiFetch<Property[]>('/properties');
-      setProperties(res.data || []);
-    } catch {
-      // silencieux
+      if (res.data) setProperties(res.data);
+      else if (res.error) setLoadError(res.error);
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : t('properties.error.load'));
     }
     setIsLoading(false);
   };
@@ -75,27 +78,28 @@ export function PropertiesPage() {
         setProperties(prev => [res.data.property, ...prev.filter(p => p.mls_number !== mlsInput)]);
         setIsSyncModalOpen(false);
         setMlsInput('');
-        success('Propriété synchronisée depuis Centris');
+        success(t('properties.sync.success'));
       }
     } catch (err: any) {
-      toastError(err.message || 'Erreur lors de la synchronisation');
+      toastError(err.message || t('properties.error.sync'));
     }
     setIsSyncing(false);
   };
 
   const handleDelete = async (id: string) => {
     const ok = await confirm({
-      title: 'Retirer cette propriété ?',
-      description: 'La propriété sera retirée de la liste. Cette action ne supprime pas la fiche Centris si elle existe.',
-      confirmLabel: 'Retirer',
+      title: t('properties.confirm.delete_title'),
+      description: t('properties.confirm.delete_desc'),
+      confirmLabel: t('properties.confirm.delete_label'),
+      cancelLabel: t('properties.modal.cancel'),
       danger: true,
     });
     if (!ok) return;
     try {
       await apiFetch(`/properties/${id}`, { method: 'DELETE' });
       setProperties(prev => prev.filter(p => p.id !== id));
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      toastError(err?.message || t('properties.error.delete'));
     }
   };
 
@@ -158,8 +162,21 @@ export function PropertiesPage() {
         </div>
       </div>
 
+      {loadError && !isLoading && (
+        <div
+          role="alert"
+          aria-live="polite"
+          className="mb-4 flex items-center justify-between gap-3 px-4 py-3 rounded-lg bg-[var(--danger)]/10 border border-[var(--danger)]/30 text-[var(--danger)]"
+        >
+          <span className="text-sm">{loadError}</span>
+          <Button size="sm" variant="secondary" onClick={() => void loadProperties()} aria-label={t('action.retry')}>
+            {t('action.retry')}
+          </Button>
+        </div>
+      )}
+
       {isLoading ? (
-        <Card className="p-0 overflow-hidden">
+        <Card className="p-0 overflow-hidden" aria-busy="true" aria-live="polite">
           <div className="px-4 py-3 border-b border-[var(--border-subtle)] bg-[var(--bg-subtle)] flex items-center gap-6">
             {[1,2,3,4,5,6].map(i => <Skeleton key={i} className="h-3 w-20 rounded" />)}
           </div>
@@ -176,7 +193,7 @@ export function PropertiesPage() {
             ))}
           </div>
         </Card>
-      ) : filtered.length === 0 ? (
+      ) : filtered.length === 0 && !loadError ? (
         <EmptyState
           variant="first-time"
           icon={<Home size={32} strokeWidth={1.8} />}
@@ -233,7 +250,8 @@ export function PropertiesPage() {
                               type="button"
                               className={`table-expand-trigger ${isExpanded ? 'is-expanded' : ''}`}
                               onClick={() => toggleExpand(property.id)}
-                              aria-label={isExpanded ? 'Réduire les détails' : 'Afficher les détails'}
+                              aria-label={isExpanded ? t('properties.row_collapse') : t('properties.row_expand')}
+                              aria-expanded={isExpanded}
                             >
                               <ChevronRight size={14} />
                             </button>
@@ -249,7 +267,7 @@ export function PropertiesPage() {
                             </div>
                             <div className="flex flex-col min-w-0">
                               <span className="font-semibold text-[13px] truncate" title={property.title}>
-                                {property.title || 'Sans titre'}
+                                {property.title || t('properties.untitled')}
                               </span>
                               <span className="text-[11px] text-[var(--text-muted)] truncate">
                                 {property.address || '—'}
@@ -297,8 +315,8 @@ export function PropertiesPage() {
                             type="button"
                             onClick={() => handleDelete(property.id)}
                             className="p-1.5 rounded text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-[var(--danger)]/10 transition-colors"
-                            aria-label="Retirer la propriété"
-                            title="Retirer"
+                            aria-label={t('properties.action.remove_aria')}
+                            title={t('properties.action.remove_title')}
                           >
                             <Icon as={Trash2} size="sm" />
                           </button>
@@ -310,19 +328,19 @@ export function PropertiesPage() {
                             <div className="table-expand-inner">
                               <div className="table-expand-detail">
                                 <div className="table-expand-detail-section" style={{ flex: '1 1 320px' }}>
-                                  <span className="table-expand-detail-label">Description</span>
+                                  <span className="table-expand-detail-label">{t('properties.expand.description_label')}</span>
                                   <span className="table-expand-detail-value text-[12px] leading-relaxed">
-                                    {property.description || 'Aucune description fournie pour cette propriété.'}
+                                    {property.description || t('properties.expand.no_description')}
                                   </span>
                                 </div>
                                 <div className="table-expand-detail-section">
-                                  <span className="table-expand-detail-label">Source</span>
+                                  <span className="table-expand-detail-label">{t('properties.expand.source_label')}</span>
                                   <span className="table-expand-detail-value text-[12px]">
-                                    {property.sync_source || 'Manuel'}
+                                    {property.sync_source || t('properties.expand.source_manual')}
                                   </span>
                                 </div>
                                 <div className="table-expand-detail-section">
-                                  <span className="table-expand-detail-label">Adresse complète</span>
+                                  <span className="table-expand-detail-label">{t('properties.expand.address_label')}</span>
                                   <span className="table-expand-detail-value text-[12px]">
                                     {property.address || '—'}
                                     {property.city && <>, {property.city}</>}
@@ -330,7 +348,7 @@ export function PropertiesPage() {
                                 </div>
                                 {property.image_url && (
                                   <div className="table-expand-detail-section">
-                                    <span className="table-expand-detail-label">Photo</span>
+                                    <span className="table-expand-detail-label">{t('properties.expand.photo_label')}</span>
                                     <img
                                       src={property.image_url}
                                       alt={property.title}
@@ -356,20 +374,20 @@ export function PropertiesPage() {
       <Modal open={isSyncModalOpen} onOpenChange={() => setIsSyncModalOpen(false)} title={t('properties.modal.title')}>
         <div className="space-y-4">
           <p className="text-sm text-[var(--text-secondary)]">
-            Entrez le numéro MLS d'une propriété active pour importer ses photos, son prix et sa description automatiquement.
+            {t('properties.modal.help')}
           </p>
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-[var(--text-secondary)]">Numéro MLS (ex: 12345678)</label>
-            <Input 
-              value={mlsInput} 
-              onChange={(e: any) => setMlsInput(e.target.value)} 
+            <label className="text-sm font-medium text-[var(--text-secondary)]">{t('properties.form.mls_label')}</label>
+            <Input
+              value={mlsInput}
+              onChange={(e: any) => setMlsInput(e.target.value)}
               placeholder="12345678"
               autoFocus
             />
           </div>
           <div className="flex justify-end gap-3 mt-6">
-            <Button variant="secondary" onClick={() => setIsSyncModalOpen(false)}>Annuler</Button>
-            <Button onClick={handleSync} disabled={!mlsInput || isSyncing}>
+            <Button variant="secondary" onClick={() => setIsSyncModalOpen(false)}>{t('properties.modal.cancel')}</Button>
+            <Button onClick={handleSync} disabled={!mlsInput || isSyncing} aria-busy={isSyncing}>
               {isSyncing ? t('properties.modal.syncing') : t('properties.modal.import')}
             </Button>
           </div>

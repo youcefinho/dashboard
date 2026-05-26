@@ -9,8 +9,10 @@ import {
   Textarea,
   ColorSwatch,
   useToast,
+  useConfirm,
   AutosaveIndicator,
   Switch,
+  Tag,
   Wizard,
   type WizardStep,
   Icon,
@@ -24,8 +26,20 @@ import {
   ExternalLink,
   X,
   Check,
+  Link2,
+  Trash2,
+  Plus,
 } from 'lucide-react';
 import { useAutosave } from '@/hooks/useAutosave';
+import {
+  getActiveSubAccount,
+  getClientBranding,
+  updateClientBranding,
+  getCustomDomains,
+  addCustomDomain,
+  deleteCustomDomain,
+} from '@/lib/api';
+import type { CustomHostname } from '@/lib/types';
 import { t } from '@/lib/i18n';
 
 const BRAND_PRESETS = ['#009DDB', '#D96E27', '#37CA37', '#FF9A00', '#E93D3D', '#188BF6', '#8B5CF6'];
@@ -39,14 +53,35 @@ const COLOR_PALETTES: Array<{ id: string; name: string; primary: string; accent:
   { id: 'royal', name: 'Royal', primary: '#8B5CF6', accent: '#EC4899' },
 ];
 
+// ── LOT G9 White-label — mapping statut hostname → variant Tag + libellé i18n.
+//    pending → warning · active → success · failed → danger (clés whitelabel.*).
+function domainStatusTag(status: string): { variant: 'warning' | 'success' | 'danger'; label: string } {
+  switch (status) {
+    case 'active':
+      return { variant: 'success', label: t('whitelabel.status_active') };
+    case 'failed':
+      return { variant: 'danger', label: t('whitelabel.status_failed') };
+    default:
+      return { variant: 'warning', label: t('whitelabel.status_pending') };
+  }
+}
+
 export function BrandingSettings() {
-  const { success } = useToast();
+  const { success, error } = useToast();
+  const confirm = useConfirm();
   const [primary, setPrimary] = useState<string>('#009DDB');
   const [accent, setAccent] = useState<string>('#D96E27');
   const [companyName, setCompanyName] = useState('Intralys Demo');
   const [address, setAddress] = useState('123 rue de la Demo, Québec');
   const [logoFile, setLogoFile] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  // ── LOT WHITE-LABEL APPLY (Sprint 20) — nouveaux champs white-label, sérialisés
+  //    dans le MÊME JSON `branding` (clés additionnelles, AUCUNE migration) :
+  //    favicon (URL ou data-URI base64 comme le logo), sender_name (nom
+  //    d'expéditeur email), remove_powered_by (masque « Propulsé par Intralys »).
+  const [favicon, setFavicon] = useState<string>('');
+  const [senderName, setSenderName] = useState<string>('');
+  const [removePoweredBy, setRemovePoweredBy] = useState<boolean>(false);
 
   // ── Sprint 26 vague 26-3B — wizard state
   const [wizardOpen, setWizardOpen] = useState(false);
@@ -56,22 +91,172 @@ export function BrandingSettings() {
   const [publicPagesEnabled, setPublicPagesEnabled] = useState(false);
   const [publicSlug, setPublicSlug] = useState('');
 
-  const handleSave = () => {
-    success(t('set.brand.success'));
+  // ── LOT TEAM C — sous-compte cible = résolution canonique SaaS
+  //    (getActiveSubAccount, même clé que le header X-Sub-Account injecté par
+  //    apiFetch). Null en legacy/mono-tenant : on dégrade alors sur le brouillon
+  //    local (pas d'endpoint sous-compte côté legacy), sans casser l'UX.
+  const subAccountId = useMemo(() => getActiveSubAccount(), []);
+
+  // ── LOT G9 White-label — état domaine personnalisé (par sous-compte/tenant) ──
+  // getCustomDomains/addCustomDomain/deleteCustomDomain (api.ts GELÉ Phase A).
+  // Le provisioning auto est INACTIF (flag worker off) : un domaine ajouté
+  // reste 'pending' tant que l'admin n'a pas activé Cloudflare for SaaS.
+  const [domains, setDomains] = useState<CustomHostname[]>([]);
+  const [newHostname, setNewHostname] = useState('');
+  const [domainBusy, setDomainBusy] = useState(false);
+
+  const loadDomains = useCallback(async () => {
+    if (!subAccountId) return;
+    const res = await getCustomDomains(subAccountId);
+    // ApiResponse INCHANGÉ : on lit `data`, jamais de res.code (§6.A).
+    if (res.data) setDomains(res.data);
+  }, [subAccountId]);
+
+  useEffect(() => {
+    void loadDomains();
+  }, [loadDomains]);
+
+  const handleAddDomain = useCallback(async () => {
+    const hostname = newHostname.trim().toLowerCase();
+    if (!hostname || !subAccountId || domainBusy) return;
+    setDomainBusy(true);
+    const res = await addCustomDomain(subAccountId, hostname);
+    setDomainBusy(false);
+    // Discrimination erreur = string-match / absence `data` (apiFetch GELÉ).
+    if (res.error || !res.data) {
+      error(res.error || t('whitelabel.add'));
+      return;
+    }
+    setNewHostname('');
+    success(t('whitelabel.add'));
+    void loadDomains();
+  }, [newHostname, subAccountId, domainBusy, error, success, loadDomains]);
+
+  const handleDeleteDomain = useCallback(
+    async (host: CustomHostname) => {
+      if (!subAccountId) return;
+      const ok = await confirm({
+        title: t('whitelabel.delete'),
+        description: host.hostname,
+        confirmLabel: t('whitelabel.delete'),
+        danger: true,
+      });
+      if (!ok) return;
+      const res = await deleteCustomDomain(subAccountId, host.id);
+      if (res.error || !res.data) {
+        error(res.error || t('whitelabel.delete'));
+        return;
+      }
+      success(t('whitelabel.delete'));
+      void loadDomains();
+    },
+    [subAccountId, confirm, error, success, loadDomains]
+  );
+
+  // Charge le branding réel du sous-compte actif (best-effort, jamais throw).
+  useEffect(() => {
+    if (!subAccountId) return;
+    let cancelled = false;
+    void (async () => {
+      const res = await getClientBranding(subAccountId);
+      if (cancelled || !res.data) return;
+      const d = res.data;
+      if (d.primary_color) setPrimary(d.primary_color);
+      if (d.accent_color) setAccent(d.accent_color);
+      if (d.logo_url) setLogoFile(d.logo_url);
+      if (d.branding) {
+        try {
+          const meta = JSON.parse(d.branding) as {
+            companyName?: string;
+            company_name?: string;
+            address?: string;
+            websiteUrl?: string;
+            shortDescription?: string;
+            favicon?: string | null;
+            sender_name?: string | null;
+            remove_powered_by?: boolean;
+          };
+          // company_name canonique (propagation) ; companyName = repli historique.
+          if (meta.company_name || meta.companyName) setCompanyName((meta.company_name || meta.companyName)!);
+          if (meta.address) setAddress(meta.address);
+          if (meta.websiteUrl) setWebsiteUrl(meta.websiteUrl);
+          if (meta.shortDescription) setShortDescription(meta.shortDescription);
+          // ── LOT WHITE-LABEL APPLY (Sprint 20) — relecture des nouvelles clés.
+          if (typeof meta.favicon === 'string') setFavicon(meta.favicon);
+          if (typeof meta.sender_name === 'string') setSenderName(meta.sender_name);
+          if (typeof meta.remove_powered_by === 'boolean') setRemovePoweredBy(meta.remove_powered_by);
+        } catch {
+          /* branding non-JSON (legacy) : on ignore, valeurs par défaut */
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [subAccountId]);
+
+  // Construit le payload branding (colonnes seq 81 ; les méta textuelles sont
+  // sérialisées dans la colonne `branding` JSON — colonnes dédiées = couleurs/
+  // logo, alignées sur le contrat §6.F).
+  const buildBrandingBody = useCallback(
+    () => ({
+      branding: JSON.stringify({
+        // company_name = graphie canonique (propagation Sidebar/footer/title) ;
+        // companyName conservé en repli pour rétro-compat lecture (§6.G/§6.I-12).
+        company_name: companyName,
+        companyName,
+        address,
+        websiteUrl,
+        shortDescription,
+        // ── LOT WHITE-LABEL APPLY (Sprint 20) — clés additionnelles (même JSON,
+        //    aucune migration). favicon/sender_name normalisés à null si vides.
+        favicon: favicon.trim().length > 0 ? favicon.trim() : null,
+        sender_name: senderName.trim().length > 0 ? senderName.trim() : null,
+        remove_powered_by: removePoweredBy,
+      }),
+      logo_url: logoFile,
+      primary_color: primary,
+      accent_color: accent,
+    }),
+    [companyName, address, websiteUrl, shortDescription, favicon, senderName, removePoweredBy, logoFile, primary, accent]
+  );
+
+  const handleSave = async () => {
+    if (!subAccountId) {
+      success(t('set.brand.success'));
+      return;
+    }
+    const res = await updateClientBranding(subAccountId, buildBrandingBody());
+    // Discrimination erreur = string-match / absence `data` (apiFetch GELÉ,
+    // §6.A — JAMAIS de res.code).
+    if (res.error || !res.data) {
+      error(t('branding.subaccount.error'));
+      return;
+    }
+    // LOT WHITE-LABEL APPLY (Sprint 20) — confirme l'application de la marque.
+    success(t('whitelabel.applied'));
   };
 
-  // Sprint 24 vague 6A — autosave (stub : endpoint branding pas dispo encore)
+  // Sprint 24 vague 6A — autosave : endpoint branding réel (sous-compte actif)
+  // ou brouillon local en legacy/mono-tenant (pas d'endpoint sous-compte).
   const autosaveValue = useMemo(
-    () => ({ primary, accent, companyName, address, websiteUrl, shortDescription, publicPagesEnabled, publicSlug }),
-    [primary, accent, companyName, address, websiteUrl, shortDescription, publicPagesEnabled, publicSlug]
+    () => ({ primary, accent, companyName, address, websiteUrl, shortDescription, favicon, senderName, removePoweredBy, publicPagesEnabled, publicSlug }),
+    [primary, accent, companyName, address, websiteUrl, shortDescription, favicon, senderName, removePoweredBy, publicPagesEnabled, publicSlug]
   );
   const { state: autosaveState, lastSaved, retry } = useAutosave({
     value: autosaveValue,
     onSave: async () => {
-      try {
-        localStorage.setItem('intralys_branding_draft', JSON.stringify(autosaveValue));
-      } catch {
-        throw new Error('Échec sauvegarde locale');
+      if (!subAccountId) {
+        try {
+          localStorage.setItem('intralys_branding_draft', JSON.stringify(autosaveValue));
+        } catch {
+          throw new Error('Échec sauvegarde locale');
+        }
+        return;
+      }
+      const res = await updateClientBranding(subAccountId, buildBrandingBody());
+      if (res.error || !res.data) {
+        throw new Error(res.error || t('branding.subaccount.error'));
       }
     },
   });
@@ -625,9 +810,174 @@ export function BrandingSettings() {
           </div>
         </div>
 
+        {/* ── LOT WHITE-LABEL APPLY (Sprint 20) — champs white-label additionnels.
+            favicon (URL ou base64 comme le logo) + sender_name + toggle
+            remove_powered_by, sérialisés dans le MÊME JSON `branding`. */}
+        <div className="settings-form-grid">
+          <div className="settings-form-row settings-form-row--full">
+            <label className="settings-label">{t('whitelabel.favicon')}</label>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-md flex items-center justify-center shrink-0 overflow-hidden bg-[var(--bg-subtle)] border border-[var(--border-subtle)]">
+                {favicon.trim().length > 0 ? (
+                  <img src={favicon.trim()} alt="Favicon" className="w-full h-full object-contain" loading="lazy" decoding="async" />
+                ) : (
+                  <Icon as={ImagePlus} size="sm" className="text-[var(--text-muted)]" />
+                )}
+              </div>
+              <Input
+                value={favicon}
+                onChange={(e) => setFavicon(e.target.value)}
+                placeholder="https://… (ou data:image/…)"
+                className="flex-1"
+              />
+              <input
+                type="file"
+                accept="image/*"
+                id="branding-favicon-input"
+                className="sr-only"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = (ev) => setFavicon(ev.target?.result as string);
+                  reader.readAsDataURL(file);
+                }}
+              />
+              <label
+                htmlFor="branding-favicon-input"
+                className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md text-[13px] font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] transition-colors cursor-pointer shrink-0"
+              >
+                <Icon as={ImagePlus} size="sm" />
+                {t('whitelabel.favicon')}
+              </label>
+              {favicon.trim().length > 0 && (
+                <Button variant="ghost" size="sm" onClick={() => setFavicon('')} leftIcon={<Icon as={X} size="sm" />}>
+                  {t('set.brand.remove')}
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <div className="settings-form-row settings-form-row--full">
+            <label className="settings-label">{t('whitelabel.sender_name')}</label>
+            <Input
+              value={senderName}
+              onChange={(e) => setSenderName(e.target.value)}
+              placeholder="Ex. Agence Tremblay"
+            />
+          </div>
+
+          <div className="settings-form-row settings-form-row--full">
+            <Switch
+              checked={removePoweredBy}
+              onCheckedChange={setRemovePoweredBy}
+              label={t('whitelabel.remove_powered_by')}
+            />
+          </div>
+        </div>
+
+        {/* Aperçu sobre — wordmark/logo Sidebar tel qu'appliqué (Stripe-clean). */}
+        <div className="settings-form-grid">
+          <div className="settings-form-row settings-form-row--full">
+            <label className="settings-label">{t('whitelabel.preview')}</label>
+            <div className="flex items-center gap-2.5 p-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-subtle)]">
+              <div
+                className="w-9 h-9 rounded-md flex items-center justify-center shrink-0 overflow-hidden text-white font-bold text-[15px]"
+                style={{ background: logoFile ? 'var(--bg-surface)' : `linear-gradient(135deg, ${primary} 0%, ${accent} 100%)` }}
+              >
+                {logoFile ? (
+                  <img src={logoFile} alt="" className="w-full h-full object-contain" loading="lazy" decoding="async" />
+                ) : (
+                  (companyName.trim().charAt(0) || 'I').toUpperCase()
+                )}
+              </div>
+              <div className="overflow-hidden">
+                <span className="block text-[15px] font-bold leading-tight text-[var(--primary)] truncate">
+                  {companyName.trim() || 'Intralys'}
+                </span>
+                {!companyName.trim() && (
+                  <span className="block text-[10px] uppercase tracking-[0.12em] text-[var(--text-muted)]">CRM</span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="settings-actions">
           <Button onClick={handleSave}>{t('set.brand.save')}</Button>
         </div>
+      </Card>
+
+      {/* ── LOT G9 White-label — Domaine personnalisé (par sous-compte/tenant) ── */}
+      <Card className="settings-card p-6">
+        <header className="settings-section-header">
+          <div>
+            <h3 className="t-h3 flex items-center gap-2">
+              <Icon as={Link2} size="md" className="text-[var(--primary)]" /> {t('whitelabel.title')}
+            </h3>
+          </div>
+        </header>
+
+        {/* Liste des domaines mappés au tenant */}
+        {domains.length === 0 ? (
+          <p className="g9-domain-empty">{t('whitelabel.empty')}</p>
+        ) : (
+          <ul className="g9-domain-list">
+            {domains.map((host) => {
+              const st = domainStatusTag(host.status);
+              return (
+                <li key={host.id} className="g9-domain-row">
+                  <div className="g9-domain-info">
+                    <span className="g9-domain-host">{host.hostname}</span>
+                    <span className="g9-domain-meta">
+                      {t('whitelabel.dkim_status')} : {host.dkim_status}
+                    </span>
+                  </div>
+                  <div className="g9-domain-actions">
+                    <Tag variant={st.variant} statusIcon>
+                      {st.label}
+                    </Tag>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteDomain(host)}
+                      leftIcon={<Icon as={Trash2} size="sm" />}
+                    >
+                      {t('whitelabel.delete')}
+                    </Button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+
+        {/* Ajout d'un hostname */}
+        <div className="g9-domain-add">
+          <Input
+            value={newHostname}
+            onChange={(e) => setNewHostname(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                void handleAddDomain();
+              }
+            }}
+            placeholder={t('whitelabel.hostname_placeholder')}
+            className="flex-1"
+          />
+          <Button
+            variant="primary"
+            onClick={handleAddDomain}
+            disabled={domainBusy || newHostname.trim().length === 0}
+            leftIcon={<Icon as={Plus} size="sm" />}
+          >
+            {t('whitelabel.add')}
+          </Button>
+        </div>
+
+        {/* Note flag : provisioning auto inactif → domaine reste 'pending'. */}
+        <p className="g9-domain-note">{t('whitelabel.provisioning_disabled')}</p>
       </Card>
 
       {/* ── Sprint 26 vague 26-3B — Wizard 4 steps (Logo / Couleurs / Société / Public) ── */}

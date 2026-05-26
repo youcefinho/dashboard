@@ -28,6 +28,8 @@ interface ModalProps {
   closeOnOverlay?: boolean;
   /** Sprint 38 — position du panneau ('center' default, 'bottom' = sheet) */
   position?: 'center' | 'bottom';
+  /** LOT C — aria-label du bouton fermer (i18n). Défaut 'Fermer' (rétro-compat). */
+  closeLabel?: string;
 }
 
 const sizeMap = {
@@ -48,6 +50,7 @@ export function Modal({
   modal = false,
   closeOnOverlay = true,
   position = 'center',
+  closeLabel = 'Fermer',
 }: ModalProps) {
   const isBottom = position === 'bottom';
 
@@ -129,7 +132,7 @@ export function Modal({
               <DialogPrimitive.Close
                 className="shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-[var(--radius-md)] transition-colors outline-none"
                 style={{ color: 'var(--text-muted)' }}
-                aria-label="Fermer"
+                aria-label={closeLabel}
                 onMouseEnter={(e) => {
                   (e.currentTarget as HTMLElement).style.background =
                     'var(--bg-hover)';

@@ -294,6 +294,10 @@ export const patchLeadSchemaS3 = z.object({
   date_of_birth: z.string().max(20).optional(),
   country: z.string().max(10).optional(),
   timezone: z.string().max(50).optional(),
+  // Sprint MULTILANG-B — langue préférée (additif optionnel). Permissif :
+  // validation stricte de la whitelist locales faite côté handler (leads.ts).
+  // '' OU hors-liste ⇒ handler remet NULL (= repasser au défaut tenant).
+  preferred_language: z.string().max(10).optional(),
 }).passthrough();
 
 // handleBulkLeads : ids[] (1..100) + action allowlistée + value optionnel.
@@ -487,3 +491,143 @@ export function validate<T>(schema: z.ZodType<T>, data: unknown): { success: tru
   const message = firstIssue?.message || 'Validation échouée';
   return { success: false, error: path ? `${path}: ${message}` : message };
 }
+
+// ── Sprint 21 — Onboarding durci : checklist serveur (seq119) ───────────────
+// POST /api/onboarding/checklist/complete : body { itemKey }.
+// POST /api/onboarding/checklist/skip     : body { itemKey, reason? }.
+// L'enum applicatif de `itemKey` est validé DANS le HANDLER worker contre
+// `VALID_ITEM_KEYS` (PAS de CHECK SQL — rétro-compat additive).
+export const onboardingChecklistCompleteSchema = z.object({
+  itemKey: z.string().min(1).max(60),
+});
+export const onboardingChecklistSkipSchema = z.object({
+  itemKey: z.string().min(1).max(60),
+  reason: z.string().max(280).optional(),
+});
+
+// ── Sprint 22 — Billing Stripe prod (E4 flag mock) — body schemas ───────────
+// Validation HANDLER (calque pattern onboarding seq119) : tout plan_tier hors
+// enum est rejeté avec code INVALID_INPUT (le code PLAN_UNKNOWN est réservé à
+// la vérification croisée contre billing_plans dans le handler Manager-B).
+
+export const BillingSubscriptionChangeSchema = z.object({
+  planTier: z.enum(['free', 'starter', 'pro', 'unlimited']),
+  billingPeriod: z.enum(['monthly', 'yearly']).optional(),
+});
+export type BillingSubscriptionChangeBody = z.infer<typeof BillingSubscriptionChangeSchema>;
+
+export const BillingPortalSessionSchema = z.object({
+  returnUrl: z.string().url().optional(),
+});
+export type BillingPortalSessionBody = z.infer<typeof BillingPortalSessionSchema>;
+
+export const BillingCancelSchema = z.object({
+  reason: z.string().max(500).optional(),
+  atPeriodEnd: z.boolean().default(true),
+});
+export type BillingCancelBody = z.infer<typeof BillingCancelSchema>;
+
+// ── Sprint 23 — Sécurité / conformité ────────────────────────────────────
+// Schemas zod pour cookie consent, account deletion, RBAC overrides, audit
+// log query, forgot/reset password. Capability enum FIGÉ aux 12 capabilities
+// de capabilities.ts:36-49 (ALL_CAPABILITIES seq80 — ZÉRO ajout possible).
+// `z.email()` car zod/v4 (cf. ligne 4 de ce fichier).
+
+export const cookieConsentSchema = z.object({
+  anonymous_id: z.string().min(1).max(100),
+  categories: z.object({
+    essential: z.literal(true),
+    preferences: z.boolean(),
+    analytics: z.boolean(),
+    marketing: z.boolean(),
+  }),
+  policy_version: z.string().max(20).default('1.0'),
+  url: z.string().max(500).optional(),
+});
+
+export const accountDeletionRequestSchema = z.object({
+  reason: z.string().max(2000).optional(),
+  confirm_email: z.email().max(200),
+});
+
+export const capabilityOverrideSchema = z.object({
+  capability: z.enum([
+    'leads.read','leads.write','leads.delete','export','team.manage','billing.view',
+    'clients.manage','reports.view','workflows.manage','invoices.write','settings.manage','ai.use',
+  ]),
+  granted: z.boolean(),
+});
+
+export const auditLogQuerySchema = z.object({
+  action: z.string().max(100).optional(),
+  user_id: z.string().max(100).optional(),
+  resource_type: z.string().max(50).optional(),
+  date_from: z.string().max(30).optional(),
+  date_to: z.string().max(30).optional(),
+  limit: z.coerce.number().min(1).max(200).default(50),
+  offset: z.coerce.number().min(0).default(0),
+});
+
+export const forgotPasswordSchema = z.object({ email: z.email().max(200) });
+export const resetPasswordSchema = z.object({
+  token: z.string().min(10).max(200),
+  password: z.string().min(8).max(500),
+});
+
+// ── Sprint 24 — Observabilité (alerts + query) ──────────────────────────
+// Schemas figés §6.3. `notification_target` accepte chaîne vide (canal 'log'
+// par défaut) ou URL valide (canal 'webhook'). Projet utilise `zod/v4` →
+// validation URL via `z.url()` direct (cf. patron `forgotPasswordSchema` ligne 571).
+export const alertRuleCreateSchema = z.object({
+  name: z.string().min(1).max(100),
+  condition_type: z.enum(['error_rate', 'p95_latency', 'web_vital_p75']),
+  metric_name: z.string().max(100).nullable().optional(),
+  threshold: z.number().finite().min(0),
+  window_minutes: z.number().int().min(1).max(1440).default(60),
+  notification_channel: z.enum(['log', 'webhook']).default('log'),
+  notification_target: z.union([z.literal(''), z.url().max(2048)]).optional().default(''),
+  enabled: z.boolean().default(true),
+});
+export const alertRuleUpdateSchema = alertRuleCreateSchema.partial();
+export const observabilityQuerySchema = z.object({
+  period: z.enum(['1h', '24h', '7d', '30d']).default('24h'),
+  route: z.string().max(200).optional(),
+});
+
+// ── Sprint 31 — Stripe live activation ──────────────────────────────────
+// Schemas figés §6.3. Calque pattern Sprint 22 (BillingPortalSessionSchema).
+// `refreshUrl` / `returnUrl` injectés par Manager-C depuis le composant
+// `BillingConnectOnboardButton`. `paymentMethodId` = Stripe PaymentMethod ID
+// (pm_xxx ou tk_xxx) renvoyé par Stripe.js après SetupIntent confirmé.
+export const BillingConnectOnboardSchema = z.object({
+  refreshUrl: z.string().url().optional(),
+  returnUrl: z.string().url().optional(),
+});
+export const BillingSetupIntentSchema = z.object({}).optional();
+export const BillingPaymentMethodIdSchema = z.object({
+  paymentMethodId: z.string().min(1).max(200),
+});
+export const BillingSetDefaultPaymentMethodSchema = z.object({}).optional();
+
+// ── Sprint 32 — Google Business Profile (GBP) integration ────────────────
+export const GbpReplyReviewSchema = z.object({ comment: z.string().min(1).max(4096) });
+export const GbpCreatePostSchema = z.object({
+  locationId: z.string().min(1),
+  summary: z.string().min(1).max(1500),
+  topicType: z.enum(['STANDARD', 'OFFER', 'EVENT']).optional(),
+  callToAction: z.object({
+    actionType: z.enum(['BOOK', 'ORDER', 'SHOP', 'LEARN_MORE', 'SIGN_UP', 'CALL']),
+    url: z.string().url().optional(),
+  }).optional(),
+  mediaUrl: z.string().url().optional(),
+});
+export const GbpSetDefaultLocationSchema = z.object({}).optional();
+
+// ── Sprint 33 — Calendar sync ───────────────────────────────────────────
+export const calendarConnectInputSchema = z.object({
+  provider: z.enum(['google_calendar', 'outlook']),
+  externalCalendarId: z.string().optional(),
+});
+export const appointmentSyncOverrideSchema = z.object({
+  resolution: z.enum(['keep_intralys', 'keep_external']),
+});

@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react';
 import { Card, Button, Input, Tag, Avatar, Textarea, Skeleton, useToast, AutosaveIndicator } from '@/components/ui';
 import { updateProfile } from '@/lib/api';
 import { useAutosave } from '@/hooks/useAutosave';
-import { getLocale, setLocale, availableLocaleOptions, type Locale } from '@/lib/i18n';
+import { getLocale, setLocale, availableLocaleOptions, t, type Locale } from '@/lib/i18n';
 // Sprint 48 M3.4 — Timezone wirage
 import {
   listTimezones,
@@ -111,7 +111,7 @@ export function ProfileSettings({ user, isAdmin }: { user: any; isAdmin: boolean
       {/* Section header Stripe — accent ::before primary */}
       <header className="settings-section-header">
         <h3 className="t-h3">Profil personnel</h3>
-        <p className="t-caption text-[var(--gray-500)]">Tes informations et préférences de communication.</p>
+        <p className="t-caption text-[var(--gray-500)]">{t('profile_settings.subtitle')}</p>
       </header>
 
       {/* Identity row Stripe-sober */}

@@ -33,10 +33,10 @@ export function MagicLinkRequestPage() {
         setSent(true);
       } else {
         const j = await res.json().catch(() => ({})) as { error?: string };
-        setError(j?.error || 'Une erreur est survenue. Réessaye.');
+        setError(j?.error || t('auth.magic.generic_error'));
       }
     } catch {
-      setError('Vérifie ta connexion et réessaye.');
+      setError(t('auth.magic.network_error'));
     } finally {
       setSubmitting(false);
     }
@@ -46,17 +46,22 @@ export function MagicLinkRequestPage() {
     <div className="magic-auth">
       <div className="magic-auth__card">
         {sent ? (
-          <div className="magic-auth__state" role="status">
+          <div
+            className="magic-auth__state"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+            aria-label={t('auth.magic.aria.success')}
+          >
             <span className="magic-auth__icon magic-auth__icon--ok">
               <Icon as={MailCheck} size={26} aria-hidden />
             </span>
-            <h1 className="magic-auth__title">Vérifie ta boîte courriel</h1>
+            <h1 className="magic-auth__title">{t('auth.magic.check_inbox')}</h1>
             <p className="magic-auth__text">
-              Si <strong>{email}</strong> fait partie de la beta, on vient de
-              t'envoyer un lien de connexion. Il est valable 15 minutes.
+              {t('auth.magic.check_inbox_desc', { email })}
             </p>
             <Link to="/login" className="magic-auth__back">
-              <Icon as={ArrowLeft} size={14} aria-hidden /> Retour à la connexion
+              <Icon as={ArrowLeft} size={14} aria-hidden /> {t('auth.magic.back')}
             </Link>
           </div>
         ) : (
@@ -66,18 +71,22 @@ export function MagicLinkRequestPage() {
             </span>
             <h1 className="magic-auth__title">{t('auth.magic.request_title')}</h1>
             <p className="magic-auth__text">
-              Réservé aux membres de la beta privée. Entre ton courriel, on
-              t'envoie un lien sécurisé — pas de mot de passe à retenir.
+              {t('auth.magic.body_desc')}
             </p>
-            <form className="magic-auth__form" onSubmit={handleSubmit} noValidate>
+            <form
+              className="magic-auth__form"
+              onSubmit={handleSubmit}
+              noValidate
+              aria-busy={submitting || undefined}
+            >
               <Input
-                label="Courriel"
+                label={t('auth.magic.label_email')}
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 autoComplete="email"
-                placeholder="toi@entreprise.com"
+                placeholder={t('auth.magic.placeholder_email')}
                 error={error || undefined}
               />
               <Button
@@ -98,7 +107,7 @@ export function MagicLinkRequestPage() {
             </form>
             <div className="magic-auth__alt">
               <Link to="/login" className="magic-auth__back">
-                <Icon as={ArrowLeft} size={14} aria-hidden /> J'ai un mot de passe
+                <Icon as={ArrowLeft} size={14} aria-hidden /> {t('auth.magic.alt_password')}
               </Link>
             </div>
           </>

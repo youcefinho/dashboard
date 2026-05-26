@@ -6,13 +6,25 @@ import { t } from '@/lib/i18n';
 import { Badge, Skeleton, Card, Button, EmptyState, PageHero } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { Avatar } from '@/components/ui/Avatar';
-import { getPipeline, getPipelines, updateLead } from '@/lib/api';
+import { getPipeline, getPipelines, updateLead, getLeadConversionScore } from '@/lib/api';
 import { confettiBurst } from '@/lib/confetti';
 import { TYPE_LABELS, SOURCE_LABELS, type Lead, type Pipeline, type PipelineStage } from '@/lib/types';
-import { MoreHorizontal, ChevronDown, LayoutList, BarChart3, Kanban, Filter, Clock, DollarSign, TrendingUp, AlertTriangle, X, Check } from 'lucide-react';
+import { MoreHorizontal, ChevronDown, LayoutList, BarChart3, Kanban, Filter, Clock, DollarSign, TrendingUp, AlertTriangle, X, Check, Flame } from 'lucide-react';
 import { ForecastView } from '@/components/pipelines/ForecastView';
+// Sprint 21 — Onboarding durci : auto-complète 'pipeline_configured' dès que
+// l'user a un pipeline avec au moins une étape (idempotent, best-effort).
+import { useOnboardingItemCompletion } from '@/components/onboarding/useOnboardingItemCompletion';
 
-const LOST_REASONS = ['Prix trop élevé', 'Concurrent choisi', 'Mauvais timing', 'Pas de réponse', 'Financement refusé', 'Changement de plan', 'Autre'];
+// Sprint LOT 1-3 — Liste de clés i18n pour les raisons de perte (translation au render via t())
+const LOST_REASON_KEYS = [
+  'pipeline.page.lost_reason_price',
+  'pipeline.page.lost_reason_competitor',
+  'pipeline.page.lost_reason_timing',
+  'pipeline.page.lost_reason_no_response',
+  'pipeline.page.lost_reason_financing',
+  'pipeline.page.lost_reason_plan_change',
+  'pipeline.page.lost_reason_other',
+] as const;
 
 type ViewMode = 'kanban' | 'list' | 'forecast';
 
@@ -33,6 +45,11 @@ export function PipelinePage() {
     try { return JSON.parse(localStorage.getItem('intralys_pipeline_filters') || '[]'); } catch { return []; }
   });
   const [showFilters, setShowFilters] = useState(false);
+  // ── Sprint 13 — proba de conversion calibrée + filtre « leads chauds ». ──
+  // Best-effort : map leadId → proba (0..100). Score absent ⇒ pas d'entrée.
+  const [convProba, setConvProba] = useState<Record<string, number>>({});
+  const [hotOnly, setHotOnly] = useState(false);
+  const HOT_THRESHOLD = 60; // proba calibrée ≥ 60 % = lead chaud
 
   useEffect(() => { localStorage.setItem('intralys_pipeline_viewmode', viewMode); }, [viewMode]);
   useEffect(() => { localStorage.setItem('intralys_pipeline_filters', JSON.stringify(activeFilters)); }, [activeFilters]);
@@ -56,8 +73,44 @@ export function PipelinePage() {
 
   useEffect(() => { void loadData(); }, [loadData]);
 
+  // ── Sprint 13 — proba de conversion calibrée par lead (best-effort) ──
+  // Borné à 30 leads (fan-out maîtrisé). Appels isolés (catch) : un échec
+  // n'altère ni le kanban ni les autres probas. Score absent / KO ⇒ pas
+  // d'entrée ⇒ badge masqué (jamais de crash).
+  useEffect(() => {
+    let alive = true;
+    const targets = leads.slice(0, 30);
+    if (targets.length === 0) return;
+    void Promise.all(
+      targets.map(async (l) => {
+        try {
+          const r = await getLeadConversionScore(l.id);
+          const p = r.data?.probability;
+          if (typeof p === 'number' && p > 0) return [l.id, p] as const;
+        } catch { /* best-effort */ }
+        return null;
+      }),
+    ).then((pairs) => {
+      if (!alive) return;
+      const next: Record<string, number> = {};
+      for (const pair of pairs) if (pair) next[pair[0]] = pair[1];
+      setConvProba(next);
+    });
+    return () => { alive = false; };
+  }, [leads]);
+
+  const hasAnyConvProba = Object.keys(convProba).length > 0;
+
   const activePipeline = pipelines.find(p => p.id === activePipelineId) || pipelines[0];
   const stages = activePipeline?.stages || [];
+
+  // ── Sprint 21 (Onboarding durci) — auto-complète 'pipeline_configured' dès
+  //    que le tenant a un pipeline avec au moins une étape configurée. Le hook
+  //    est idempotent (un seul appel API par session) et silencieux en cas
+  //    d'échec API. Condition basée sur l'état déjà chargé — pas de fetch
+  //    supplémentaire.
+  const isPipelineCustomized = stages.length > 0;
+  useOnboardingItemCompletion('pipeline_configured', isPipelineCustomized);
 
   // Helper pour obtenir la probabilité
   const getStageProbability = (stage: PipelineStage) => {
@@ -118,7 +171,11 @@ export function PipelinePage() {
     setLostDetails('');
   };
 
-  const getColumnLeads = (stageId: string) => leads.filter(l => (l.stage_id || stages[0]?.id) === stageId);
+  // Sprint 13 — filtre « leads chauds » (best-effort : si aucune proba chargée,
+  // on n'écrème pas pour éviter un pipeline vide).
+  const isHotLead = (l: Lead) => (convProba[l.id] ?? 0) >= HOT_THRESHOLD;
+  const visibleLeads = (hotOnly && hasAnyConvProba) ? leads.filter(isHotLead) : leads;
+  const getColumnLeads = (stageId: string) => visibleLeads.filter(l => (l.stage_id || stages[0]?.id) === stageId);
   const getDaysInStage = (lead: Lead) => Math.floor((Date.now() - new Date(lead.updated_at).getTime()) / 86400000);
   const scoreColor = (s: number) => s >= 70 ? 'var(--success)' : s >= 40 ? 'var(--warning)' : 'var(--danger)';
   const daysColor = (d: number) => d > 14 ? 'var(--danger)' : d > 7 ? 'var(--warning)' : 'var(--success)';
@@ -250,6 +307,17 @@ export function PipelinePage() {
         {/* Spacer */}
         <div className="flex-1" />
 
+        {/* Sprint 13 — filtre « leads chauds » (proba calibrée ≥ seuil).
+            Affiché seulement quand au moins une proba a été chargée (best-effort). */}
+        {hasAnyConvProba && (
+          <button onClick={() => setHotOnly(v => !v)}
+            aria-pressed={hotOnly}
+            title={t('conversion.hot_leads')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all ${hotOnly ? 'bg-[var(--brand-primary)] text-white border border-[var(--brand-primary)]' : 'bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:border-[var(--brand-primary)]'}`}>
+            <Flame size={13} className={hotOnly ? 'text-white' : 'text-[var(--accent-orange)]'} /> {t('conversion.hot_leads')}
+          </button>
+        )}
+
         {/* Filtres */}
         <button onClick={() => setShowFilters(!showFilters)}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all ${showFilters ? 'bg-[var(--brand-primary)] text-white' : 'bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:border-[var(--brand-primary)]'}`}>
@@ -259,12 +327,15 @@ export function PipelinePage() {
 
         {/* Vue switcher */}
         <div className="flex items-center bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-lg p-0.5">
-          {([['kanban', Kanban], ['list', LayoutList], ['forecast', BarChart3]] as const).map(([mode, Icon]) => (
+          {([['kanban', Kanban], ['list', LayoutList], ['forecast', BarChart3]] as const).map(([mode, Icon]) => {
+            const viewLabel = mode === 'kanban' ? t('pipeline.page.view_kanban') : mode === 'list' ? t('pipeline.page.view_list') : t('pipeline.page.view_forecast');
+            return (
             <button key={mode} onClick={() => setViewMode(mode as ViewMode)}
+              aria-label={viewLabel} aria-pressed={viewMode === mode} title={viewLabel}
               className={`p-1.5 rounded-md cursor-pointer transition-all ${viewMode === mode ? 'bg-[var(--brand-primary)] text-white shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>
               <Icon size={15} />
             </button>
-          ))}
+          );})}
         </div>
       </div>
 
@@ -282,7 +353,7 @@ export function PipelinePage() {
 
       {/* ── Kanban ── */}
       {isLoading ? (
-        <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-6 gap-3" aria-busy="true" aria-live="polite">
           {[1,2,3,4,5,6].map(s => (
             <div key={s} className="space-y-3"><Skeleton className="h-10 w-full" /><Skeleton className="h-28 w-full" /><Skeleton className="h-28 w-full" /></div>
           ))}
@@ -380,7 +451,7 @@ export function PipelinePage() {
                   {colLeads.length === 0 && (
                     draggedId ? (
                       <div className="text-center py-8 text-[10px] text-[var(--text-muted)] border-2 border-dashed rounded-xl mx-1 transition-colors" style={{ borderColor: isOver ? stage.color : 'var(--border-subtle)' }}>
-                        Déposez ici
+                        {t('pipeline.page.drop_here')}
                       </div>
                     ) : (
                       <div className="text-center py-6 text-[10px] text-[var(--text-muted)] mx-1 opacity-40">—</div>
@@ -441,7 +512,7 @@ export function PipelinePage() {
                               {lead.score}
                             </span>
                           )}
-                          <button className="opacity-0 group-hover:opacity-100 p-1 -m-1 rounded-md hover:bg-[var(--bg-subtle)] transition-all cursor-pointer text-[var(--text-muted)] shrink-0">
+                          <button className="opacity-0 group-hover:opacity-100 p-1 -m-1 rounded-md hover:bg-[var(--bg-subtle)] transition-all cursor-pointer text-[var(--text-muted)] shrink-0" aria-label={t('pipeline.page.card_actions_aria')} title={t('pipeline.page.card_actions_title')}>
                             <MoreHorizontal size={14} />
                           </button>
                         </div>
@@ -476,6 +547,25 @@ export function PipelinePage() {
                             {SOURCE_LABELS[lead.source] || lead.source}
                           </span>
                         </div>
+
+                        {/* Sprint 13 — proba de conversion calibrée (best-effort) */}
+                        {(() => {
+                          const proba = convProba[lead.id];
+                          if (proba === undefined) return null;
+                          return (
+                            <div className="flex items-center justify-between mt-1.5 text-[9px]">
+                              <span className="text-[var(--text-muted)] uppercase tracking-wider font-medium">{t('conversion.probability')}</span>
+                              <span className="inline-flex items-center gap-0.5 px-1.5 h-[15px] rounded-full font-semibold tabular-nums"
+                                style={{
+                                  background: isHotLead(lead) ? 'color-mix(in oklch, var(--accent-orange) 14%, transparent)' : 'var(--bg-subtle)',
+                                  color: isHotLead(lead) ? 'var(--accent-orange)' : 'var(--text-muted)',
+                                }}>
+                                {isHotLead(lead) && <Flame size={9} />}
+                                {Math.round(proba)}%
+                              </span>
+                            </div>
+                          );
+                        })()}
                       </div>
                     );
                   })}
@@ -502,7 +592,7 @@ export function PipelinePage() {
                 </tr>
               </thead>
               <tbody>
-                {leads.map(lead => {
+                {visibleLeads.map(lead => {
                   const days = getDaysInStage(lead);
                   const stage = stages.find(s => s.id === (lead.stage_id || stages[0]?.id));
                   return (
@@ -525,6 +615,22 @@ export function PipelinePage() {
                             <div className="h-full rounded-full" style={{ width: `${lead.score}%`, background: scoreColor(lead.score) }} />
                           </div>
                           <span className="text-[10px] font-semibold" style={{ color: scoreColor(lead.score) }}>{lead.score}</span>
+                          {/* Sprint 13 — badge proba conversion calibrée (best-effort) */}
+                          {(() => {
+                            const proba = convProba[lead.id];
+                            if (proba === undefined) return null;
+                            return (
+                              <span title={t('conversion.probability')}
+                                className="inline-flex items-center gap-0.5 px-1.5 h-[16px] rounded-full text-[9px] font-semibold tabular-nums"
+                                style={{
+                                  background: isHotLead(lead) ? 'color-mix(in oklch, var(--accent-orange) 14%, transparent)' : 'var(--bg-muted)',
+                                  color: isHotLead(lead) ? 'var(--accent-orange)' : 'var(--text-muted)',
+                                }}>
+                                {isHotLead(lead) && <Flame size={9} />}
+                                {Math.round(proba)}%
+                              </span>
+                            );
+                          })()}
                         </div>
                       </td>
                       <td className="px-4 py-3">
@@ -551,7 +657,7 @@ export function PipelinePage() {
             <select value={lostReason} onChange={e => setLostReason(e.target.value)}
               className="w-full h-[38px] px-3 text-sm bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:ring-[3px] focus:ring-[var(--ring)] focus:outline-none">
               <option value="">{t('pipeline.lost.reason_placeholder')}</option>
-              {LOST_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+              {LOST_REASON_KEYS.map(k => { const label = t(k); return <option key={k} value={label}>{label}</option>; })}
             </select>
           </div>
           <div>

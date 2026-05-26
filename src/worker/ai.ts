@@ -2,11 +2,22 @@
 // Claude Haiku 4.5 + 8 actions + brand_voice contextualisé
 import type { Env } from './types';
 import { json } from './helpers';
+import { fetchWithTimeout } from './lib/fetch-timeout';
 
 // ── LLM : Claude Haiku 4.5 via Anthropic (fallback mock) ────
 
+/**
+ * LOT RÉEL §6 — Source de vérité unique du mode mock IA.
+ * true => les endpoints IA renvoient du contenu mock déterministe
+ * (USE_MOCKS forcé OU aucune clé Anthropic configurée).
+ * Réutilise EXACTEMENT la condition de `useMock` ci-dessous (factorisé).
+ */
+export function isAiMockMode(env: Env): boolean {
+  return env.USE_MOCKS === 'true' || !env.ANTHROPIC_API_KEY;
+}
+
 async function callLLM(env: Env, systemPrompt: string, userPrompt: string): Promise<string> {
-  const useMock = env.USE_MOCKS === 'true' || !env.ANTHROPIC_API_KEY;
+  const useMock = isAiMockMode(env);
 
   if (useMock) {
     // Petit délai pour simuler la latence réseau et déclencher le loading state
@@ -15,7 +26,7 @@ async function callLLM(env: Env, systemPrompt: string, userPrompt: string): Prom
   }
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetchWithTimeout('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -12,6 +12,23 @@ import { json } from './helpers';
 // Import relatif (cohérent avec le reste de src/worker/* qui n'utilise pas
 // l'alias @ — wrangler/esbuild compile le worker sans le paths-mapping TS).
 import { toIsoSql } from '../lib/dbTime';
+// Renforcement P4 (2026-05-26) — helpers PURS pour metrics SaaS + churn/growth.
+// Additif strict — les handlers actuels gardent leur logique inline ; ces
+// helpers sont réutilisables par tout endpoint futur /api/admin/metric DSL.
+import {
+  validateMetricRequest as _validateMetricRequest,
+  aggregateByPeriod as _aggregateByPeriod,
+  formatChurnRate as _formatChurnRate,
+  formatGrowthRate as _formatGrowthRate,
+  VALID_METRICS as _VALID_METRICS,
+  VALID_PERIODS as _VALID_PERIODS,
+} from './lib/admin-analytics-engine';
+void _validateMetricRequest;
+void _aggregateByPeriod;
+void _formatChurnRate;
+void _formatGrowthRate;
+void _VALID_METRICS;
+void _VALID_PERIODS;
 
 const ADMIN_ROLES = new Set(['admin', 'owner']);
 
@@ -41,7 +58,9 @@ export async function handleAdminOverview(
   // Total users
   let totalUsers = 0;
   let leadsThisMonth = 0;
-  let conversionRate = 0.22;
+  // [LOT RÉEL §6.C.3] conversionRate : RÉEL si des leads existent ce mois,
+  // sinon `null` (honnête — JAMAIS le 0.22 inventé d'avant).
+  let conversionRate: number | null = null;
   try {
     const usersRow = await env.DB.prepare('SELECT COUNT(*) as c FROM users').first<{ c: number }>();
     totalUsers = usersRow?.c ?? 0;
@@ -73,37 +92,69 @@ export async function handleAdminOverview(
     if (leadsThisMonth > 0) conversionRate = wonCount / leadsThisMonth;
   } catch { /* fallback mock */ }
 
-  // ── Charts data (mocké pour l'instant — branche D1 future) ──
-  const points = safePeriod === '1y' ? 12 : safePeriod === '90d' ? 12 : safePeriod === '30d' ? 30 : 7;
-  const usersGrowth: { label: string; users: number; active: number }[] = [];
+  // ── activeMonthly RÉEL (§6.C.3) ──
+  // COUNT(DISTINCT user_id) FROM feature_events sur le mois courant.
+  // `feature_events.event_time` est INTEGER epoch-secondes (migration
+  // sprint46-m2 DEFAULT (unixepoch())) — cf docs/TIMESTAMP-CONSISTENCY-MAP :
+  // on compare entier-vs-entier, PAS de câblage dbTime. Table absente ou
+  // erreur ⇒ `null` (honnête, JAMAIS un proxy `*0.68` inventé).
+  let activeMonthly: number | null = null;
+  try {
+    const startMonthEpochSec = Math.floor(
+      new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime() / 1000,
+    );
+    const activeRow = await env.DB.prepare(
+      'SELECT COUNT(DISTINCT user_id) as c FROM feature_events WHERE event_time >= ?'
+    ).bind(startMonthEpochSec).first<{ c: number }>();
+    activeMonthly = activeRow?.c ?? null;
+  } catch { /* table absente → null honnête */ }
+
+  // ── Série leadsConversions RÉELLE (§6.C.3) ──
+  // GROUP BY date(created_at) sur `leads` — created_at est TEXT
+  // `'YYYY-MM-DD HH:MM:SS'` (cf [S2] plus haut). Borne = début de fenêtre
+  // selon la période demandée. Aucun Math.random.
+  const daysBack = safePeriod === '1y' ? 365 : safePeriod === '90d' ? 90 : safePeriod === '30d' ? 30 : 7;
+  const sinceSql = toIsoSql(Math.floor(Date.now() / 1000) - daysBack * 86400) ?? '1970-01-01 00:00:00';
   const leadsConversions: { label: string; leads: number; conversions: number }[] = [];
-  let runningUsers = Math.max(50, totalUsers - points * 2);
-  const monthsFr = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
-  for (let i = 0; i < points; i++) {
-    runningUsers += Math.floor(2 + Math.random() * 4);
-    const active = Math.floor(runningUsers * (0.62 + Math.random() * 0.12));
-    const label = safePeriod === '1y'
-      ? monthsFr[i % 12]!
-      : safePeriod === '90d' ? `S${i + 1}` : `J${i + 1}`;
-    const leads = Math.floor(40 + Math.random() * 70 + i * 3);
-    const conversions = Math.floor(leads * (0.18 + Math.random() * 0.10));
-    usersGrowth.push({ label, users: runningUsers, active });
-    leadsConversions.push({ label, leads, conversions });
-  }
+  try {
+    const seriesRows = await env.DB.prepare(
+      `SELECT date(created_at) AS d,
+              COUNT(*) AS leads,
+              SUM(CASE WHEN status = 'won' THEN 1 ELSE 0 END) AS conversions
+         FROM leads
+        WHERE created_at >= ?
+        GROUP BY date(created_at)
+        ORDER BY d ASC`
+    ).bind(sinceSql).all<{ d: string; leads: number; conversions: number }>();
+    for (const r of (seriesRows.results || [])) {
+      leadsConversions.push({
+        label: r.d,
+        leads: Number(r.leads) || 0,
+        conversions: Number(r.conversions) || 0,
+      });
+    }
+  } catch { /* table absente → série vide (front affiche no_data_yet) */ }
 
   return json({
     data: {
-      totalUsers: totalUsers || runningUsers,
-      activeMonthly: Math.floor((totalUsers || runningUsers) * 0.68),
-      leadsThisMonth: leadsThisMonth || leadsConversions.reduce((a, b) => a + b.leads, 0),
-      conversionRate: Math.max(0, Math.min(1, conversionRate)),
-      mrr: 8420,
-      deltaTotalUsers: 12,
-      deltaActiveMonthly: 8,
-      deltaLeads: 18,
-      deltaConversion: -3,
-      deltaMrr: 14,
-      usersGrowth,
+      // Réels (déjà branchés D1) — préservés.
+      totalUsers,
+      leadsThisMonth,
+      conversionRate,            // number réel | null si aucun lead ce mois
+      // Réel via feature_events | null si table absente (JAMAIS un proxy).
+      activeMonthly,
+      // Aucune source de facturation réelle ⇒ null. JAMAIS un nombre en dur,
+      // JAMAIS de lien Stripe (stratégique hors-scope LOT RÉEL).
+      mrr: null,
+      // Deltas non calculables réellement (pas d'historique période-1) ⇒ null.
+      // Front n'affiche pas de % inventé.
+      deltaTotalUsers: null,
+      deltaActiveMonthly: null,
+      deltaLeads: null,
+      deltaConversion: null,
+      deltaMrr: null,
+      // Série historique RÉELLE (GROUP BY date). usersGrowth retiré : aucune
+      // source réelle d'« active » historique (était 100% Math.random).
       leadsConversions,
     },
   });
@@ -119,17 +170,23 @@ export async function handleAdminActivityHeatmap(
   const denied = requireAdmin(auth);
   if (denied) return denied;
 
-  // Tentative : agréger feature_events si la table existe (post-migration M2.4)
-  // sinon fallback synthetic.
+  // [LOT RÉEL-bis] Heatmap RÉELLE depuis feature_events — JAMAIS de fallback
+  // synthetic/Math.random (ancien :191-208 supprimé). Grille 7×24 toujours
+  // initialisée à 0 (forme de réponse préservée pour le front). Table absente
+  // / vide ⇒ grille de zéros honnête (le front affiche « pas encore de
+  // données » quand tout est à 0), JAMAIS un jitter inventé.
+  const url = new URL(request.url);
+  const period = (url.searchParams.get('period') || '7d').toLowerCase();
+  const daysBack = period === '30d' ? 30 : period === '90d' ? 90 : 7;
+  const since = Math.floor(Date.now() / 1000) - daysBack * 86400;
+  // Grille honnête par défaut : 7 jours (Lun=0..Dim=6) × 24h, tout à 0.
+  const grid: number[][] = Array.from({ length: 7 }, () => Array.from({ length: 24 }, () => 0));
+
   try {
-    const url = new URL(request.url);
-    const period = (url.searchParams.get('period') || '7d').toLowerCase();
-    const daysBack = period === '30d' ? 30 : period === '90d' ? 90 : 7;
-    const since = Math.floor(Date.now() / 1000) - daysBack * 86400;
     // [S2] conforme : unixepoch entier-vs-entier cohérent, pas de câblage dbTime
     // (cf docs/TIMESTAMP-CONSISTENCY-MAP). `feature_events.event_time` est INTEGER
     // epoch-secondes (migration-sprint46-m2 DEFAULT (unixepoch())). `since` ci-dessus
-    // est aussi un entier epoch-secondes → la comparaison `event_time >= ?` (L+6)
+    // est aussi un entier epoch-secondes → la comparaison `event_time >= ?`
     // et les modificateurs strftime(..., 'unixepoch') sont homogènes. Aucune
     // comparaison cross-format texte↔entier ici : ne RIEN modifier (S1 verdict).
     // strftime : %w (0=Sun..6=Sat), %H (00-23). On normalise %w pour Lun=0.
@@ -143,35 +200,16 @@ export async function handleAdminActivityHeatmap(
        GROUP BY dow, hour`
     ).bind(since).all<{ dow: number; hour: number; c: number }>();
 
-    if (rows.results && rows.results.length > 0) {
-      const grid: number[][] = Array.from({ length: 7 }, () => Array.from({ length: 24 }, () => 0));
-      for (const row of rows.results) {
-        if (row.dow >= 0 && row.dow < 7 && row.hour >= 0 && row.hour < 24) {
-          grid[row.dow]![row.hour] = Number(row.c) || 0;
-        }
+    for (const row of (rows.results || [])) {
+      if (row.dow >= 0 && row.dow < 7 && row.hour >= 0 && row.hour < 24) {
+        grid[row.dow]![row.hour] = Number(row.c) || 0;
       }
-      return json({ data: { heatmap: grid } });
     }
-  } catch { /* fallback */ }
-
-  // Fallback synthetic (business hours pattern)
-  const grid: number[][] = [];
-  for (let d = 0; d < 7; d++) {
-    const row: number[] = [];
-    const isWeekend = d >= 5;
-    for (let h = 0; h < 24; h++) {
-      let base = 2;
-      if (h >= 9 && h <= 12) base = isWeekend ? 6 : 28;
-      else if (h >= 14 && h <= 17) base = isWeekend ? 8 : 36;
-      else if (h >= 18 && h <= 21) base = isWeekend ? 12 : 14;
-      else if (h >= 0 && h <= 6) base = 1;
-      else if (h === 13) base = isWeekend ? 4 : 18;
-      else base = isWeekend ? 3 : 8;
-      const jitter = Math.floor(Math.random() * Math.max(3, base * 0.3));
-      row.push(Math.max(0, base + jitter));
-    }
-    grid.push(row);
+  } catch {
+    /* table feature_events absente / erreur ⇒ grille de zéros honnête
+       (déjà initialisée). PAS de Math.random, PAS de pattern fabriqué. */
   }
+
   return json({ data: { heatmap: grid } });
 }
 
@@ -191,7 +229,9 @@ export async function handleAdminFeaturesUsage(
     adoptionRate: number;
     sessions: number;
     uniqueUsers: number;
-    lastUsedAt: string;
+    // [LOT RÉEL-bis] null honnête si la feature n'a JAMAIS été utilisée
+    // (auparavant une date fabriquée via Math.random).
+    lastUsedAt: string | null;
     trend30d: number[];
   };
   type RoleRow = {
@@ -215,43 +255,73 @@ export async function handleAdminFeaturesUsage(
     { id: 'pull_to_refresh', label: 'Pull-to-refresh mobile' },
   ];
 
-  let totalUsersForRate = 200;
+  // [LOT RÉEL-bis] Dénominateur d'adoption RÉEL = nombre d'utilisateurs.
+  // Si la table users est absente / vide ⇒ on ne peut PAS calculer un taux
+  // honnête : adoptionRate = 0 (JAMAIS un dénominateur inventé `200`/`Math.max(50,…)`).
+  let totalUsersForRate = 0;
   try {
     const r = await env.DB.prepare('SELECT COUNT(*) as c FROM users').first<{ c: number }>();
-    if (r?.c) totalUsersForRate = Math.max(50, r.c);
-  } catch { /* default */ }
+    totalUsersForRate = r?.c ?? 0;
+  } catch { /* table absente ⇒ 0, adoptionRate restera 0 (honnête) */ }
+
+  // 30 derniers jours, borne epoch-secondes (cohérent feature_events.event_time
+  // INTEGER unixepoch — cf docs/TIMESTAMP-CONSISTENCY-MAP, pas de câblage dbTime).
+  const trendSince = Math.floor(Date.now() / 1000) - 30 * 86400;
 
   const features: FeatureRow[] = [];
-  // Tentative : tirer counts réels par feature_id
+  // Counts 100% RÉELS par feature_id depuis feature_events. Aucune métrique
+  // fabriquée : pas de source ⇒ 0 / null honnête (jamais Math.random/jitter).
   for (let i = 0; i < featureSeeds.length; i++) {
     const seed = featureSeeds[i]!;
-    let sessions = Math.floor((10 - i) * 280 + Math.random() * 150);
-    let uniqueUsers = Math.floor((10 - i) * 22 + Math.random() * 18);
-    let lastUsedAt = new Date(Date.now() - Math.floor(Math.random() * 3 * 3600 * 1000)).toISOString();
+    let sessions = 0;
+    let uniqueUsers = 0;
+    let lastUsedAt: string | null = null;
     try {
       const r = await env.DB.prepare(
         `SELECT COUNT(*) as sessions, COUNT(DISTINCT user_id) as unique_users, MAX(event_time) as last_ts
          FROM feature_events WHERE feature_id = ?`
-      ).bind(seed.id).first<{ sessions: number; unique_users: number; last_ts: number }>();
-      if (r && r.sessions > 0) {
-        sessions = Number(r.sessions);
-        uniqueUsers = Number(r.unique_users);
+      ).bind(seed.id).first<{ sessions: number; unique_users: number; last_ts: number | null }>();
+      if (r) {
+        sessions = Number(r.sessions) || 0;
+        uniqueUsers = Number(r.unique_users) || 0;
         // [S2] conforme : `last_ts` = MAX(event_time) entier epoch-secondes
         // (même colonne INTEGER unixepoch que ci-dessus). `*1000` ramène en ms
         // pour `new Date(...)` JS — conversion correcte s→ms, pas une comparaison
         // cross-format. Pas de câblage dbTime requis (cf TIMESTAMP-CONSISTENCY-MAP).
-        if (r.last_ts) lastUsedAt = new Date(Number(r.last_ts) * 1000).toISOString();
+        // r.last_ts null (aucun event) ⇒ lastUsedAt reste null (honnête).
+        if (r.last_ts != null) lastUsedAt = new Date(Number(r.last_ts) * 1000).toISOString();
       }
-    } catch { /* fallback mock */ }
+    } catch { /* table absente ⇒ 0 / null honnête (déjà initialisé) */ }
 
-    const adoptionRate = Math.min(1, uniqueUsers / totalUsersForRate);
-    const trend: number[] = [];
-    const base = Math.max(2, Math.floor(adoptionRate * 80));
-    for (let j = 0; j < 30; j++) {
-      const linear = (base * (j + 5)) / 35;
-      const jitter = Math.sin(j * 0.6 + i) * 4 + (Math.random() - 0.5) * 6;
-      trend.push(Math.max(0, Math.round(linear + jitter)));
-    }
+    // Tendance 30j RÉELLE : COUNT par jour depuis feature_events. 30 buckets
+    // alignés (index 0 = il y a 29 j … index 29 = aujourd'hui). Jours sans
+    // event ⇒ 0 (JAMAIS le sin()/Math.random d'avant).
+    const trend: number[] = Array.from({ length: 30 }, () => 0);
+    try {
+      const trendRows = await env.DB.prepare(
+        `SELECT CAST(strftime('%j', event_time, 'unixepoch') AS INTEGER) AS doy,
+                date(event_time, 'unixepoch') AS d,
+                COUNT(*) AS c
+           FROM feature_events
+          WHERE feature_id = ? AND event_time >= ?
+          GROUP BY d
+          ORDER BY d ASC`
+      ).bind(seed.id, trendSince).all<{ doy: number; d: string; c: number }>();
+      const todayStartSec = Math.floor(Date.now() / 1000);
+      for (const tr of (trendRows.results || [])) {
+        // Décalage en jours entre la date du bucket et aujourd'hui (UTC).
+        const bucketSec = Math.floor(new Date(`${tr.d}T00:00:00Z`).getTime() / 1000);
+        const daysAgo = Math.floor((todayStartSec - bucketSec) / 86400);
+        const idx = 29 - daysAgo;
+        if (idx >= 0 && idx < 30) trend[idx] = Number(tr.c) || 0;
+      }
+    } catch { /* table absente ⇒ trend reste 30×0 honnête */ }
+
+    // adoptionRate RÉEL = uniqueUsers / totalUsers (0 si pas de base users).
+    const adoptionRate = totalUsersForRate > 0
+      ? Math.min(1, uniqueUsers / totalUsersForRate)
+      : 0;
+
     features.push({
       id: seed.id,
       label: seed.label,
@@ -263,14 +333,51 @@ export async function handleAdminFeaturesUsage(
     });
   }
 
-  // Adoption per role (sub-section) — top 6 features
-  const byRole: RoleRow[] = features.slice(0, 6).map(f => ({
-    feature_id: f.id,
-    feature_label: f.label,
-    admin: Math.min(1, f.adoptionRate + 0.15),
-    member: f.adoptionRate,
-    viewer: Math.max(0.05, f.adoptionRate - 0.25),
-  }));
+  // Adoption per role (sub-section) RÉELLE — top 6 features. Pour chaque
+  // feature : COUNT(DISTINCT user_id) par rôle / total users de ce rôle.
+  // Aucun proxy `+0.15 / -0.25` inventé : pas de source ⇒ 0 honnête.
+  // `feature_events.role` est rempli à l'événement ; on rapporte au nombre
+  // d'utilisateurs de ce rôle (users.role). Rôles absents ⇒ 0.
+  const roleDenoms: Record<'admin' | 'member' | 'viewer', number> = { admin: 0, member: 0, viewer: 0 };
+  try {
+    const rd = await env.DB.prepare(
+      `SELECT role, COUNT(*) AS c FROM users GROUP BY role`
+    ).all<{ role: string; c: number }>();
+    for (const row of (rd.results || [])) {
+      const key = String(row.role || '').toLowerCase();
+      if (key === 'admin' || key === 'owner') roleDenoms.admin += Number(row.c) || 0;
+      else if (key === 'viewer') roleDenoms.viewer += Number(row.c) || 0;
+      else roleDenoms.member += Number(row.c) || 0; // member + tout autre rôle
+    }
+  } catch { /* table users absente ⇒ denoms 0, ratios 0 honnêtes */ }
+
+  const byRole: RoleRow[] = [];
+  for (const f of features.slice(0, 6)) {
+    let adminU = 0;
+    let memberU = 0;
+    let viewerU = 0;
+    try {
+      const rr = await env.DB.prepare(
+        `SELECT role, COUNT(DISTINCT user_id) AS u
+           FROM feature_events
+          WHERE feature_id = ?
+          GROUP BY role`
+      ).bind(f.id).all<{ role: string; u: number }>();
+      for (const row of (rr.results || [])) {
+        const key = String(row.role || '').toLowerCase();
+        if (key === 'admin' || key === 'owner') adminU += Number(row.u) || 0;
+        else if (key === 'viewer') viewerU += Number(row.u) || 0;
+        else memberU += Number(row.u) || 0;
+      }
+    } catch { /* table absente ⇒ 0 honnête */ }
+    byRole.push({
+      feature_id: f.id,
+      feature_label: f.label,
+      admin: roleDenoms.admin > 0 ? Math.min(1, adminU / roleDenoms.admin) : 0,
+      member: roleDenoms.member > 0 ? Math.min(1, memberU / roleDenoms.member) : 0,
+      viewer: roleDenoms.viewer > 0 ? Math.min(1, viewerU / roleDenoms.viewer) : 0,
+    });
+  }
 
   return json({ data: { features, by_role: byRole } });
 }

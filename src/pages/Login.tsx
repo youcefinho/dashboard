@@ -1,7 +1,7 @@
 // ── Page Login — Connexion ──────────────────────────────────
 
 import { useState, useEffect, type FormEvent } from 'react';
-import { useNavigate } from '@tanstack/react-router';
+import { useNavigate, Link } from '@tanstack/react-router';
 import { useAuth } from '@/lib/auth';
 import { Button, Input, Icon } from '@/components/ui';
 import { t } from '@/lib/i18n';
@@ -120,7 +120,12 @@ export function LoginPage() {
         </div>
 
         {/* Formulaire — Sprint 23 premium card */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 rounded-2xl relative overflow-hidden"
+        <form
+          onSubmit={handleSubmit}
+          className="p-6 space-y-4 rounded-2xl relative overflow-hidden"
+          noValidate
+          aria-label={t('login.aria.form')}
+          aria-busy={isLoading || undefined}
           style={{
             background: 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.85) 100%)',
             backdropFilter: 'blur(16px) saturate(160%)',
@@ -159,7 +164,13 @@ export function LoginPage() {
           />
 
           {error && (
-            <div className="p-3 rounded-[var(--radius-md)] bg-[color-mix(in_oklch,var(--danger)_10%,transparent)] border border-[color-mix(in_oklch,var(--danger)_30%,transparent)] text-sm text-[var(--danger)] animate-fade-in">
+            <div
+              className="p-3 rounded-[var(--radius-md)] bg-[color-mix(in_oklch,var(--danger)_10%,transparent)] border border-[color-mix(in_oklch,var(--danger)_30%,transparent)] text-sm text-[var(--danger)] animate-fade-in"
+              role="alert"
+              aria-live="assertive"
+              aria-atomic="true"
+              aria-label={t('login.aria.error')}
+            >
               {error}
             </div>
           )}
@@ -179,6 +190,19 @@ export function LoginPage() {
             </button>
           )}
         </form>
+
+        {/* SaaS Lot 4 §6.20 — lien création de compte (additif) */}
+        <p className="text-center text-sm text-[var(--text-secondary)] mt-5">
+          <Link to="/signup" className="font-medium text-[var(--primary)] hover:underline">
+            {t('auth.signup.create_link')}
+          </Link>
+        </p>
+        {/* Renforcement — forgot password link (additif, i18n) */}
+        <p className="text-center text-sm text-[var(--text-secondary)] mt-2">
+          <Link to="/forgot-password" className="font-medium text-[var(--text-secondary)] hover:text-[var(--primary)] hover:underline">
+            {t('login.forgot_link')}
+          </Link>
+        </p>
 
         {/* Badges statut */}
         <div className="flex items-center justify-center gap-4 mt-6 text-[10px] text-[var(--text-muted)]">

@@ -1,6 +1,12 @@
 // ── Module Compliance (CASL + Loi 25 + AMF) — Intralys CRM ─
 import type { Env } from './types';
 import { sanitizeHtml, json, audit, corsHeaders } from './helpers';
+// Sprint MULTILANG-B Phase B (Manager-B) : résolveur i18n PUR worker (sortant).
+// On NE traduit QUE les libellés SYSTÈME (footer CASL/désabonnement), pas le
+// contenu marketing libre. tLead est pur (locale passée explicitement) — voir
+// i18n-server.ts (gelé Phase A). normalizeLeadLocale/DEFAULT_LEAD_LOCALE servent
+// à garantir le byte-identique du chemin par défaut (cf. generateCaslFooter).
+import { tLead, normalizeLeadLocale, DEFAULT_LEAD_LOCALE } from './i18n-server';
 
 // ── Helpers CASL ────────────────────────────────────────────
 
@@ -25,11 +31,27 @@ export function extractEmailFromToken(token: string): string | null {
   }
 }
 
-export function generateCaslFooter(unsubscribeUrl: string): string {
-  return `
+export function generateCaslFooter(unsubscribeUrl: string, locale: string = 'fr-CA'): string {
+  // Le paramètre `locale` est OPTIONNEL (défaut 'fr-CA'). Garde-fou byte-identique :
+  // tout appelant SANS locale — ou avec une langue NULL/non renseignée qui retombe
+  // sur le défaut tenant fr-CA — reçoit EXACTEMENT l'ancien HTML FR (strings et
+  // bytes inchangés). Ce n'est QUE pour une locale non-fr-CA réellement résolue
+  // (en/es/fr-FR) qu'on bascule sur les libellés traduits via tLead (système
+  // uniquement : notice CASL, lien désabonnement, mention loi). On NE traduit PAS
+  // le contenu marketing libre.
+  const resolved = normalizeLeadLocale(locale) ?? DEFAULT_LEAD_LOCALE;
+  if (resolved === 'fr-CA') {
+    return `
     <div style="margin-top:32px;padding-top:16px;border-top:1px solid #e5e7eb;text-align:center;font-size:11px;color:#9ca3af;">
       <p>Vous recevez cet email car vous avez consenti à recevoir des communications d'Intralys.</p>
       <p><a href="${unsubscribeUrl}" style="color:#6b7280;text-decoration:underline;">Se désabonner</a> | Conformément à la Loi canadienne anti-pourriel (LCAP/CASL)</p>
+    </div>
+  `;
+  }
+  return `
+    <div style="margin-top:32px;padding-top:16px;border-top:1px solid #e5e7eb;text-align:center;font-size:11px;color:#9ca3af;">
+      <p>${tLead(resolved, 'system.casl_notice')}</p>
+      <p><a href="${unsubscribeUrl}" style="color:#6b7280;text-decoration:underline;">${tLead(resolved, 'system.unsubscribe')}</a> | ${tLead(resolved, 'system.casl_law')}</p>
     </div>
   `;
 }

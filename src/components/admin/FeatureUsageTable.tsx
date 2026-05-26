@@ -10,6 +10,7 @@
 // Stripe-clean : table-premium pattern, pas de glow.
 
 import { useState, useEffect, useMemo } from 'react';
+import { t } from '@/lib/i18n';
 import { Card, Icon, Skeleton, Sparkline, Tag } from '@/components/ui';
 import { Activity, TrendingUp, TrendingDown } from 'lucide-react';
 
@@ -19,7 +20,7 @@ export interface FeatureUsageRow {
   adoptionRate: number;   // 0-1
   sessions: number;
   uniqueUsers: number;
-  lastUsedAt: string;     // ISO
+  lastUsedAt: string | null;  // ISO, ou null si jamais utilisée (honnête)
   trend30d: number[];     // 30 points
 }
 
@@ -37,60 +38,22 @@ interface ApiResponse {
   data?: { features?: FeatureUsageRow[]; by_role?: FeatureRoleAdoption[] };
 }
 
-// Mock data (fallback hors backend) — top 10 features réalistes Intralys.
-function generateMockData(): { features: FeatureUsageRow[]; byRole: FeatureRoleAdoption[] } {
-  const featureSeeds = [
-    { id: 'cmd_palette', label: 'Command Palette (Cmd+K)', adoption: 0.78 },
-    { id: 'pipeline_drag', label: 'Drag pipeline cards', adoption: 0.72 },
-    { id: 'bulk_select', label: 'Bulk select leads', adoption: 0.64 },
-    { id: 'ai_drafts', label: 'AI draft replies', adoption: 0.58 },
-    { id: 'reactions_emoji', label: 'Réactions emoji', adoption: 0.52 },
-    { id: 'quick_replies', label: 'Quick replies chips', adoption: 0.47 },
-    { id: 'smart_lists', label: 'Smart Lists sauvegardées', adoption: 0.43 },
-    { id: 'ai_summarize', label: 'AI résumé conversation', adoption: 0.39 },
-    { id: 'pdf_export', label: 'Export PDF', adoption: 0.34 },
-    { id: 'pull_to_refresh', label: 'Pull-to-refresh mobile', adoption: 0.28 },
-  ];
-  const now = Date.now();
-  const features: FeatureUsageRow[] = featureSeeds.map((seed, i) => {
-    // Trend 30 points : ramp-up cohérent (croissant + bruit)
-    const trend: number[] = [];
-    const base = Math.floor(seed.adoption * 80);
-    for (let j = 0; j < 30; j++) {
-      const linear = (base * (j + 5)) / 35;
-      const jitter = Math.sin(j * 0.6 + i) * 4 + (Math.random() - 0.5) * 6;
-      trend.push(Math.max(0, Math.round(linear + jitter)));
-    }
-    return {
-      id: seed.id,
-      label: seed.label,
-      adoptionRate: seed.adoption,
-      sessions: Math.floor(seed.adoption * 2400 + Math.random() * 200),
-      uniqueUsers: Math.floor(seed.adoption * 180 + Math.random() * 20),
-      lastUsedAt: new Date(now - Math.floor(Math.random() * 3 * 3600 * 1000)).toISOString(),
-      trend30d: trend,
-    };
-  });
-  const byRole: FeatureRoleAdoption[] = featureSeeds.slice(0, 6).map(seed => ({
-    feature_id: seed.id,
-    feature_label: seed.label,
-    admin: Math.min(1, seed.adoption + 0.15 + Math.random() * 0.05),
-    member: seed.adoption,
-    viewer: Math.max(0.05, seed.adoption - 0.25 - Math.random() * 0.05),
-  }));
-  return { features, byRole };
-}
+// [LOT RÉEL-bis] generateMockData() supprimé : plus aucun fallback fabriqué
+// (Math.random adoption/sessions/uniqueUsers/lastUsedAt/trend + byRole proxy
+// +0.15/-0.25). En cas d'API KO ⇒ données vides → l'UI affiche l'état
+// honnête « pas encore de données ».
 
-function formatRelative(iso: string): string {
+function formatRelative(iso: string | null): string {
+  if (!iso) return '—';
   try {
     const d = new Date(iso);
     const diffMin = Math.floor((Date.now() - d.getTime()) / 60000);
-    if (diffMin < 1) return 'À l\'instant';
-    if (diffMin < 60) return `il y a ${diffMin} min`;
+    if (diffMin < 1) return t('admin.feat_rel_now');
+    if (diffMin < 60) return t('admin.feat_rel_min').replace('{n}', String(diffMin));
     const h = Math.floor(diffMin / 60);
-    if (h < 24) return `il y a ${h}h`;
+    if (h < 24) return t('admin.feat_rel_hour').replace('{n}', String(h));
     const j = Math.floor(h / 24);
-    return `il y a ${j}j`;
+    return t('admin.feat_rel_day').replace('{n}', String(j));
   } catch {
     return '—';
   }
@@ -127,7 +90,9 @@ async function fetchData(token: string | null): Promise<{ features: FeatureUsage
     }
     throw new Error('invalid shape');
   } catch {
-    return generateMockData();
+    // [LOT RÉEL-bis] Pas de mock fabriqué : on remonte vide → l'UI affiche
+    // l'état honnête « pas encore de données ».
+    return { features: [], byRole: [] };
   }
 }
 
@@ -151,6 +116,14 @@ export function FeatureUsageTable({ className = '' }: { className?: string }) {
   }, []);
 
   const topFeatures = useMemo(() => features.slice(0, 10), [features]);
+  // [LOT RÉEL-bis] Aucune activité RÉELLE = aucune session enregistrée sur
+  // l'ensemble des features. On affiche alors l'état honnête plutôt qu'un
+  // tableau de zéros muet (le backend renvoie toujours les 10 seeds, mais à 0
+  // quand feature_events est vide / absente).
+  const hasRealActivity = useMemo(
+    () => topFeatures.some(f => f.sessions > 0 || f.uniqueUsers > 0),
+    [topFeatures],
+  );
 
   return (
     <div className={`space-y-4 ${className}`.trim()}>
@@ -159,8 +132,8 @@ export function FeatureUsageTable({ className = '' }: { className?: string }) {
           <div className="flex items-center gap-2 min-w-0">
             <Icon as={Activity} size={16} className="text-[var(--primary)] shrink-0" />
             <div className="min-w-0">
-              <h3 className="t-h3">Top features utilisées</h3>
-              <p className="t-caption text-[var(--text-muted)]">Adoption par usage 30 derniers jours.</p>
+              <h3 className="t-h3">{t('admin.feat_title')}</h3>
+              <p className="t-caption text-[var(--text-muted)]">{t('admin.feat_subtitle')}</p>
             </div>
           </div>
         </header>
@@ -171,17 +144,21 @@ export function FeatureUsageTable({ className = '' }: { className?: string }) {
               <Skeleton key={i} className="h-10 w-full" />
             ))}
           </div>
+        ) : !hasRealActivity ? (
+          <p className="t-caption text-[var(--text-muted)] p-5 text-center">
+            {t('admin.no_data_yet')}
+          </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="table-premium feature-usage-table w-full text-sm">
               <thead>
                 <tr>
-                  <th className="text-left">Feature</th>
-                  <th className="text-right">Adoption</th>
-                  <th className="text-right">Sessions</th>
-                  <th className="text-right">Utilisateurs</th>
-                  <th className="text-left">Tendance 30j</th>
-                  <th className="text-right">Dernière</th>
+                  <th className="text-left">{t('admin.feat_col_feature')}</th>
+                  <th className="text-right">{t('admin.feat_col_adoption')}</th>
+                  <th className="text-right">{t('admin.feat_col_sessions')}</th>
+                  <th className="text-right">{t('admin.feat_col_users')}</th>
+                  <th className="text-left">{t('admin.feat_col_trend')}</th>
+                  <th className="text-right">{t('admin.feat_col_last')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -243,21 +220,23 @@ export function FeatureUsageTable({ className = '' }: { className?: string }) {
       <Card className="p-5">
         <header className="flex items-center gap-2 mb-4">
           <Icon as={Activity} size={14} className="text-[var(--text-muted)]" />
-          <h3 className="t-h3">Adoption par rôle</h3>
+          <h3 className="t-h3">{t('admin.feat_role_title')}</h3>
         </header>
         {isLoading ? (
           <Skeleton className="h-24 w-full" />
-        ) : byRole.length === 0 ? (
-          <p className="t-caption text-[var(--text-muted)]">Aucune donnée disponible.</p>
+        ) : byRole.length === 0 || !hasRealActivity ? (
+          // [LOT RÉEL-bis] Pas d'activité réelle ⇒ état honnête, pas un tableau
+          // de proxies fabriqués (+0.15/-0.25 supprimés côté backend).
+          <p className="t-caption text-[var(--text-muted)]">{t('admin.feat_role_none')}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="table-premium feature-role-table w-full text-sm">
               <thead>
                 <tr>
-                  <th className="text-left">Feature</th>
-                  <th className="text-right">Admin</th>
-                  <th className="text-right">Membre</th>
-                  <th className="text-right">Lecteur</th>
+                  <th className="text-left">{t('admin.feat_col_feature')}</th>
+                  <th className="text-right">{t('admin.feat_role_admin')}</th>
+                  <th className="text-right">{t('admin.feat_role_member')}</th>
+                  <th className="text-right">{t('admin.feat_role_viewer')}</th>
                 </tr>
               </thead>
               <tbody>

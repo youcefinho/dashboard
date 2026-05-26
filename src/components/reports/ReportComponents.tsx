@@ -69,7 +69,7 @@ function ReportStub({
         </div>
       </Card>
       <EmptyState
-        icon={<EmptyStateIllustration kind="reports" size={72} />}
+        illustration={<EmptyStateIllustration kind="reports" size={72} />}
         title="Rapport détaillé bientôt disponible"
         description={`Le module ${title.toLowerCase()} sera enrichi avec graphiques drill-down et exports CSV dans une prochaine itération.`}
       />

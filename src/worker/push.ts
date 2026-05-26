@@ -3,6 +3,7 @@
 
 import type { Env } from './types';
 import { json } from './helpers';
+import { fetchWithTimeout } from './lib/fetch-timeout';
 
 // ── Register device token ───────────────────────────────────
 
@@ -76,7 +77,7 @@ export async function sendPushToUser(
     if (!tokens || tokens.length === 0) return;
 
     // FCM V1 API (HTTP)
-    const fcmKey = (env as unknown as Record<string, unknown>).FCM_SERVER_KEY as string | undefined;
+    const fcmKey = env.FCM_SERVER_KEY;
     if (!fcmKey) {
       console.error('FCM_SERVER_KEY non configuré — push ignoré');
       return;
@@ -84,7 +85,7 @@ export async function sendPushToUser(
 
     for (const device of tokens) {
       try {
-        await fetch('https://fcm.googleapis.com/fcm/send', {
+        await fetchWithTimeout('https://fcm.googleapis.com/fcm/send', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

@@ -2,18 +2,21 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Badge, Skeleton, EmptyState, PageHero } from '@/components/ui';
+import { Card, Button, Badge, Skeleton, EmptyState, PageHero, LoadMore, SmartBanner } from '@/components/ui';
 import { t } from '@/lib/i18n';
 import { LeadLink } from '@/components/panels/LeadLink';
 import { Modal } from '@/components/ui/Modal';
 import { Avatar } from '@/components/ui/Avatar';
 import { Input } from '@/components/ui/Input';
-import { getLeads, getClients, updateLead, exportLeadsCsv, createLead, softDeleteLead, restoreLead, aiSummarizeLeads, type AiBatchLeadSummary } from '@/lib/api';
+import { getLeads, getClients, updateLead, exportLeadsCsv, createLead, softDeleteLead, restoreLead, aiSummarizeLeads, getAiStatus, getLeadConversionScore, type AiBatchLeadSummary } from '@/lib/api';
 import { STATUS_LABELS, STATUS_COLORS, SOURCE_LABELS, LEAD_STATUSES, type Lead, type LeadStatus, type Client, type SmartList } from '@/lib/types';
-import { Search, X, Download, Save, LayoutGrid, LayoutList, Map, MoreHorizontal, ArrowUpDown, ChevronUp, ChevronDown, StickyNote, Users, UserPlus, Zap, ExternalLink, Check, Plus, Trash2, Sparkles, Loader2 } from 'lucide-react';
+import { Search, X, Download, Save, LayoutGrid, LayoutList, Map, MoreHorizontal, ArrowUpDown, ChevronUp, ChevronDown, StickyNote, Users, UserPlus, Zap, ExternalLink, Check, Plus, Trash2, Sparkles, Loader2, Flame } from 'lucide-react';
 import { SwipeAction } from '@/components/ui/SwipeAction';
 import { useLongPress } from '@/hooks/useLongPress';
 import { useToast, useConfirm, usePrompt } from '@/components/ui';
+// Sprint 21 — Onboarding durci : GuidedEmptyState pour l'empty first-time
+// (enrichi avec meta + bouton "Passer" qui skip l'item checklist côté serveur).
+import { GuidedEmptyState } from '@/components/onboarding/GuidedEmptyState';
 
 // Fixtures mock pour leads sans coordonnées (mode mock QC)
 const QC_FIXTURES: Array<{ lat: number; lng: number; city: string }> = [
@@ -184,16 +187,23 @@ export function LeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  // ── LOT RÉEL (Manager B) — pagination curseur + bannière IA mock (ADDITIF) ──
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [aiMock, setAiMock] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState(() => localStorage.getItem('intralys_leads_filter_status') || '');
   const [sourceFilter, setSourceFilter] = useState(() => localStorage.getItem('intralys_leads_filter_source') || '');
   const [clientFilter, setClientFilter] = useState(() => localStorage.getItem('intralys_leads_filter_client') || '');
+  // Sprint MULTILANG-B — filtre langue préférée (additif optionnel).
+  const [langFilter, setLangFilter] = useState(() => localStorage.getItem('intralys_leads_filter_lang') || '');
 
   useEffect(() => {
     localStorage.setItem('intralys_leads_filter_status', statusFilter);
     localStorage.setItem('intralys_leads_filter_source', sourceFilter);
     localStorage.setItem('intralys_leads_filter_client', clientFilter);
-  }, [statusFilter, sourceFilter, clientFilter]);
+    localStorage.setItem('intralys_leads_filter_lang', langFilter);
+  }, [statusFilter, sourceFilter, clientFilter, langFilter]);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [editNotes, setEditNotes] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -215,6 +225,13 @@ export function LeadsPage() {
   const [viewMode, setViewMode] = useState<'table' | 'cards' | 'map'>('table');
   const [sortBy, setSortBy] = useState<'name' | 'score' | 'created_at' | 'deal_value'>('created_at');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  // ── Sprint 13 — proba de conversion calibrée + filtre « leads chauds ». ──
+  // Best-effort : map leadId → probabilité (0..100). Score absent ⇒ pas d'entrée
+  // (badge masqué). Le filtre « leads chauds » ne masque rien tant que les probas
+  // ne sont pas chargées (évite une liste qui « clignote » vide).
+  const [convProba, setConvProba] = useState<Record<string, number>>({});
+  const [hotOnly, setHotOnly] = useState(false);
+  const HOT_THRESHOLD = 60; // proba calibrée ≥ 60 % = lead chaud
   const [createOpen, setCreateOpen] = useState(false);
   const [createSubmitting, setCreateSubmitting] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -224,21 +241,78 @@ export function LeadsPage() {
   const loadData = useCallback(async () => {
     setIsLoading(true);
     const [leadsResult, clientsResult] = await Promise.all([
-      getLeads({ status: statusFilter || undefined, search: search || undefined, source: sourceFilter || undefined, client_id: clientFilter || undefined }),
+      getLeads({ status: statusFilter || undefined, search: search || undefined, source: sourceFilter || undefined, client_id: clientFilter || undefined, language: langFilter || undefined }),
       getClients(),
     ]);
     if (leadsResult.data) setLeads(leadsResult.data);
     if (clientsResult.data) setClients(clientsResult.data);
+    // ── LOT RÉEL (Manager B) — curseur additif : reset à chaque (re)chargement
+    setNextCursor(leadsResult.next_cursor ?? null);
     setIsLoading(false);
-  }, [statusFilter, search, sourceFilter, clientFilter]);
+  }, [statusFilter, search, sourceFilter, clientFilter, langFilter]);
 
   useEffect(() => { void loadData(); }, [loadData]);
+
+  // ── LOT RÉEL (Manager B) — statut mode IA (mock) au mount ──
+  useEffect(() => {
+    let alive = true;
+    void getAiStatus().then(s => { if (alive) setAiMock(s.ai_mock); });
+    return () => { alive = false; };
+  }, []);
+
+  // ── Sprint 13 — proba de conversion calibrée par lead (best-effort) ──
+  // Borné à 30 leads pour éviter un fan-out massif d'appels. Chaque appel est
+  // isolé (catch) : un échec n'altère ni la liste ni les autres probas. Score
+  // absent / KO ⇒ pas d'entrée dans la map ⇒ badge masqué (jamais de crash).
+  useEffect(() => {
+    let alive = true;
+    const targets = leads.slice(0, 30);
+    if (targets.length === 0) return;
+    void Promise.all(
+      targets.map(async (l) => {
+        try {
+          const r = await getLeadConversionScore(l.id);
+          const p = r.data?.probability;
+          if (typeof p === 'number' && p > 0) return [l.id, p] as const;
+        } catch { /* best-effort */ }
+        return null;
+      }),
+    ).then((pairs) => {
+      if (!alive) return;
+      const next: Record<string, number> = {};
+      for (const pair of pairs) if (pair) next[pair[0]] = pair[1];
+      setConvProba(next);
+    });
+    return () => { alive = false; };
+  }, [leads]);
+
+  // ── LOT RÉEL (Manager B) — "charger plus" via curseur (append) ──
+  const handleLoadMore = useCallback(async () => {
+    if (!nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    const res = await getLeads({
+      status: statusFilter || undefined,
+      search: search || undefined,
+      source: sourceFilter || undefined,
+      client_id: clientFilter || undefined,
+      language: langFilter || undefined,
+      cursor: nextCursor,
+    });
+    if (res.data) {
+      setLeads(prev => {
+        const seen = new Set(prev.map(l => l.id));
+        return [...prev, ...res.data!.filter(l => !seen.has(l.id))];
+      });
+    }
+    setNextCursor(res.next_cursor ?? null);
+    setLoadingMore(false);
+  }, [nextCursor, loadingMore, statusFilter, search, sourceFilter, clientFilter, langFilter]);
 
   const handleStatusChange = async (leadId: string, newStatus: LeadStatus) => {
     const result = await updateLead(leadId, { status: newStatus });
     if (!result.error) {
       setLeads(prev => prev.map(l => l.id === leadId ? { ...l, status: newStatus } : l));
-      success('Statut mis à jour avec succès');
+      success(t('leads.page.toast_status_updated'));
     } else {
       toastError(result.error);
     }
@@ -250,7 +324,7 @@ export function LeadsPage() {
     if (!result.error) {
       setLeads(prev => prev.map(l => l.id === selectedLead.id ? { ...l, notes: editNotes } : l));
       setSelectedLead(null);
-      success('Notes sauvegardées');
+      success(t('leads.page.toast_notes_saved'));
     } else {
       toastError(result.error);
     }
@@ -261,7 +335,7 @@ export function LeadsPage() {
   const handleCreateLead = async () => {
     setCreateError(null);
     if (!createForm.client_id || !createForm.name.trim() || !createForm.email.trim()) {
-      setCreateError('Client, nom et email sont requis.');
+      setCreateError(t('leads.page.create_required_error'));
       return;
     }
     setCreateSubmitting(true);
@@ -277,7 +351,7 @@ export function LeadsPage() {
     setCreateSubmitting(false);
     if (result.error) { setCreateError(result.error); return; }
     
-    success('Nouveau lead créé avec succès', { title: 'Action réussie' });
+    success(t('leads.page.toast_lead_created'), { title: t('leads.page.toast_action_success') });
     setCreateOpen(false);
     setCreateForm(emptyCreateForm);
     void loadData();
@@ -342,12 +416,12 @@ export function LeadsPage() {
       confirmLabel: 'Sauvegarder',
     });
     if (!name) return;
-    const newList: SmartList = { id: `sl-${Date.now()}`, user_id: 'local', client_id: 'local', name, filters: { status: statusFilter || undefined, source: sourceFilter || undefined, client_id: clientFilter || undefined, search: search || undefined }, count: leads.length, created_at: new Date().toISOString() };
+    const newList: SmartList = { id: `sl-${Date.now()}`, user_id: 'local', client_id: 'local', name, filters: { status: statusFilter || undefined, source: sourceFilter || undefined, client_id: clientFilter || undefined, search: search || undefined, language: langFilter || undefined }, count: leads.length, created_at: new Date().toISOString() };
     const updated = [...smartLists, newList]; setSmartLists(updated);
     localStorage.setItem('intralys_smart_lists', JSON.stringify(updated));
     success(`Vue "${name}" sauvegardée`);
   };
-  const loadSmartList = (sl: SmartList) => { setStatusFilter((sl.filters.status as string) || ''); setSourceFilter((sl.filters.source as string) || ''); setClientFilter((sl.filters.client_id as string) || ''); setSearch((sl.filters.search as string) || ''); };
+  const loadSmartList = (sl: SmartList) => { setStatusFilter((sl.filters.status as string) || ''); setSourceFilter((sl.filters.source as string) || ''); setClientFilter((sl.filters.client_id as string) || ''); setSearch((sl.filters.search as string) || ''); setLangFilter((sl.filters.language as string) || ''); };
   const deleteSmartList = (id: string) => { const updated = smartLists.filter(s => s.id !== id); setSmartLists(updated); localStorage.setItem('intralys_smart_lists', JSON.stringify(updated)); };
 
   const getClientName = (lead: Lead) => lead.client_name || clients.find(c => c.id === lead.client_id)?.name || lead.client_id;
@@ -361,7 +435,13 @@ export function LeadsPage() {
   };
 
   const toggleSort = (col: typeof sortBy) => { if (sortBy === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc'); else { setSortBy(col); setSortDir('desc'); } };
-  const sortedLeads = [...leads].sort((a, b) => {
+  // Sprint 13 — filtre « leads chauds » : proba calibrée ≥ seuil. Best-effort —
+  // si aucune proba n'est encore chargée, on n'écrème pas (évite une liste vide).
+  const hasAnyConvProba = Object.keys(convProba).length > 0;
+  const filteredLeads = (hotOnly && hasAnyConvProba)
+    ? leads.filter(l => (convProba[l.id] ?? 0) >= HOT_THRESHOLD)
+    : leads;
+  const sortedLeads = [...filteredLeads].sort((a, b) => {
     const dir = sortDir === 'asc' ? 1 : -1;
     if (sortBy === 'name') return a.name.localeCompare(b.name) * dir;
     if (sortBy === 'score') return (a.score - b.score) * dir;
@@ -374,7 +454,7 @@ export function LeadsPage() {
     return sortDir === 'asc' ? <ChevronUp size={12} className="text-[var(--brand-primary)]" /> : <ChevronDown size={12} className="text-[var(--brand-primary)]" />;
   };
 
-  const hasFilters = !!(search || statusFilter || sourceFilter || clientFilter);
+  const hasFilters = !!(search || statusFilter || sourceFilter || clientFilter || langFilter);
   const newCount = leads.filter(l => l.status === 'new').length;
   const wonCount = leads.filter(l => l.status === 'won').length;
 
@@ -391,6 +471,16 @@ export function LeadsPage() {
           </Button>
         }
       />
+      {/* LOT RÉEL (Manager B) — bannière IA mock (visible si /api/health ai_mock=true) */}
+      {aiMock && (
+        <SmartBanner
+          variant="ai"
+          dismissKey="leads_ai_mock"
+          title={t('ai.mock.banner_title')}
+          description={t('ai.mock.banner_desc')}
+          secondaryLabel={t('ai.mock.badge')}
+        />
+      )}
       {/* Quick stats pills */}
       <div className="flex flex-wrap items-center gap-3 mb-5">
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-xs font-medium text-[var(--text-secondary)]">
@@ -399,25 +489,45 @@ export function LeadsPage() {
         </div>
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-xs font-medium text-[var(--text-secondary)]">
           <UserPlus size={14} className="text-[var(--info)]" />
-          {newCount} nouveaux
+          {newCount} {t('leads.page.kpi_new').toLowerCase()}
         </div>
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-xs font-medium text-[var(--text-secondary)]">
           <Zap size={14} className="text-[var(--success)]" />
-          {wonCount} gagnés
+          {wonCount} {t('leads.page.kpi_won').toLowerCase()}
         </div>
+
+        {/* Sprint 13 — filtre « leads chauds » (proba calibrée ≥ seuil). Affiché
+            seulement quand au moins une proba a été chargée (best-effort). */}
+        {hasAnyConvProba && (
+          <button
+            onClick={() => setHotOnly(v => !v)}
+            aria-pressed={hotOnly}
+            title={t('conversion.hot_leads')}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all ${
+              hotOnly
+                ? 'bg-[var(--brand-primary)] text-white border border-[var(--brand-primary)]'
+                : 'bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:border-[var(--brand-primary)]'
+            }`}>
+            <Flame size={14} className={hotOnly ? 'text-white' : 'text-[var(--accent-orange)]'} />
+            {t('conversion.hot_leads')}
+          </button>
+        )}
 
         <div className="flex items-center gap-1 ml-auto">
           <button onClick={() => setViewMode('table')}
+            aria-label={t('leads.page.view_table')} aria-pressed={viewMode === 'table'}
             className={`p-1.5 rounded-[var(--radius-xs)] cursor-pointer transition-all ${viewMode === 'table' ? 'bg-[var(--brand-primary)] text-white' : 'text-[var(--text-muted)] hover:bg-[var(--bg-subtle)]'}`}>
             <LayoutList size={16} />
           </button>
           <button onClick={() => setViewMode('cards')}
+            aria-label={t('leads.page.view_cards')} aria-pressed={viewMode === 'cards'}
             className={`p-1.5 rounded-[var(--radius-xs)] cursor-pointer transition-all ${viewMode === 'cards' ? 'bg-[var(--brand-primary)] text-white' : 'text-[var(--text-muted)] hover:bg-[var(--bg-subtle)]'}`}>
             <LayoutGrid size={16} />
           </button>
           <button onClick={() => setViewMode('map')}
+            aria-pressed={viewMode === 'map'}
             className={`p-1.5 rounded-[var(--radius-xs)] cursor-pointer transition-all ${viewMode === 'map' ? 'bg-[var(--brand-primary)] text-white' : 'text-[var(--text-muted)] hover:bg-[var(--bg-subtle)]'}`}
-            title="Vue carte (Mapbox)">
+            title={t('leads.page.view_map_title')} aria-label={t('leads.page.view_map_title')}>
             <Map size={16} />
           </button>
         </div>
@@ -432,43 +542,53 @@ export function LeadsPage() {
           </div>
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
             className="h-[38px] px-3 text-sm bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg text-[var(--text-primary)] hover:border-[var(--border-strong)] focus:border-[var(--brand-primary)] focus:ring-[3px] focus:ring-[var(--ring)] focus:outline-none">
-            <option value="">Tous les statuts</option>
+            <option value="">{t('leads.filter.all_statuses')}</option>
             {LEAD_STATUSES.map(s => (<option key={s} value={s}>{STATUS_LABELS[s]}</option>))}
           </select>
           <select value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value)}
             className="h-[38px] px-3 text-sm bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg text-[var(--text-primary)] hover:border-[var(--border-strong)] focus:border-[var(--brand-primary)] focus:ring-[3px] focus:ring-[var(--ring)] focus:outline-none">
-            <option value="">Toutes les sources</option>
+            <option value="">{t('leads.filter.all_sources')}</option>
             {Object.entries(SOURCE_LABELS).map(([k, v]) => (<option key={k} value={k}>{v}</option>))}
           </select>
           <select value={clientFilter} onChange={(e) => setClientFilter(e.target.value)}
             className="h-[38px] px-3 text-sm bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg text-[var(--text-primary)] hover:border-[var(--border-strong)] focus:border-[var(--brand-primary)] focus:ring-[3px] focus:ring-[var(--ring)] focus:outline-none">
-            <option value="">Tous les clients</option>
+            <option value="">{t('leads.filter.all_clients')}</option>
             {clients.map(c => (<option key={c.id} value={c.id}>{c.name}</option>))}
+          </select>
+          {/* Sprint MULTILANG-B — filtre langue préférée (additif) */}
+          <select value={langFilter} onChange={(e) => setLangFilter(e.target.value)}
+            title={t('leads.language.label')}
+            className="h-[38px] px-3 text-sm bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg text-[var(--text-primary)] hover:border-[var(--border-strong)] focus:border-[var(--brand-primary)] focus:ring-[3px] focus:ring-[var(--ring)] focus:outline-none">
+            <option value="">{t('leads.language.default')}</option>
+            <option value="fr-CA">Français (QC)</option>
+            <option value="fr-FR">Français (FR)</option>
+            <option value="en">English</option>
+            <option value="es">Español</option>
           </select>
           {hasFilters && (
             <>
               <Button variant="ghost" size="sm" leftIcon={<X size={14} />}
-                onClick={() => { setSearch(''); setStatusFilter(''); setSourceFilter(''); setClientFilter(''); }}>
-                Réinitialiser
+                onClick={() => { setSearch(''); setStatusFilter(''); setSourceFilter(''); setClientFilter(''); setLangFilter(''); }}>
+                {t('action.reset')}
               </Button>
               <Button variant="secondary" size="sm" leftIcon={<Save size={14} />} onClick={saveSmartList}>
-                Sauvegarder
+                {t('leads.page.save_view')}
               </Button>
             </>
           )}
           <Button variant="secondary" size="sm" leftIcon={<Download size={14} />}
             onClick={() => void exportLeadsCsv({ status: statusFilter || undefined, client_id: clientFilter || undefined })}>
-            Export
+            {t('leads.page.export')}
           </Button>
         </div>
         {/* Smart Lists chips */}
         {smartLists.length > 0 && (
           <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-[var(--border-subtle)]">
-            <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider self-center">Listes :</span>
+            <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider self-center">{t('leads.page.smart_lists_label')}</span>
             {smartLists.map(sl => (
               <span key={sl.id} className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-[var(--bg-subtle)] text-[var(--text-secondary)] cursor-pointer hover:bg-[var(--brand-primary)] hover:text-white transition-colors">
                 <button onClick={() => loadSmartList(sl)} className="cursor-pointer">{sl.name}</button>
-                <button onClick={() => deleteSmartList(sl.id)} className="opacity-50 hover:opacity-100 cursor-pointer"><X size={10} /></button>
+                <button onClick={() => deleteSmartList(sl.id)} className="opacity-50 hover:opacity-100 cursor-pointer" aria-label={t('action.delete')}><X size={10} /></button>
               </span>
             ))}
           </div>
@@ -477,16 +597,24 @@ export function LeadsPage() {
 
       {/* Contenu */}
       {isLoading ? (
-        <Card><Skeleton className="h-96 w-full" /></Card>
+        <Card aria-busy="true" aria-live="polite"><Skeleton className="h-96 w-full" /></Card>
       ) : leads.length === 0 ? (
         hasFilters ? (
           <EmptyState icon={<Users size={48} />} title={t('leads.empty.search_title')}
             description={t('leads.empty.search_desc', { query: search || statusFilter })}
-            action={<Button variant="secondary" onClick={() => { setSearch(''); setStatusFilter(''); setSourceFilter(''); setClientFilter(''); }}>{t('leads.filter.all')}</Button>} />
+            action={<Button variant="secondary" onClick={() => { setSearch(''); setStatusFilter(''); setSourceFilter(''); setClientFilter(''); setLangFilter(''); }}>{t('leads.filter.all')}</Button>} />
         ) : (
-          <EmptyState icon={<Users size={48} />} title={t('leads.empty.title')}
+          // Sprint 21 (Onboarding durci) — empty first-time guidé : ajoute
+          // meta "Étape de configuration" + bouton secondaire "Passer" qui
+          // appelle skipOnboardingItem('leads_imported'). CTA principal +
+          // titre/desc/icon préservés à l'identique.
+          <GuidedEmptyState
+            itemKey="leads_imported"
+            icon={<Users size={48} />}
+            title={t('leads.empty.title')}
             description={t('leads.empty.description')}
-            action={<Button variant="primary" leftIcon={<Plus size={14} />} onClick={() => setCreateOpen(true)}>{t('leads.action.new')}</Button>} />
+            action={<Button variant="primary" leftIcon={<Plus size={14} />} onClick={() => setCreateOpen(true)}>{t('leads.action.new')}</Button>}
+          />
         )
       ) : viewMode === 'map' ? (
         /* ── Vue Carte ── */
@@ -497,6 +625,7 @@ export function LeadsPage() {
           {sortedLeads.map(lead => {
             const scoreColor = lead.score >= 70 ? 'var(--success)' : lead.score >= 40 ? 'var(--warning)' : 'var(--danger)';
             const longPressProps = useLongPress(() => openNotes(lead), undefined, { delay: 600 });
+            const proba = convProba[lead.id];
             return (
               <SwipeAction 
                 key={lead.id}
@@ -537,6 +666,19 @@ export function LeadsPage() {
                     <div className="h-full rounded-full transition-all" style={{ width: `${lead.score}%`, background: scoreColor }} />
                   </div>
                   <span className="text-[10px] font-bold" style={{ color: scoreColor }}>{lead.score}</span>
+                  {/* Sprint 13 — badge proba conversion calibrée (best-effort) */}
+                  {proba !== undefined && (
+                    <span
+                      title={t('conversion.probability')}
+                      className="inline-flex items-center gap-0.5 px-1.5 h-[16px] rounded-full text-[9px] font-semibold tabular-nums"
+                      style={{
+                        background: proba >= HOT_THRESHOLD ? 'color-mix(in oklch, var(--accent-orange) 14%, transparent)' : 'var(--bg-muted)',
+                        color: proba >= HOT_THRESHOLD ? 'var(--accent-orange)' : 'var(--text-muted)',
+                      }}>
+                      {proba >= HOT_THRESHOLD && <Flame size={9} />}
+                      {Math.round(proba)}%
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center justify-between text-[10px] text-[var(--text-muted)]">
                   <span>{lead.email}</span>
@@ -561,20 +703,20 @@ export function LeadsPage() {
               <span className="text-xs font-semibold text-[var(--brand-primary)]">{selectedIds.size} sélectionné(s)</span>
               <select onChange={(e) => { if (e.target.value) void bulkChangeStatus(e.target.value as LeadStatus); e.target.value = ''; }}
                 className="text-xs px-2 py-1 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-xs)] cursor-pointer">
-                <option value="">Changer statut...</option>
+                <option value="">{t('leads.page.bulk_change_status')}</option>
                 {LEAD_STATUSES.map(s => (<option key={s} value={s}>{STATUS_LABELS[s]}</option>))}
               </select>
               <Button variant="ghost" size="sm" onClick={bulkTrash} className="text-[var(--danger)] hover:bg-[var(--danger)]/10 hover:text-[var(--danger)]" leftIcon={<Trash2 size={14} />}>
-                Supprimer
+                {t('action.delete')}
               </Button>
               <button onClick={() => void handleBatchSummarize()} disabled={isBatchSummarizing}
                 className="inline-flex items-center gap-1.5 px-3 h-8 text-xs font-semibold text-white rounded-[var(--radius-xs)] transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
                 style={{ background: 'linear-gradient(135deg, var(--brand-primary), var(--accent-orange))' }}
-                title="Résumer les leads sélectionnés avec l'AI">
+                title={t('leads.page.bulk_summarize_title')} aria-label={t('leads.page.bulk_summarize_aria')}>
                 {isBatchSummarizing ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
                 Résumer ({selectedIds.size})
               </button>
-              <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>Annuler</Button>
+              <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>{t('action.cancel')}</Button>
             </div>
           )}
           <div className="overflow-x-auto">
@@ -588,7 +730,7 @@ export function LeadsPage() {
                     <span className="inline-flex items-center gap-1">{t('leads.table.name')} <SortIcon col="name" /></span>
                   </th>
                   <th className="text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t('leads.table.client')}</th>
-                  <th className="text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Contact</th>
+                  <th className="text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t('leads.table.contact')}</th>
                   <th className="text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t('leads.table.type')}</th>
                   <th className="text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t('leads.table.status')}</th>
                   <th onClick={() => toggleSort('score')} className="group text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider cursor-pointer hover:text-[var(--brand-primary)] select-none">
@@ -604,6 +746,7 @@ export function LeadsPage() {
                 {sortedLeads.map((lead, index) => {
                   const scoreColor = lead.score >= 70 ? 'var(--success)' : lead.score >= 40 ? 'var(--warning)' : 'var(--danger)';
                   const isHot = lead.score >= 70;
+                  const proba = convProba[lead.id];
                   return (
                     <tr key={lead.id}
                       className={`border-b border-[var(--border-subtle)] transition-all relative ${
@@ -661,10 +804,23 @@ export function LeadsPage() {
                           </div>
                           <span className="text-[10px] font-semibold w-5 text-right" style={{ color: scoreColor }}>{lead.score}</span>
                         </div>
+                        {/* Sprint 13 — badge proba de conversion calibrée (best-effort) */}
+                        {proba !== undefined && (
+                          <span
+                            title={t('conversion.probability')}
+                            className="inline-flex items-center gap-1 mt-1 px-1.5 h-[16px] rounded-full text-[9px] font-semibold tabular-nums"
+                            style={{
+                              background: proba >= HOT_THRESHOLD ? 'color-mix(in oklch, var(--accent-orange) 14%, transparent)' : 'var(--bg-muted)',
+                              color: proba >= HOT_THRESHOLD ? 'var(--accent-orange)' : 'var(--text-muted)',
+                            }}>
+                            {proba >= HOT_THRESHOLD && <Flame size={9} />}
+                            {Math.round(proba)}%
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-[11px] text-[var(--text-muted)] whitespace-nowrap">{timeAgo(lead.created_at)}</td>
                       <td className="px-4 py-3">
-                        <button onClick={() => openNotes(lead)} className="p-1.5 rounded-[var(--radius-xs)] text-[var(--text-muted)] hover:bg-[var(--bg-subtle)] hover:text-[var(--brand-primary)] transition-colors cursor-pointer" title="Notes">
+                        <button onClick={() => openNotes(lead)} className="p-1.5 rounded-[var(--radius-xs)] text-[var(--text-muted)] hover:bg-[var(--bg-subtle)] hover:text-[var(--brand-primary)] transition-colors cursor-pointer" title={t('leads.page.expand_notes')} aria-label={t('leads.page.expand_notes')}>
                           {lead.notes ? <StickyNote size={14} /> : <MoreHorizontal size={14} />}
                         </button>
                       </td>
@@ -675,6 +831,17 @@ export function LeadsPage() {
             </table>
           </div>
         </Card>
+      )}
+
+      {/* LOT RÉEL (Manager B) — pagination curseur (append). Affiché quand la
+          liste est rendue : pas en loading initial, pas vide, hors vue carte. */}
+      {!isLoading && leads.length > 0 && viewMode !== 'map' && (
+        <LoadMore
+          onLoadMore={() => void handleLoadMore()}
+          loading={loadingMore}
+          hasMore={!!nextCursor}
+          loadedCount={leads.length}
+        />
       )}
 
       {/* Modal — Nouveau lead */}
@@ -692,7 +859,7 @@ export function LeadsPage() {
             <select id="new-lead-client" value={createForm.client_id}
               onChange={(e) => setCreateForm(f => ({ ...f, client_id: e.target.value }))}
               className="w-full h-[38px] px-3 text-sm bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-sm)] text-[var(--text-primary)] hover:border-[var(--border-strong)] focus:border-[var(--brand-primary)] focus:ring-[3px] focus:ring-[var(--ring)] focus:outline-none">
-              <option value="">Sélectionner un client...</option>
+              <option value="">{t('leads.page.create_client_placeholder')}</option>
               {clients.map(c => (<option key={c.id} value={c.id}>{c.name}</option>))}
             </select>
           </div>
@@ -722,26 +889,26 @@ export function LeadsPage() {
                 placeholder="514-555-1234" />
             </div>
             <div>
-              <label htmlFor="new-lead-source" className="text-sm font-medium text-[var(--text-secondary)] block mb-1.5">Source</label>
+              <label htmlFor="new-lead-source" className="text-sm font-medium text-[var(--text-secondary)] block mb-1.5">{t('leads.new.source_label')}</label>
               <select id="new-lead-source" value={createForm.source}
                 onChange={(e) => setCreateForm(f => ({ ...f, source: e.target.value }))}
                 className="w-full h-[38px] px-3 text-sm bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-sm)] text-[var(--text-primary)] hover:border-[var(--border-strong)] focus:border-[var(--brand-primary)] focus:ring-[3px] focus:ring-[var(--ring)] focus:outline-none">
-                <option value="manual">Manuel</option>
+                <option value="manual">{t('leads.new.source_manual')}</option>
                 {Object.entries(SOURCE_LABELS).map(([k, v]) => (<option key={k} value={k}>{v}</option>))}
               </select>
             </div>
           </div>
           <div>
-            <label htmlFor="new-lead-type" className="text-sm font-medium text-[var(--text-secondary)] block mb-1.5">Type</label>
+            <label htmlFor="new-lead-type" className="text-sm font-medium text-[var(--text-secondary)] block mb-1.5">{t('leads.new.type_label')}</label>
             <select id="new-lead-type" value={createForm.type}
               onChange={(e) => setCreateForm(f => ({ ...f, type: e.target.value as 'inbound' | 'customer' }))}
               className="w-full h-[38px] px-3 text-sm bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-sm)] text-[var(--text-primary)] hover:border-[var(--border-strong)] focus:border-[var(--brand-primary)] focus:ring-[3px] focus:ring-[var(--ring)] focus:outline-none">
               <option value="inbound">Entrant (prospect)</option>
-              <option value="customer">Client existant</option>
+              <option value="customer">{t('leads.new.type_customer')}</option>
             </select>
           </div>
           <div>
-            <label htmlFor="new-lead-message" className="text-sm font-medium text-[var(--text-secondary)] block mb-1.5">Note initiale</label>
+            <label htmlFor="new-lead-message" className="text-sm font-medium text-[var(--text-secondary)] block mb-1.5">{t('leads.new.note_label')}</label>
             <textarea id="new-lead-message" value={createForm.message}
               onChange={(e) => setCreateForm(f => ({ ...f, message: e.target.value }))}
               rows={3} placeholder="Contexte du lead, source détaillée, prochaines étapes..."
@@ -770,8 +937,8 @@ export function LeadsPage() {
               <table className="w-full text-sm">
                 <thead className="sticky top-0">
                   <tr className="bg-[var(--bg-subtle)] border-b border-[var(--border-subtle)]">
-                    <th className="text-left px-3 py-2 text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Lead</th>
-                    <th className="text-left px-3 py-2 text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Résumé AI + action</th>
+                    <th className="text-left px-3 py-2 text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t('leads.detail.batch_col_lead')}</th>
+                    <th className="text-left px-3 py-2 text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t('leads.page.batch_col_summary')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -785,7 +952,7 @@ export function LeadsPage() {
               </table>
             </div>
             <div className="flex items-center justify-between">
-              <p className="text-[10px] text-[var(--text-muted)]">Généré par Claude Haiku 4.5</p>
+              <p className="text-[10px] text-[var(--text-muted)]">{t('leads.page.batch_generated_by')}</p>
               <Button variant="secondary" leftIcon={<Download size={14} />} onClick={() => {
                 if (!batchSummary) return;
                 const csv = ['Nom,Résumé AI', ...batchSummary.per_lead.map(l => `"${l.name.replace(/"/g, '""')}","${l.summary.replace(/"/g, '""')}"`)].join('\n');
@@ -794,7 +961,7 @@ export function LeadsPage() {
                 const a = document.createElement('a');
                 a.href = url; a.download = `resume-leads-${new Date().toISOString().slice(0, 10)}.csv`; a.click();
                 URL.revokeObjectURL(url);
-              }}>Exporter CSV</Button>
+              }}>{t('leads.export.csv_button')}</Button>
             </div>
           </div>
         )}
@@ -805,25 +972,25 @@ export function LeadsPage() {
         {selectedLead && (
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-2 text-sm">
-              <div><span className="text-[var(--text-muted)]">Email : </span><span className="text-[var(--text-primary)]">{selectedLead.email}</span></div>
-              <div><span className="text-[var(--text-muted)]">Téléphone : </span><span className="text-[var(--text-primary)]">{selectedLead.phone || '—'}</span></div>
-              <div><span className="text-[var(--text-muted)]">Type : </span><Badge color={selectedLead.type === 'inbound' ? 'var(--brand-primary)' : 'var(--warning)'}>{selectedLead.type === 'inbound' ? 'Entrant' : 'Client'}</Badge></div>
-              <div><span className="text-[var(--text-muted)]">Statut : </span><Badge color={STATUS_COLORS[selectedLead.status]}>{STATUS_LABELS[selectedLead.status]}</Badge></div>
+              <div><span className="text-[var(--text-muted)]">{t('leads.page.notes_email')}</span><span className="text-[var(--text-primary)]">{selectedLead.email}</span></div>
+              <div><span className="text-[var(--text-muted)]">{t('leads.page.notes_phone')}</span><span className="text-[var(--text-primary)]">{selectedLead.phone || '—'}</span></div>
+              <div><span className="text-[var(--text-muted)]">{t('leads.page.notes_type')}</span><Badge color={selectedLead.type === 'inbound' ? 'var(--brand-primary)' : 'var(--warning)'}>{selectedLead.type === 'inbound' ? t('leads.page.type_inbound') : t('leads.page.type_customer')}</Badge></div>
+              <div><span className="text-[var(--text-muted)]">{t('leads.page.notes_status')}</span><Badge color={STATUS_COLORS[selectedLead.status]}>{STATUS_LABELS[selectedLead.status]}</Badge></div>
             </div>
             {selectedLead.message && (
               <div className="p-3 rounded-[var(--radius-sm)] bg-[var(--bg-subtle)] text-sm">
-                <p className="text-xs text-[var(--text-muted)] mb-1">Message du lead :</p>
+                <p className="text-xs text-[var(--text-muted)] mb-1">{t('leads.page.notes_lead_message')}</p>
                 <p className="text-[var(--text-primary)]">{selectedLead.message}</p>
               </div>
             )}
             <div>
-              <label htmlFor="lead-notes" className="text-sm font-medium text-[var(--text-secondary)] block mb-1.5">Notes internes</label>
+              <label htmlFor="lead-notes" className="text-sm font-medium text-[var(--text-secondary)] block mb-1.5">{t('leads.detail.notes_label')}</label>
               <textarea id="lead-notes" value={editNotes} onChange={(e) => setEditNotes(e.target.value)} rows={4} placeholder="Ajouter des notes sur ce lead..."
                 className="w-full px-3 py-2.5 text-sm bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-default)] rounded-[var(--radius-sm)] placeholder:text-[var(--text-muted)] focus:border-[var(--brand-primary)] focus:ring-[3px] focus:ring-[var(--ring)] focus:outline-none resize-none" />
             </div>
             <div className="flex justify-end gap-2">
-              <Button variant="ghost" onClick={() => setSelectedLead(null)}>Annuler</Button>
-              <Button onClick={() => void handleSaveNotes()}>Sauvegarder</Button>
+              <Button variant="ghost" onClick={() => setSelectedLead(null)}>{t('action.cancel')}</Button>
+              <Button onClick={() => void handleSaveNotes()}>{t('leads.detail.notes_save')}</Button>
             </div>
           </div>
         )}

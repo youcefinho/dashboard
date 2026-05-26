@@ -12,6 +12,7 @@ import { WifiOff, Wifi } from 'lucide-react';
 import { Icon } from './Icon';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { playSound, triggerHaptic } from '@/lib/sensorial';
+import { t } from '@/lib/i18n';
 
 type Phase = 'idle' | 'offline' | 'back-online';
 
@@ -72,8 +73,8 @@ export function NetworkStatusBanner() {
         </span>
         <span className="network-status-banner-message">
           {isOffline
-            ? 'Hors ligne — Les modifications seront synchronisées au retour'
-            : 'Connexion rétablie'}
+            ? t('network.offline_pending')
+            : t('network.back_online')}
         </span>
       </div>
     </div>

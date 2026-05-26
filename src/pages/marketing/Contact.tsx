@@ -4,6 +4,7 @@
 // Coordonnées entreprise affichées.
 
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+// useRef est utilisé pour le focus management après succès + map fallback.
 import { Mail, Phone, MapPin, Send, Loader2 } from 'lucide-react';
 import { PublicLayout } from '../landing/PublicLayout';
 import { Button } from '@/components/ui/Button';
@@ -17,6 +18,9 @@ import { MarketingMeta } from './_meta';
 type RequestKind = 'sales' | 'support' | 'general' | 'partenariat';
 
 const HQ_COORDS = { lat: 46.81, lng: -71.21 }; // Québec QC siège social
+// Renforcement : même regex email partout dans l'app (Login/Signup Sprint 26-2B).
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const MESSAGE_MAX = 2000;
 
 export function ContactPage() {
   const toast = useToast();
@@ -26,10 +30,45 @@ export function ContactPage() {
   const [kind, setKind] = useState<RequestKind>('sales');
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  // Renforcement : touched par champ pour inline errors au blur.
+  const [touched, setTouched] = useState<{ name: boolean; email: boolean; message: boolean }>({
+    name: false,
+    email: false,
+    message: false,
+  });
+  // Renforcement : succès inline persistant (en complément du toast volatile).
+  const [submittedOk, setSubmittedOk] = useState(false);
+  const nameInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Validations inline (n'apparaissent qu'après blur du champ).
+  const emailValid = EMAIL_RE.test(email);
+  const nameError = touched.name && name.trim().length === 0
+    ? 'Le nom est requis.'
+    : '';
+  const emailError = touched.email && email.length > 0 && !emailValid
+    ? "Format de courriel invalide. Exemple : nom@entreprise.com"
+    : touched.email && email.length === 0
+      ? 'Le courriel est requis.'
+      : '';
+  const messageError = touched.message && message.trim().length === 0
+    ? 'Le message est requis.'
+    : touched.message && message.length > MESSAGE_MAX
+      ? `Le message dépasse ${MESSAGE_MAX} caractères.`
+      : '';
+  const formInvalid = !emailValid || name.trim().length === 0 || message.trim().length === 0
+    || message.length > MESSAGE_MAX;
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (submitting) return;
+    // Renforcement : validation hard avant POST, touch tous les champs requis
+    // pour afficher les inline errors d'un coup.
+    setTouched({ name: true, email: true, message: true });
+    if (formInvalid) {
+      toast.error('Vérifie les champs en rouge avant d\'envoyer.', { title: 'Champs requis' });
+      return;
+    }
+    setSubmittedOk(false);
     setSubmitting(true);
     try {
       const res = await fetch('/api/contact', {
@@ -43,11 +82,18 @@ export function ContactPage() {
       // l'UX en dev sans casser la prod.
       if (res.ok || res.status === 404) {
         toast.success('Message envoyé — on te répond dans les 24h.', { title: 'Merci !' });
+        setSubmittedOk(true);
         setName('');
         setEmail('');
         setPhone('');
         setKind('sales');
         setMessage('');
+        setTouched({ name: false, email: false, message: false });
+        // Renforcement : refocus sur le 1er champ après succès → flux naturel
+        // pour envoyer un 2e message ou repérer la confirmation visuellement.
+        setTimeout(() => {
+          try { nameInputRef.current?.focus(); } catch { /* noop */ }
+        }, 0);
       } else {
         toast.error("Le message n'a pas pu être envoyé. Réessaye dans un instant.", { title: 'Erreur' });
       }
@@ -76,8 +122,33 @@ export function ContactPage() {
 
         <div className="mk-contact__grid">
           {/* Form */}
-          <form className="mk-contact__form" onSubmit={handleSubmit} noValidate>
+          <form
+            className="mk-contact__form"
+            onSubmit={handleSubmit}
+            noValidate
+            aria-busy={submitting || undefined}
+          >
             <h2 className="mk-section-title mk-section-title--inline">Envoie-nous un message</h2>
+
+            {/* Renforcement : confirmation persistante succès (en + du toast) */}
+            {submittedOk && (
+              <div
+                role="status"
+                aria-live="polite"
+                className="mk-contact__success"
+                style={{
+                  padding: '12px 14px',
+                  borderRadius: 8,
+                  background: 'color-mix(in oklch, var(--success) 10%, transparent)',
+                  border: '1px solid color-mix(in oklch, var(--success) 30%, transparent)',
+                  color: 'var(--success)',
+                  fontSize: 14,
+                  marginBottom: 12,
+                }}
+              >
+                Message envoyé — on te répond dans les 24h. Tu peux fermer cette page ou nous envoyer un autre message.
+              </div>
+            )}
 
             <div className="mk-contact__row">
               <Input
@@ -85,7 +156,10 @@ export function ContactPage() {
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                onBlur={() => setTouched((s) => ({ ...s, name: true }))}
                 autoComplete="name"
+                error={nameError || undefined}
+                ref={nameInputRef}
               />
               <Input
                 label="Courriel"
@@ -93,7 +167,9 @@ export function ContactPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                onBlur={() => setTouched((s) => ({ ...s, email: true }))}
                 autoComplete="email"
+                error={emailError || undefined}
               />
             </div>
 
@@ -123,15 +199,36 @@ export function ContactPage() {
               required
               value={message}
               onChange={(e) => setMessage(e.target.value)}
+              onBlur={() => setTouched((s) => ({ ...s, message: true }))}
               rows={6}
+              maxLength={MESSAGE_MAX}
               placeholder="Dis-nous comment on peut t'aider…"
+              error={messageError || undefined}
+              aria-describedby="mk-contact-msg-counter"
             />
+            {/* Renforcement UX : compteur de caractères live region */}
+            <p
+              id="mk-contact-msg-counter"
+              className="mk-contact__counter"
+              style={{
+                fontSize: 12,
+                color: 'var(--text-muted)',
+                marginTop: -8,
+                textAlign: 'right',
+              }}
+              aria-live="polite"
+            >
+              {message.length} / {MESSAGE_MAX}
+            </p>
 
             <Button
               type="submit"
               variant="primary"
               size="lg"
               isLoading={submitting}
+              disabled={submitting}
+              aria-disabled={submitting || undefined}
+              aria-busy={submitting || undefined}
               leftIcon={submitting ? <Icon as={Loader2} size={16} className="animate-spin" /> : <Icon as={Send} size={16} />}
             >
               {submitting ? 'Envoi en cours…' : 'Envoyer mon message'}

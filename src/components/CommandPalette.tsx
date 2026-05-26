@@ -7,7 +7,8 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from 'react';
 import { useNavigate } from '@tanstack/react-router';
-import { getLeads, getClients, createLead, updateLead } from '@/lib/api';
+import { getLeads, getClients, createLead, updateLead, globalSearch } from '@/lib/api';
+import type { GlobalSearchResult } from '@/lib/api';
 import type { Lead, Client, LeadStatus } from '@/lib/types';
 import { LEAD_STATUSES, STATUS_LABELS } from '@/lib/types';
 import { AI_SORT_MODES, AI_SORT_LABELS, AI_SORT_DESCRIPTIONS } from '@/lib/aiSort';
@@ -255,6 +256,8 @@ const CATEGORY_ICONS: Record<string, string> = {
   'Navigation': '🧭',
   'Leads': '👥',
   'Clients': '🏢',
+  'Tâches': '✅',
+  'Conversations': '💬',
   'Rapports': '📊',
   'AI Sort': '✨',
   'Suggestions': '⚡',
@@ -276,6 +279,11 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
   const [discoverTourOpen, setDiscoverTourOpen] = useState(false);
   // Sprint 49 M3.4 — Recherche naturelle : état "parsing en cours"
   const [nlParsing, setNlParsing] = useState(false);
+  // LOT B / S-B2 — Recherche globale serveur (GET /api/search).
+  // serverResults : null = pas encore interrogé / query courte → fallback local.
+  //                 [] = serveur a répondu sans résultat.
+  const [serverResults, setServerResults] = useState<GlobalSearchResult[] | null>(null);
+  const [serverSearching, setServerSearching] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const { openPanel } = usePanelStack();
@@ -302,8 +310,52 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       setTimeout(() => inputRef.current?.focus(), 50);
       getLeads().then(res => { if (res.data) setLeads(res.data); }).catch(() => { /* ignoré */ });
       getClients().then(res => { if (res.data) setClients(res.data); }).catch(() => { /* ignoré */ });
+      // LOT B — reset état serveur à chaque ouverture
+      setServerResults(null);
+      setServerSearching(false);
     }
   }, [isOpen]);
+
+  // LOT B / S-B2 — Recherche globale serveur, debounced ≥ 250 ms.
+  // Déclenchée seulement si q.trim().length >= 2. Si l'appel échoue (réseau /
+  // dev sans worker / erreur) → serverResults reste null → le fallback local
+  // fuzzy actuel (allItems sur leads/clients déjà chargés) prend le relais.
+  // Aucune régression UX offline/dev : l'existant est INTACT, on superpose.
+  useEffect(() => {
+    if (!isOpen) return;
+    const q = query.trim();
+    // Query trop courte OU mode intent/filtre → pas de recherche serveur,
+    // on retombe sur le comportement local existant.
+    if (q.length < 2 || parseIntent(query) || parseFilter(query)) {
+      setServerResults(null);
+      setServerSearching(false);
+      return;
+    }
+    let cancelled = false;
+    setServerSearching(true);
+    const handle = window.setTimeout(() => {
+      globalSearch(q, { limit: 8 })
+        .then((res) => {
+          if (cancelled) return;
+          if (res.data && Array.isArray(res.data.results)) {
+            setServerResults(res.data.results);
+          } else {
+            // Erreur serveur → fallback local (null = pas de section serveur)
+            setServerResults(null);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) setServerResults(null);
+        })
+        .finally(() => {
+          if (!cancelled) setServerSearching(false);
+        });
+    }, 250);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(handle);
+    };
+  }, [query, isOpen]);
 
   // Sprint 24 vague 4A — toggle favori sur un id (path d'item)
   const toggleFavorite = useCallback((itemId: string) => {
@@ -571,14 +623,47 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
     return scored;
   }, [query, allItems, favorites, filter]);
 
+  // LOT B / S-B2 — Items issus de la recherche serveur (/api/search).
+  // Groupés par type via les clés i18n FIGÉES par Manager A (§6.5).
+  // Navigation iso-fonctionnelle : go(result.url) — url vient du serveur.
+  const SERVER_SECTION_LABEL: Record<string, string> = useMemo(() => ({
+    lead: t('search.section_leads'),
+    client: t('search.section_clients'),
+    task: t('search.section_tasks'),
+    conversation: t('search.section_conversations'),
+  }), []);
+
+  const SERVER_SECTION_ICON: Record<string, string> = {
+    lead: '👥',
+    client: '🏢',
+    task: '✅',
+    conversation: '💬',
+  };
+
+  const serverItems = useMemo((): CommandItem[] => {
+    if (!serverResults || serverResults.length === 0) return [];
+    return serverResults.map((r) => ({
+      id: `srv-${r.type}-${r.id}`,
+      icon: SERVER_SECTION_ICON[r.type] || '🔍',
+      label: r.title,
+      description: r.subtitle,
+      action: () => go(r.url),
+      category: SERVER_SECTION_LABEL[r.type] || r.type,
+    }));
+  }, [serverResults, SERVER_SECTION_LABEL, go]);
+
   const groupedItems = useMemo(() => {
     const groups: Record<string, CommandItem[]> = {};
-    filteredItems.forEach(item => {
+    // LOT B — quand le serveur a répondu (serverResults non-null), on privilégie
+    // ses résultats pour la portion "recherche d'entités". Le fallback local
+    // (filteredItems) reste actif si serverResults est null (offline/dev/erreur).
+    const baseList = serverResults !== null ? serverItems : filteredItems;
+    baseList.forEach(item => {
       if (!groups[item.category]) groups[item.category] = [];
       groups[item.category]!.push(item);
     });
     return groups;
-  }, [filteredItems]);
+  }, [filteredItems, serverItems, serverResults]);
 
   // Intent items affichés en tête comme "actions détectées"
   const intentItems = useMemo((): CommandItem[] => {
@@ -669,9 +754,17 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
     }));
   }, [smartLists, go, query]);
 
+  // LOT B — la portion "recherche d'entités" = résultats serveur si répondu,
+  // sinon fallback local (filteredItems). Cohérent avec groupedItems pour que
+  // la navigation clavier matche exactement le rendu.
+  const entitySearchItems = useMemo(
+    () => (serverResults !== null ? serverItems : filteredItems),
+    [serverResults, serverItems, filteredItems]
+  );
+
   const combinedItems = useMemo(
-    () => [...intentItems, ...filterItems, ...favoriteItems, ...filteredItems, ...savedSearchItems],
-    [intentItems, filterItems, favoriteItems, filteredItems, savedSearchItems]
+    () => [...intentItems, ...filterItems, ...favoriteItems, ...entitySearchItems, ...savedSearchItems],
+    [intentItems, filterItems, favoriteItems, entitySearchItems, savedSearchItems]
   );
 
   useEffect(() => { setSelectedIndex(0); }, [query]);
@@ -819,7 +912,15 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
             </div>
           )}
 
-          {combinedItems.length === 0 && hasQuery ? (
+          {/* LOT B — état "recherche serveur en cours" (i18n figé §6.5) */}
+          {serverSearching && combinedItems.length === 0 && hasQuery ? (
+            <div className="cmd-empty">
+              <span className="cmd-empty-icon" aria-hidden="true">⏳</span>
+              <div className="text-sm font-semibold text-[var(--text-primary)]">
+                {t('search.searching')}
+              </div>
+            </div>
+          ) : combinedItems.length === 0 && hasQuery ? (
             <div className="cmd-empty">
               <span className="cmd-empty-icon" aria-hidden="true">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
@@ -828,7 +929,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
                 </svg>
               </span>
               <div className="text-sm font-semibold text-[var(--text-primary)]">
-                {t('cmd.no_result')} « {query} »
+                {t('search.no_results')} « {query} »
               </div>
               <div className="text-xs text-[var(--text-muted)]">
                 Essaie « <span className="text-[var(--primary)] font-medium">leads</span> », « <span className="text-[var(--primary)] font-medium">paramètres</span> » ou « <span className="text-[var(--primary)] font-medium">nouveau lead [nom]</span> »
