@@ -68,9 +68,7 @@ async function _publishEventAsync(
         };
 
         // 4. Enqueue pour traitement asynchrone (si WEBHOOK_QUEUE existe, sinon HTTP direct en fallback)
-        // @ts-ignore – WEBHOOK_QUEUE n'est pas toujours déclaré dans Env
         if (env.WEBHOOK_QUEUE) {
-          // @ts-ignore
           await env.WEBHOOK_QUEUE.send(message);
         } else {
           // Fallback dev: on envoie directement sans file d'attente (moins fiable)

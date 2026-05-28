@@ -39,9 +39,19 @@
     "USE_MOCKS": "true"
   },
   "queues": {
-    "producers": [{ "binding": "BROADCAST_QUEUE", "queue": "intralys-broadcast" }],
-    "consumers": [{ "queue": "intralys-broadcast", "max_batch_size": 10, "max_batch_timeout": 30 }]
+    "producers": [
+      { "binding": "BROADCAST_QUEUE", "queue": "intralys-broadcast" },
+      { "binding": "WEBHOOK_QUEUE", "queue": "intralys-webhooks" }
+    ],
+    "consumers": [
+      { "queue": "intralys-broadcast", "max_batch_size": 10, "max_batch_timeout": 30 },
+      { "queue": "intralys-webhooks", "max_batch_size": 5, "max_batch_timeout": 15 }
+    ]
   },
+  "kv_namespaces": [
+    { "binding": "RATE_LIMITER", "id": "PLACEHOLDER_RATE_LIMITER_ID" },
+    { "binding": "STATE_STORE", "id": "PLACEHOLDER_STATE_STORE_ID" }
+  ],
   "triggers": {
     "crons": ["*/5 * * * *"]
   }
