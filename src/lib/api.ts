@@ -274,6 +274,37 @@ export async function savePhoneRoutingRules(numberId: string, rules: Array<Parti
   });
 }
 
+// ── Messagerie Vocale / Voicemail (Sprint 53) ─────────────────
+export interface Voicemail {
+  id: string;
+  call_sid: string;
+  user_id: string | null;
+  audio_r2_key: string;
+  duration: number;
+  transcript: string;
+  is_read: number;
+  created_at: string;
+  from_number?: string | null;
+  to_number?: string | null;
+  lead_name?: string | null;
+}
+
+export async function getVoicemails(): Promise<ApiResponse<Voicemail[]>> {
+  return apiFetch<Voicemail[]>('/voicemails');
+}
+
+export async function markVoicemailAsRead(id: string): Promise<ApiResponse<{ success: boolean }>> {
+  return apiFetch<{ success: boolean }>(`/voicemails/${id}/read`, {
+    method: 'PATCH'
+  });
+}
+
+export async function deleteVoicemail(id: string): Promise<ApiResponse<{ success: boolean }>> {
+  return apiFetch<{ success: boolean }>(`/voicemails/${id}`, {
+    method: 'DELETE'
+  });
+}
+
 // ── LOT TEAM A (Phase B / M2) — gestion d'équipe ─────────────
 // Tous via apiFetch (auth + X-Sub-Account injectés). Remplace les `fetch`
 // bruts sans header de l'ancien TeamSettings (mock). Endpoints figés §6.B.

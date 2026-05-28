@@ -2051,6 +2051,19 @@
         "index:idx_phone_routing_rules_num"
       ],
       "risk": "low"
+    },
+    {
+      "seq": 147,
+      "file": "migration-voicemail-seq147.sql",
+      "depends_on": [
+        "migration-phone-numbers-seq146.sql"
+      ],
+      "objects": [
+        "table:voicemails",
+        "index:idx_voicemails_user",
+        "index:idx_voicemails_created_at"
+      ],
+      "risk": "low"
     }
   ]
 }
