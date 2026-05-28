@@ -24,7 +24,7 @@ import { t, getLocale } from '@/lib/i18n';
 import { formatDate } from '@/lib/i18n/datetime';
 import {
   getBillingPlans,
-  getCurrentSubscription,
+  listBillingSubscriptions,
   getBillingUsage,
   getBillingWebhookConfig,
   listBillingInvoices,
@@ -91,6 +91,7 @@ export function BillingPlanPanel(props: BillingPlanPanelProps) {
 
   const [plans, setPlans] = useState<BillingPlanCatalog[]>([]);
   const [subscription, setSubscription] = useState<ClientSubscription | null>(null);
+  const [subscriptions, setSubscriptions] = useState<ClientSubscription[]>([]);
   const [usage, setUsage] = useState<BillingUsage | null>(null);
   const [webhookConfig, setWebhookConfig] = useState<BillingWebhookConfig | null>(null);
   const [invoices, setInvoices] = useState<BillingInvoiceMock[]>([]);
@@ -108,9 +109,9 @@ export function BillingPlanPanel(props: BillingPlanPanelProps) {
     setLoading(true);
     setLoadError(null);
     try {
-      const [plansRes, subRes, usageRes, hookRes, invRes] = await Promise.all([
+      const [plansRes, subsRes, usageRes, hookRes, invRes] = await Promise.all([
         getBillingPlans(),
-        getCurrentSubscription(),
+        listBillingSubscriptions(),
         getBillingUsage(),
         getBillingWebhookConfig(),
         listBillingInvoices(),
@@ -118,8 +119,14 @@ export function BillingPlanPanel(props: BillingPlanPanelProps) {
 
       // Dégrade gracieusement : aucun fetch ne doit faire crash
       if (plansRes.data) setPlans(plansRes.data);
-      if (subRes.data) setSubscription(subRes.data);
-      else setSubscription(null);
+      if (subsRes.data) {
+        setSubscriptions(subsRes.data);
+        const mainSub = subsRes.data.find(s => !s.parentSubscriptionId) || subsRes.data[0] || null;
+        setSubscription(mainSub);
+      } else {
+        setSubscriptions([]);
+        setSubscription(null);
+      }
       if (usageRes.data) setUsage(usageRes.data);
       if (hookRes.data) setWebhookConfig(hookRes.data);
       if (invRes.data) setInvoices(invRes.data);
@@ -128,7 +135,7 @@ export function BillingPlanPanel(props: BillingPlanPanelProps) {
       // Si tous les endpoints failent → error message
       if (
         plansRes.error &&
-        subRes.error &&
+        subsRes.error &&
         usageRes.error &&
         hookRes.error &&
         invRes.error
@@ -232,6 +239,30 @@ export function BillingPlanPanel(props: BillingPlanPanelProps) {
       setMutating(false);
     }
   }, [mutating, confirm, fetchAll, info, success, toastError]);
+
+  const handleSubscribeChild = useCallback(
+    async (tier: PlanTier) => {
+      if (mutating || !subscription) return;
+      setMutating(true);
+      try {
+        const res = await changeSubscriptionPlan({
+          planTier: tier,
+          parentSubscriptionId: subscription.id,
+        });
+        if (res.error || !res.data) {
+          toastError(res.error || t('billing.error.load'));
+          return;
+        }
+        success("Abonnement secondaire souscrit avec succès");
+        await fetchAll();
+      } catch {
+        toastError(t('billing.error.load'));
+      } finally {
+        setMutating(false);
+      }
+    },
+    [mutating, subscription, fetchAll, success, toastError],
+  );
 
   const handleMockNotice = useCallback(() => {
     setMockNoticeForced(true);
@@ -349,6 +380,64 @@ export function BillingPlanPanel(props: BillingPlanPanelProps) {
             )}
           </div>
         </Card>
+      )}
+
+      {/* Abonnements secondaires */}
+      {sub && (
+        <section aria-labelledby="billing-secondary-heading">
+          <header className="mb-3">
+            <h2
+              id="billing-secondary-heading"
+              className="text-[17px] font-bold text-[var(--text-primary)]"
+            >
+              Abonnements secondaires / enfants
+            </h2>
+            <p className="text-[13px] text-[var(--text-secondary)] mt-0.5">
+              Gérez les abonnements secondaires rattachés à votre formule principale.
+            </p>
+          </header>
+
+          <Card className="p-5 space-y-4">
+            {subscriptions.filter(s => s.parentSubscriptionId === sub.id).length === 0 ? (
+              <p className="text-sm text-[var(--text-secondary)]">Aucun abonnement secondaire actif.</p>
+            ) : (
+              <div className="space-y-3">
+                {subscriptions.filter(s => s.parentSubscriptionId === sub.id).map((s) => (
+                  <div key={s.id} className="flex items-center justify-between p-3 bg-[var(--bg-inset)] rounded-lg border border-[var(--border-subtle)]">
+                    <div>
+                      <h4 className="font-bold text-sm text-[var(--text-primary)] flex items-center gap-2">
+                        {t(`billing.plans.tier.${s.planTier}.name`)}
+                        <Badge intent="info" size="sm">Secondaire</Badge>
+                        <Badge intent={statusIntent(s.status)} fill="soft" size="sm">
+                          {statusLabel(s.status)}
+                        </Badge>
+                      </h4>
+                      <p className="text-xs text-[var(--text-secondary)] mt-1">
+                        Période : {s.billingPeriod === 'yearly' ? 'Annuel' : 'Mensuel'}
+                        {s.currentPeriodEnd && ` · Expire le ${formatDate(new Date(s.currentPeriodEnd), locale)}`}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="pt-3 border-t border-[var(--border-subtle)] flex flex-wrap gap-2">
+              <span className="text-xs text-[var(--text-muted)] self-center mr-2">Souscrire à un produit secondaire (simulation) :</span>
+              {['starter', 'pro', 'unlimited'].map((tier) => (
+                <Button
+                  key={tier}
+                  variant="secondary"
+                  size="sm"
+                  disabled={mutating}
+                  onClick={() => void handleSubscribeChild(tier as PlanTier)}
+                >
+                  + {t(`billing.plans.tier.${tier}.name`)}
+                </Button>
+              ))}
+            </div>
+          </Card>
+        </section>
       )}
 
       {/* PlanSelector */}

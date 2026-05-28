@@ -2140,6 +2140,17 @@
         "index:idx_funnel_offers_funnel_step"
       ],
       "risk": "low"
+    },
+    {
+      "seq": 154,
+      "file": "migration-multi-product-subscriptions-seq158.sql",
+      "depends_on": [
+        "migration-funnel-offers-seq153.sql"
+      ],
+      "objects": [
+        "column:subscriptions.parent_subscription_id"
+      ],
+      "risk": "low"
     }
   ]
 }

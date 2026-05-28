@@ -31,6 +31,7 @@ import { createMockD1 } from './_helpers';
 import {
   handleListBillingPlans,
   handleGetCurrentSubscription,
+  handleListBillingSubscriptions,
   handleChangeSubscriptionPlan,
   handleCancelSubscription,
   handleResumeSubscription,
@@ -970,5 +971,122 @@ describe('S31 — Sprint 22 mock path preservation (regression guard)', () => {
     const body = (await res.json()) as { data: { reason: string; mock: boolean } };
     expect(body.data.mock).toBe(true);
     expect(body.data.reason).toBe('stripe_not_configured');
+  });
+});
+
+describe('S63 — Gestion des Abonnements Multi-Produits', () => {
+  it('GET /api/billing/subscriptions → retourne la liste de tous les abonnements', async () => {
+    const db = createMockD1();
+    db.seed('from users where id', [{ client_id: 'client-1' }]);
+    db.seed('modules_json from clients', [{ modules_json: '["crm"]' }]);
+    db.seed('select id from clients where agency_id', [{ id: 'client-1' }]);
+    db.seed('select * from subscriptions where agency_id', [
+      {
+        id: 'sub-1',
+        agency_id: 'agency-1',
+        client_id: 'client-1',
+        plan_name: 'pro',
+        status: 'active',
+        billing_period: 'monthly',
+        provider: 'mock',
+        current_period_start: '2026-05-01 00:00:00',
+        current_period_end: '2026-06-01 00:00:00',
+      },
+      {
+        id: 'sub-child-1',
+        agency_id: 'agency-1',
+        client_id: 'client-1',
+        plan_name: 'starter',
+        status: 'active',
+        billing_period: 'monthly',
+        provider: 'mock',
+        current_period_start: '2026-05-01 00:00:00',
+        current_period_end: '2026-06-01 00:00:00',
+        parent_subscription_id: 'sub-1',
+      },
+    ]);
+    const env = { DB: db } as unknown as Env;
+    const res = await handleListBillingSubscriptions(env, AUTH_AGENCY_FULL);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { data: any[] };
+    expect(body.data).toHaveLength(2);
+    expect(body.data[0].id).toBe('sub-1');
+    expect(body.data[1].id).toBe('sub-child-1');
+    expect(body.data[1].parentSubscriptionId).toBe('sub-1');
+  });
+
+  it('handleChangeSubscriptionPlan avec parentSubscriptionId inconnu → 400 PARENT_SUB_NOT_FOUND', async () => {
+    const db = createMockD1();
+    db.seed('from users where id', [{ client_id: 'client-1' }]);
+    db.seed('modules_json from clients', [{ modules_json: '["crm"]' }]);
+    db.seed('select id from clients where agency_id', [{ id: 'client-1' }]);
+    db.seed('select * from subscriptions where id = ? AND agency_id = ?', []); // Aucun parent
+    const env = { DB: db } as unknown as Env;
+    const res = await handleChangeSubscriptionPlan(
+      postReq('/api/billing/subscription/change', {
+        planTier: 'starter',
+        parentSubscriptionId: 'parent-non-existant',
+      }),
+      env,
+      AUTH_AGENCY_FULL,
+    );
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: string; code: string };
+    expect(body.code).toBe('PARENT_SUB_NOT_FOUND');
+  });
+
+  it('handleChangeSubscriptionPlan avec parentSubscriptionId valide → crée un enfant avec cycle parent copié', async () => {
+    const db = createMockD1();
+    db.seed('from users where id', [{ client_id: 'client-1' }]);
+    db.seed('modules_json from clients', [{ modules_json: '["crm"]' }]);
+    db.seed('select id from clients where agency_id', [{ id: 'client-1' }]);
+    db.seed('select * from subscriptions where id = ? AND agency_id = ?', [
+      {
+        id: 'parent-1',
+        agency_id: 'agency-1',
+        client_id: 'client-1',
+        plan_name: 'pro',
+        status: 'active',
+        billing_period: 'yearly',
+        provider: 'mock',
+        current_period_start: '2026-01-01 00:00:00',
+        current_period_end: '2027-01-01 00:00:00',
+      },
+    ]);
+    db.seed('from billing_plans', [{ tier: 'starter', is_active: 1 }]);
+    db.seed('select * from subscriptions where id = ? LIMIT 1', [
+      {
+        id: 'mock-child-id',
+        agency_id: 'agency-1',
+        client_id: 'client-1',
+        plan_name: 'starter',
+        status: 'active',
+        billing_period: 'yearly',
+        provider: 'mock',
+        current_period_start: '2026-01-01 00:00:00',
+        current_period_end: '2027-01-01 00:00:00',
+        parent_subscription_id: 'parent-1',
+      },
+    ]);
+    const env = { DB: db } as unknown as Env;
+    const res = await handleChangeSubscriptionPlan(
+      postReq('/api/billing/subscription/change', {
+        planTier: 'starter',
+        parentSubscriptionId: 'parent-1',
+      }),
+      env,
+      AUTH_AGENCY_FULL,
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { data: { success: boolean; subscription: any } };
+    expect(body.data.success).toBe(true);
+
+    // Vérifier l'INSERT émis
+    const insertCall = db.calls.find((c) => /insert into subscriptions/i.test(c.sql));
+    expect(insertCall).toBeTruthy();
+    expect(insertCall!.args).toContain('parent-1');
+    expect(insertCall!.args).toContain('yearly');
+    expect(insertCall!.args).toContain('2026-01-01 00:00:00');
+    expect(insertCall!.args).toContain('2027-01-01 00:00:00');
   });
 });

@@ -2940,6 +2940,10 @@ async function routeProtected(
         const { handleGetCurrentSubscription } = await import('./worker/saas-billing');
         return await handleGetCurrentSubscription(env, auth);
       }
+      if (path === '/api/billing/subscriptions' && method === 'GET') {
+        const { handleListBillingSubscriptions } = await import('./worker/saas-billing');
+        return await handleListBillingSubscriptions(env, auth);
+      }
       if (path === '/api/billing/subscription/change' && method === 'POST') {
         const { handleChangeSubscriptionPlan } = await import('./worker/saas-billing');
         const res = await handleChangeSubscriptionPlan(request, env, auth);

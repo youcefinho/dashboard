@@ -7391,6 +7391,10 @@ export async function getCurrentSubscription(): Promise<ApiResponse<ClientSubscr
   return apiFetch<ClientSubscription>('/billing/subscription');
 }
 
+export async function listBillingSubscriptions(): Promise<ApiResponse<ClientSubscription[]>> {
+  return apiFetch<ClientSubscription[]>('/billing/subscriptions');
+}
+
 export async function changeSubscriptionPlan(
   body: BillingSubscriptionChangeBody,
 ): Promise<ApiResponse<{

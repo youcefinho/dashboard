@@ -2301,6 +2301,7 @@ export interface ClientSubscription {
   isMock: boolean;
   createdAt: string;
   updatedAt: string | null;
+  parentSubscriptionId?: string | null;
 }
 
 export interface BillingUsage {

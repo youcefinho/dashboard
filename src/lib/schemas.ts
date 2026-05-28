@@ -513,6 +513,7 @@ export const onboardingChecklistSkipSchema = z.object({
 export const BillingSubscriptionChangeSchema = z.object({
   planTier: z.enum(['free', 'starter', 'pro', 'unlimited']),
   billingPeriod: z.enum(['monthly', 'yearly']).optional(),
+  parentSubscriptionId: z.string().optional(),
 });
 export type BillingSubscriptionChangeBody = z.infer<typeof BillingSubscriptionChangeSchema>;
 

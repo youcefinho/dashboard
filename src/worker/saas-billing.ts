@@ -240,6 +240,7 @@ function rowToSubscription(row: Record<string, unknown>): ClientSubscription {
     isMock,
     createdAt: String(row.created_at ?? ''),
     updatedAt: row.updated_at == null ? null : String(row.updated_at),
+    parentSubscriptionId: row.parent_subscription_id == null ? null : String(row.parent_subscription_id),
   };
 }
 
@@ -468,6 +469,43 @@ export async function handleGetCurrentSubscription(
   }
 }
 
+// ── GET /api/billing/subscriptions ────────────────────────────────────────
+/** Liste tous les abonnements (parent et enfants) de l'agence. */
+export async function handleListBillingSubscriptions(
+  env: Env,
+  auth: BillingAuth,
+): Promise<Response> {
+  const guard = capGuard(auth, 'billing.view');
+  if (guard) return guard;
+
+  try {
+    const ctx = await resolveAgencyContext(env, auth);
+    if (!ctx.agencyId) {
+      return json({ data: [fallbackSubscription(ctx)] });
+    }
+
+    let rows: Record<string, unknown>[] = [];
+    try {
+      const result = await env.DB.prepare(
+        'SELECT * FROM subscriptions WHERE agency_id = ? ORDER BY created_at ASC',
+      )
+        .bind(ctx.agencyId)
+        .all();
+      rows = (result.results || []) as Record<string, unknown>[];
+    } catch (err) {
+      if (!isMissingSchemaError(err)) throw err;
+    }
+
+    if (rows.length === 0) {
+      return json({ data: [fallbackSubscription(ctx)] });
+    }
+
+    return json({ data: rows.map(rowToSubscription) });
+  } catch {
+    return json({ data: [{ ...MOCK_SUBSCRIPTION_FALLBACK }] });
+  }
+}
+
 // ── POST /api/billing/subscription/change ─────────────────────────────────
 /** Change le plan de l'agence courante. V1 mock systématique. */
 export async function handleChangeSubscriptionPlan(
@@ -481,7 +519,7 @@ export async function handleChangeSubscriptionPlan(
   if (!parsed.success) {
     return json({ error: 'Invalid input', code: 'INVALID_INPUT' }, 400);
   }
-  const { planTier, billingPeriod } = parsed.data;
+  const { planTier, billingPeriod, parentSubscriptionId } = parsed.data;
 
   // 2. Capability + agence-only
   const guard = capGuard(auth, 'settings.manage');
@@ -489,6 +527,28 @@ export async function handleChangeSubscriptionPlan(
   const ctx = await resolveAgencyContext(env, auth);
   if (!ctx.agencyId) {
     return json({ error: 'Réservé aux agences', code: 'AGENCY_ONLY' }, 403);
+  }
+
+  // Vérifier l'existence de l'abonnement parent si fourni
+  let parentSub: ClientSubscription | null = null;
+  if (parentSubscriptionId) {
+    try {
+      const row = (await env.DB.prepare(
+        'SELECT * FROM subscriptions WHERE id = ? AND agency_id = ? LIMIT 1',
+      )
+        .bind(parentSubscriptionId, ctx.agencyId)
+        .first()) as Record<string, unknown> | null;
+      if (row) {
+        parentSub = rowToSubscription(row);
+      }
+    } catch (err) {
+      if (!isMissingSchemaError(err)) {
+        // Autre erreur que table manquante
+      }
+    }
+    if (!parentSub) {
+      return json({ error: 'Abonnement parent introuvable', code: 'PARENT_SUB_NOT_FOUND' }, 400);
+    }
   }
 
   // 3. Vérifier que le tier existe (et est actif) dans billing_plans
@@ -531,15 +591,47 @@ export async function handleChangeSubscriptionPlan(
 
     let updatedSub: ClientSubscription | null = null;
     try {
-      await env.DB.prepare(
-        `UPDATE subscriptions
-           SET plan_name = ?, billing_period = ?, provider = 'mock',
-               stripe_price_id = NULL, updated_at = datetime('now')
-         WHERE agency_id = ?`,
-      )
-        .bind(planTier, billingPeriod ?? null, ctx.agencyId)
-        .run();
-      updatedSub = await loadCurrentSubscription(env, ctx.agencyId);
+      if (parentSub) {
+        // Mode multi-produit : insertion d'un abonnement enfant synchronisé
+        const newSubId = crypto.randomUUID();
+        const periodStart = parentSub.currentPeriodStart;
+        const periodEnd = parentSub.currentPeriodEnd;
+        const period = parentSub.billingPeriod;
+
+        await env.DB.prepare(
+          `INSERT INTO subscriptions (
+             id, client_id, agency_id, plan_name, billing_period, provider,
+             stripe_price_id, current_period_start, current_period_end, parent_subscription_id, status, created_at, updated_at
+           ) VALUES (?, ?, ?, ?, ?, 'mock', NULL, ?, ?, ?, 'active', datetime('now'), datetime('now'))`,
+        )
+          .bind(
+            newSubId,
+            ctx.clientId || '',
+            ctx.agencyId,
+            planTier,
+            period,
+            periodStart,
+            periodEnd,
+            parentSubscriptionId,
+          )
+          .run();
+
+        const row = (await env.DB.prepare('SELECT * FROM subscriptions WHERE id = ? LIMIT 1')
+          .bind(newSubId)
+          .first()) as Record<string, unknown> | null;
+        updatedSub = row ? rowToSubscription(row) : null;
+      } else {
+        // Rétrocompatibilité : mise à jour de la souscription principale
+        await env.DB.prepare(
+          `UPDATE subscriptions
+             SET plan_name = ?, billing_period = ?, provider = 'mock',
+                 stripe_price_id = NULL, updated_at = datetime('now')
+           WHERE agency_id = ? AND parent_subscription_id IS NULL`,
+        )
+          .bind(planTier, billingPeriod ?? null, ctx.agencyId)
+          .run();
+        updatedSub = await loadCurrentSubscription(env, ctx.agencyId);
+      }
     } catch (err) {
       if (!isMissingSchemaError(err)) {
         // erreur autre que migration absente → best-effort, on continue mock
@@ -572,9 +664,10 @@ export async function handleChangeSubscriptionPlan(
   // ── Live branch (Sprint 31) ──────────────────────────────────────────────
   // Resolve Stripe Price ID depuis billing_plans (monthly | yearly).
   let stripePriceId: string | null = null;
+  const effectiveBillingPeriod = parentSub ? parentSub.billingPeriod : billingPeriod;
   try {
     const priceCol =
-      billingPeriod === 'yearly' ? 'stripe_price_yearly_id' : 'stripe_price_monthly_id';
+      effectiveBillingPeriod === 'yearly' ? 'stripe_price_yearly_id' : 'stripe_price_monthly_id';
     const priceRow = (await env.DB.prepare(
       `SELECT ${priceCol} AS price_id FROM billing_plans WHERE tier = ? AND is_active = 1 LIMIT 1`,
     )
@@ -608,16 +701,21 @@ export async function handleChangeSubscriptionPlan(
 
     // 2. createSubscription OU updateSubscription selon présence sub Stripe existante
     let stripeSub: Record<string, unknown>;
-    if (currentSub?.stripeSubscriptionId && currentSub.stripeSubscriptionId.startsWith('sub_')) {
-      const idemKey = `sub_change_${ctx.agencyId}_${planTier}_${billingPeriod ?? 'monthly'}`;
+    const isUpdate = !parentSub && currentSub?.stripeSubscriptionId && currentSub.stripeSubscriptionId.startsWith('sub_');
+
+    if (isUpdate) {
+      const idemKey = `sub_change_${ctx.agencyId}_${planTier}_${effectiveBillingPeriod ?? 'monthly'}`;
       stripeSub = await updateStripeSubscription(
         env,
-        currentSub.stripeSubscriptionId,
+        currentSub.stripeSubscriptionId!,
         stripePriceId,
         idemKey,
       );
     } else {
-      const idemKey = `sub_create_${ctx.agencyId}_${planTier}_${billingPeriod ?? 'monthly'}`;
+      const newSubId = crypto.randomUUID();
+      const idemKey = parentSub
+        ? `sub_create_${ctx.agencyId}_${planTier}_child_${newSubId}`
+        : `sub_create_${ctx.agencyId}_${planTier}_${effectiveBillingPeriod ?? 'monthly'}`;
       stripeSub = await createStripeSubscription(env, customerId, stripePriceId, idemKey);
     }
 
@@ -634,33 +732,69 @@ export async function handleChangeSubscriptionPlan(
         ? new Date(stripeSub.current_period_end * 1000).toISOString()
         : null;
 
-    // 3. UPDATE D1 avec données Stripe réelles + live_activated_at (premier passage).
+    // 3. UPDATE ou INSERT D1 avec données Stripe réelles + live_activated_at (premier passage).
     let updatedSub: ClientSubscription | null = null;
     try {
-      await env.DB.prepare(
-        `UPDATE subscriptions
-           SET plan_name = ?, billing_period = ?, provider = 'stripe',
-               status = ?, stripe_subscription_id = ?, stripe_customer_id = ?,
-               stripe_price_id = ?, cancel_at_period_end = ?,
-               current_period_start = ?, current_period_end = ?,
-               live_activated_at = COALESCE(live_activated_at, datetime('now')),
-               updated_at = datetime('now')
-         WHERE agency_id = ?`,
-      )
-        .bind(
-          planTier,
-          billingPeriod ?? null,
-          realStatus,
-          realSubId,
-          customerId,
-          stripePriceId,
-          cancelAtPeriodEnd ? 1 : 0,
-          currentPeriodStart,
-          currentPeriodEnd,
-          ctx.agencyId,
+      if (parentSub) {
+        const newSubId = crypto.randomUUID();
+        const periodStart = parentSub.currentPeriodStart || currentPeriodStart;
+        const periodEnd = parentSub.currentPeriodEnd || currentPeriodEnd;
+
+        await env.DB.prepare(
+          `INSERT INTO subscriptions (
+             id, client_id, agency_id, plan_name, billing_period, provider,
+             status, stripe_subscription_id, stripe_customer_id, stripe_price_id,
+             cancel_at_period_end, current_period_start, current_period_end,
+             parent_subscription_id, live_activated_at, created_at, updated_at
+           ) VALUES (?, ?, ?, ?, ?, 'stripe', ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'), datetime('now'))`,
         )
-        .run();
-      updatedSub = await loadCurrentSubscription(env, ctx.agencyId);
+          .bind(
+            newSubId,
+            ctx.clientId || '',
+            ctx.agencyId,
+            planTier,
+            effectiveBillingPeriod ?? null,
+            realStatus,
+            realSubId,
+            customerId,
+            stripePriceId,
+            cancelAtPeriodEnd ? 1 : 0,
+            periodStart,
+            periodEnd,
+            parentSubscriptionId,
+          )
+          .run();
+
+        const row = (await env.DB.prepare('SELECT * FROM subscriptions WHERE id = ? LIMIT 1')
+          .bind(newSubId)
+          .first()) as Record<string, unknown> | null;
+        updatedSub = row ? rowToSubscription(row) : null;
+      } else {
+        await env.DB.prepare(
+          `UPDATE subscriptions
+             SET plan_name = ?, billing_period = ?, provider = 'stripe',
+                 status = ?, stripe_subscription_id = ?, stripe_customer_id = ?,
+                 stripe_price_id = ?, cancel_at_period_end = ?,
+                 current_period_start = ?, current_period_end = ?,
+                 live_activated_at = COALESCE(live_activated_at, datetime('now')),
+                 updated_at = datetime('now')
+           WHERE agency_id = ? AND parent_subscription_id IS NULL`,
+        )
+          .bind(
+            planTier,
+            effectiveBillingPeriod ?? null,
+            realStatus,
+            realSubId,
+            customerId,
+            stripePriceId,
+            cancelAtPeriodEnd ? 1 : 0,
+            currentPeriodStart,
+            currentPeriodEnd,
+            ctx.agencyId,
+          )
+          .run();
+        updatedSub = await loadCurrentSubscription(env, ctx.agencyId);
+      }
     } catch {
       /* best-effort — colonnes seq126 absentes */
     }
@@ -672,12 +806,12 @@ export async function handleChangeSubscriptionPlan(
       eventType: 'customer.subscription.updated',
       signatureVerified: false,
       isMock: false,
-      payload: { planTier, billingPeriod: billingPeriod ?? null, stripeSubId: realSubId },
+      payload: { planTier, billingPeriod: effectiveBillingPeriod ?? null, stripeSubId: realSubId },
     });
 
     await audit(env, auth.userId, 'billing.plan.change', 'subscription', currentSub?.id ?? '', {
       tier: planTier,
-      period: billingPeriod ?? null,
+      period: effectiveBillingPeriod ?? null,
       mock: false,
       stripeSubId: realSubId,
     });
