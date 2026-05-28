@@ -1892,6 +1892,12 @@ async function routeProtected(
     return await handleGetTwilioWebrtcToken(env, auth);
   }
 
+  // Notifications Push Mobile (Sprint 59)
+  if (path === '/api/user/push-token' && method === 'POST') {
+    const { handleRegisterPushToken } = await import('./worker/push');
+    return await handleRegisterPushToken(request, env, auth);
+  }
+
   // Templates & Snippets
   if (path === '/api/templates' && method === 'GET') return handleGetTemplates(env, auth, url);
   if (path === '/api/templates' && method === 'POST') return handleCreateTemplate(request, env, auth);
@@ -1903,6 +1909,29 @@ async function routeProtected(
   if (dupMatch && method === 'POST') return handleDuplicateTemplate(env, auth, dupMatch[1]!);
   const testEmailMatch = path.match(/^\/api\/templates\/([^/]+)\/test$/);
   if (testEmailMatch && method === 'POST') return handleSendTestEmail(request, env, auth);
+
+  // Email designs (Sprint 60 Constructeur de courriels Drag-and-Drop)
+  if (path === '/api/email-designs' && method === 'GET') {
+    const { handleGetEmailDesigns } = await import('./worker/email-builder');
+    return await handleGetEmailDesigns(env, auth);
+  }
+  if (path === '/api/email-designs' && method === 'POST') {
+    const { handleCreateEmailDesign } = await import('./worker/email-builder');
+    return await handleCreateEmailDesign(request, env, auth);
+  }
+  const emailDesignMatch = path.match(/^\/api\/email-designs\/([^/]+)$/);
+  if (emailDesignMatch && method === 'GET') {
+    const { handleGetEmailDesign } = await import('./worker/email-builder');
+    return await handleGetEmailDesign(env, auth, emailDesignMatch[1]!);
+  }
+  if (emailDesignMatch && method === 'PUT') {
+    const { handleUpdateEmailDesign } = await import('./worker/email-builder');
+    return await handleUpdateEmailDesign(request, env, auth, emailDesignMatch[1]!);
+  }
+  if (emailDesignMatch && method === 'DELETE') {
+    const { handleDeleteEmailDesign } = await import('./worker/email-builder');
+    return await handleDeleteEmailDesign(env, auth, emailDesignMatch[1]!);
+  }
 
   if (path === '/api/snippets' && method === 'GET') { const { handleGetSnippets } = await import('./worker/snippets'); return await handleGetSnippets(env, auth); }
   if (path === '/api/snippets' && method === 'POST') { const { handleCreateSnippet } = await import('./worker/snippets'); return await handleCreateSnippet(request, env, auth); }

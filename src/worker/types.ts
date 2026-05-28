@@ -12,6 +12,9 @@ export interface Env {
   TWILIO_ACCOUNT_SID: string;
   TWILIO_AUTH_TOKEN: string;
   TWILIO_PHONE_NUMBER: string;
+  TWILIO_API_KEY?: string;
+  TWILIO_API_SECRET?: string;
+  TWILIO_TWIML_APP_SID?: string;
   // ── Sprint SMS/WHATSAPP seq 104 — WhatsApp Business (Meta Cloud API) ───────
   // FLAGS INACTIFS par défaut. Tous OPTIONNELS : tant que WHATSAPP_ACCESS_TOKEN
   // est ABSENT, sendWhatsAppTemplate retourne { success:false } SANS appel

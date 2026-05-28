@@ -22,7 +22,7 @@ async function signJwt(payload: any, secret: string, keyId: string): Promise<str
     let binary = '';
     const len = bytes.byteLength;
     for (let i = 0; i < len; i++) {
-      binary += String.fromCharCode(bytes[i]);
+      binary += String.fromCharCode(bytes[i]!);
     }
     return btoa(binary)
       .replace(/=/g, '')
@@ -47,7 +47,7 @@ async function signJwt(payload: any, secret: string, keyId: string): Promise<str
   let binary = '';
   const bytes = new Uint8Array(signatureBuffer);
   for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
+    binary += String.fromCharCode(bytes[i]!);
   }
   const signaturePart = btoa(binary)
     .replace(/=/g, '')

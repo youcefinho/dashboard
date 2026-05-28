@@ -2102,6 +2102,31 @@
         "index:idx_internal_messages_channel"
       ],
       "risk": "low"
+    },
+    {
+      "seq": 151,
+      "file": "migration-push-tokens-seq151.sql",
+      "depends_on": [
+        "migration-internal-channels-seq150.sql"
+      ],
+      "objects": [
+        "table:user_push_tokens",
+        "index:uniq_user_push_tokens_device",
+        "index:idx_user_push_tokens_user"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 152,
+      "file": "migration-email-designs-seq152.sql",
+      "depends_on": [
+        "migration-push-tokens-seq151.sql"
+      ],
+      "objects": [
+        "table:email_designs",
+        "index:idx_email_designs_client"
+      ],
+      "risk": "low"
     }
   ]
 }
