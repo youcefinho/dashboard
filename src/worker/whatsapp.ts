@@ -23,9 +23,10 @@
 //   Manager-C NE LE TOUCHE PAS.
 
 import type { Env } from './types';
-import { json, sanitizeInput } from './helpers';
+import { json, sanitizeInput, createNotification } from './helpers';
 import type { CapAuth } from './capabilities';
 import { requireCapability } from './capabilities';
+import { findOrCreateConversation } from './conversations';
 
 type WhatsAppAuth = CapAuth & { capabilities?: Set<string> };
 
@@ -66,14 +67,151 @@ export async function handleWhatsAppWebhook(request: Request, env: Env): Promise
     return new Response('Forbidden', { status: 403 });
   }
 
-  // POST inbound : accusé 200 best-effort. Manager-B (si besoin) : parse
-  // entry[].changes[].value.messages / .statuses → wiring Inbox (channel
-  // 'whatsapp', messages.delivery_status), calque handleInboundSms.
+  // POST inbound : parse entry[].changes[].value.messages / .statuses
   try {
-    await request.json();
-  } catch {
-    // corps absent/illisible : accusé inerte.
+    const payload = (await request.json()) as any;
+    if (payload?.object === 'whatsapp_business_account') {
+      for (const entry of payload.entry || []) {
+        for (const change of entry.changes || []) {
+          const value = change.value || {};
+          const metadata = value.metadata || {};
+          const phoneNumberId = metadata.phone_number_id;
+
+          if (!phoneNumberId) continue;
+
+          // 1. Résoudre le client_id à partir de phoneNumberId
+          const connection = (await env.DB.prepare(
+            "SELECT client_id FROM whatsapp_connections WHERE phone_number_id = ? AND status = 'active' LIMIT 1"
+          )
+            .bind(phoneNumberId)
+            .first()) as { client_id: string } | null;
+
+          if (!connection) continue;
+          const clientId = connection.client_id;
+
+          // 2. Traiter les messages entrants
+          if (value.messages) {
+            for (const msg of value.messages) {
+              const from = msg.from || '';
+              const messageId = msg.id || '';
+              let bodyText = '';
+
+              if (msg.type === 'text' && msg.text) {
+                bodyText = msg.text.body || '';
+              } else if (msg.type === 'image') {
+                bodyText = '[Image WhatsApp]';
+              } else if (msg.type === 'audio') {
+                bodyText = '[Audio WhatsApp]';
+              } else if (msg.type === 'video') {
+                bodyText = '[Vidéo WhatsApp]';
+              } else if (msg.type === 'document') {
+                bodyText = '[Document WhatsApp]';
+              } else {
+                bodyText = `[Message WhatsApp (${msg.type})]`;
+              }
+
+              if (!from || !bodyText) continue;
+
+              // Chercher le lead par son numéro de téléphone
+              const cleanPhone = from.replace(/\D/g, '').slice(-10);
+              let lead = (await env.DB.prepare(
+                "SELECT id, name, preferred_language FROM leads WHERE REPLACE(REPLACE(REPLACE(phone, '-', ''), ' ', ''), '+', '') LIKE ? AND client_id = ?"
+              )
+                .bind(`%${cleanPhone}`, clientId)
+                .first()) as { id: string; name: string; preferred_language?: string | null } | null;
+
+              if (!lead) {
+                // Créer un lead de manière dynamique si non trouvé
+                const contact = (value.contacts || []).find((c: any) => c.wa_id === from);
+                const profileName = contact?.profile?.name || `Contact WhatsApp ${from}`;
+                const newLeadId = crypto.randomUUID();
+                
+                await env.DB.prepare(
+                  "INSERT INTO leads (id, client_id, name, phone, status, created_at) VALUES (?, ?, ?, ?, 'new', datetime('now'))"
+                )
+                  .bind(newLeadId, clientId, profileName, `+${from}`)
+                  .run();
+
+                lead = { id: newLeadId, name: profileName, preferred_language: 'fr' };
+              }
+
+              // Trouver ou créer la conversation
+              const convId = await findOrCreateConversation(env, lead.id, clientId, 'whatsapp');
+              const sanitizedBody = sanitizeInput(bodyText, 1600);
+
+              // Sauvegarder le message inbound
+              const msgUUID = crypto.randomUUID();
+              await env.DB.prepare(
+                `INSERT INTO messages (id, lead_id, client_id, conversation_id, direction, channel, body, status, sent_by, external_id)
+                 VALUES (?, ?, ?, ?, 'inbound', 'whatsapp', ?, 'delivered', ?, ?)`
+              )
+                .bind(msgUUID, lead.id, clientId, convId, sanitizedBody, from, messageId)
+                .run();
+
+              // Mettre à jour la conversation
+              await env.DB.prepare(
+                `UPDATE conversations SET last_message_at = datetime('now'), last_message_preview = ?, unread_count = unread_count + 1, updated_at = datetime('now') WHERE id = ?`
+              )
+                .bind(sanitizedBody.substring(0, 120), convId)
+                .run();
+
+              // Webhook event message.received
+              try {
+                const { publishEvent } = await import('./webhooks-dispatch');
+                publishEvent(env, clientId, 'message.received', { lead_id: lead.id, channel: 'whatsapp', body: sanitizedBody });
+              } catch (e) {
+                console.error('Webhook error:', e);
+              }
+
+              // Stop on reply (Workflows)
+              const activeEnrollments = await env.DB.prepare(
+                `SELECT we.id, w.trigger_config FROM workflow_enrollments we
+                 JOIN workflows w ON we.workflow_id = w.id
+                 WHERE we.lead_id = ? AND we.status = 'active'`
+              )
+                .bind(lead.id)
+                .all();
+              if (activeEnrollments.results) {
+                for (const enr of activeEnrollments.results as any[]) {
+                  let config: any = {};
+                  try { config = JSON.parse(enr.trigger_config || '{}'); } catch {}
+                  if (config.stop_on_reply) {
+                    await env.DB.prepare("UPDATE workflow_enrollments SET status = 'cancelled' WHERE id = ?").bind(enr.id).run();
+                  }
+                }
+              }
+
+              // Notifier les admins du tenant
+              const { results: admins } = await env.DB.prepare(
+                "SELECT id FROM users WHERE role = 'admin' AND is_active = 1"
+              ).all();
+              for (const admin of (admins || []) as Array<{ id: string }>) {
+                await createNotification(env, admin.id, '💬 WhatsApp reçu', `${lead.name}: "${bodyText.substring(0, 80)}"`, '💬', `/conversations`, clientId);
+              }
+            }
+          }
+
+          // 3. Traiter les statuts de livraison
+          if (value.statuses) {
+            for (const status of value.statuses) {
+              const msgId = status.id || '';
+              const statusName = status.status || ''; // sent, delivered, read, failed
+              if (msgId && statusName) {
+                await env.DB.prepare(
+                  'UPDATE messages SET delivery_status = ? WHERE external_id = ?'
+                )
+                  .bind(statusName, msgId)
+                  .run();
+              }
+            }
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.error('WhatsApp webhook processing error:', e);
   }
+
   return new Response('', { status: 200 });
 }
 
