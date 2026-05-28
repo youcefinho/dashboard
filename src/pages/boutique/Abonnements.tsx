@@ -30,7 +30,8 @@ import {
 import { t, getLocale } from '@/lib/i18n';
 import { formatMoneyCents } from '@/lib/i18n/number';
 import { formatDate } from '@/lib/i18n/datetime';
-import { Repeat, Plus, RefreshCw, AlertTriangle, Play, Pause, Trash2, X } from 'lucide-react';
+import { Repeat, Plus, RefreshCw, AlertTriangle, Play, Pause, Trash2, X, Eye } from 'lucide-react';
+import { SubscriptionDetail } from '@/components/boutique/SubscriptionDetail';
 
 const PAGE_SIZE = 25;
 
@@ -93,6 +94,9 @@ export function AbonnementsPage() {
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [running, setRunning] = useState(false);
+
+  // Panneau détail (lecture seule) — wire getEcommerceSubscription.
+  const [detailId, setDetailId] = useState<string | null>(null);
 
   const load = async () => {
     setIsLoading(true);
@@ -352,7 +356,7 @@ export function AbonnementsPage() {
                     key={s.id}
                     className="list-item-enter cursor-pointer"
                     style={{ animationDelay: `${idx * 24}ms` }}
-                    onClick={() => openEdit(s)}
+                    onClick={() => setDetailId(s.id)}
                   >
                     <td className="col-frozen font-medium">
                       <span className="block truncate max-w-[200px]">{s.customer_id || '—'}</span>
@@ -381,6 +385,11 @@ export function AbonnementsPage() {
                     </td>
                     <td className="text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                       <div className="inline-flex gap-1">
+                        <Button variant="ghost" size="sm" title={t('subsx.view')}
+                          aria-label={t('subsx.view')}
+                          onClick={() => setDetailId(s.id)}>
+                          <Eye size={14} />
+                        </Button>
                         {s.status === 'active' ? (
                           <Button variant="ghost" size="sm" title={t('ecommerce.subscriptions.pause')}
                             onClick={() => void setStatus(s, 'paused')}>
@@ -498,6 +507,15 @@ export function AbonnementsPage() {
           </div>
         </div>
       </Modal>
+
+      <SubscriptionDetail
+        subscriptionId={detailId}
+        onClose={() => setDetailId(null)}
+        onEdit={(s) => { setDetailId(null); openEdit(s); }}
+        statusLabel={statusLabel}
+        statusVariant={statusVariant}
+        intervalLabel={intervalLabel}
+      />
     </AppLayout>
   );
 }

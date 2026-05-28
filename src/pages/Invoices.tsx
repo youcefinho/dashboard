@@ -17,7 +17,8 @@ import { useToast } from '@/components/ui';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { PullToRefreshIndicator } from '@/components/ui/PullToRefreshIndicator';
 import { Modal } from '@/components/ui/Modal';
-import { ChevronRight, FileText, User, Calendar, Download, Plus, Trash2 } from 'lucide-react';
+import { InvoiceDetailModal } from '@/components/billing/InvoiceDetailModal';
+import { ChevronRight, FileText, User, Calendar, Download, Plus, Trash2, Eye } from 'lucide-react';
 import { exportPiecePdf } from '@/lib/pdfExport';
 import { formatCurrency, formatNumber } from '@/lib/i18n/number';
 import { formatDate } from '@/lib/i18n/datetime';
@@ -53,6 +54,9 @@ export function InvoicesPage() {
   const [targetId, setTargetId] = useState('');
   const [clients, setClients] = useState<Array<{ id: string; name: string }>>([]);
   const [leads, setLeads] = useState<Array<{ id: string; name: string }>>([]);
+
+  // Détail facture (getInvoice) — surface les lignes d'articles non renvoyées par la liste
+  const [detailId, setDetailId] = useState<string | null>(null);
 
   const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'sent' | 'draft' | 'cancelled'>('all');
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -402,6 +406,13 @@ export function InvoicesPage() {
                         <td>{getStatusBadge(inv.status)}</td>
                         <td data-print-hide className="text-right">
                           <div className="inline-flex items-center gap-3 justify-end">
+                            <button
+                              onClick={() => setDetailId(inv.id)}
+                              className="inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--text-secondary)] hover:text-[var(--primary)] hover:underline cursor-pointer"
+                              aria-label={t('invoices.action.view_aria')}
+                            >
+                              <Eye size={11} /> {t('invoices.action.view')}
+                            </button>
                             {inv.status === 'draft' && (
                               <button
                                 onClick={() => void updateStatus(inv.id, 'sent')}
@@ -614,6 +625,9 @@ export function InvoicesPage() {
           </div>
         </div>
       </Modal>
+
+      {/* Vue détail — fetch getInvoice(id) à la demande (lignes d'articles + taxes) */}
+      <InvoiceDetailModal invoiceId={detailId} onClose={() => setDetailId(null)} />
       </div>
     </AppLayout>
   );

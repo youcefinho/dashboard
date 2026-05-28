@@ -13,12 +13,14 @@
 // AUCUN CSS global (styles inline locaux légers + tokens existants).
 
 import { useState, useEffect, useCallback } from 'react';
-import { Sparkles, Save, FileStack, Trash2, Plus, RefreshCw, BookOpen } from 'lucide-react';
+import { Sparkles, Save, FileStack, Trash2, Plus, RefreshCw, BookOpen, PenLine, MessageSquare } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import {
   Button, Card, Select, Textarea, Input, EmptyState, Badge, Modal, Switch,
+  Tabs, TabsList, TabsTrigger, TabsContent,
   useToast, useConfirm,
 } from '@/components/ui';
+import { AiAssistantChat } from '@/components/ai/AiAssistantChat';
 import {
   generateAiContent,
   rewriteAiContent,
@@ -289,6 +291,23 @@ export function AiContentPage() {
         <p className="text-sm text-[var(--text-muted)]">{t('aicontent.subtitle')}</p>
       </div>
 
+      <Tabs defaultValue="writer">
+        <TabsList aria-label={t('aiassist.tabs_label')}>
+          <TabsTrigger value="writer">
+            <span className="inline-flex items-center gap-1.5">
+              <PenLine size={14} />
+              {t('aicontent.title')}
+            </span>
+          </TabsTrigger>
+          <TabsTrigger value="assistant">
+            <span className="inline-flex items-center gap-1.5">
+              <MessageSquare size={14} />
+              {t('aiassist.tab')}
+            </span>
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="writer">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* ── Colonne principale : atelier + bibliothèque ── */}
         <div className="lg:col-span-2 space-y-6">
@@ -572,6 +591,13 @@ export function AiContentPage() {
           )}
         </aside>
       </div>
+        </TabsContent>
+
+        {/* ── Onglet Assistant IA conversationnel (chat) ── */}
+        <TabsContent value="assistant">
+          <AiAssistantChat />
+        </TabsContent>
+      </Tabs>
 
       {/* ── Modal éditeur de preset Brand Voice ── */}
       {voiceModal && (

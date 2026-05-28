@@ -22,6 +22,7 @@ import type { Product, ProductCategory } from '@/lib/types';
 import { ProductWizard } from '@/components/ecommerce/ProductWizard';
 import { ProductDetailPanel } from '@/components/ecommerce/ProductDetailPanel';
 import { CategoriesPanel } from '@/components/ecommerce/CategoriesPanel';
+import { VariantInventoryOps } from '@/components/boutique/VariantInventoryOps';
 import {
   Package, Plus, Search, Trash2, ChevronRight, FolderTree, RefreshCw,
 } from 'lucide-react';
@@ -383,6 +384,16 @@ export function ProduitsPage() {
                                     </Button>
                                   </div>
                                 </div>
+                                {/* Variantes + inventaire (additif) — monté seulement quand l'expand est ouvert */}
+                                {isOpen && (
+                                  <div className="mt-4 pt-4 border-t border-[var(--border-subtle)]">
+                                    <VariantInventoryOps
+                                      productId={p.id}
+                                      currency={p.currency || 'CAD'}
+                                      basePrice={p.base_price || 0}
+                                    />
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </td>

@@ -52,6 +52,7 @@ import {
   GitBranch,
   Workflow as WorkflowIcon,
   Filter,
+  Boxes,
 } from 'lucide-react';
 import {
   getMarketplaceListings,
@@ -63,13 +64,20 @@ import {
   getFunnels,
   getWorkflows,
   getSequences,
+  getPacks,
   type MarketplaceListing,
   type MarketplaceReview,
   type MarketplaceKind,
+  type IndustryPack,
 } from '@/lib/api';
 import { t } from '@/lib/i18n';
+import { PackBundleDetail } from '@/components/marketplace/PackBundleDetail';
 
-type Tab = 'browse' | 'publish' | 'mine';
+// Client cible de l'installation des packs métier. Aligné sur Settings.tsx
+// (seul appelant existant de installPack) — clientId 'gatineau' par défaut.
+const PACK_INSTALL_CLIENT_ID = 'gatineau';
+
+type Tab = 'browse' | 'publish' | 'mine' | 'packs';
 type KindFilter = MarketplaceKind | 'all';
 type SortKey = 'popular' | 'recent' | 'rating';
 
@@ -261,6 +269,14 @@ export function MarketplacePage() {
   const [mine, setMine] = useState<MarketplaceListing[]>([]);
   const [mineLoading, setMineLoading] = useState(true);
 
+  // ── Packs métier (onglet « Packs & bundles ») ──
+  // Liste via getPacks() ; détail (snapshot lisible + install) via le composant
+  // enfant PackBundleDetail (getPackDetail / installPack).
+  const [packs, setPacks] = useState<IndustryPack[]>([]);
+  const [packsLoading, setPacksLoading] = useState(true);
+  const [packsError, setPacksError] = useState<string | null>(null);
+  const [packSlug, setPackSlug] = useState<string | null>(null);
+
   // ── Erreurs de chargement (inline retry, role="alert") ──
   const [listError, setListError] = useState<string | null>(null);
   const [mineError, setMineError] = useState<string | null>(null);
@@ -295,6 +311,18 @@ export function MarketplacePage() {
     setMineLoading(false);
   }, []);
 
+  const loadPacks = useCallback(async () => {
+    setPacksLoading(true);
+    setPacksError(null);
+    const res = await getPacks();
+    if (res.data) setPacks(res.data);
+    else {
+      setPacks([]);
+      if (res.error) setPacksError(res.error);
+    }
+    setPacksLoading(false);
+  }, []);
+
   // Débounce de la saisie recherche (~280ms) → debouncedSearch (déclenche le fetch).
   useEffect(() => {
     const id = setTimeout(() => setDebouncedSearch(search), 280);
@@ -309,6 +337,11 @@ export function MarketplacePage() {
   useEffect(() => {
     void loadMine();
   }, [loadMine]);
+
+  // Charge les packs métier à la 1re visite de l'onglet (lazy, best-effort).
+  useEffect(() => {
+    if (tab === 'packs') void loadPacks();
+  }, [tab, loadPacks]);
 
   // Charge les entités source du tenant quand le kind change (onglet Publier).
   const loadSources = useCallback(async (kind: MarketplaceKind) => {
@@ -502,6 +535,12 @@ export function MarketplacePage() {
               <span className="inline-flex items-center gap-1.5">
                 <Icon as={PackageCheck} size="sm" />
                 {t('marketplace.nav')}
+              </span>
+            </TabsTrigger>
+            <TabsTrigger value="packs">
+              <span className="inline-flex items-center gap-1.5">
+                <Icon as={Boxes} size="sm" />
+                {t('mktx.tab')}
               </span>
             </TabsTrigger>
           </TabsList>
@@ -851,6 +890,85 @@ export function MarketplacePage() {
                   </tbody>
                 </table>
               </div>
+            )}
+          </TabsContent>
+
+          {/* ── Onglet 4 — Packs & bundles ── */}
+          <TabsContent value="packs">
+            {packSlug ? (
+              <PackBundleDetail
+                mode="pack"
+                id={packSlug}
+                clientId={PACK_INSTALL_CLIENT_ID}
+                onBack={() => setPackSlug(null)}
+              />
+            ) : (
+              <>
+                {packsError && !packsLoading ? (
+                  <Card
+                    role="alert"
+                    aria-live="polite"
+                    className="p-4 mb-4 border border-[var(--danger)]/40 bg-[var(--danger)]/5 flex items-center justify-between gap-3"
+                  >
+                    <span className="text-sm">{packsError}</span>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => void loadPacks()}
+                    >
+                      {t('action.retry')}
+                    </Button>
+                  </Card>
+                ) : null}
+                {packsLoading ? (
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-busy>
+                    {Array.from({ length: 6 }).map((_, i) => (
+                      <Card key={i} className="p-5">
+                        <Skeleton className="h-5 w-2/3 mb-3" />
+                        <Skeleton className="h-3 w-1/3 mb-4" />
+                        <Skeleton className="h-10 w-full rounded-md" />
+                      </Card>
+                    ))}
+                  </div>
+                ) : packs.length === 0 ? (
+                  <EmptyState
+                    icon={<Icon as={Boxes} size={40} />}
+                    title={t('mktx.empty')}
+                    description={t('mktx.subtitle')}
+                  />
+                ) : (
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {packs.map((p) => (
+                      <Card key={p.id} className="p-5 flex flex-col gap-3 mk-card">
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="font-semibold leading-tight">{p.name}</span>
+                          <Tag variant="info" size="sm">
+                            {t('mktx.pack.tag')}
+                          </Tag>
+                        </div>
+                        {p.industries ? (
+                          <span className="text-xs text-muted">{p.industries}</span>
+                        ) : null}
+                        {p.description ? (
+                          <p className="text-sm text-muted mk-clamp-2">{p.description}</p>
+                        ) : null}
+                        <div className="flex items-center justify-between gap-2 mt-auto pt-2">
+                          <Tag variant="success" size="sm">
+                            {t('marketplace.free')}
+                          </Tag>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => setPackSlug(p.slug)}
+                          >
+                            {t('action.view')}
+                          </Button>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </TabsContent>
         </Tabs>

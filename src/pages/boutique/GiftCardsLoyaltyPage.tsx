@@ -11,7 +11,7 @@
 // i18n. Aucun console.log (CLAUDE.md).
 
 import { useCallback, useEffect, useState } from 'react';
-import { Plus, Gift, Award, type LucideIcon } from 'lucide-react';
+import { Plus, Gift, Award, Wallet, type LucideIcon } from 'lucide-react';
 import { AppLayout } from '../../components/layout/AppLayout';
 import { PageHero } from '../../components/ui/PageHero';
 import { Button } from '../../components/ui/Button';
@@ -23,12 +23,13 @@ import { useToast } from '../../components/ui/Toast';
 import { ModuleGuard } from '../../components/ecommerce/ModuleGuard';
 import { GiftCardManager } from '../../components/giftcards/GiftCardManager';
 import { LoyaltyProgramSettings } from '../../components/loyalty/LoyaltyProgramSettings';
+import { GiftLoyaltyOps } from '../../components/boutique/GiftLoyaltyOps';
 import { getLoyaltyPrograms, type LoyaltyProgram } from '../../lib/api';
 import { t } from '../../lib/i18n';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-type TabKey = 'giftcards' | 'loyalty';
+type TabKey = 'giftcards' | 'loyalty' | 'operations';
 
 // ── Composant ──────────────────────────────────────────────────────────────
 
@@ -62,9 +63,10 @@ export function GiftCardsLoyaltyPage() {
     setProgramsLoaded(true);
   }, [toastError]);
 
-  // Lazy-load la liste à la première activation de l'onglet loyalty.
+  // Lazy-load la liste à la première activation des onglets loyalty / ops
+  // (l'onglet opérations a besoin de la liste des programmes pour le sélecteur).
   useEffect(() => {
-    if (tab === 'loyalty' && !programsLoaded) {
+    if ((tab === 'loyalty' || tab === 'operations') && !programsLoaded) {
       void loadPrograms();
     }
   }, [tab, programsLoaded, loadPrograms]);
@@ -93,11 +95,17 @@ export function GiftCardsLoyaltyPage() {
 
   // ── Header dynamique selon tab actif ─────────────────────────────────────
   const heroTitle =
-    tab === 'giftcards' ? t('giftCards.title') : t('loyalty.title');
+    tab === 'giftcards'
+      ? t('giftCards.title')
+      : tab === 'loyalty'
+        ? t('loyalty.title')
+        : t('giftloyalty.ops.title');
   const heroDescription =
     tab === 'giftcards'
       ? t('giftCards.description')
-      : t('loyalty.description');
+      : tab === 'loyalty'
+        ? t('loyalty.description')
+        : t('giftloyalty.ops.description');
 
   return (
     <AppLayout title={heroTitle}>
@@ -129,6 +137,13 @@ export function GiftCardsLoyaltyPage() {
             label={t('loyalty.title')}
             testId="tab-loyalty"
           />
+          <TabButton
+            active={tab === 'operations'}
+            onClick={() => setTab('operations')}
+            icon={Wallet}
+            label={t('giftloyalty.ops.tab')}
+            testId="tab-operations"
+          />
         </nav>
 
         {/* ── Tab panels ──────────────────────────────────────────────────── */}
@@ -140,7 +155,7 @@ export function GiftCardsLoyaltyPage() {
           >
             <GiftCardManager />
           </section>
-        ) : (
+        ) : tab === 'loyalty' ? (
           <section
             role="tabpanel"
             aria-label={t('loyalty.title')}
@@ -253,6 +268,32 @@ export function GiftCardsLoyaltyPage() {
                   </li>
                 ))}
               </ul>
+            )}
+          </section>
+        ) : (
+          <section
+            role="tabpanel"
+            aria-label={t('giftloyalty.ops.title')}
+            data-testid="panel-operations"
+          >
+            {programsLoading ? (
+              <div
+                className="space-y-3"
+                aria-busy="true"
+                data-testid="operations-loading"
+              >
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="p-5 rounded-xl border border-[var(--border-subtle)] bg-white"
+                  >
+                    <Skeleton className="h-5 w-1/3 mb-2" />
+                    <Skeleton className="h-3 w-2/3" />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <GiftLoyaltyOps programs={programs} />
             )}
           </section>
         )}

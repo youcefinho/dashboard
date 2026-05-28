@@ -41,6 +41,7 @@ import {
   type BookingEventType,
 } from '@/lib/api';
 import { t } from '@/lib/i18n';
+import { BookingManagement } from '@/components/booking/BookingManagement';
 
 // Brouillon d'édition (sous-ensemble éditable — price_cents JAMAIS exposé).
 type Draft = {
@@ -355,6 +356,10 @@ export function BookingSettingsPage() {
             </div>
           )}
         </Card>
+
+        {/* Gestion réservations : pages publiques, disponibilités, RDV à venir
+            (surface ADDITIVE — composant enfant, helpers api existants). */}
+        <BookingManagement />
       </div>
 
       {/* Modal création / édition d'un type de RDV (price_cents NON exposé) */}

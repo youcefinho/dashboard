@@ -3,7 +3,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, Button, Tag, Skeleton, EmptyState, useConfirm, KpiStrip, Textarea, PageHero, Icon } from '@/components/ui';
 import type { KpiItem } from '@/components/ui';
 import { Input } from '@/components/ui/Input';
-import { getDocumentTemplates, createDocumentTemplate, deleteDocumentTemplate, type DocumentTemplate } from '@/lib/api';
+import { getDocumentTemplates, createDocumentTemplate, updateDocumentTemplate, deleteDocumentTemplate, type DocumentTemplate } from '@/lib/api';
 import { FileText, Plus, Trash2, Edit, CheckCircle2 } from 'lucide-react';
 import { t } from '@/lib/i18n';
 
@@ -14,9 +14,29 @@ export function DocumentTemplatesPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [newTitle, setNewTitle] = useState('');
   const [newHtml, setNewHtml] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+
+  const isEditing = editingId !== null;
+  const isFormOpen = isCreating || isEditing;
+
+  const closeForm = () => {
+    setIsCreating(false);
+    setEditingId(null);
+    setNewTitle('');
+    setNewHtml('');
+    setActionError(null);
+  };
+
+  const startEdit = (tpl: DocumentTemplate) => {
+    setActionError(null);
+    setIsCreating(false);
+    setEditingId(tpl.id);
+    setNewTitle(tpl.name);
+    setNewHtml(tpl.body_html);
+  };
 
   const loadTemplates = async () => {
     setIsLoading(true);
@@ -36,23 +56,23 @@ export function DocumentTemplatesPage() {
     void loadTemplates();
   }, []);
 
-  const handleCreate = async () => {
-    if (!newTitle || !newHtml || isSaving) return;
+  const handleSave = async () => {
+    const name = newTitle.trim();
+    const html = newHtml.trim();
+    if (!name || !html || isSaving) return;
     setActionError(null);
     setIsSaving(true);
     try {
-      await createDocumentTemplate({
-        name: newTitle,
-        body_html: newHtml,
-        category: 'contract',
-      });
-      setIsCreating(false);
-      setNewTitle('');
-      setNewHtml('');
+      if (editingId) {
+        await updateDocumentTemplate(editingId, { name, body_html: html });
+      } else {
+        await createDocumentTemplate({ name, body_html: html, category: 'contract' });
+      }
+      closeForm();
       void loadTemplates();
     } catch (e) {
       console.error(e);
-      setActionError(t('doc_tpl.error_create'));
+      setActionError(t(editingId ? 'doctpl.error_update' : 'doc_tpl.error_create'));
     } finally {
       setIsSaving(false);
     }
@@ -98,8 +118,8 @@ export function DocumentTemplatesPage() {
         title={t('doc_tpl.page.title')}
         highlight={t('doc_tpl.page.title')}
         description={t('doc_tpl.hero.desc')}
-        actions={!isCreating && (
-          <Button variant="premium" onClick={() => setIsCreating(true)} leftIcon={<Icon as={Plus} size="sm" />}>
+        actions={!isFormOpen && (
+          <Button variant="premium" onClick={() => { closeForm(); setIsCreating(true); }} leftIcon={<Icon as={Plus} size="sm" />}>
             {t('doc_tpl.action.new')}
           </Button>
         )}
@@ -125,9 +145,9 @@ export function DocumentTemplatesPage() {
         </div>
       )}
 
-      {isCreating && (
+      {isFormOpen && (
         <Card className="p-6 mb-6 animate-fade-in border border-[var(--primary)]">
-          <h3 className="text-lg font-bold mb-4">{t('doc_tpl.form.title')}</h3>
+          <h3 className="text-lg font-bold mb-4">{isEditing ? t('doctpl.form.edit_title') : t('doc_tpl.form.title')}</h3>
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium mb-1" htmlFor="doc-tpl-name">{t('doc_tpl.form.name')}</label>
@@ -153,9 +173,9 @@ export function DocumentTemplatesPage() {
               </p>
             </div>
             <div className="flex gap-2 justify-end">
-              <Button variant="secondary" onClick={() => { setIsCreating(false); setActionError(null); }}>{t('doc_tpl.form.cancel')}</Button>
-              <Button onClick={() => void handleCreate()} disabled={isSaving || !newTitle.trim() || !newHtml.trim()}>
-                {isSaving ? t('doc_tpl.form.saving') : t('doc_tpl.form.save')}
+              <Button variant="secondary" onClick={closeForm}>{t('doc_tpl.form.cancel')}</Button>
+              <Button onClick={() => void handleSave()} disabled={isSaving || !newTitle.trim() || !newHtml.trim()}>
+                {isSaving ? t('doc_tpl.form.saving') : isEditing ? t('doctpl.form.update') : t('doc_tpl.form.save')}
               </Button>
             </div>
           </div>
@@ -196,7 +216,7 @@ export function DocumentTemplatesPage() {
           description={t('doc_tpl.error_load_desc')}
           action={<Button variant="primary" onClick={() => void loadTemplates()}>{t('doc_tpl.error_retry')}</Button>}
         />
-      ) : templates.length === 0 && !isCreating ? (
+      ) : templates.length === 0 && !isFormOpen ? (
         <EmptyState
           variant="first-time"
           icon={<Icon as={FileText} size={48} />}
@@ -215,6 +235,7 @@ export function DocumentTemplatesPage() {
                 <div className="flex gap-1">
                   <button
                     type="button"
+                    onClick={() => startEdit(tpl)}
                     aria-label={t('doc_tpl.action.edit_aria', { name: tpl.name })}
                     className="p-1.5 text-[var(--text-muted)] hover:text-[var(--primary)] rounded hover:bg-[var(--bg-subtle)] transition-colors"
                   >

@@ -9,6 +9,13 @@ import { json, audit } from './helpers';
 import { capabilityOverrideSchema, auditLogQuerySchema } from '../lib/schemas';
 import { requireCapability, type Capability } from './capabilities';
 import type { AuditLogEntry, CapabilityOverride } from '../lib/types';
+// Phase 1 V2 — câblage engine : délègue parsing path + format de ligne au
+// security-admin-engine (helpers purs, déjà testés). Sur-ensemble strict des
+// versions inline historiques → sortie identique pour toute entrée valide.
+import {
+  extractUserIdFromPath,
+  formatAuditLogEntry,
+} from './lib/security-admin-engine';
 
 interface AdminAuth {
   userId: string;
@@ -35,31 +42,8 @@ function capGuard(
   return undefined;
 }
 
-// ── Parse `details` JSON best-effort (audit_log.details = TEXT). ──────────
-function parseDetails(raw: unknown): Record<string, unknown> {
-  if (raw == null) return {};
-  if (typeof raw === 'object') return raw as Record<string, unknown>;
-  if (typeof raw === 'string') {
-    try { return JSON.parse(raw) as Record<string, unknown>; }
-    catch { return {}; }
-  }
-  return {};
-}
-
-// ── Extract `:userId` (et `:capability`) du path RBAC ─────────────────────
-// /api/admin/capability-overrides/<userId>[/<capability>]
-function extractUserIdFromPath(path: string): { userId: string; capability: string | null } {
-  // strip query/hash si jamais présents
-  const clean = (path.split('?')[0] ?? path).split('#')[0] ?? '';
-  const parts = clean.split('/').filter(Boolean);
-  // parts: ['api', 'admin', 'capability-overrides', '<userId>', '<capability>?']
-  const idx = parts.findIndex((p) => p === 'capability-overrides');
-  if (idx < 0 || idx + 1 >= parts.length) return { userId: '', capability: null };
-  const userId = decodeURIComponent(parts[idx + 1] ?? '');
-  const capabilityPart = parts[idx + 2];
-  const capability = capabilityPart ? decodeURIComponent(capabilityPart) : null;
-  return { userId, capability };
-}
+// parseDetails + extractUserIdFromPath : déplacés vers security-admin-engine
+// (helpers purs `parseDetailsField`/`extractUserIdFromPath`, importés ci-dessus).
 
 // ── GET /api/admin/audit-log ─────────────────────────────────────────────
 // Garde : settings.manage (mode-agence-only). Filtres URL : action, user_id,
@@ -152,23 +136,9 @@ export async function handleGetAuditLog(
       }
     }
 
-    const entries: AuditLogEntry[] = rows.map((r) => {
-      const row = r as Record<string, unknown>;
-      return {
-        id: Number(row.id ?? 0),
-        user_id: (row.user_id as string | null) ?? null,
-        action: String(row.action ?? ''),
-        resource_type: (row.resource_type as string | null) ?? null,
-        resource_id: (row.resource_id as string | null) ?? null,
-        details: parseDetails(row.details),
-        ip: (row.ip as string | null) ?? null,
-        user_agent: (row.user_agent as string | null) ?? null,
-        request_id: (row.request_id as string | null) ?? null,
-        tenant_id: (row.tenant_id as string | null) ?? null,
-        redacted: Number(row.redacted ?? 0),
-        created_at: String(row.created_at ?? ''),
-      };
-    });
+    const entries: AuditLogEntry[] = rows.map(
+      (r) => formatAuditLogEntry(r as Record<string, unknown>) as AuditLogEntry,
+    );
 
     // 5) Audit de la consultation elle-même (méta-audit).
     await audit(env, auth.userId, 'admin.audit_log.viewed', 'audit_log', '', {

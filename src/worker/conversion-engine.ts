@@ -35,6 +35,10 @@ import type { Env } from './types';
 import { json } from './helpers';
 import type { CapAuth, Capability } from './capabilities';
 import { requireCapability } from './capabilities';
+// Phase 1 V2 — câblage engine (⚠️ behavior-change assumé) : confiance déléguée à
+// conversion-helpers-engine.confidenceFromSampleSize → seuils PLUS FINS
+// (>500 high / >50 medium / sinon low) vs legacy (≥50 high / ≥10 medium).
+import { confidenceFromSampleSize } from './lib/conversion-helpers-engine';
 
 // Auth enrichi tel que produit au choke-point worker.ts (authCtx) — calque
 // ProactiveAuth (proactive-ai.ts). `id` legacy historique conservé.
@@ -217,9 +221,8 @@ async function computeBaseDeterministic(
 }
 
 function confidenceFromSample(sampleSize: number): 'low' | 'medium' | 'high' {
-  if (sampleSize >= 50) return 'high';
-  if (sampleSize >= MIN_SAMPLE_FOR_CALIBRATION) return 'medium';
-  return 'low';
+  // Câblage engine : délègue à confidenceFromSampleSize (seuils plus fins).
+  return confidenceFromSampleSize(sampleSize);
 }
 
 // ════════════════════════════════════════════════════════════════════════════

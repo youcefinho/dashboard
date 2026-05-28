@@ -44,8 +44,10 @@ import { ReportTemplatesGallery } from '@/components/reports/ReportTemplatesGall
 // LOT ATTRIBUTION-D Sprint D — Phase B Manager-C : attribution multi-touch + cohortes
 import { AttributionPanel } from '@/components/reports/AttributionPanel';
 import { CohortHeatmap } from '@/components/reports/CohortHeatmap';
+// Surface invisible reports — agrégats serveur (overview/conversion/sources/baselines)
+import { ServerAnalyticsPanel } from '@/components/reports/ServerAnalyticsPanel';
 
-type ReportTab = 'sales' | 'funnel' | 'sources' | 'performance' | 'trends' | 'activity' | 'workflow' | 'email' | 'sms' | 'calendar' | 'forms' | 'reviews' | 'builder' | 'scheduled' | 'templates' | 'attribution' | 'cohorts';
+type ReportTab = 'sales' | 'funnel' | 'sources' | 'performance' | 'trends' | 'activity' | 'workflow' | 'email' | 'sms' | 'calendar' | 'forms' | 'reviews' | 'builder' | 'scheduled' | 'templates' | 'attribution' | 'cohorts' | 'server';
 
 // Sprint LOT 1-3 — TABS via factory pour relire t() au runtime (i18n parité 4 catalogues)
 function buildTabs(): { id: ReportTab; icon: typeof BarChart3; label: string; group: string }[] {
@@ -65,6 +67,8 @@ function buildTabs(): { id: ReportTab; icon: typeof BarChart3; label: string; gr
     { id: 'funnel', icon: BarChart3, label: t('reports.tab.funnel'), group: G_BUSINESS },
     { id: 'sources', icon: Target, label: t('reports.tab.sources'), group: G_BUSINESS },
     { id: 'trends', icon: TrendingUp, label: t('reports.tab.trends'), group: G_BUSINESS },
+    // Surface invisible reports — agrégats serveur (overview/conversion/sources/baselines)
+    { id: 'server', icon: Activity, label: t('reportsx.tab.server'), group: G_BUSINESS },
     // LOT ATTRIBUTION-D — cohortes de leads (rétention par mois d'acquisition)
     { id: 'cohorts', icon: Users, label: t('cohort.tab'), group: G_BUSINESS },
     { id: 'performance', icon: Trophy, label: t('reports.tab.performance'), group: G_AGENCE },
@@ -81,7 +85,7 @@ function buildTabs(): { id: ReportTab; icon: typeof BarChart3; label: string; gr
 }
 const TABS = buildTabs();
 
-const VALID_TABS = new Set<ReportTab>(['sales', 'funnel', 'sources', 'performance', 'trends', 'activity', 'workflow', 'email', 'sms', 'calendar', 'forms', 'reviews', 'builder', 'scheduled', 'templates', 'attribution', 'cohorts']);
+const VALID_TABS = new Set<ReportTab>(['sales', 'funnel', 'sources', 'performance', 'trends', 'activity', 'workflow', 'email', 'sms', 'calendar', 'forms', 'reviews', 'builder', 'scheduled', 'templates', 'attribution', 'cohorts', 'server']);
 const VALID_PERIODS = new Set<'30d' | '90d' | '12m'>(['30d', '90d', '12m']);
 
 // ── Sprint 30 vague 30-1C — Read URL params (?view=funnel&period=90d) ──
@@ -920,6 +924,8 @@ export function ReportsPage() {
       // autonomes qui fetchent via getReportsAttribution / getLeadCohorts.
       case 'attribution': return <AttributionPanel />;
       case 'cohorts': return <CohortHeatmap />;
+      // Surface invisible reports — agrégats serveur, respecte la période (days)
+      case 'server': return <ServerAnalyticsPanel days={periodDays} />;
       default: return null;
     }
   };
@@ -1050,7 +1056,7 @@ export function ReportsPage() {
             </Card>
           ) : /* Sprint 46 M1 — Le builder reste accessible même sans leads (l'user
              peut créer un dashboard avant d'avoir de la donnée). */
-          leads.length === 0 && activeTab !== 'builder' && activeTab !== 'scheduled' && activeTab !== 'templates' ? (
+          leads.length === 0 && activeTab !== 'builder' && activeTab !== 'scheduled' && activeTab !== 'templates' && activeTab !== 'server' ? (
             <Card className="p-0">
               <EmptyState
                 variant="first-time"

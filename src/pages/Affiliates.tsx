@@ -35,6 +35,7 @@ import {
   TabsTrigger,
   TabsContent,
   PageHero,
+  SlidePanel,
   useToast,
   useConfirm,
 } from '@/components/ui';
@@ -49,6 +50,7 @@ import {
   Share2,
   DollarSign,
   Link2,
+  Eye,
 } from 'lucide-react';
 import {
   getAffiliateProgram,
@@ -60,11 +62,20 @@ import {
   getAffiliateCommissions,
   updateCommissionStatus,
   exportCommissionsCsv,
+  getAffiliateById,
+  listReferrals,
+  confirmReferral,
+  listPayouts,
 } from '@/lib/api';
 import type {
   Affiliate,
   AffiliateProgram,
   AffiliateCommission,
+  AffiliateExtended,
+  AffiliateReferral,
+  AffiliateReferralStatus,
+  AffiliatePayout,
+  AffiliatePayoutStatus,
 } from '@/lib/api';
 import { t } from '@/lib/i18n';
 
@@ -86,6 +97,41 @@ const COMMISSION_LABEL: Record<CommissionStatus, string> = {
   paid: t('affiliate.commission.status.paid'),
   rejected: t('affiliate.commission.status.rejected'),
 };
+
+// Mapping statut referral (Sprint 49 order-based) → variant Tag.
+const REFERRAL_TAG: Record<AffiliateReferralStatus, 'warning' | 'info' | 'success' | 'danger'> = {
+  pending: 'warning',
+  confirmed: 'info',
+  paid: 'success',
+  reversed: 'danger',
+};
+
+// Mapping statut payout → variant Tag.
+const PAYOUT_TAG: Record<AffiliatePayoutStatus, 'warning' | 'success' | 'danger'> = {
+  pending: 'warning',
+  paid: 'success',
+  failed: 'danger',
+};
+
+// Libellés statut referral — réutilise les clés communes `common.status.*`.
+const REFERRAL_LABEL: Record<AffiliateReferralStatus, string> = {
+  pending: t('common.status.pending'),
+  confirmed: t('common.status.confirmed'),
+  paid: t('common.status.paid'),
+  reversed: t('common.status.reversed'),
+};
+
+const PAYOUT_LABEL: Record<AffiliatePayoutStatus, string> = {
+  pending: t('common.status.pending'),
+  paid: t('common.status.paid'),
+  failed: t('common.status.failed'),
+};
+
+// Montants Sprint 49 stockés en cents (vs AffiliateCommission.amount en unités).
+function fmtCents(cents?: number | null, currency?: string | null): string {
+  const n = typeof cents === 'number' ? cents / 100 : 0;
+  return fmtAmount(n, currency);
+}
 
 function affiliateLink(code: string | null | undefined): string {
   const origin =
@@ -155,6 +201,20 @@ export function AffiliatesPage() {
   const [affError, setAffError] = useState<string | null>(null);
   const [commError, setCommError] = useState<string | null>(null);
 
+  // ── Panneau détail affilié (getAffiliateById + referrals + payouts) ──
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const [detail, setDetail] = useState<AffiliateExtended | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
+  const [referrals, setReferrals] = useState<AffiliateReferral[]>([]);
+  const [referralsLoading, setReferralsLoading] = useState(false);
+  const [referralsError, setReferralsError] = useState<string | null>(null);
+  const [payouts, setPayouts] = useState<AffiliatePayout[]>([]);
+  const [payoutsLoading, setPayoutsLoading] = useState(false);
+  const [payoutsError, setPayoutsError] = useState<string | null>(null);
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+
   // ── Loaders ──
   const loadProgram = useCallback(async () => {
     setProgLoading(true);
@@ -201,6 +261,73 @@ export function AffiliatesPage() {
   useEffect(() => {
     void loadCommissions();
   }, [loadCommissions]);
+
+  // ── Détail affilié : loaders (détail / referrals / payouts) ──
+  const loadDetail = useCallback(async (id: string) => {
+    setDetailLoading(true);
+    setDetailError(null);
+    const res = await getAffiliateById(id);
+    if (res.data) setDetail(res.data);
+    else if (res.error) setDetailError(res.error);
+    setDetailLoading(false);
+  }, []);
+
+  const loadReferrals = useCallback(async (id: string) => {
+    setReferralsLoading(true);
+    setReferralsError(null);
+    const res = await listReferrals({ affiliate_id: id });
+    if (res.data) setReferrals(res.data);
+    else if (res.error) setReferralsError(res.error);
+    setReferralsLoading(false);
+  }, []);
+
+  const loadPayouts = useCallback(async (id: string) => {
+    setPayoutsLoading(true);
+    setPayoutsError(null);
+    const res = await listPayouts({ affiliate_id: id });
+    if (res.data) setPayouts(res.data);
+    else if (res.error) setPayoutsError(res.error);
+    setPayoutsLoading(false);
+  }, []);
+
+  useEffect(() => {
+    if (!detailOpen || !detailId) return;
+    void loadDetail(detailId);
+    void loadReferrals(detailId);
+    void loadPayouts(detailId);
+  }, [detailOpen, detailId, loadDetail, loadReferrals, loadPayouts]);
+
+  const openDetail = (a: Affiliate) => {
+    // Hydrate immédiatement depuis la ligne (perçu instantané), puis fetch frais.
+    setDetail(a as AffiliateExtended);
+    setReferrals([]);
+    setPayouts([]);
+    setDetailError(null);
+    setReferralsError(null);
+    setPayoutsError(null);
+    setDetailId(a.id);
+    setDetailOpen(true);
+  };
+
+  const handleConfirmReferral = async (r: AffiliateReferral) => {
+    const ok = await confirm({
+      title: t('affx.referral.confirm'),
+      description: t('affx.referral.confirm_desc'),
+    });
+    if (!ok) return;
+    setConfirmingId(r.id);
+    const res = await confirmReferral(r.id);
+    setConfirmingId(null);
+    if (res.data) {
+      const updated = res.data;
+      setReferrals((prev) =>
+        prev.map((x) => (x.id === r.id ? { ...x, ...updated } : x)),
+      );
+      success(t('affx.referral.confirmed'));
+    } else {
+      toastError(res.error || t('affx.referral.confirm'));
+    }
+  };
 
   // ── Programme : save ──
   const handleSaveProgram = async () => {
@@ -614,6 +741,13 @@ export function AffiliatesPage() {
                             <Button
                               variant="ghost"
                               size="sm"
+                              leftIcon={<Icon as={Eye} size="sm" />}
+                              onClick={() => openDetail(a)}
+                              aria-label={t('affx.detail.open')}
+                            />
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               leftIcon={<Icon as={Pencil} size="sm" />}
                               onClick={() => openEditAff(a)}
                               aria-label={t('action.edit')}
@@ -832,6 +966,268 @@ export function AffiliatesPage() {
           </div>
         </div>
       </Modal>
+
+      {/* ── Panneau latéral : détail affilié + referrals + payouts ── */}
+      <SlidePanel
+        open={detailOpen}
+        onOpenChange={(o) => {
+          setDetailOpen(o);
+          if (!o) setDetailId(null);
+        }}
+        title={detail?.name || detail?.email || detail?.code || t('affx.detail.title')}
+        description={t('affx.detail.title')}
+        size="lg"
+        closeLabel={t('action.close')}
+      >
+        <div className="flex flex-col gap-6" aria-busy={detailLoading}>
+          {/* Bloc identité / KPIs */}
+          {detailError ? (
+            <Card
+              role="alert"
+              aria-live="polite"
+              className="p-4 border border-[var(--danger)]/40 bg-[var(--danger)]/5 flex items-center justify-between gap-3"
+            >
+              <span className="text-sm">{detailError}</span>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => detailId && void loadDetail(detailId)}
+              >
+                {t('action.retry')}
+              </Button>
+            </Card>
+          ) : detailLoading && !detail ? (
+            <Card className="p-5">
+              <Skeleton className="h-4 w-1/3 mb-3" />
+              <Skeleton className="h-10 w-full" />
+            </Card>
+          ) : detail ? (
+            <Card className="p-5 flex flex-col gap-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <p className="prop-label">{t('affiliate.list.email')}</p>
+                  <p className="text-sm">{detail.email || '—'}</p>
+                </div>
+                <div>
+                  <p className="prop-label">{t('affiliate.list.code')}</p>
+                  <p className="text-sm font-mono">{detail.code || '—'}</p>
+                </div>
+                <div>
+                  <p className="prop-label">{t('affx.detail.tier')}</p>
+                  <p className="text-sm">{detail.tier || '—'}</p>
+                </div>
+                <div>
+                  <p className="prop-label">{t('affx.detail.commission_pct')}</p>
+                  <p className="text-sm tabular-nums">
+                    {typeof detail.commission_pct === 'number'
+                      ? `${detail.commission_pct}%`
+                      : '—'}
+                  </p>
+                </div>
+                <div>
+                  <p className="prop-label">{t('affx.detail.total_commissions')}</p>
+                  <p className="text-sm tabular-nums">
+                    {fmtCents(detail.total_commissions_cents)}
+                  </p>
+                </div>
+                <div>
+                  <p className="prop-label">{t('affx.detail.total_referrals')}</p>
+                  <p className="text-sm tabular-nums">
+                    {typeof detail.total_referrals_count === 'number'
+                      ? detail.total_referrals_count
+                      : '—'}
+                  </p>
+                </div>
+                <div>
+                  <p className="prop-label">{t('affx.detail.payout_method')}</p>
+                  <p className="text-sm">{detail.payout_method || '—'}</p>
+                </div>
+                <div>
+                  <p className="prop-label">{t('affiliate.program.status')}</p>
+                  <Tag
+                    variant={
+                      (detail.status || 'active') === 'active'
+                        ? 'success'
+                        : 'neutral'
+                    }
+                    size="sm"
+                    statusIcon
+                  >
+                    {(detail.status || 'active') === 'active'
+                      ? t('affiliate.status.active')
+                      : t('affiliate.status.inactive')}
+                  </Tag>
+                </div>
+              </div>
+            </Card>
+          ) : null}
+
+          {/* Bloc referrals */}
+          <section className="flex flex-col gap-2">
+            <h3 className="text-sm font-semibold">{t('affx.referral.title')}</h3>
+            {referralsError ? (
+              <Card
+                role="alert"
+                aria-live="polite"
+                className="p-4 border border-[var(--danger)]/40 bg-[var(--danger)]/5 flex items-center justify-between gap-3"
+              >
+                <span className="text-sm">{referralsError}</span>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => detailId && void loadReferrals(detailId)}
+                >
+                  {t('action.retry')}
+                </Button>
+              </Card>
+            ) : referralsLoading ? (
+              <div className="flex flex-col gap-2" aria-busy="true">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <Skeleton key={i} className="h-12 w-full rounded-md" />
+                ))}
+              </div>
+            ) : referrals.length === 0 ? (
+              <EmptyState
+                icon={<Icon as={Share2} size={32} />}
+                title={t('affx.referral.title')}
+                description={t('affx.referral.empty')}
+              />
+            ) : (
+              <div className="table-premium-container affiliate-table-wrap">
+                <table className="table-premium">
+                  <thead>
+                    <tr>
+                      <th>{t('affx.referral.order')}</th>
+                      <th>{t('affiliate.commission.amount')}</th>
+                      <th>{t('common.status')}</th>
+                      <th>{t('common.created_at')}</th>
+                      <th aria-hidden="true" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {referrals.map((r) => {
+                      const status =
+                        (r.status as AffiliateReferralStatus) || 'pending';
+                      return (
+                        <tr key={r.id} className="affiliate-row">
+                          <td className="font-mono text-xs">
+                            {r.order_id || '—'}
+                          </td>
+                          <td className="tabular-nums">
+                            {fmtCents(r.commission_cents)}
+                          </td>
+                          <td>
+                            <Tag
+                              variant={REFERRAL_TAG[status]}
+                              size="sm"
+                              statusIcon
+                            >
+                              {REFERRAL_LABEL[status]}
+                            </Tag>
+                          </td>
+                          <td className="text-muted">{fmtDate(r.created_at)}</td>
+                          <td>
+                            <div className="row-quick-actions flex items-center justify-end gap-1">
+                              {status === 'pending' && (
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  isLoading={confirmingId === r.id}
+                                  onClick={() => void handleConfirmReferral(r)}
+                                >
+                                  {t('affx.referral.confirm')}
+                                </Button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+
+          {/* Bloc payouts */}
+          <section className="flex flex-col gap-2">
+            <h3 className="text-sm font-semibold">{t('affx.payout.title')}</h3>
+            {payoutsError ? (
+              <Card
+                role="alert"
+                aria-live="polite"
+                className="p-4 border border-[var(--danger)]/40 bg-[var(--danger)]/5 flex items-center justify-between gap-3"
+              >
+                <span className="text-sm">{payoutsError}</span>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => detailId && void loadPayouts(detailId)}
+                >
+                  {t('action.retry')}
+                </Button>
+              </Card>
+            ) : payoutsLoading ? (
+              <div className="flex flex-col gap-2" aria-busy="true">
+                {Array.from({ length: 2 }).map((_, i) => (
+                  <Skeleton key={i} className="h-12 w-full rounded-md" />
+                ))}
+              </div>
+            ) : payouts.length === 0 ? (
+              <EmptyState
+                icon={<Icon as={DollarSign} size={32} />}
+                title={t('affx.payout.title')}
+                description={t('affx.payout.empty')}
+              />
+            ) : (
+              <div className="table-premium-container affiliate-table-wrap">
+                <table className="table-premium">
+                  <thead>
+                    <tr>
+                      <th>{t('affx.payout.period')}</th>
+                      <th>{t('affiliate.commission.amount')}</th>
+                      <th>{t('affx.payout.referrals_count')}</th>
+                      <th>{t('common.status')}</th>
+                      <th>{t('affx.payout.paid_at')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {payouts.map((p) => {
+                      const status =
+                        (p.status as AffiliatePayoutStatus) || 'pending';
+                      return (
+                        <tr key={p.id} className="affiliate-row">
+                          <td className="text-muted text-xs">
+                            {fmtDate(p.period_start)} – {fmtDate(p.period_end)}
+                          </td>
+                          <td className="tabular-nums">
+                            {fmtCents(p.total_cents)}
+                          </td>
+                          <td className="tabular-nums">
+                            {typeof p.referrals_count === 'number'
+                              ? p.referrals_count
+                              : '—'}
+                          </td>
+                          <td>
+                            <Tag
+                              variant={PAYOUT_TAG[status]}
+                              size="sm"
+                              statusIcon
+                            >
+                              {PAYOUT_LABEL[status]}
+                            </Tag>
+                          </td>
+                          <td className="text-muted">{fmtDate(p.paid_at)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        </div>
+      </SlidePanel>
     </AppLayout>
   );
 }

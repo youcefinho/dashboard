@@ -108,6 +108,13 @@ vi.mock('../components/snapshots/SnapshotManager', () => ({
   ),
 }));
 
+// SnapshotDetail : stub — évite useToast sans ToastProvider.
+vi.mock('../components/snapshots/SnapshotDetail', () => ({
+  SnapshotDetail: () => (
+    <div data-testid="snapshot-detail-stub">SnapshotDetail</div>
+  ),
+}));
+
 // SnapshotImportWizard : stub — expose open, onClose, targetClientId.
 const lastWizardProps: {
   open: boolean | null;

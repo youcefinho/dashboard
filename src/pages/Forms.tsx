@@ -22,7 +22,8 @@ import {
   useConfirm,
 } from '@/components/ui';
 import type { KpiItem } from '@/components/ui';
-import { Plus, FileText, Pencil, Trash2, ExternalLink } from 'lucide-react';
+import { FormSubmissionsPanel } from '@/components/forms/FormSubmissionsPanel';
+import { Plus, FileText, Pencil, Trash2, ExternalLink, Inbox } from 'lucide-react';
 import {
   getForms,
   createForm,
@@ -79,6 +80,8 @@ export function FormsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState('');
   const [busy, setBusy] = useState(false);
+  // Panneau « Voir les soumissions » (+ analytics par champ). 100% additif.
+  const [submissionsFor, setSubmissionsFor] = useState<FormRow | null>(null);
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -258,6 +261,14 @@ export function FormsPage() {
                         <Button
                           variant="ghost"
                           size="sm"
+                          leftIcon={<Icon as={Inbox} size="sm" />}
+                          onClick={() => setSubmissionsFor(f)}
+                          aria-label={t('formsx.action_view_aria', { name: f.name || f.slug })}
+                          title={t('formsx.action_view')}
+                        />
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           leftIcon={<Icon as={Pencil} size="sm" />}
                           onClick={() => navigate({ to: '/forms/builder/$formId', params: { formId: f.id } })}
                           aria-label={t('forms.list.action_open_aria', { name: f.name || f.slug })}
@@ -280,6 +291,15 @@ export function FormsPage() {
           </Card>
         )}
       </div>
+
+      {submissionsFor && (
+        <FormSubmissionsPanel
+          open={!!submissionsFor}
+          onOpenChange={open => { if (!open) setSubmissionsFor(null); }}
+          formId={submissionsFor.id}
+          formName={submissionsFor.name || submissionsFor.slug}
+        />
+      )}
 
       <Modal open={createOpen} onOpenChange={setCreateOpen} title={t('forms.list.new')} size="sm">
         <div className="flex flex-col gap-4 p-1">

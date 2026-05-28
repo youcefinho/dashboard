@@ -21,6 +21,10 @@
 import type { Env } from './types';
 import { json, sanitizeInput, audit, createNotification } from './helpers';
 import { getClientModules } from './modules';
+// Phase 1 V2 — câblage engine (⚠️ behavior-change assumé) : `available` calculé
+// via inventory-engine.computeAvailable → désormais CLAMPÉ ≥0 + arrondi (le
+// calcul inline ne clampait pas : réservé>quantité donnait un négatif).
+import { computeAvailable } from './lib/inventory-engine';
 // S3 M2 — validation d'entrée (schéma M1 figé, import only). S'ajoute APRÈS
 // le gate multi-tenant S2 (resolveVariant) : validation d'entrée puis garde
 // tenant — additif, ordre logique préservé.
@@ -141,7 +145,7 @@ async function ensureInventory(env: Env, variantId: string): Promise<InventoryRo
 }
 
 function shapeInventory(inv: InventoryRow) {
-  const available = (inv.quantity ?? 0) - (inv.reserved ?? 0);
+  const available = computeAvailable(inv.quantity ?? 0, inv.reserved ?? 0);
   return {
     variant_id: inv.variant_id,
     quantity: inv.quantity ?? 0,

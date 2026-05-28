@@ -23,6 +23,7 @@ import type { Coupon, CouponInput } from '@/lib/api';
 import { t, getLocale } from '@/lib/i18n';
 import { formatMoneyCents } from '@/lib/i18n/number';
 import { Ticket, Plus, Trash2, Pencil, RefreshCw } from 'lucide-react';
+import { CouponValidateTester } from '@/components/boutique/CouponValidateTester';
 
 type FormState = {
   code: string;
@@ -312,6 +313,11 @@ export function CouponsPage() {
             </table>
           </div>
         </Card>
+      )}
+
+      {/* ── Tester / valider un code (validateCoupon) ── */}
+      {!isLoading && !loadError && (
+        <CouponValidateTester defaultCurrency={coupons[0]?.currency || undefined} />
       )}
 
       {/* ── Création / édition ── */}

@@ -1,6 +1,10 @@
 import type { Env } from './types';
 import { json, sanitizeInput } from './helpers';
 import { requireCapability, type Capability } from './capabilities';
+// Phase 1 V2 — câblage engine (byte-identique, vérifié) : format n° de facture
+// + breakdown taxes QC délégués à l'invoice-engine. round2 (Math.round(x*100)/100)
+// et taux QC (TPS 5% / TVQ 9.975%) identiques des deux côtés → sortie inchangée.
+import { formatInvoiceNumber, computeTaxBreakdown } from './lib/invoice-engine';
 
 // ── LOT TEAM B-bis — garde de capability CONDITIONNELLE (mode-agence-only) ───
 // Enforce UNIQUEMENT si l'auth porte un contexte agence (tenant.agencyId !=
@@ -67,8 +71,8 @@ function computeInvoiceTotals(
   }
   if (lines.length === 0) return null;
   const subtotal = round2(lines.reduce((s, l) => s + l.line_total, 0));
-  const tax_tps = round2(subtotal * 0.05);
-  const tax_tvq = round2(subtotal * 0.09975);
+  // Câblage engine : QC = TPS 5% + TVQ 9.975% (calque legacy, byte-identique).
+  const { tps: tax_tps, tvq: tax_tvq } = computeTaxBreakdown(subtotal, 'QC');
   const total = round2(subtotal + tax_tps + tax_tvq);
   return { lines, subtotal, tax_tps, tax_tvq, total };
 }
@@ -92,7 +96,8 @@ async function nextInvoiceNumber(env: Env, clientId: string | null): Promise<str
   } catch {
     count = 0;
   }
-  return `INV-${year}-${String(count + 1).padStart(4, '0')}`;
+  // Câblage engine : padding legacy 4 digits → INV-<YYYY>-<NNNN> identique.
+  return formatInvoiceNumber(count + 1, year, 4);
 }
 
 export async function handleCreateInvoice(

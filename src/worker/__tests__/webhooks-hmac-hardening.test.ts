@@ -143,10 +143,12 @@ describe('worker.ts — routes rotate/revoke ancrées AVANT le générique', () 
     resolve(__dirname, '..', '..', 'worker.ts'), 'utf8',
   );
 
-  // TODO : réactiver quand les routes rotate/revoke seront ancrées dans worker.ts
-  it.skip('déclare les 2 routes POST rotate + revoke', () => {
-    expect(src).toContain("/api/ecommerce/channels/([^/]+)/rotate$");
-    expect(src).toContain("/api/ecommerce/channels/([^/]+)/revoke$");
+  // Routes ancrées dans worker.ts (chRotateMatch/chRevokeMatch, ~L4770).
+  // Le source contient la regex littérale avec slashes échappés (\/), donc on
+  // matche la forme échappée telle qu'écrite dans worker.ts.
+  it('déclare les 2 routes POST rotate + revoke', () => {
+    expect(src).toContain("\\/api\\/ecommerce\\/channels\\/([^/]+)\\/rotate$");
+    expect(src).toContain("\\/api\\/ecommerce\\/channels\\/([^/]+)\\/revoke$");
   });
 
   it('rotate/revoke sont placées AVANT le générique chMatch (sinon capturées)', () => {

@@ -19,6 +19,9 @@ import { useOnboardingItemCompletion } from '@/components/onboarding/useOnboardi
 // Sous-composants importés
 import { ProfileSettings } from '@/components/settings/ProfileSettings';
 import { SecuritySettings } from '@/components/settings/SecuritySettings';
+// Surface du flux MFA/2FA (totpSetup/totpVerify/totpDisable) — écran dédié
+// rendu dans l'onglet « Sécurité & Sessions » (100 % additif).
+import { MfaSettings } from '@/components/settings/MfaSettings';
 import { TeamSettings } from '@/components/settings/TeamSettings';
 import { RolesPermissionsSettings } from '@/components/settings/RolesPermissionsSettings';
 import { SubAccountsSettings } from '@/components/settings/SubAccountsSettings';
@@ -55,6 +58,13 @@ import { ChannelSettings } from '@/components/settings/ChannelSettings';
 import { MigrationImportSettings } from '@/components/settings/MigrationImportSettings';
 // Sprint 3 GIGA — Templates SMS (LOT SMS/WhatsApp seq104)
 import { SmsTemplates } from '@/pages/settings/SmsTemplates';
+// ── Self-service additif : white-label (getWhitelabel/updateWhitelabel),
+//    préférences notifications (setNotificationPreferences), enregistrement
+//    push de l'appareil (registerDevice/unregisterDevice). 100 % additif —
+//    montés sous les onglets existants sans toucher aux composants en place.
+import { WhitelabelSelfServiceSettings } from '@/components/settings/WhitelabelSelfServiceSettings';
+import { NotificationPreferencesSelfService } from '@/components/settings/NotificationPreferencesSelfService';
+import { PushDeviceSettings } from '@/components/settings/PushDeviceSettings';
 
 type SettingsTab = 'profil' | 'notifications' | 'securite' | 'equipe' | 'roles' | 'sous_comptes' | 'branding' | 'billing' | 'audit' | 'api' | 'sources_leads' | 'pipelines' | 'custom_fields' | 'conformite' | 'raccourcis' | 'systeme' | 'packs' | 'ai_scoring' | 'modules' | 'region' | 'paiements' | 'expedition' | 'conso_conformite' | 'canaux' | 'migration_import' | 'telephonie' | 'sms_templates' | 'data_privacy' | 'role_overrides';
 
@@ -161,13 +171,24 @@ export function SettingsPage() {
   const renderContent = () => {
     switch (activeTab) {
       case 'profil': return <ProfileSettings user={user} isAdmin={isAdmin} />;
-      case 'securite': return <SecuritySettings />;
+      case 'securite': return (
+        <div className="space-y-6">
+          <MfaSettings />
+          <SecuritySettings />
+        </div>
+      );
       case 'equipe': return <TeamSettings />;
       case 'roles': return <RolesPermissionsSettings />;
       case 'sous_comptes': return <SubAccountsSettings />;
       case 'api': return <ApiWebhooksSettings />;
       case 'sources_leads': return <LeadSourcesSettings />;
-      case 'branding': return <BrandingSettings />;
+      case 'branding': return (
+        <div className="space-y-6">
+          <BrandingSettings />
+          {/* Self-service white-label (getWhitelabel/updateWhitelabel) — additif */}
+          <WhitelabelSelfServiceSettings />
+        </div>
+      );
       case 'billing': return (
         <>
           <BillingSettings />
@@ -183,7 +204,15 @@ export function SettingsPage() {
       case 'conformite': return <ComplianceSettings />;
       case 'custom_fields': return <CustomFieldsSettings />;
       case 'packs': return <PacksSettings />;
-      case 'notifications': return <NotificationsSettings />;
+      case 'notifications': return (
+        <div className="space-y-6">
+          <NotificationsSettings />
+          {/* Préférences notifications self-service (setNotificationPreferences) — additif */}
+          <NotificationPreferencesSelfService />
+          {/* Enregistrement push de cet appareil (registerDevice/unregisterDevice) — additif */}
+          <PushDeviceSettings />
+        </div>
+      );
       case 'systeme': return <SystemSettings />;
       case 'modules': return <ModulesSettings />;
       case 'region': return <RegionSettings />;

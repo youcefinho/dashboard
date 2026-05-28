@@ -9,6 +9,8 @@
 //   - audit() bien appelé (méta-audit)
 
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import type { Env } from '../types';
 import { createMockD1 } from './_helpers';
 import {
@@ -256,5 +258,27 @@ describe('S23 — DELETE /api/admin/capability-overrides/:userId/:capability', (
       AUTH_AGENCY_KO,
     );
     expect(res.status).toBe(403);
+  });
+});
+
+// ── Phase 1 V2 — câblage engine (wire-up) ────────────────────────────────
+// Prouve que security-admin.ts délègue désormais le parsing path + le format
+// de ligne au security-admin-engine (helpers purs déjà testés) au lieu de
+// dupliquer la logique inline. Ancrage statique : si quelqu'un retire le
+// câblage, ce test casse.
+describe('security-admin.ts — câblage engine (wire-up)', () => {
+  const src = readFileSync(
+    resolve(__dirname, '..', 'security-admin.ts'), 'utf8',
+  );
+
+  it('importe extractUserIdFromPath + formatAuditLogEntry depuis le moteur', () => {
+    expect(src).toContain("from './lib/security-admin-engine'");
+    expect(src).toContain('extractUserIdFromPath');
+    expect(src).toContain('formatAuditLogEntry');
+  });
+
+  it("ne redéfinit plus parseDetails / extractUserIdFromPath en local", () => {
+    expect(src).not.toContain('function parseDetails(');
+    expect(src).not.toContain('function extractUserIdFromPath(');
   });
 });

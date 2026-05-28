@@ -30,6 +30,8 @@ import { announceSR } from '@/lib/announce';
 import { useAppointmentHoverPreview } from '@/components/panels/AppointmentHoverPreview';
 // Sprint 33 C3 — Calendar sync status badge (Google Calendar / Outlook)
 import { CalendarSyncStatusBadge } from '@/components/calendar/CalendarSyncStatusBadge';
+// Sprint 49 — Surface external calendar-sync controls (connect / sync now / preview)
+import { ExternalCalendarSync } from '@/components/calendar/ExternalCalendarSync';
 // Sprint 48 M3.2 — Intl date/time formatters
 import { formatDate } from '@/lib/i18n/datetime';
 import { formatDateInTimezone, getStoredTimezone } from '@/lib/i18n/timezone';
@@ -1050,6 +1052,9 @@ export function CalendarPage() {
                 </div>
               )}
             </DndContext>
+
+            {/* Sprint 49 — Sync calendriers externes (Google Calendar / Outlook) */}
+            <ExternalCalendarSync />
           </div>
         </div>
       </div>

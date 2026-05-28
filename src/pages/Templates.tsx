@@ -7,7 +7,7 @@ import { Card, Button, Skeleton, EmptyState, Input, useConfirm, PageHero, KpiStr
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { PullToRefreshIndicator } from '@/components/ui/PullToRefreshIndicator';
 import { Modal } from '@/components/ui/Modal';
-import { getTemplates, createTemplate, updateTemplate, deleteTemplate } from '@/lib/api';
+import { getTemplates, createTemplate, updateTemplate, deleteTemplate, getTemplateFolders, createTemplateFolder } from '@/lib/api';
 import { Wand2, FileText, FolderOpen, Tag as TagIcon, Calendar, ChevronRight } from 'lucide-react';
 import type { EmailTemplate, TemplateCategory } from '@/lib/types';
 import { TEMPLATE_CATEGORY_LABELS, TEMPLATE_CATEGORIES } from '@/lib/types';
@@ -33,11 +33,27 @@ const CATEGORY_ICONS: Record<TemplateCategory, string> = {
 
 type ViewMode = 'grid' | 'list';
 
+type TemplateFolder = { id: string; name: string; sort_order: number };
+
+// folder_id n'est pas (encore) dans le type EmailTemplate — accès défensif au runtime
+const getTemplateFolderId = (tpl: EmailTemplate): string | null =>
+  (tpl as unknown as { folder_id?: string | null }).folder_id ?? null;
+
 export function TemplatesPage() {
   const confirm = useConfirm();
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  // ── Dossiers (organisation des templates) ──
+  const [folders, setFolders] = useState<TemplateFolder[]>([]);
+  const [foldersLoading, setFoldersLoading] = useState(true);
+  const [foldersError, setFoldersError] = useState<string | null>(null);
+  const [folderFilter, setFolderFilter] = useState<string>(''); // '' = tous
+  const [showFolderModal, setShowFolderModal] = useState(false);
+  const [folderName, setFolderName] = useState('');
+  const [isCreatingFolder, setIsCreatingFolder] = useState(false);
+  const [folderFormError, setFolderFormError] = useState<string | null>(null);
   const [showEditor, setShowEditor] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [previewId, setPreviewId] = useState<string | null>(null);
@@ -70,6 +86,45 @@ export function TemplatesPage() {
   }, [categoryFilter]);
 
   useEffect(() => { void loadTemplates(); }, [loadTemplates]);
+
+  const loadFolders = useCallback(async () => {
+    setFoldersLoading(true);
+    setFoldersError(null);
+    try {
+      const result = await getTemplateFolders();
+      if (result.data) {
+        setFolders([...result.data].sort((a, b) => a.sort_order - b.sort_order));
+      } else if (result.error) {
+        setFoldersError(result.error);
+      }
+    } catch (e) {
+      setFoldersError(e instanceof Error ? e.message : tb('tplfolders.error.load'));
+    }
+    setFoldersLoading(false);
+  }, []);
+
+  useEffect(() => { void loadFolders(); }, [loadFolders]);
+
+  const handleCreateFolder = async () => {
+    const name = folderName.trim();
+    if (!name) { setFolderFormError(tb('tplfolders.form.name_required')); return; }
+    setIsCreatingFolder(true);
+    setFolderFormError(null);
+    try {
+      const result = await createTemplateFolder(name);
+      if (result.error) {
+        setFolderFormError(result.error);
+        setIsCreatingFolder(false);
+        return;
+      }
+      setShowFolderModal(false);
+      setFolderName('');
+      await loadFolders();
+    } catch (e) {
+      setFolderFormError(e instanceof Error ? e.message : tb('tplfolders.error.create'));
+    }
+    setIsCreatingFolder(false);
+  };
 
   const resetForm = () => {
     setFormName(''); setFormSubject(''); setFormBody(''); setFormCategory('general'); setEditingId(null); setEditorTab('code');
@@ -111,11 +166,21 @@ export function TemplatesPage() {
   // Filtrage
   const filteredTemplates = templates.filter(t => {
     if (categoryFilter && t.category !== categoryFilter) return false;
+    if (folderFilter && getTemplateFolderId(t) !== folderFilter) return false;
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       return t.name.toLowerCase().includes(q) || t.subject.toLowerCase().includes(q);
     }
     return true;
+  });
+
+  // Compteurs par dossier (+ non classés)
+  const folderCounts: Record<string, number> = {};
+  let uncategorizedCount = 0;
+  templates.forEach(t => {
+    const fid = getTemplateFolderId(t);
+    if (fid) folderCounts[fid] = (folderCounts[fid] || 0) + 1;
+    else uncategorizedCount += 1;
   });
 
   const previewTemplate = templates.find(t => t.id === previewId);
@@ -195,6 +260,58 @@ export function TemplatesPage() {
         </div>
       </div>
 
+      {/* Dossiers — organisation des templates */}
+      <section aria-label={tb('tplfolders.section.label')} className="mb-6">
+        <div className="flex items-center justify-between gap-3 mb-2">
+          <h2 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+            <FolderOpen size={13} /> {tb('tplfolders.section.title')}
+          </h2>
+          <Button size="sm" variant="secondary" onClick={() => { setFolderName(''); setFolderFormError(null); setShowFolderModal(true); }}>
+            {tb('tplfolders.action.new')}
+          </Button>
+        </div>
+
+        {foldersError && !foldersLoading && (
+          <div
+            role="alert"
+            aria-live="polite"
+            className="mb-2 flex items-center justify-between gap-3 px-3 py-2 rounded-lg bg-[var(--danger)]/10 border border-[var(--danger)]/30 text-[var(--danger)]"
+          >
+            <span className="text-xs">{foldersError}</span>
+            <Button size="sm" variant="secondary" onClick={() => void loadFolders()} aria-label={tb('action.retry')}>
+              {tb('action.retry')}
+            </Button>
+          </div>
+        )}
+
+        {foldersLoading ? (
+          <div className="flex gap-1.5 flex-wrap" aria-busy="true" aria-live="polite">
+            {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-7 w-24 rounded-full" />)}
+          </div>
+        ) : (
+          <div className="flex gap-1.5 flex-wrap">
+            <button onClick={() => setFolderFilter('')}
+              aria-pressed={folderFilter === ''}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer border transition-all ${folderFilter === '' ? 'bg-[var(--primary)] text-white border-[var(--primary)]' : 'border-[var(--border-subtle)] text-[var(--text-secondary)]'}`}>
+              {tb('tplfolders.filter.all')} ({templates.length})
+            </button>
+            {folders.map(f => (
+              <button key={f.id} onClick={() => setFolderFilter(f.id)}
+                aria-pressed={folderFilter === f.id}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer border transition-all ${folderFilter === f.id ? 'bg-[var(--primary)] text-white border-[var(--primary)]' : 'border-[var(--border-subtle)] text-[var(--text-secondary)]'}`}>
+                📁 {f.name} ({folderCounts[f.id] || 0})
+              </button>
+            ))}
+            {folders.length === 0 && (
+              <span className="text-xs text-[var(--text-muted)] py-1.5">{tb('tplfolders.empty')}</span>
+            )}
+            {uncategorizedCount > 0 && folders.length > 0 && (
+              <span className="text-xs text-[var(--text-muted)] py-1.5 ml-1">{tb('tplfolders.uncategorized')} ({uncategorizedCount})</span>
+            )}
+          </div>
+        )}
+      </section>
+
       {loadError && !isLoading && (
         <div
           role="alert"
@@ -240,7 +357,7 @@ export function TemplatesPage() {
             icon={<Icon as={FileText} size={48} />}
             title={tb('tpl.empty.filtered_title')}
             description={tb('tpl.empty.filtered_desc')}
-            action={<Button variant="secondary" onClick={() => { setSearchQuery(''); setCategoryFilter(''); }}>{tb('tpl.empty.filtered_action')}</Button>}
+            action={<Button variant="secondary" onClick={() => { setSearchQuery(''); setCategoryFilter(''); setFolderFilter(''); }}>{tb('tpl.empty.filtered_action')}</Button>}
           />
         ) : (
           <EmptyState
@@ -476,6 +593,32 @@ export function TemplatesPage() {
             <Button variant="secondary" onClick={() => { setShowEditor(false); resetForm(); }}>{tb('tpl.modal.cancel')}</Button>
             <Button onClick={() => void handleSave()} disabled={isSaving || !formName.trim() || !formSubject.trim() || !formBody.trim()} aria-busy={isSaving}>
               {isSaving ? tb('tpl.modal.saving') : editingId ? tb('tpl.modal.update') : tb('tpl.modal.create')}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal création de dossier */}
+      <Modal open={showFolderModal} onOpenChange={() => { setShowFolderModal(false); setFolderName(''); setFolderFormError(null); }} title={tb('tplfolders.modal.title')}>
+        <div className="space-y-4">
+          <div>
+            <label htmlFor="tplfolder-name" className="block text-xs font-medium text-[var(--text-secondary)] mb-1">{tb('tplfolders.modal.name_label')}</label>
+            <Input
+              id="tplfolder-name"
+              value={folderName}
+              onChange={(e) => { setFolderName(e.target.value); if (folderFormError) setFolderFormError(null); }}
+              onKeyDown={(e) => { if (e.key === 'Enter' && !isCreatingFolder) { e.preventDefault(); void handleCreateFolder(); } }}
+              placeholder={tb('tplfolders.modal.name_placeholder')}
+              autoFocus
+            />
+          </div>
+          {folderFormError && (
+            <div role="alert" aria-live="polite" className="text-xs text-[var(--danger)]">{folderFormError}</div>
+          )}
+          <div className="flex gap-2 justify-end">
+            <Button variant="secondary" onClick={() => { setShowFolderModal(false); setFolderName(''); setFolderFormError(null); }}>{tb('tplfolders.modal.cancel')}</Button>
+            <Button onClick={() => void handleCreateFolder()} disabled={isCreatingFolder || !folderName.trim()} aria-busy={isCreatingFolder}>
+              {isCreatingFolder ? tb('tplfolders.modal.creating') : tb('tplfolders.modal.create')}
             </Button>
           </div>
         </div>

@@ -16,6 +16,9 @@ import { GbpConnectButton } from '@/components/gbp/GbpConnectButton';
 // Note : la spec parle de `CalendarSyncSettings` mais C1 a livré le composant
 // canonique sous le nom `CalendarConnectButtons` (cf. components/calendar/index.ts).
 import { CalendarConnectButtons } from '@/components/calendar/CalendarConnectButtons';
+// E-commerce — surface la config des canaux de vente Shopify / WooCommerce
+// (jusque-là invisible). Flag-aware : empty state honnête si module non activé.
+import { EcommerceChannelsCard } from '@/components/integrations/EcommerceChannelsCard';
 
 interface IntegrationConfig {
   id: string;
@@ -809,6 +812,9 @@ X-Client-Id: <id_sous_compte>`}</pre>
 
       {/* LOT SMS/WHATSAPP seq 104 — carte WhatsApp Business (flag-inactif) */}
       <WhatsAppCard />
+
+      {/* E-commerce — canaux de vente Shopify / WooCommerce (flag-aware) */}
+      <EcommerceChannelsCard />
 
       {/* Sprint 32 C1 — Google Business Profile (OAuth natif, reviews + stats) */}
       <Card className="card-premium mb-6">

@@ -38,6 +38,7 @@ import {
   type Lead,
 } from '@/lib/api';
 import { t } from '@/lib/i18n';
+import { StoreConfigSettings } from '@/components/settings/StoreConfigSettings';
 
 export function PortalSettingsPage() {
   const { success, error: toastError } = useToast();
@@ -292,6 +293,14 @@ export function PortalSettingsPage() {
               ))}
             </ul>
           )}
+        </Card>
+
+        {/* ── Config boutique / métier / paiement (additif) ─────────────── */}
+        <Card>
+          <h2 className="text-sm font-semibold mb-4">
+            {t('storecfg.section_title')}
+          </h2>
+          <StoreConfigSettings />
         </Card>
       </div>
 

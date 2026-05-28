@@ -39,6 +39,11 @@ import type { Env } from './types';
 import { json } from './helpers';
 import { requireCapability, type CapAuth } from './capabilities';
 import type { MemberContext } from './member-auth';
+// Phase 1 V2 — câblage engine (⚠️ behavior-change assumé) : déblocage drip
+// délégué à memberships-engine.isLessonAvailable. Deltas vs legacy : enrolledAt
+// vide ("") → disponible (legacy: bloqué) ; dates avec offset tz parsées
+// correctement (legacy: forçait 'Z' → NaN → débloqué).
+import { isLessonAvailable } from './lib/memberships-engine';
 
 // Auth PRO enrichi au choke-point (worker.ts) — calque EXACT
 // booking-public.ts:BookingAuth (CapAuth + capabilities injectées).
@@ -93,11 +98,8 @@ function tenantIds(auth: MembershipAuth): {
 // Drip débloqué : enrolled_at + drip_days jours ≤ now (§6.F). drip_days = 0
 // ⇒ disponible dès l'inscription. Calcul applicatif (pas de cron).
 function dripUnlocked(enrolledAt: string | null, dripDays: number): boolean {
-  if (!dripDays || dripDays <= 0) return true;
-  if (!enrolledAt) return false;
-  const base = new Date(enrolledAt.replace(' ', 'T') + 'Z').getTime();
-  if (Number.isNaN(base)) return true; // date illisible : ne pas bloquer
-  return base + dripDays * 86_400_000 <= Date.now();
+  // Câblage engine : délègue à isLessonAvailable (drip_days porté par la leçon).
+  return isLessonAvailable({ drip_days: dripDays }, enrolledAt);
 }
 
 // ════════════════════════════════════════════════════════════════════════════

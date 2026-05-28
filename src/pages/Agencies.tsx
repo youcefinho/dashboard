@@ -16,6 +16,7 @@ import {
 } from '@/lib/api';
 import { Building, Plus, Activity, ListChecks, ShieldAlert } from 'lucide-react';
 import { t } from '@/lib/i18n';
+import { AgencyManagement } from '@/components/agencies/AgencyManagement';
 
 const ALL_VALUE = '__all__';
 
@@ -299,6 +300,8 @@ export function AgenciesPage() {
           </div>
         </Card>
       )}
+
+      <AgencyManagement />
 
       <Modal open={showAdd} onOpenChange={setShowAdd} title={t('agencies.modal.title')}>
         <form onSubmit={handleCreate} className="space-y-4">

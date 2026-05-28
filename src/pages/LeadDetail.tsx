@@ -6,7 +6,9 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, Button, Badge, Skeleton, EmptyState, Select, useToast, useConfirm, AiSparkles, usePanelStack } from '@/components/ui';
 import { t } from '@/lib/i18n';
 import { Avatar } from '@/components/ui/Avatar';
-import { getLeadDetail, updateLead, addTag, removeTag, getAppointments, getTasks, updateTask, getLeadNotes, createLeadNote, deleteLeadNote, getLeadScores, getLeadCustomFields, softDeleteLead, restoreLead, apiFetch, getPipelines, getLeadMessages, getCallLogs, placeCall, setCallDisposition, getLeadConversionScore, type CallLog } from '@/lib/api';
+import { getLeadDetail, updateLead, addTag, removeTag, getAppointments, getTasks, updateTask, getLeadNotes, createLeadNote, deleteLeadNote, getLeadScores, getLeadCustomFields, softDeleteLead, restoreLead, getPipelines, getLeadMessages, getCallLogs, placeCall, setCallDisposition, getLeadConversionScore, type CallLog } from '@/lib/api';
+import { useAuth } from '@/lib/auth';
+import { LeadPrivacyActions } from '@/components/leads/LeadPrivacyActions';
 import { getCachedLead, setCachedLead } from '@/lib/prefetch';
 import { confettiBurst } from '@/lib/confetti';
 import { AiNextActionCard } from '@/components/panels/AiNextActionCard';
@@ -97,6 +99,8 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
   const { success, error: toastError } = useToast();
   const confirm = useConfirm();
   const { openPanel } = usePanelStack();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   // Initial state hydraté depuis le cache prefetch (hover) → 0 flash si frais
   const cachedLead = getCachedLead(leadId);
   const [lead, setLead] = useState<LeadDetail | null>(cachedLead);
@@ -239,28 +243,6 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
       setLead(prev);
       toastError(`Erreur de suppression du tag : ${res.error}`);
     }
-  };
-
-  const handleForgetLead = async () => {
-    const ok = await confirm({
-      title: 'Droit à l\'oubli (Loi 25)',
-      description: `Cette action est IRRÉVERSIBLE. Toutes les données personnelles de ${lead?.name || 'ce lead'} (nom, email, téléphone, adresse, messages, notes) seront effacées de manière définitive.\n\nL'enregistrement anonymisé sera conservé pour conformité comptable et statistiques agrégées.`,
-      requireText: 'SUPPRIMER',
-      confirmLabel: 'Effacer les données',
-      danger: true,
-    });
-    if (!ok) return;
-    try {
-      await apiFetch(`/leads/${leadId}/forget`, { method: 'POST' });
-      success('Données personnelles effacées (Loi 25)');
-      navigate({ to: '/leads' });
-    } catch (e) {
-      toastError('Erreur lors de la suppression');
-    }
-  };
-
-  const handleExportPii = () => {
-    window.open(`/api/leads/${leadId}/export-pii`, '_blank');
   };
 
   if (isLoading) {
@@ -1006,18 +988,14 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
             </div>
           </Card>
 
-          {/* Conformité (Loi 25) */}
-          <Card className="p-4">
-            <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">{t('lead.sidebar.loi25')}</h3>
-            <div className="space-y-2">
-              <Button size="sm" variant="secondary" className="w-full justify-center" onClick={handleExportPii}>
-                {t('lead.sidebar.export_pii')}
-              </Button>
-              <Button size="sm" className="w-full justify-center bg-[color-mix(in_oklch,var(--danger)_10%,transparent)] text-[var(--danger)] hover:bg-[color-mix(in_oklch,var(--danger)_20%,transparent)] border border-[color-mix(in_oklch,var(--danger)_30%,transparent)]" onClick={handleForgetLead}>
-                {t('lead.sidebar.forget')}
-              </Button>
-            </div>
-          </Card>
+          {/* Confidentialité (Loi 25 / GDPR) — composant dédié, gating admin */}
+          <LeadPrivacyActions
+            leadId={leadId}
+            leadName={lead.name}
+            leadEmail={lead.email}
+            isAdmin={isAdmin}
+            onForgotten={() => void navigate({ to: '/leads' })}
+          />
         </div>
       </div>
     </>

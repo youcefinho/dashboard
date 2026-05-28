@@ -79,6 +79,8 @@ import {
   type LessonComment,
 } from '@/lib/api';
 import { t } from '@/lib/i18n';
+// ── Structure pédagogique (modules → leçons) via getCourseModules — ADDITIF.
+import { CourseModuleTree } from '@/components/lms/CourseModuleTree';
 
 type CourseDetail = Course & {
   modules: CourseModule[];
@@ -657,45 +659,49 @@ export function CoursesAdminPage() {
           ) : (
             <ul className="divide-y divide-[var(--border)]">
               {courses.map((c) => (
-                <li
-                  key={c.id}
-                  className="flex items-center justify-between py-3"
-                >
-                  <button
-                    type="button"
-                    onClick={() => void openDetail(c.id)}
-                    className="flex items-center gap-2 text-sm font-medium text-left"
-                  >
-                    <ChevronRight size={14} />
-                    {c.title}
-                  </button>
-                  <div className="flex items-center gap-2">
-                    <Tag
-                      variant={c.is_published ? 'success' : 'warning'}
-                      size="xs"
+                <li key={c.id} className="py-3">
+                  <div className="flex items-center justify-between">
+                    <button
+                      type="button"
+                      onClick={() => void openDetail(c.id)}
+                      className="flex items-center gap-2 text-sm font-medium text-left"
                     >
-                      {c.is_published
-                        ? t('course.published')
-                        : t('course.draft')}
-                    </Tag>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => void togglePublish(c)}
-                    >
-                      {c.is_published
-                        ? t('course.draft')
-                        : t('course.published')}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      leftIcon={<Trash2 size={14} />}
-                      onClick={() => void handleDeleteCourse(c)}
-                      aria-label={t('action.delete')}
-                    >
-                      {''}
-                    </Button>
+                      <ChevronRight size={14} />
+                      {c.title}
+                    </button>
+                    <div className="flex items-center gap-2">
+                      <Tag
+                        variant={c.is_published ? 'success' : 'warning'}
+                        size="xs"
+                      >
+                        {c.is_published
+                          ? t('course.published')
+                          : t('course.draft')}
+                      </Tag>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => void togglePublish(c)}
+                      >
+                        {c.is_published
+                          ? t('course.draft')
+                          : t('course.published')}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        leftIcon={<Trash2 size={14} />}
+                        onClick={() => void handleDeleteCourse(c)}
+                        aria-label={t('action.delete')}
+                      >
+                        {''}
+                      </Button>
+                    </div>
+                  </div>
+                  {/* ── Structure pédagogique (modules → leçons) — collapsible,
+                      fetch paresseux via getCourseModules (ADDITIF). ───────── */}
+                  <div className="mt-2 pl-6">
+                    <CourseModuleTree courseId={c.id} />
                   </div>
                 </li>
               ))}

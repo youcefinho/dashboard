@@ -1,5 +1,7 @@
 // ── Tests compliance.ts — tokens, footers, AMF ──
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import {
   generateUnsubscribeToken,
   extractEmailFromToken,
@@ -84,5 +86,28 @@ describe('generateAmfDisclaimer', () => {
     const disclaimer = generateAmfDisclaimer('<script>alert("xss")</script>');
     expect(disclaimer).not.toContain('<script>');
     expect(disclaimer).toContain('&lt;script&gt;');
+  });
+});
+
+// ── Phase 1 V2 — câblage engine (wire-up) ────────────────────────────────
+// Prouve que handleExportPii assemble désormais l'export PII via le helper pur
+// buildDataExport du compliance-engine. Le `purpose` historique est passé
+// explicitement pour rester byte-identique (l'engine ajoute sinon
+// " / RGPD Art 15" par défaut).
+describe('compliance.ts — câblage engine (wire-up)', () => {
+  const src = readFileSync(
+    resolve(__dirname, '..', 'compliance.ts'), 'utf8',
+  );
+
+  it('importe buildDataExport depuis le compliance-engine', () => {
+    expect(src).toContain("from './lib/compliance-engine'");
+    expect(src).toContain('buildDataExport');
+  });
+
+  it('handleExportPii appelle buildDataExport avec le purpose Loi 25 explicite', () => {
+    expect(src).toContain('data: buildDataExport({');
+    expect(src).toContain(
+      'Export de données personnelles — Loi 25 sur la protection des renseignements personnels (Québec)',
+    );
   });
 });

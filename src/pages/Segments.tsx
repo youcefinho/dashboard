@@ -45,6 +45,7 @@ import type { Workflow } from '@/lib/types';
 import { LEAD_STATUSES, LEAD_SOURCES, STATUS_LABELS, SOURCE_LABELS } from '@/lib/types';
 import { t, getLocale } from '@/lib/i18n';
 import { formatDateTime } from '@/lib/i18n/datetime';
+import { SmartListsPanel } from '@/components/segments/SmartListsPanel';
 
 // Broadcast minimal pour les critères comportementaux (dropdown campagnes).
 type BroadcastOpt = { id: string; subject: string };
@@ -453,6 +454,9 @@ export function SegmentsPage() {
             ))}
           </div>
         )}
+
+        {/* ── Smart Lists : segments dynamiques par règles (additif) ── */}
+        <SmartListsPanel />
       </div>
 
       {/* ── Éditeur de segment : builder de critères + aperçu live ── */}

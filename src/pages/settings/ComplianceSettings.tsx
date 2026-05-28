@@ -14,6 +14,7 @@ import {
   Icon,
 } from '@/components/ui';
 import { Shield, Ban, Download, Mail, Smartphone, FileCheck } from 'lucide-react';
+import { ConsentManager } from '@/components/compliance/ConsentManager';
 
 interface Unsubscribe {
   id: string;
@@ -267,6 +268,9 @@ export function ComplianceSettings() {
           </div>
         )}
       </Card>
+
+      {/* Loi 25 — gestion du consentement (journal lead + statut cookies) */}
+      <ConsentManager />
     </div>
   );
 }

@@ -25,6 +25,7 @@ import { getLocale, t } from '@/lib/i18n';
 import {
   listQuotes,
   createQuote,
+  getQuote,
   updateQuote,
   acceptQuote,
   sendQuoteForSignature,
@@ -35,6 +36,16 @@ import {
   type QuoteStatus,
   type CatalogItem,
 } from '@/lib/api';
+
+// ── Détail à la demande (getQuote) ──────────────────────────────────────
+// La liste GET /quotes ne garantit PAS l'hydratation des lignes (Quote.items
+// est optionnel) : à l'ouverture d'une ligne, on récupère le devis complet via
+// getQuote(id) pour fiabiliser articles + ventilation + statut. État par devis :
+// status (idle/loading/error/ready) + données + message d'erreur. 100% additif.
+type DetailState =
+  | { status: 'loading' }
+  | { status: 'error'; message: string }
+  | { status: 'ready'; quote: Quote };
 
 interface LineRow { label: string; qty: string; unit_price: string }
 const blankRow = (): LineRow => ({ label: '', qty: '1', unit_price: '' });
@@ -58,6 +69,8 @@ export function QuotesPage() {
   const [submitting, setSubmitting] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  // Détail complet par devis, chargé paresseusement via getQuote à l'ouverture.
+  const [details, setDetails] = useState<Record<string, DetailState>>({});
   // Liens publics de signature retournés par sendQuoteForSignature (sign_url),
   // mémorisés localement par devis pour affichage immédiat (best-effort).
   const [signUrls, setSignUrls] = useState<Record<string, string>>({});
@@ -78,9 +91,33 @@ export function QuotesPage() {
   const [clients, setClients] = useState<Array<{ id: string; name: string }>>([]);
   const [leads, setLeads] = useState<Array<{ id: string; name: string }>>([]);
 
+  // Charge (ou recharge) le détail complet d'un devis via getQuote(id).
+  const loadDetail = async (id: string) => {
+    setDetails(prev => ({ ...prev, [id]: { status: 'loading' } }));
+    try {
+      const res = await getQuote(id);
+      if (res.data) {
+        setDetails(prev => ({ ...prev, [id]: { status: 'ready', quote: res.data! } }));
+      } else {
+        setDetails(prev => ({ ...prev, [id]: { status: 'error', message: res.error || t('quotesx.detail.load_error') } }));
+      }
+    } catch (err) {
+      console.error(err);
+      setDetails(prev => ({ ...prev, [id]: { status: 'error', message: t('quotesx.detail.load_error') } }));
+    }
+  };
+
   const toggleExpand = (id: string) => setExpanded(prev => {
     const next = new Set(prev);
-    if (next.has(id)) next.delete(id); else next.add(id);
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+      // Première ouverture : hydrate le détail complet (idempotent — on évite de
+      // refetcher si déjà chargé ou en cours).
+      const st = details[id];
+      if (!st || st.status === 'error') void loadDetail(id);
+    }
     return next;
   });
 
@@ -366,7 +403,13 @@ export function QuotesPage() {
               <tbody>
                 {quotes.map((q, idx) => {
                   const isExpanded = expanded.has(q.id);
-                  const hasBreakdown = q.subtotal != null && q.tax_tps != null && q.tax_tvq != null;
+                  // Détail complet (getQuote) si disponible — sinon repli sur la
+                  // ligne de liste `q`. Le détail fiabilise items/ventilation.
+                  const detailState = details[q.id];
+                  const detailQuote = detailState?.status === 'ready' ? detailState.quote : q;
+                  const detailLoading = detailState?.status === 'loading';
+                  const detailError = detailState?.status === 'error' ? detailState.message : null;
+                  const hasBreakdown = detailQuote.subtotal != null && detailQuote.tax_tps != null && detailQuote.tax_tvq != null;
                   const canAccept = q.status === 'draft' || q.status === 'sent';
                   // Envoyable pour signature : devis draft/sent (§6.H Manager-C).
                   const canSendForSign = q.status === 'draft' || q.status === 'sent';
@@ -485,14 +528,39 @@ export function QuotesPage() {
                       </tr>
                       <tr>
                         <td colSpan={6} style={{ padding: 0, border: 'none' }}>
-                          <div className={`table-expand-content ${isExpanded ? 'is-open' : ''}`}>
+                          <div className={`table-expand-content ${isExpanded ? 'is-open' : ''}`} aria-busy={detailLoading}>
                             <div className="table-expand-inner">
+                              {/* Erreur de chargement du détail — role="alert" + retry (additif). */}
+                              {detailError && (
+                                <div
+                                  role="alert"
+                                  className="mb-3 rounded-[var(--radius-md)] border border-[color-mix(in_srgb,var(--danger)_40%,transparent)] bg-[var(--danger-soft)] px-3 py-2 flex items-center justify-between gap-3"
+                                >
+                                  <span className="text-[12px] text-[var(--danger)]">{detailError}</span>
+                                  <Button size="sm" variant="secondary" onClick={() => void loadDetail(q.id)}>
+                                    {t('common.retry')}
+                                  </Button>
+                                </div>
+                              )}
+                              {/* Indicateur de chargement du détail complet (getQuote). */}
+                              {detailLoading && (
+                                <div className="mb-3 flex items-center gap-2 text-[12px] text-[var(--text-muted)]">
+                                  <Skeleton className="h-3 w-40 rounded" />
+                                  <span className="sr-only">{t('quotesx.detail.loading')}</span>
+                                </div>
+                              )}
                               <div className="table-expand-detail">
                                 <div className="table-expand-detail-section" style={{ flex: '1 1 260px' }}>
                                   <span className="table-expand-detail-label">{t('quotes.detail.description')}</span>
                                   <span className="table-expand-detail-value text-[12px] leading-relaxed">
-                                    {q.description || t('quotes.detail.description_empty')}
+                                    {detailQuote.description || t('quotes.detail.description_empty')}
                                   </span>
+                                </div>
+                                <div className="table-expand-detail-section">
+                                  <span className="table-expand-detail-label">{t('invoices.table.status')}</span>
+                                  <div>
+                                    <Tag dot size="xs" variant={STATUS_VARIANT[detailQuote.status]}>{statusLabel(detailQuote.status)}</Tag>
+                                  </div>
                                 </div>
                                 <div className="table-expand-detail-section">
                                   <span className="table-expand-detail-label">{t('invoice.total')}</span>
@@ -501,15 +569,15 @@ export function QuotesPage() {
                                       <>
                                         <div className="flex justify-between gap-4">
                                           <span className="text-[var(--text-muted)]">{t('invoice.subtotal')}</span>
-                                          <span className="t-mono-num">{formatCurrency(q.subtotal as number, getLocale(), 'CAD')}</span>
+                                          <span className="t-mono-num">{formatCurrency(detailQuote.subtotal as number, getLocale(), 'CAD')}</span>
                                         </div>
                                         <div className="flex justify-between gap-4">
                                           <span className="text-[var(--text-muted)]">{t('invoice.tax_tps')}</span>
-                                          <span className="t-mono-num">{formatCurrency(q.tax_tps as number, getLocale(), 'CAD')}</span>
+                                          <span className="t-mono-num">{formatCurrency(detailQuote.tax_tps as number, getLocale(), 'CAD')}</span>
                                         </div>
                                         <div className="flex justify-between gap-4">
                                           <span className="text-[var(--text-muted)]">{t('invoice.tax_tvq')}</span>
-                                          <span className="t-mono-num">{formatCurrency(q.tax_tvq as number, getLocale(), 'CAD')}</span>
+                                          <span className="t-mono-num">{formatCurrency(detailQuote.tax_tvq as number, getLocale(), 'CAD')}</span>
                                         </div>
                                       </>
                                     ) : (
@@ -518,25 +586,34 @@ export function QuotesPage() {
                                     <div className="flex justify-between gap-4 pt-1 border-t border-[var(--border-subtle)]">
                                       <span className="font-semibold">{t('invoice.total')}</span>
                                       <span className="t-mono-num font-bold" style={{ color: 'var(--primary)' }}>
-                                        {formatCurrency(qTotal(q), getLocale(), 'CAD')}
+                                        {formatCurrency(qTotal(detailQuote), getLocale(), 'CAD')}
                                       </span>
                                     </div>
                                   </div>
                                 </div>
-                                <div className="table-expand-detail-section">
+                                <div className="table-expand-detail-section" style={{ flex: '1 1 320px' }}>
                                   <span className="table-expand-detail-label">{t('quotes.detail.articles')}</span>
                                   <div className="flex flex-col gap-1 text-[12px]">
-                                    {(q.items && q.items.length > 0) ? q.items.map(it => (
+                                    {(detailQuote.items && detailQuote.items.length > 0) ? detailQuote.items.map(it => (
                                       <div key={it.id} className="flex justify-between gap-4">
-                                        <span className="text-[var(--text-secondary)] truncate">{it.label} × {it.qty}</span>
-                                        <span className="t-mono-num">{formatCurrency(it.line_total, getLocale(), 'CAD')}</span>
+                                        <span className="text-[var(--text-secondary)] truncate">
+                                          {it.label}
+                                          <span className="text-[var(--text-muted)]">
+                                            {' '}× {it.qty} @ {formatCurrency(it.unit_price, getLocale(), 'CAD')}
+                                          </span>
+                                        </span>
+                                        <span className="t-mono-num shrink-0">{formatCurrency(it.line_total, getLocale(), 'CAD')}</span>
                                       </div>
-                                    )) : <span className="text-[var(--text-muted)] italic">—</span>}
+                                    )) : (
+                                      <span className="text-[var(--text-muted)] italic">
+                                        {detailLoading ? t('quotesx.detail.loading') : t('quotesx.detail.no_items')}
+                                      </span>
+                                    )}
                                   </div>
                                 </div>
                                 <div className="table-expand-detail-section">
                                   <span className="table-expand-detail-label">{t('quotes.detail.full_id')}</span>
-                                  <span className="table-expand-detail-value text-[11px] font-mono break-all">{q.id}</span>
+                                  <span className="table-expand-detail-value text-[11px] font-mono break-all">{detailQuote.id}</span>
                                 </div>
                               </div>
                             </div>

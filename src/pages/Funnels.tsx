@@ -31,7 +31,9 @@ import {
   Eye,
   Send,
   Pencil,
+  BarChart3,
 } from 'lucide-react';
+import { FunnelStatsPanel } from '@/components/funnels/FunnelStatsPanel';
 import {
   getFunnels,
   getFunnel,
@@ -62,6 +64,9 @@ export function FunnelsPage() {
   const [newName, setNewName] = useState('');
   const [templateId, setTemplateId] = useState(''); // '' = vierge
   const [busy, setBusy] = useState(false);
+  // Surface analytics funnel-level (getFunnelStats) — funnel sélectionné pour
+  // le panneau de stats (null = fermé). 100% additif.
+  const [statsFunnel, setStatsFunnel] = useState<Funnel | null>(null);
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -326,6 +331,16 @@ export function FunnelsPage() {
                     <Button
                       variant="ghost"
                       size="sm"
+                      leftIcon={<Icon as={BarChart3} size="sm" />}
+                      onClick={() => setStatsFunnel(f)}
+                      aria-label={t('funnelx.stats.open_aria', { name: f.name })}
+                      title={t('funnelx.stats.title')}
+                    >
+                      {t('funnelx.stats.button')}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       disabled={busy}
                       leftIcon={<Icon as={Copy} size="sm" />}
                       onClick={() => void handleDuplicate(f)}
@@ -396,6 +411,26 @@ export function FunnelsPage() {
             </Button>
           </div>
         </div>
+      </Modal>
+
+      {/* Panneau analytics funnel-level (getFunnelStats) — surface des stats
+          jusqu'ici invisibles. Additif : n'altère pas la liste/CRUD. */}
+      <Modal
+        open={statsFunnel !== null}
+        onOpenChange={(open) => {
+          if (!open) setStatsFunnel(null);
+        }}
+        title={t('funnelx.stats.title')}
+        size="lg"
+      >
+        {statsFunnel ? (
+          <div className="p-1">
+            <FunnelStatsPanel
+              funnelId={statsFunnel.id}
+              funnelName={statsFunnel.name}
+            />
+          </div>
+        ) : null}
       </Modal>
     </AppLayout>
   );

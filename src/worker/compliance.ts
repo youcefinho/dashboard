@@ -7,6 +7,11 @@ import { sanitizeHtml, json, audit, corsHeaders } from './helpers';
 // i18n-server.ts (gelé Phase A). normalizeLeadLocale/DEFAULT_LEAD_LOCALE servent
 // à garantir le byte-identique du chemin par défaut (cf. generateCaslFooter).
 import { tLead, normalizeLeadLocale, DEFAULT_LEAD_LOCALE } from './i18n-server';
+// Phase 1 V2 — câblage engine : assemblage de l'export PII délégué au
+// compliance-engine (helper pur buildDataExport). On passe explicitement le
+// `purpose` historique pour rester byte-identique (l'engine ajoute sinon
+// " / RGPD Art 15" par défaut).
+import { buildDataExport } from './lib/compliance-engine';
 
 // ── Helpers CASL ────────────────────────────────────────────
 
@@ -220,13 +225,12 @@ export async function handleExportPii(
   await audit(env, auth.userId, 'lead.export_pii', 'lead', leadId);
 
   return json({
-    data: {
-      lead,
+    data: buildDataExport({
+      lead: lead as Record<string, unknown> | null,
       messages: messages || [],
       consents: consents || [],
       activities: activities || [],
-      exported_at: new Date().toISOString(),
       purpose: 'Export de données personnelles — Loi 25 sur la protection des renseignements personnels (Québec)',
-    },
+    }),
   });
 }

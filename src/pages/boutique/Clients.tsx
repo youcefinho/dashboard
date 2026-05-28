@@ -12,15 +12,17 @@ import {
   PageHero, Card, EmptyState, Skeleton, SlidePanel, Button, Tag, Avatar, Icon,
 } from '@/components/ui';
 import { RefreshCw } from 'lucide-react';
-import { getEcommerceCustomers, getCustomer360 } from '@/lib/api';
+import { getEcommerceCustomers, getCustomer360, getCustomerChurn } from '@/lib/api';
 import { t, getLocale } from '@/lib/i18n';
-import { formatMoneyCents } from '@/lib/i18n/number';
+import { formatMoneyCents, formatPercent } from '@/lib/i18n/number';
 import { formatDate } from '@/lib/i18n/datetime';
 import { rfmSegmentLabelKey, rfmSegmentVariant } from '@/lib/rfm';
-import type { Customer, Customer360, RfmSegment } from '@/lib/types';
+import type {
+  Customer, Customer360, RfmSegment, CustomerChurnPrediction,
+} from '@/lib/types';
 import {
   Contact, ExternalLink, ShoppingBag, BarChart3, Link2, ShoppingCart,
-  RotateCcw, Truck, Undo2, DollarSign,
+  RotateCcw, Truck, Undo2, DollarSign, AlertTriangle,
 } from 'lucide-react';
 
 function customerName(c: Customer): string {
@@ -118,6 +120,19 @@ const TL_COLOR: Record<TlKind, string> = {
   return: 'var(--text-muted)',
 };
 
+// Risque de churn (custx.*) — bucket lisible M2 → variant Tag + clé i18n.
+type ChurnRisk = CustomerChurnPrediction['risk'];
+const CHURN_VARIANT: Record<ChurnRisk, 'success' | 'warning' | 'danger'> = {
+  low: 'success',
+  medium: 'warning',
+  high: 'danger',
+};
+const CHURN_LABEL_KEY: Record<ChurnRisk, string> = {
+  low: 'custx.churn_low',
+  medium: 'custx.churn_medium',
+  high: 'custx.churn_high',
+};
+
 export function BoutiqueClientsPage() {
   const navigate = useNavigate();
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -127,6 +142,10 @@ export function BoutiqueClientsPage() {
   const [detail, setDetail] = useState<Customer360 | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  // Churn (custx.*) — fetch indépendant du 360 : se dégrade séparément.
+  const [churn, setChurn] = useState<CustomerChurnPrediction | null>(null);
+  const [churnError, setChurnError] = useState<string | null>(null);
+  const [churnLoading, setChurnLoading] = useState(false);
   // reloadKey : bump pour relancer le fetch principal après erreur.
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -175,6 +194,30 @@ export function BoutiqueClientsPage() {
         if (!cancelled) setDetailError(t('common.error.load_failed'));
       })
       .finally(() => { if (!cancelled) setDetailLoading(false); });
+    return () => { cancelled = true; };
+  }, [selected]);
+
+  // Prédiction de churn (custx.*) — chargée en parallèle du 360 à chaque
+  // sélection. Indépendante : un échec ici n'affecte pas le reste du panneau.
+  useEffect(() => {
+    if (!selected) { setChurn(null); setChurnError(null); return; }
+    let cancelled = false;
+    setChurn(null);
+    setChurnError(null);
+    setChurnLoading(true);
+    getCustomerChurn(selected.id)
+      .then((res) => {
+        if (cancelled) return;
+        if (res.error) {
+          setChurnError(res.error);
+        } else if (res.data) {
+          setChurn(res.data);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setChurnError(t('common.error.load_failed'));
+      })
+      .finally(() => { if (!cancelled) setChurnLoading(false); });
     return () => { cancelled = true; };
   }, [selected]);
 
@@ -478,6 +521,61 @@ export function BoutiqueClientsPage() {
                 </Tag>
               ) : (
                 <p className="text-xs text-[var(--text-muted)] italic">{t('shop.section.rfm_soon')}</p>
+              )}
+            </section>
+
+            {/* Risque de churn (custx.*) — score + bucket + raisons (M2). */}
+            <section className="pt-4 border-t border-[var(--border-subtle)]">
+              <h3 className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2 flex items-center gap-2">
+                <AlertTriangle size={14} strokeWidth={1.8} /> {t('custx.churn_title')}
+              </h3>
+              {churnLoading && !churn ? (
+                <div aria-busy="true" data-testid="boutique-customer-churn-loading">
+                  <Skeleton className="h-6 w-28 rounded mb-2" />
+                  <Skeleton className="h-3 w-3/4 rounded" />
+                </div>
+              ) : churnError && !churn ? (
+                <p
+                  className="text-xs text-[var(--danger-text)] italic"
+                  role="alert"
+                  data-testid="boutique-customer-churn-error"
+                >
+                  {churnError}
+                </p>
+              ) : churn ? (
+                <div data-testid="boutique-customer-churn">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Tag size="md" dot variant={CHURN_VARIANT[churn.risk]}>
+                      {t(CHURN_LABEL_KEY[churn.risk])}
+                    </Tag>
+                    <span className="t-mono-num text-[13px] font-semibold">
+                      {formatPercent(churn.score, getLocale(), 0)}
+                    </span>
+                    {churn.fallback && (
+                      <Tag size="xs" variant="neutral">{t('custx.churn_estimate')}</Tag>
+                    )}
+                  </div>
+                  {churn.reasons.length > 0 && (
+                    <>
+                      <p className="text-[10px] uppercase tracking-wider text-[var(--text-muted)] mt-3 mb-1.5">
+                        {t('custx.churn_reasons')}
+                      </p>
+                      <ul className="flex flex-col gap-1">
+                        {churn.reasons.map((r, i) => (
+                          <li
+                            key={`${i}-${r}`}
+                            className="text-[12px] text-[var(--text-secondary)] flex items-start gap-1.5"
+                          >
+                            <span aria-hidden="true" className="text-[var(--text-muted)]">·</span>
+                            <span className="min-w-0">{r}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-[var(--text-muted)] italic">{t('custx.churn_none')}</p>
               )}
             </section>
 

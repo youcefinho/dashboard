@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { ProactiveAlertsWidget } from '@/components/ProactiveAlertsWidget';
+import { DashboardLayoutManager } from '@/components/dashboard/DashboardLayoutManager';
 
 // ── Types widgets configurables ──────────────────────────────
 type WidgetId = 'stats' | 'clients' | 'chart' | 'activity' | 'contacts' | 'pipeline_donut' | 'top_sources';
@@ -125,6 +126,35 @@ export function DashboardPage() {
   });
 
   const isVisible = (id: WidgetId) => widgets.find(w => w.id === id)?.visible !== false;
+
+  // Applique une config widgets issue d'un layout serveur (forme tolérante :
+  // on ne garde que les WidgetId connus et on complète avec les defaults manquants).
+  const applyLayout = useCallback((incoming: unknown) => {
+    if (!Array.isArray(incoming)) return;
+    const known = new Set<WidgetId>(DEFAULT_WIDGETS.map(w => w.id));
+    const sanitized: WidgetConfig[] = [];
+    const seen = new Set<WidgetId>();
+    for (const raw of incoming) {
+      if (!raw || typeof raw !== 'object') continue;
+      const r = raw as Partial<WidgetConfig>;
+      if (typeof r.id !== 'string' || !known.has(r.id as WidgetId) || seen.has(r.id as WidgetId)) continue;
+      const def = DEFAULT_WIDGETS.find(d => d.id === r.id)!;
+      seen.add(r.id as WidgetId);
+      sanitized.push({
+        id: r.id as WidgetId,
+        label: def.label,
+        icon: def.icon,
+        visible: typeof r.visible === 'boolean' ? r.visible : true,
+        order: typeof r.order === 'number' ? r.order : sanitized.length,
+      });
+    }
+    // Compléter avec les widgets par défaut absents du layout enregistré.
+    for (const def of DEFAULT_WIDGETS) {
+      if (!seen.has(def.id)) sanitized.push({ ...def, order: sanitized.length });
+    }
+    const next = sanitized.sort((a, b) => a.order - b.order).map((w, i) => ({ ...w, order: i }));
+    updateWidgets(() => next);
+  }, [updateWidgets]);
 
   useEffect(() => {
     async function load() {
@@ -239,6 +269,11 @@ export function DashboardPage() {
 
         {/* ═══ Sprint C — Widget IA proactive (self-gated capability ai.use + self-hide si vide) ═══ */}
         <ProactiveAlertsWidget />
+
+        {/* ═══ Gestionnaire de layouts personnalisés (Sprint 6 D4) ═══ */}
+        {showConfig && (
+          <DashboardLayoutManager currentWidgets={widgets} onApplyLayout={applyLayout} />
+        )}
 
         {/* ═══ Panneau de configuration des widgets ═══ */}
         {showConfig && (

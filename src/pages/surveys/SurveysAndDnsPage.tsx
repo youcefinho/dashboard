@@ -25,10 +25,11 @@ import {
 } from '../../lib/api';
 import { SurveyBuilder } from '../../components/surveys/SurveyBuilder';
 import { NpsAnalytics } from '../../components/surveys/NpsAnalytics';
+import { SurveyResponsesPanel } from '../../components/surveys/SurveyResponsesPanel';
 import { CustomDomainsManager } from '../../components/dns/CustomDomainsManager';
 import { ErrorBoundary } from '../ErrorBoundary';
 
-type TabValue = 'surveys' | 'nps' | 'domains';
+type TabValue = 'surveys' | 'responses' | 'nps' | 'domains';
 
 export function SurveysAndDnsPage() {
   const title = t('surveys.title');
@@ -69,6 +70,41 @@ export function SurveysAndDnsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
 
+  // ── Responses tab — liste TOUS les surveys (pas seulement NPS) ─────────
+  const [allSurveys, setAllSurveys] = useState<Survey[]>([]);
+  const [loadingAllSurveys, setLoadingAllSurveys] = useState<boolean>(true);
+  const [allSurveysLoadError, setAllSurveysLoadError] = useState<string | null>(
+    null,
+  );
+  const [selectedResponsesSurveyId, setSelectedResponsesSurveyId] =
+    useState<string>('');
+
+  const loadAllSurveys = useCallback(async () => {
+    setLoadingAllSurveys(true);
+    setAllSurveysLoadError(null);
+    const res = await listSurveys();
+    if (res.error) {
+      toastError(res.error);
+      setAllSurveysLoadError(res.error);
+      setAllSurveys([]);
+    } else if (res.data) {
+      setAllSurveys(res.data);
+      const first = res.data[0];
+      if (first && !selectedResponsesSurveyId) {
+        setSelectedResponsesSurveyId(first.id);
+      }
+    }
+    setLoadingAllSurveys(false);
+  }, [selectedResponsesSurveyId, toastError]);
+
+  // Charge la liste complète uniquement à l'ouverture de l'onglet Responses.
+  useEffect(() => {
+    if (tab === 'responses') {
+      void loadAllSurveys();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
+
   return (
     <AppLayout title={title}>
       <PageHero
@@ -83,6 +119,9 @@ export function SurveysAndDnsPage() {
           <TabsTrigger value="surveys" data-testid="surveys-and-dns-tab-surveys">
             {t('surveys.title')}
           </TabsTrigger>
+          <TabsTrigger value="responses" data-testid="surveys-and-dns-tab-responses">
+            {t('surveys.responses.title')}
+          </TabsTrigger>
           <TabsTrigger value="nps" data-testid="surveys-and-dns-tab-nps">
             {t('surveys.nps.score')}
           </TabsTrigger>
@@ -95,6 +134,80 @@ export function SurveysAndDnsPage() {
         <TabsContent value="surveys" data-testid="surveys-and-dns-pane-surveys">
           <ErrorBoundary>
             <SurveyBuilder />
+          </ErrorBoundary>
+        </TabsContent>
+
+        {/* Tab — Responses (additif S52) — Select survey + responses table */}
+        <TabsContent value="responses" data-testid="surveys-and-dns-pane-responses">
+          <ErrorBoundary>
+            <div className="space-y-5">
+              <header className="flex items-end justify-between gap-4 flex-wrap">
+                <div className="min-w-0 max-w-md flex-1">
+                  {loadingAllSurveys ? (
+                    <Skeleton
+                      className="h-9 w-full rounded-md"
+                      aria-busy="true"
+                      aria-live="polite"
+                    />
+                  ) : (
+                    <Select
+                      label={t('surveys.title')}
+                      value={selectedResponsesSurveyId}
+                      onChange={(e) =>
+                        setSelectedResponsesSurveyId(e.target.value)
+                      }
+                      disabled={allSurveys.length === 0}
+                      aria-label={t('surveys.title')}
+                      data-testid="surveys-and-dns-responses-select"
+                    >
+                      {allSurveys.length === 0 ? (
+                        <option value="">{t('surveys.empty')}</option>
+                      ) : (
+                        allSurveys.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.title}
+                          </option>
+                        ))
+                      )}
+                    </Select>
+                  )}
+                </div>
+              </header>
+
+              {allSurveysLoadError ? (
+                <div
+                  className="rounded-xl border border-[var(--border-subtle)] p-6 flex flex-col items-start gap-3"
+                  role="alert"
+                  aria-live="polite"
+                  data-testid="surveys-and-dns-responses-error"
+                >
+                  <p className="text-sm font-medium text-[var(--text-primary)]">
+                    {t('common.loading_error')}
+                  </p>
+                  <p className="text-xs text-[var(--text-muted)]">
+                    {allSurveysLoadError}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => void loadAllSurveys()}
+                    className="text-xs underline text-[var(--text-primary)]"
+                  >
+                    {t('common.retry')}
+                  </button>
+                </div>
+              ) : selectedResponsesSurveyId ? (
+                <SurveyResponsesPanel surveyId={selectedResponsesSurveyId} />
+              ) : (
+                <div
+                  className="rounded-xl border border-dashed border-[var(--border-subtle)] p-10 text-center text-sm text-[var(--text-muted)]"
+                  data-testid="surveys-and-dns-responses-empty"
+                  role="status"
+                  aria-live="polite"
+                >
+                  {t('surveys.empty')}
+                </div>
+              )}
+            </div>
           </ErrorBoundary>
         </TabsContent>
 

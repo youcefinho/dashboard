@@ -33,7 +33,8 @@ import {
   type SlaLevel,
 } from '@/lib/api';
 import { t } from '@/lib/i18n';
-import { LifeBuoy, Send, StickyNote } from 'lucide-react';
+import { NewTicketModal } from '@/components/tickets/NewTicketModal';
+import { LifeBuoy, Plus, Send, StickyNote } from 'lucide-react';
 
 // ── Color-coding statuts (brief) : ouvert=info(bleu), en_cours=warning(orange),
 //    attente_client=neutral(gris), resolu=success(vert), escale=danger(rouge).
@@ -162,6 +163,9 @@ export function TicketsPage() {
   const [fStatus, setFStatus] = useState<string>('');
   const [fAssigned, setFAssigned] = useState<string>('');
   const [fPriority, setFPriority] = useState<string>('');
+
+  // Création (modale) — flux additif LOT G1.
+  const [createOpen, setCreateOpen] = useState(false);
 
   // Détail (slide-over)
   const [openId, setOpenId] = useState<string | null>(null);
@@ -292,6 +296,14 @@ export function TicketsPage() {
           description={t('ticket.list.count', { n: filtered.length })}
           actions={
             <>
+              <Button
+                size="sm"
+                variant="primary"
+                leftIcon={<Plus size={14} />}
+                onClick={() => setCreateOpen(true)}
+              >
+                {t('ticketsx.create.action')}
+              </Button>
               <Select
                 size="sm"
                 containerClassName="w-auto"
@@ -383,6 +395,18 @@ export function TicketsPage() {
                 tickets.length === 0
                   ? t('ticket.empty.desc')
                   : undefined
+              }
+              action={
+                tickets.length === 0 ? (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    leftIcon={<Plus size={14} />}
+                    onClick={() => setCreateOpen(true)}
+                  >
+                    {t('ticketsx.create.action')}
+                  </Button>
+                ) : undefined
               }
             />
           </Card>
@@ -600,6 +624,18 @@ export function TicketsPage() {
           </>
         )}
       </SlidePanel>
+
+      {/* ── Création de ticket (modale additive LOT G1) ──────────────────── */}
+      <NewTicketModal
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        onCreated={(id) => {
+          setCreateOpen(false);
+          success(t('ticketsx.create.success'));
+          void load();
+          openTicket(id);
+        }}
+      />
     </AppLayout>
   );
 }

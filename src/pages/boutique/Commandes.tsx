@@ -14,6 +14,8 @@ import {
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { PullToRefreshIndicator } from '@/components/ui/PullToRefreshIndicator';
 import { getEcommerceOrders } from '@/lib/api';
+import { usePrompt } from '@/components/ui';
+import { ShipmentDetailPanel } from '@/components/boutique/ShipmentDetailPanel';
 import { t, getLocale } from '@/lib/i18n';
 import { formatMoneyCents } from '@/lib/i18n/number';
 import { formatDate } from '@/lib/i18n/datetime';
@@ -23,7 +25,7 @@ import {
   financialLabel, fulfillmentLabel,
 } from '@/components/ecommerce/OrderDetailPanel';
 import { ManualOrderModal } from '@/components/ecommerce/ManualOrderModal';
-import { ShoppingCart, Plus, Search, RefreshCw, AlertTriangle } from 'lucide-react';
+import { ShoppingCart, Plus, Search, RefreshCw, AlertTriangle, Truck } from 'lucide-react';
 
 const PAGE_SIZE = 25;
 
@@ -49,6 +51,20 @@ export function CommandesPage() {
   // Panels
   const [detailId, setDetailId] = useState<string | null>(null);
   const [manualOpen, setManualOpen] = useState(false);
+  // Surface getShipment : vue détail focalisée d'une expédition par son id.
+  const [shipmentId, setShipmentId] = useState<string | null>(null);
+  const prompt = usePrompt();
+
+  const openShipmentLookup = async () => {
+    const id = await prompt({
+      title: t('ordersx.lookup_shipment_title'),
+      description: t('ordersx.lookup_shipment_desc'),
+      placeholder: t('ordersx.lookup_shipment_ph'),
+      confirmLabel: t('ordersx.lookup_shipment_confirm'),
+    });
+    const trimmed = id?.trim();
+    if (trimmed) setShipmentId(trimmed);
+  };
 
   // Debounce recherche
   useEffect(() => {
@@ -124,9 +140,15 @@ export function CommandesPage() {
           highlight={t('shop.orders')}
           description={t('shop.order.page_description')}
           actions={
-            <Button className="gap-2" onClick={() => setManualOpen(true)}>
-              <Icon as={Plus} size="md" /> {t('shop.order.create')}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" className="gap-2" onClick={() => void openShipmentLookup()}
+                aria-label={t('ordersx.lookup_shipment_title')}>
+                <Icon as={Truck} size="md" /> {t('ordersx.lookup_shipment_btn')}
+              </Button>
+              <Button className="gap-2" onClick={() => setManualOpen(true)}>
+                <Icon as={Plus} size="md" /> {t('shop.order.create')}
+              </Button>
+            </div>
           }
         />
 
@@ -342,6 +364,11 @@ export function CommandesPage() {
         open={manualOpen}
         onOpenChange={setManualOpen}
         onCreated={(id) => setDetailId(id)}
+      />
+      <ShipmentDetailPanel
+        shipmentId={shipmentId}
+        open={Boolean(shipmentId)}
+        onOpenChange={(o) => { if (!o) setShipmentId(null); }}
       />
     </AppLayout>
   );
