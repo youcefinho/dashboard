@@ -14,6 +14,7 @@ import {
   validateEmail,
   validatePhone,
   computeInitialScore,
+  isValidStatus,
   LEAD_ERROR_CODES,
 } from './lib/leads-engine';
 
@@ -102,7 +103,7 @@ export async function handleGetClientLeads(
   let query = 'SELECT * FROM leads WHERE client_id = ?';
   const params: string[] = [clientId];
 
-  if (status && ['new', 'contacted', 'qualified', 'won', 'closed', 'lost'].includes(status)) {
+  if (status && isValidStatus(status)) {
     query += ' AND status = ?';
     params.push(status);
   }
@@ -183,7 +184,7 @@ export async function handleGetLeads(env: Env, auth: { role: string; clientId?: 
                LEFT JOIN clients c ON l.client_id = c.id WHERE 1=1`;
   const params: (string | number)[] = [];
 
-  if (status && ['new', 'contacted', 'qualified', 'won', 'closed', 'lost'].includes(status)) {
+  if (status && isValidStatus(status)) {
     query += ' AND l.status = ?';
     params.push(status);
   }
@@ -266,7 +267,7 @@ export async function handlePatchLead(
 
   if (body.status !== undefined) {
     const status = body.status as string;
-    if (!['new', 'contacted', 'qualified', 'won', 'closed', 'lost'].includes(status)) {
+    if (!isValidStatus(status)) {
       return json({ error: 'Statut invalide' }, 400);
     }
     updates.push('status = ?');
@@ -523,8 +524,7 @@ export async function handleBulkLeads(
 
   switch (body.action) {
     case 'change_status': {
-      const validStatuses = ['new', 'contacted', 'qualified', 'won', 'closed', 'lost'];
-      if (!body.value || !validStatuses.includes(body.value)) {
+      if (!body.value || !isValidStatus(body.value)) {
         return json({ error: 'Statut invalide' }, 400);
       }
       const placeholders = ids.map(() => '?').join(',');
