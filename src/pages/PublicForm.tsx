@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from '@tanstack/react-router';
 import { Button, Card, useToast, Input, Select, Textarea, Switch, Icon } from '@/components/ui';
+import { Wizard } from '@/components/ui/Wizard';
 import { Mail, Phone, Hash } from 'lucide-react';
 import React from 'react';
 import { t } from '@/lib/i18n';
@@ -146,17 +147,10 @@ export function PublicFormPage() {
 
   const isMultiStep = steps.length > 1;
   const safeStepIdx = Math.min(currentStep, steps.length - 1);
-  const activeStep = steps[safeStepIdx] ?? 1;
 
-  const fieldsForRender = useMemo(() => {
-    if (!isMultiStep) return visibleFields;
-    return visibleFields.filter(f => (f.step && f.step > 0 ? f.step : 1) === activeStep);
-  }, [visibleFields, isMultiStep, activeStep]);
 
-  const isLastStep = !isMultiStep || safeStepIdx >= steps.length - 1;
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!config) return;
     if (requireConsent && !consentChecked) return; // garde-fou (le bouton est déjà désactivé)
     setIsSubmitting(true);
@@ -205,12 +199,6 @@ export function PublicFormPage() {
     void logFormFieldEvent(slug, { field_name: name, event, session_id: sessionId.current });
   };
 
-  const goNext = () => {
-    setCurrentStep(s => Math.min(s + 1, steps.length - 1));
-  };
-  const goPrev = () => {
-    setCurrentStep(s => Math.max(s - 1, 0));
-  };
 
   if (loading) {
     return (
@@ -395,7 +383,26 @@ export function PublicFormPage() {
             />
           </div>
         );
-      case 'file':
+      case 'file': {
+        const handleFileChangeLocal = (e: React.ChangeEvent<HTMLInputElement>) => {
+          const file = e.target.files?.[0];
+          if (!file) {
+            handleFieldChange(f.name, '');
+            return;
+          }
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            handleFieldChange(f.name, {
+              name: file.name,
+              size: file.size,
+              type: file.type,
+              base64: reader.result as string,
+            });
+            handleFieldEvent(f.name, 'complete');
+          };
+          reader.readAsDataURL(file);
+        };
+
         return (
           <div key={f.id}>
             <label className={labelClasses} htmlFor={f.id}>
@@ -407,11 +414,12 @@ export function PublicFormPage() {
               name={f.name}
               required={f.required}
               aria-required={ariaRequired}
-              className="block w-full text-sm text-[var(--text-secondary)] file:mr-3 file:rounded-md file:border-0 file:bg-[var(--bg-canvas)] file:px-3 file:py-2 file:text-sm file:text-[var(--text-primary)]"
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => { handleFieldChange(f.name, e.target.files?.[0]?.name || ''); handleFieldEvent(f.name, 'complete'); }}
+              className="block w-full text-sm text-[var(--text-secondary)] file:mr-3 file:rounded-md file:border-0 file:bg-[var(--bg-canvas)] file:px-3 file:py-2 file:text-sm file:text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)] rounded-lg border border-[var(--border-default)] p-1 bg-[var(--bg-surface)]"
+              onChange={handleFileChangeLocal}
             />
           </div>
         );
+      }
       case 'hidden':
         return (
           <input
@@ -426,7 +434,53 @@ export function PublicFormPage() {
     }
   };
 
-  const progressPct = isMultiStep ? Math.round(((safeStepIdx + 1) / steps.length) * 100) : 0;
+  const wizardSteps = useMemo(() => {
+    return steps.map((stepNum, idx) => {
+      const isLast = idx === steps.length - 1;
+      const stepFields = visibleFields.filter(f => (f.step && f.step > 0 ? f.step : 1) === stepNum);
+      
+      const isValid = () => {
+        for (const field of stepFields) {
+          if (field.required) {
+            const val = formData[field.name];
+            const isEmpty = val === undefined || val === null
+              || (typeof val === 'string' && val.trim() === '')
+              || (Array.isArray(val) && val.length === 0);
+            if (isEmpty) return false;
+          }
+        }
+        if (isLast && requireConsent && !consentChecked) {
+          return false;
+        }
+        return true;
+      };
+
+      return {
+        id: `step-${stepNum}`,
+        label: `Étape ${idx + 1}`,
+        isValid,
+        content: (
+          <div className="space-y-5">
+            {stepFields.map(renderField)}
+            
+            {isLast && requireConsent && (
+              <div className="pt-2 flex items-start gap-2">
+                <Switch
+                  id="_consent"
+                  variant="brand"
+                  size="sm"
+                  checked={consentChecked}
+                  onCheckedChange={setConsentChecked}
+                  label={`${consentText || "J'accepte d'être recontacté(e), conformément à la Loi 25."} *`}
+                />
+              </div>
+            )}
+          </div>
+        )
+      };
+    });
+  }, [steps, visibleFields, formData, requireConsent, consentChecked, consentText]);
+
   const submitDisabled = isSubmitting || (requireConsent && !consentChecked);
 
   return (
@@ -436,21 +490,45 @@ export function PublicFormPage() {
           <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-2">{config.name}</h1>
           {config.description && <p className="text-[var(--text-muted)] mb-6 text-sm">{config.description}</p>}
 
-          {/* Multi-étapes : barre de progression (clés fb.step.*) */}
-          {isMultiStep && (
-            <div className="mb-5">
-              <div className="flex justify-between text-xs text-[var(--text-muted)] mb-1">
-                <span>{t('fb.step.progress').replace('{current}', String(safeStepIdx + 1)).replace('{total}', String(steps.length))}</span>
-                <span>{progressPct}%</span>
-              </div>
-              <div className="h-1.5 w-full rounded-full bg-[var(--bg-canvas)] overflow-hidden">
-                <div className="h-full rounded-full bg-[var(--primary,#009DDB)] transition-all" style={{ width: `${progressPct}%` }} />
-              </div>
-            </div>
-          )}
+          <form onSubmit={e => e.preventDefault()} className="space-y-5">
+            {isMultiStep ? (
+              <Wizard
+                steps={wizardSteps}
+                currentIndex={safeStepIdx}
+                onStepChange={setCurrentStep}
+                onComplete={() => void handleSubmit()}
+                title={config.name}
+                description={config.description}
+                open={true}
+                onOpenChange={() => {}}
+                completeLabel={config.form_type === 'quiz' ? t('public_form.submit_quiz') : t('public_form.submit')}
+                embedded={true}
+              />
+            ) : (
+              <>
+                {visibleFields.map(renderField)}
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {fieldsForRender.map(renderField)}
+                {/* Case consentement Loi 25 — affichée sur la dernière étape, bloquante. */}
+                {requireConsent && (
+                  <div className="pt-2 flex items-start gap-2">
+                    <Switch
+                      id="_consent"
+                      variant="brand"
+                      size="sm"
+                      checked={consentChecked}
+                      onCheckedChange={setConsentChecked}
+                      label={`${consentText || "J'accepte d'être recontacté(e), conformément à la Loi 25."} *`}
+                    />
+                  </div>
+                )}
+
+                <div className="pt-4 flex items-center gap-2">
+                  <Button type="submit" variant="primary" className="flex-1 text-base py-3" onClick={() => void handleSubmit()} isLoading={isSubmitting} disabled={submitDisabled}>
+                    {config.form_type === 'quiz' ? t('public_form.submit_quiz') : t('public_form.submit')}
+                  </Button>
+                </div>
+              </>
+            )}
 
             {/* Honeypot anti-spam (§6.D) — name='_hp', hors écran, jamais visible.
                 Un bot qui le remplit ⇒ rejet silencieux côté serveur. */}
@@ -464,37 +542,6 @@ export function PublicFormPage() {
               onChange={(e) => setHp(e.target.value)}
               style={{ position: 'absolute', left: '-9999px', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
             />
-
-            {/* Case consentement Loi 25 — affichée sur la dernière étape, bloquante. */}
-            {requireConsent && isLastStep && (
-              <div className="pt-2 flex items-start gap-2">
-                <Switch
-                  id="_consent"
-                  variant="brand"
-                  size="sm"
-                  checked={consentChecked}
-                  onCheckedChange={setConsentChecked}
-                  label={`${consentText || "J'accepte d'être recontacté(e), conformément à la Loi 25."} *`}
-                />
-              </div>
-            )}
-
-            <div className="pt-4 flex items-center gap-2">
-              {isMultiStep && safeStepIdx > 0 && (
-                <Button type="button" variant="ghost" className="flex-1 py-3" onClick={goPrev}>
-                  {t('fb.step.prev')}
-                </Button>
-              )}
-              {!isLastStep ? (
-                <Button type="button" variant="primary" className="flex-1 text-base py-3" onClick={goNext}>
-                  {t('fb.step.next')}
-                </Button>
-              ) : (
-                <Button type="submit" variant="primary" className="flex-1 text-base py-3" isLoading={isSubmitting} disabled={submitDisabled}>
-                  {config.form_type === 'quiz' ? t('public_form.submit_quiz') : t('public_form.submit')}
-                </Button>
-              )}
-            </div>
 
             <p className="text-center text-[10px] text-[var(--text-muted)] pt-2">
               Propulsé par <strong>Intralys</strong>

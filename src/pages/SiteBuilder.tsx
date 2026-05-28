@@ -368,6 +368,12 @@ export function SiteBuilderPage() {
   const [nav, setNav] = useState<SiteNavItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [popupEnabled, setPopupEnabled] = useState(false);
+  const [popupTitle, setPopupTitle] = useState('');
+  const [popupDesc, setPopupDesc] = useState('');
+  const [popupExitIntent, setPopupExitIntent] = useState(true);
+  const [popupDelay, setPopupDelay] = useState(5);
+  const [popupFormId, setPopupFormId] = useState('');
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const load = useCallback(async () => {
@@ -382,7 +388,6 @@ export function SiteBuilderPage() {
     ]);
     if (siteRes.data) {
       setSite(siteRes.data);
-      // nav_json (SiteNavItem[] sérialisé, §6.B) → state éditable.
       try {
         const parsed = siteRes.data.nav_json
           ? (JSON.parse(siteRes.data.nav_json) as SiteNavItem[])
@@ -391,6 +396,16 @@ export function SiteBuilderPage() {
       } catch {
         setNav([]);
       }
+      try {
+        const theme = siteRes.data.theme_json ? JSON.parse(siteRes.data.theme_json) : {};
+        const pConf = theme.popup || {};
+        setPopupEnabled(!!pConf.enabled);
+        setPopupTitle(pConf.title || '');
+        setPopupDesc(pConf.description || '');
+        setPopupExitIntent(pConf.exit_intent !== false);
+        setPopupDelay(pConf.delay || 5);
+        setPopupFormId(pConf.form_id || '');
+      } catch { /* ignore */ }
     } else {
       toastError(siteRes.error || t('site.error.save'));
     }
@@ -550,7 +565,20 @@ export function SiteBuilderPage() {
       in_nav: p?.in_nav,
     });
     // nav_json sérialisé via updateSite (SiteNavItem[], §6.B).
+    const currentTheme = site?.theme_json ? JSON.parse(site.theme_json) : {};
+    const updatedTheme = {
+      ...currentTheme,
+      popup: {
+        enabled: popupEnabled,
+        title: popupTitle,
+        description: popupDesc,
+        exit_intent: popupExitIntent,
+        delay: popupDelay,
+        form_id: popupFormId,
+      }
+    };
     const siteRes = await updateSite(siteId, {
+      theme_json: JSON.stringify(updatedTheme),
       nav_json: JSON.stringify(
         nav
           .filter((n) => n.label.trim())
@@ -562,8 +590,13 @@ export function SiteBuilderPage() {
       ),
     });
     setIsSaving(false);
-    if (pageRes.data && siteRes.data) success(t('site.builder.saved'));
-    else toastError(pageRes.error || siteRes.error || t('site.error.save'));
+    if (pageRes.data && siteRes.data) {
+      success(t('site.builder.saved'));
+      // Mettre à jour l'état local du site avec le nouveau theme_json
+      setSite(prev => prev ? { ...prev, theme_json: JSON.stringify(updatedTheme) } : null);
+    } else {
+      toastError(pageRes.error || siteRes.error || t('site.error.save'));
+    }
   };
 
   const handlePublish = async () => {
@@ -915,6 +948,70 @@ export function SiteBuilderPage() {
                       </button>
                     </div>
                   ))
+                )}
+              </div>
+
+              {/* ── Popups & Exit-Intent ── */}
+              <div className="site-section">
+                <h4 className="palette-title">Popups & Exit-Intent</h4>
+                <label className="site-check" style={{ fontWeight: 600 }}>
+                  <input
+                    type="checkbox"
+                    checked={popupEnabled}
+                    onChange={(e) => setPopupEnabled(e.target.checked)}
+                  />
+                  Activer le popup d'opt-in
+                </label>
+                
+                {popupEnabled && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 10 }}>
+                    <label className="prop-label">Titre du popup</label>
+                    <Input
+                      size="sm"
+                      value={popupTitle}
+                      onChange={(e) => setPopupTitle(e.target.value)}
+                      placeholder="Ex: Offre exclusive !"
+                    />
+                    
+                    <label className="prop-label">Description</label>
+                    <textarea
+                      className="prop-textarea"
+                      rows={2}
+                      value={popupDesc}
+                      onChange={(e) => setPopupDesc(e.target.value)}
+                      placeholder="Ex: Laissez vos coordonnées pour..."
+                    />
+
+                    <label className="site-check">
+                      <input
+                        type="checkbox"
+                        checked={popupExitIntent}
+                        onChange={(e) => setPopupExitIntent(e.target.checked)}
+                      />
+                      Déclenchement sur Exit-Intent
+                    </label>
+
+                    {!popupExitIntent && (
+                      <>
+                        <label className="prop-label">Délai (secondes)</label>
+                        <Input
+                          size="sm"
+                          type="number"
+                          min={1}
+                          value={popupDelay}
+                          onChange={(e) => setPopupDelay(Number(e.target.value) || 5)}
+                        />
+                      </>
+                    )}
+
+                    <label className="prop-label">ID Formulaire CRM</label>
+                    <Input
+                      size="sm"
+                      value={popupFormId}
+                      onChange={(e) => setPopupFormId(e.target.value)}
+                      placeholder="Identifiant du formulaire (ex: field_...)"
+                    />
+                  </div>
                 )}
               </div>
             </div>

@@ -6,7 +6,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, Button, Badge, Skeleton, EmptyState, Select, useToast, useConfirm, AiSparkles, usePanelStack } from '@/components/ui';
 import { t } from '@/lib/i18n';
 import { Avatar } from '@/components/ui/Avatar';
-import { getLeadDetail, updateLead, addTag, removeTag, getAppointments, getTasks, updateTask, getLeadNotes, createLeadNote, deleteLeadNote, getLeadScores, getLeadCustomFields, softDeleteLead, restoreLead, getPipelines, getLeadMessages, getCallLogs, placeCall, setCallDisposition, getLeadConversionScore, type CallLog } from '@/lib/api';
+import { getLeadDetail, updateLead, addTag, removeTag, getAppointments, getTasks, updateTask, getLeadNotes, createLeadNote, deleteLeadNote, getLeadScores, getLeadCustomFields, softDeleteLead, restoreLead, getPipelines, getLeadMessages, getCallLogs, placeCall, setCallDisposition, getLeadConversionScore, getCustomFields, setLeadCustomFields, getWorkflows, enrollLead, getLeadAutomationHistory, type CallLog } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { LeadPrivacyActions } from '@/components/leads/LeadPrivacyActions';
 import { getCachedLead, setCachedLead } from '@/lib/prefetch';
@@ -22,7 +22,7 @@ import {
   TASK_PRIORITY_ICONS, TASK_STATUS_ICONS, TASK_STATUS_LABELS,
   type LeadDetail, type LeadStatus, type Appointment, type Task,
   type LeadNote, type LeadScore, type CustomFieldValue, type LifecycleStage,
-  type PipelineStage, type ConversionPrediction,
+  type PipelineStage, type ConversionPrediction, type Workflow, type CustomFieldDef, type ExecLogEntry,
 } from '@/lib/types';
 import { ArrowLeft, Star, Phone, Mail, CalendarPlus, CheckSquare, Trash2, Compass, PhoneIncoming, PhoneOutgoing } from 'lucide-react';
 import { PhoneLink } from '@/components/ui/PhoneLink';
@@ -90,6 +90,76 @@ function CallDispositionEditor({ call, onSaved }: { call: CallLog; onSaved: (id:
   );
 }
 
+interface MultiSelectEditorProps {
+  options: string[];
+  value: string;
+  onSave: (val: string) => void;
+  onCancel: () => void;
+}
+
+function MultiSelectEditor({ options, value, onSave, onCancel }: MultiSelectEditorProps) {
+  const [selected, setSelected] = useState<string[]>(() => {
+    try {
+      const arr = JSON.parse(value);
+      return Array.isArray(arr) ? arr : [];
+    } catch {
+      return value ? value.split(',').map(v => v.trim()) : [];
+    }
+  });
+
+  const toggle = (opt: string) => {
+    setSelected(prev => prev.includes(opt) ? prev.filter(o => o !== opt) : [...prev, opt]);
+  };
+
+  return (
+    <div className="p-2 border border-[var(--border-subtle)] bg-[var(--bg-surface)] rounded-[var(--radius-md)] space-y-2 mt-1 z-10 relative">
+      <div className="max-h-32 overflow-y-auto space-y-1">
+        {options.map(opt => (
+          <label key={opt} className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)] cursor-pointer">
+            <input
+              type="checkbox"
+              checked={selected.includes(opt)}
+              onChange={() => toggle(opt)}
+              className="rounded border-[var(--border)] text-[var(--brand-primary)] focus:ring-[var(--brand-primary)]"
+            />
+            {opt}
+          </label>
+        ))}
+      </div>
+      <div className="flex justify-end gap-1.5">
+        <Button size="sm" variant="secondary" onClick={onCancel}>Annuler</Button>
+        <Button size="sm" onClick={() => onSave(JSON.stringify(selected))}>Valider</Button>
+      </div>
+    </div>
+  );
+}
+
+const renderCustomFieldValue = (cf: CustomFieldValue) => {
+  if (!cf.value) return '—';
+  if (cf.field_type === 'boolean') {
+    return cf.value === 'true' ? 'Oui ✅' : 'Non ❌';
+  }
+  if (cf.field_type === 'multiselect') {
+    try {
+      const arr = JSON.parse(cf.value);
+      if (Array.isArray(arr)) {
+        return (
+          <div className="flex flex-wrap gap-1 mt-0.5">
+            {arr.map(v => (
+              <span key={v} className="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-full bg-[var(--bg-subtle)] text-[var(--text-secondary)]">
+                {v}
+              </span>
+            ))}
+          </div>
+        );
+      }
+    } catch {
+      return cf.value.split(',').map(v => v.trim()).join(', ');
+    }
+  }
+  return cf.value;
+};
+
 /**
  * Corps de la fiche lead — utilisable en page complète (via LeadDetailPage)
  * ou dans un SlidePanel (via LeadPanel). Pas d'AppLayout interne.
@@ -110,13 +180,16 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
   const [isEditingDeal, setIsEditingDeal] = useState(false);
   const [leadAppointments, setLeadAppointments] = useState<Appointment[]>([]);
   const [leadTasks, setLeadTasks] = useState<Task[]>([]);
-  const [activeTab, setActiveTab] = useState<'details' | 'conversations' | 'activity' | 'notes' | 'scores'>('details');
+  const [activeTab, setActiveTab] = useState<'details' | 'conversations' | 'activity' | 'notes' | 'scores' | 'automations'>('details');
   const [editingField, setEditingField] = useState<string | null>(null);
   const [fieldValue, setFieldValue] = useState('');
   // Sprint 2
   const [leadNotes, setLeadNotes] = useState<LeadNote[]>([]);
   const [leadScores, setLeadScores] = useState<LeadScore[]>([]);
   const [customFields, setCustomFields] = useState<CustomFieldValue[]>([]);
+  const [customFieldDefs, setCustomFieldDefs] = useState<CustomFieldDef[]>([]);
+  const [automationHistory, setAutomationHistory] = useState<ExecLogEntry[]>([]);
+  const [availableWorkflows, setAvailableWorkflows] = useState<Workflow[]>([]);
   const [pipelineStages, setPipelineStages] = useState<PipelineStage[]>([]);
   const [messagesCount, setMessagesCount] = useState(0);
   const [newNoteBody, setNewNoteBody] = useState('');
@@ -151,6 +224,9 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
     getLeadNotes(leadId).then(r => { if (r.data) setLeadNotes(r.data); }).catch(() => {});
     getLeadScores(leadId).then(r => { if (r.data) setLeadScores(r.data); }).catch(() => {});
     getLeadCustomFields(leadId).then(r => { if (r.data) setCustomFields(r.data); }).catch(() => {});
+    getCustomFields().then(r => { if (r.data) setCustomFieldDefs(r.data); }).catch(() => {});
+    getLeadAutomationHistory(leadId).then(r => { if (r.data) setAutomationHistory(r.data); }).catch(() => {});
+    getWorkflows().then(r => { if (r.data) setAvailableWorkflows(r.data); }).catch(() => {});
     getPipelines().then(r => {
       if (r.data) {
         const defaultPipeline = r.data.find(p => p.is_default) || r.data[0];
@@ -267,6 +343,17 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
     await updateLead(leadId, { [field]: fieldValue } as Record<string, string>);
     setEditingField(null);
     void loadLead();
+  };
+
+  const saveCustomField = async (fieldId: string, value: string) => {
+    const res = await setLeadCustomFields(leadId, [{ field_id: fieldId, value }]);
+    if (res.error) {
+      toastError(`Erreur de mise à jour du champ : ${res.error}`);
+    } else {
+      success('Champ personnalisé mis à jour');
+      getLeadCustomFields(leadId).then(r => { if (r.data) setCustomFields(r.data); });
+    }
+    setEditingField(null);
   };
 
   // Avatar géré par le composant Avatar
@@ -453,12 +540,96 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
               </div>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 {customFields.length > 0 ? (
-                  customFields.map(cf => (
-                    <div key={cf.field_id}>
-                      <p className="text-[var(--text-muted)] text-[10px] uppercase tracking-wider mb-0.5">{cf.field_name}</p>
-                      <p>{cf.value || '—'}</p>
-                    </div>
-                  ))
+                  customFields.map(cf => {
+                    const isEditing = editingField === cf.field_id;
+                    const def = customFieldDefs.find(d => d.id === cf.field_id);
+                    return (
+                      <div key={cf.field_id} className="relative group">
+                        <p className="text-[var(--text-muted)] text-[10px] uppercase tracking-wider mb-0.5">{cf.field_name}</p>
+                        {isEditing ? (
+                          cf.field_type === 'boolean' ? (
+                            <select
+                              autoFocus
+                              value={fieldValue}
+                              onChange={e => setFieldValue(e.target.value)}
+                              onBlur={() => void saveCustomField(cf.field_id, fieldValue)}
+                              className="w-full px-1.5 py-0.5 text-sm bg-[var(--bg-surface)] border border-[var(--brand-primary)] rounded-[var(--radius-sm)] focus:outline-none"
+                            >
+                              <option value="true">Oui</option>
+                              <option value="false">Non</option>
+                            </select>
+                          ) : cf.field_type === 'select' ? (
+                            <select
+                              autoFocus
+                              value={fieldValue}
+                              onChange={e => setFieldValue(e.target.value)}
+                              onBlur={() => void saveCustomField(cf.field_id, fieldValue)}
+                              className="w-full px-1.5 py-0.5 text-sm bg-[var(--bg-surface)] border border-[var(--brand-primary)] rounded-[var(--radius-sm)] focus:outline-none"
+                            >
+                              <option value="">—</option>
+                              {def?.options?.map(opt => (
+                                <option key={opt} value={opt}>{opt}</option>
+                              ))}
+                            </select>
+                          ) : cf.field_type === 'multiselect' ? (
+                            <MultiSelectEditor
+                              options={def?.options || []}
+                              value={cf.value}
+                              onSave={(val) => void saveCustomField(cf.field_id, val)}
+                              onCancel={() => setEditingField(null)}
+                            />
+                          ) : cf.field_type === 'date' ? (
+                            <input
+                              autoFocus
+                              type="date"
+                              value={fieldValue}
+                              onChange={e => setFieldValue(e.target.value)}
+                              onBlur={() => void saveCustomField(cf.field_id, fieldValue)}
+                              className="w-full px-1.5 py-0.5 text-sm bg-[var(--bg-surface)] border border-[var(--brand-primary)] rounded-[var(--radius-sm)] focus:outline-none"
+                            />
+                          ) : cf.field_type === 'textarea' ? (
+                            <textarea
+                              autoFocus
+                              value={fieldValue}
+                              onChange={e => setFieldValue(e.target.value)}
+                              onBlur={() => void saveCustomField(cf.field_id, fieldValue)}
+                              className="w-full px-1.5 py-0.5 text-sm bg-[var(--bg-surface)] border border-[var(--brand-primary)] rounded-[var(--radius-sm)] focus:outline-none resize-y"
+                            />
+                          ) : cf.field_type === 'number' ? (
+                            <input
+                              autoFocus
+                              type="number"
+                              value={fieldValue}
+                              onChange={e => setFieldValue(e.target.value)}
+                              onBlur={() => void saveCustomField(cf.field_id, fieldValue)}
+                              className="w-full px-1.5 py-0.5 text-sm bg-[var(--bg-surface)] border border-[var(--brand-primary)] rounded-[var(--radius-sm)] focus:outline-none"
+                            />
+                          ) : (
+                            <input
+                              autoFocus
+                              type="text"
+                              value={fieldValue}
+                              onChange={e => setFieldValue(e.target.value)}
+                              onBlur={() => void saveCustomField(cf.field_id, fieldValue)}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') void saveCustomField(cf.field_id, fieldValue);
+                                if (e.key === 'Escape') setEditingField(null);
+                              }}
+                              className="w-full px-1.5 py-0.5 text-sm bg-[var(--bg-surface)] border border-[var(--brand-primary)] rounded-[var(--radius-sm)] focus:outline-none"
+                            />
+                          )
+                        ) : (
+                          <button
+                            onClick={() => startEdit(cf.field_id, cf.value || '')}
+                            className="text-left cursor-pointer hover:text-[var(--brand-primary)] transition-colors w-full group/btn"
+                          >
+                            <div className="text-sm text-[var(--text-secondary)]">{renderCustomFieldValue(cf)}</div>
+                            <span className="text-[10px] text-[var(--text-muted)] opacity-0 group-hover/btn:opacity-100 ml-1">✏️</span>
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })
                 ) : (
                   <div className="col-span-2 text-xs text-[var(--text-muted)] italic">{t('lead.custom_fields.empty')}</div>
                 )}
@@ -468,7 +639,7 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
 
           {/* Onglets Sprint 23 — underline gradient + glow sur active */}
           <div className="flex gap-1 border-b border-[var(--border-subtle)] overflow-x-auto relative">
-            {([['details', t('lead.tab.details')], ['notes', `${t('lead.tab.notes')} (${leadNotes.length})`], ['conversations', `${t('lead.tab.conversations')} (${messagesCount})`], ['scores', t('lead.tab.scores')], ['activity', t('lead.tab.activity')]] as const).map(([key, label]) => {
+            {([['details', t('lead.tab.details')], ['notes', `${t('lead.tab.notes')} (${leadNotes.length})`], ['conversations', `${t('lead.tab.conversations')} (${messagesCount})`], ['scores', t('lead.tab.scores')], ['automations', 'Automatisations'], ['activity', t('lead.tab.activity')]] as const).map(([key, label]) => {
               const isActive = activeTab === key;
               return (
                 <button key={key} onClick={() => setActiveTab(key as typeof activeTab)}
@@ -622,6 +793,68 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
               </div>
             )}
             {/* Custom Fields rendus dans le tab Détails (source unique) */}
+          </Card>
+          )}
+
+          {activeTab === 'automations' && (
+          <Card className="p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold">Automatisations & Workflows</h3>
+              <div className="flex items-center gap-2">
+                <select
+                  aria-label="Sélectionner un workflow"
+                  onChange={async (e) => {
+                    const workflowId = e.target.value;
+                    if (!workflowId) return;
+                    const res = await enrollLead(workflowId, leadId);
+                    if (res.error) {
+                      toastError(`Erreur d'inscription : ${res.error}`);
+                    } else {
+                      success('Lead enrôlé avec succès');
+                      getLeadAutomationHistory(leadId).then(r => { if (r.data) setAutomationHistory(r.data); });
+                    }
+                    e.target.value = '';
+                  }}
+                  className="text-xs px-2 py-1.5 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] text-[var(--text-secondary)] focus:border-[var(--brand-primary)] focus:outline-none cursor-pointer"
+                >
+                  <option value="">Enrôler dans un workflow...</option>
+                  {availableWorkflows.filter(w => w.is_active).map(w => (
+                    <option key={w.id} value={w.id}>{w.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {automationHistory.length === 0 ? (
+              <p className="text-sm text-[var(--text-muted)] italic">Aucune automatisation enregistrée pour ce lead.</p>
+            ) : (
+              <div className="space-y-3">
+                {automationHistory.map(log => {
+                  const date = new Date(log.executed_at).toLocaleString('fr-CA', { dateStyle: 'short', timeStyle: 'short' });
+                  const statusColors = {
+                    executed: 'var(--success)',
+                    skipped: 'var(--text-muted)',
+                    failed: 'var(--danger)',
+                  };
+                  return (
+                    <div key={log.id} className="p-3 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] text-xs flex justify-between items-start gap-4">
+                      <div className="space-y-1">
+                        <div className="font-semibold text-[var(--text-primary)]">
+                          Workflow ID: <span className="font-mono">{log.workflow_id?.slice(0, 8) || '—'}</span>
+                        </div>
+                        <div className="text-[var(--text-secondary)]">
+                          Étape: <span className="font-semibold">{log.step_type || '—'}</span> {log.detail ? `· ${log.detail}` : ''}
+                        </div>
+                        <div className="text-[var(--text-muted)]">{date}</div>
+                      </div>
+                      <Badge color={statusColors[log.status] || 'var(--text-muted)'}>
+                        {log.status === 'executed' ? 'Exécuté' : log.status === 'skipped' ? 'Ignoré' : 'Échoué'}
+                      </Badge>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </Card>
           )}
 

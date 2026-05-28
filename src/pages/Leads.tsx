@@ -8,9 +8,9 @@ import { LeadLink } from '@/components/panels/LeadLink';
 import { Modal } from '@/components/ui/Modal';
 import { Avatar } from '@/components/ui/Avatar';
 import { Input } from '@/components/ui/Input';
-import { getLeads, getClients, updateLead, exportLeadsCsv, createLead, softDeleteLead, restoreLead, aiSummarizeLeads, getAiStatus, getLeadConversionScore, type AiBatchLeadSummary } from '@/lib/api';
+import { getLeads, getClients, updateLead, exportLeadsCsv, createLead, restoreLead, aiSummarizeLeads, getAiStatus, getLeadConversionScore, bulkLeads, importLeadsCsv, exportConfigurableCsv, type AiBatchLeadSummary } from '@/lib/api';
 import { STATUS_LABELS, STATUS_COLORS, SOURCE_LABELS, LEAD_STATUSES, type Lead, type LeadStatus, type Client, type SmartList } from '@/lib/types';
-import { Search, X, Download, Save, LayoutGrid, LayoutList, Map, MoreHorizontal, ArrowUpDown, ChevronUp, ChevronDown, StickyNote, Users, UserPlus, Zap, ExternalLink, Check, Plus, Trash2, Sparkles, Loader2, Flame } from 'lucide-react';
+import { Search, X, Download, Upload, Save, LayoutGrid, LayoutList, Map, MoreHorizontal, ArrowUpDown, ChevronUp, ChevronDown, StickyNote, Users, UserPlus, Zap, ExternalLink, Check, Plus, Trash2, Sparkles, Loader2, Flame } from 'lucide-react';
 import { SwipeAction } from '@/components/ui/SwipeAction';
 import { useLongPress } from '@/hooks/useLongPress';
 import { useToast, useConfirm, usePrompt } from '@/components/ui';
@@ -184,6 +184,10 @@ export function LeadsPage() {
   const { success, error: toastError } = useToast();
   const confirm = useConfirm();
   const prompt = usePrompt();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [importClientId, setImportClientId] = useState('');
+  const [importing, setImporting] = useState(false);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -358,6 +362,46 @@ export function LeadsPage() {
   };
   const closeCreate = () => { if (!createSubmitting) { setCreateOpen(false); setCreateError(null); } };
 
+  const handleImportClick = () => {
+    if (clientFilter) {
+      setImportClientId(clientFilter);
+      setTimeout(() => fileInputRef.current?.click(), 100);
+    } else {
+      setImportModalOpen(true);
+    }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !importClientId) return;
+    
+    setImporting(true);
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const csvText = event.target?.result as string;
+      try {
+        const res = await importLeadsCsv(importClientId, csvText);
+        if (res.error) {
+          toastError(res.error);
+        } else if (res.data) {
+          const { imported, skipped, errors } = res.data;
+          success(`Import réussi : ${imported} importés, ${skipped} sautés.`);
+          if (errors && errors.length > 0) {
+            toastError(`${errors.length} erreurs lors de l'import : ${errors.slice(0, 3).join(', ')}`);
+          }
+          void loadData();
+        }
+      } catch (err: any) {
+        toastError(err?.message || "Erreur d'importation");
+      } finally {
+        setImporting(false);
+        setImportModalOpen(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }
+    };
+    reader.readAsText(file);
+  };
+
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
   };
@@ -366,9 +410,15 @@ export function LeadsPage() {
     else setSelectedIds(new Set(leads.map(l => l.id)));
   };
   const bulkChangeStatus = async (status: LeadStatus) => {
-    for (const id of selectedIds) await updateLead(id, { status });
-    setSelectedIds(new Set()); void loadData();
-    success(`${selectedIds.size} prospects mis à jour`);
+    const ids = Array.from(selectedIds);
+    const res = await bulkLeads(ids, 'change_status', status);
+    if (res.error) {
+      toastError(res.error);
+    } else {
+      setSelectedIds(new Set());
+      void loadData();
+      success(`${ids.length} prospects mis à jour`);
+    }
   };
 
   const bulkTrash = async () => {
@@ -381,17 +431,12 @@ export function LeadsPage() {
     if (!ok) return;
 
     const ids = Array.from(selectedIds);
-    let errorCount = 0;
-    
-    for (const id of ids) {
-      const res = await softDeleteLead(id);
-      if (res.error) errorCount++;
-    }
+    const res = await bulkLeads(ids, 'delete');
     
     setSelectedIds(new Set());
     void loadData();
 
-    if (errorCount === 0) {
+    if (!res.error) {
       success(`${ids.length} prospects déplacés vers la corbeille`, {
         duration: 10000,
         action: {
@@ -404,7 +449,7 @@ export function LeadsPage() {
         }
       });
     } else {
-      toastError(`${errorCount} prospects n'ont pas pu être supprimés`);
+      toastError(res.error || "Une erreur s'est produite lors de la suppression groupée");
     }
   };
 
@@ -576,9 +621,24 @@ export function LeadsPage() {
               </Button>
             </>
           )}
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={(e) => void handleFileChange(e)}
+            accept=".csv"
+            className="hidden"
+            aria-label="Fichier CSV à importer"
+          />
+          <Button variant="secondary" size="sm" leftIcon={<Upload size={14} />} onClick={handleImportClick} disabled={importing}>
+            {importing ? "Importation..." : "Importer CSV"}
+          </Button>
           <Button variant="secondary" size="sm" leftIcon={<Download size={14} />}
             onClick={() => void exportLeadsCsv({ status: statusFilter || undefined, client_id: clientFilter || undefined })}>
-            {t('leads.page.export')}
+            Export Standard
+          </Button>
+          <Button variant="secondary" size="sm" leftIcon={<Download size={14} />}
+            onClick={() => void exportConfigurableCsv('leads')}>
+            Export Configurable
           </Button>
         </div>
         {/* Smart Lists chips */}
@@ -994,6 +1054,47 @@ export function LeadsPage() {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* Modal Import CSV */}
+      <Modal open={importModalOpen} onOpenChange={setImportModalOpen} title="Importer des leads depuis un fichier CSV">
+        <div className="space-y-4">
+          <p className="text-xs text-[var(--text-muted)]">
+            Sélectionnez le sous-compte (client) de destination pour importer vos prospects. 
+            Les colonnes du CSV seront mappées automatiquement par le système.
+          </p>
+          <div>
+            <label htmlFor="import-csv-client" className="text-sm font-medium text-[var(--text-secondary)] block mb-1.5">
+              Sous-compte destinataire <span className="text-[var(--danger)]">*</span>
+            </label>
+            <select
+              id="import-csv-client"
+              value={importClientId}
+              onChange={(e) => setImportClientId(e.target.value)}
+              className="w-full h-[38px] px-3 text-sm bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none"
+            >
+              <option value="">Sélectionner un sous-compte...</option>
+              {clients.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="ghost" onClick={() => setImportModalOpen(false)}>Annuler</Button>
+            <Button
+              onClick={() => {
+                if (!importClientId) {
+                  toastError("Veuillez sélectionner un sous-compte");
+                  return;
+                }
+                fileInputRef.current?.click();
+              }}
+              disabled={!importClientId}
+            >
+              Choisir le fichier CSV...
+            </Button>
+          </div>
+        </div>
       </Modal>
     </AppLayout>
   );
