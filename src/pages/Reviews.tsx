@@ -140,6 +140,7 @@ export function ReviewsPage() {
       if (data?.suggestion) {
         setReplyText(data.suggestion);
         setReplyingId(reviewId);
+        setExpandedReviewId(reviewId);
       }
     } catch { /* silencieux */ }
     setSuggestingId(null);
@@ -379,7 +380,7 @@ export function ReviewsPage() {
                               <td className="text-right">
                                 {!review.reply && replyingId !== review.id ? (
                                   <div className="flex gap-1 justify-end">
-                                    <Button size="sm" variant="secondary" onClick={() => { setReplyingId(review.id); setReplyText(''); }}>{t('reviews.action.reply')}</Button>
+                                    <Button size="sm" variant="secondary" onClick={() => { setReplyingId(review.id); setReplyText(''); setExpandedReviewId(review.id); }}>{t('reviews.action.reply')}</Button>
                                     <Button size="sm" variant="ghost" onClick={() => void suggestReply(review.id)} disabled={suggestingId === review.id} aria-label={t('reviews.ai.label')}>
                                       {suggestingId === review.id ? t('reviews.ai.loading') : t('reviews.ai.label')}
                                     </Button>
