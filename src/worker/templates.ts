@@ -5,6 +5,8 @@ import { compileBlocksToHtml, type EmailBlock } from './email-blocks';
 // S4 M2 — validation d'entrée (schémas additifs, import only).
 import { validate, createTemplateSchemaS4, updateTemplateSchemaS4 } from '../lib/schemas';
 import { validationError } from './lib/validate-response';
+// Renforcement V2 — helpers PUR engine (validation template SMS/channel).
+import { MAX_SMS_LENGTH } from './lib/templates-engine';
 
 export async function handleGetTemplates(
   env: Env,
@@ -55,8 +57,8 @@ export async function handleCreateTemplate(
 
   // Validation SMS : max 1000 chars + opt-out obligatoire
   if (channel === 'sms') {
-    if (bodyHtml && bodyHtml.length > 1000) {
-      return json({ error: 'SMS limité à 1000 caractères (MMS)' }, 400);
+    if (bodyHtml && bodyHtml.length > MAX_SMS_LENGTH) {
+      return json({ error: `SMS limité à ${MAX_SMS_LENGTH} caractères (MMS)` }, 400);
     }
     if (bodyHtml && !bodyHtml.includes('STOP') && !bodyHtml.includes('ARRÊT')) {
       return json({ error: 'SMS doit contenir STOP ou ARRÊT pour conformité CASL' }, 400);

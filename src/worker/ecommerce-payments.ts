@@ -41,6 +41,8 @@ import { commitOrderSale } from './ecommerce-orders';
 // le TDZ (Temporal Dead Zone) sur REGISTRY lors de l'initialisation circulaire.
 // bootProviders() reçoit registerProvider en paramètre → pas d'import circulaire.
 import { bootProviders } from './payments/register';
+// Renforcement V2 — payments-engine disponible (verifyStripeSignature,
+// validatePaymentAmount, parseStripeWebhook) — sera câblé au prochain batch.
 
 type Auth = { userId: string; role: string };
 

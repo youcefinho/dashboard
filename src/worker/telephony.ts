@@ -34,6 +34,8 @@ import { json, sanitizeInput } from './helpers';
 import type { CapAuth } from './capabilities';
 import { requireCapability } from './capabilities';
 import { findOrCreateConversation } from './conversations';
+// Renforcement V2 — helpers PUR engine (validation statut/direction appel).
+import { isMissedCallStatus } from './lib/telephony-engine';
 
 // ── Types (exportés pour réutilisation backend ; le front a ses propres types
 //    dans src/lib/api.ts — CallLog / IvrMenu) ─────────────────────────────────
@@ -660,8 +662,7 @@ export async function handleCallStatusCallback(
   // Si l'appel n'a pas abouti (no-answer/failed/busy), on crée une tâche de
   // rappel rattachée au lead/tenant du call_log. Webhook PUBLIC : aucun user_id
   // (created_by null). N'altère JAMAIS la réponse 200.
-  const MISSED_STATUSES = new Set(['no-answer', 'failed', 'busy']);
-  if (MISSED_STATUSES.has(callStatus)) {
+  if (isMissedCallStatus(callStatus)) {
     try {
       // Retrouve le tenant + le lead via le call_log déjà créé (handlePlaceCall).
       const cl = (await env.DB.prepare(
