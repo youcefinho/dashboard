@@ -45,6 +45,7 @@ import {
   canTransitionStatus,
   checkVoteRateLimit,
   hashIp,
+  VALID_THREAD_CATEGORIES,
 } from './lib/community-engine';
 
 // Fallback salt si COMMUNITY_SALT absent (dev local). Production : ENV-set.
@@ -55,14 +56,8 @@ export type CommunityForumAuth = CapAuth & { capabilities?: Set<string> };
 
 // ── Whitelists HANDLER (pas de CHECK SQL) ──────────────────────────────────
 
-/** Catégories autorisées pour un thread (whitelist HANDLER). */
-const VALID_CATEGORIES = new Set([
-  'general',
-  'question',
-  'announce',
-  'discussion',
-  'feedback',
-]);
+/** Catégories autorisées pour un thread (délégué à l'engine). */
+const VALID_CATEGORIES = VALID_THREAD_CATEGORIES;
 
 /** Statuts threads enum HANDLER. */
 const THREAD_STATUSES = new Set(['open', 'hidden', 'deleted']);

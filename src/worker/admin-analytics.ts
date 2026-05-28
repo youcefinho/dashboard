@@ -21,14 +21,15 @@ import {
   formatChurnRate as _formatChurnRate,
   formatGrowthRate as _formatGrowthRate,
   VALID_METRICS as _VALID_METRICS,
-  VALID_PERIODS as _VALID_PERIODS,
+  VALID_PERIOD_KEYS,
 } from './lib/admin-analytics-engine';
 void _validateMetricRequest;
 void _aggregateByPeriod;
 void _formatChurnRate;
 void _formatGrowthRate;
 void _VALID_METRICS;
-void _VALID_PERIODS;
+// Renforcement V2 — Set de périodes valides câblé depuis engine.
+const ENGINE_VALID_PERIODS = new Set<string>(VALID_PERIOD_KEYS);
 
 const ADMIN_ROLES = new Set(['admin', 'owner']);
 
@@ -51,8 +52,7 @@ export async function handleAdminOverview(
 
   const url = new URL(request.url);
   const period = (url.searchParams.get('period') || '30d').toLowerCase();
-  const validPeriods = new Set(['7d', '30d', '90d', '1y']);
-  const safePeriod = validPeriods.has(period) ? period : '30d';
+  const safePeriod = ENGINE_VALID_PERIODS.has(period) ? period : '30d';
 
   // ── Counts réels (best-effort) ──
   // Total users

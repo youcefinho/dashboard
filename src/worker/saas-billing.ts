@@ -60,6 +60,11 @@ import {
   cancelStripeSubscription,
   createBillingPortalSession,
 } from './lib/saas-billing-live';
+// Renforcement V2 — helpers PUR engine (tiers + statuts billing).
+import {
+  VALID_SUBSCRIPTION_STATUSES,
+  isValidPlanTier,
+} from './lib/saas-billing-engine';
 
 // ── Auth shape (calque CatalogAuth / ChecklistAuth) ─────────────────────────
 type BillingAuth = {
@@ -122,16 +127,7 @@ function capGuard(
 
 // ── Helpers internes ───────────────────────────────────────────────────────
 
-const VALID_TIERS: PlanTier[] = ['free', 'starter', 'pro', 'unlimited'];
-const VALID_STATUSES: SubscriptionStatus[] = [
-  'active',
-  'trialing',
-  'past_due',
-  'canceled',
-  'incomplete',
-  'incomplete_expired',
-  'paused',
-];
+const VALID_STATUSES: readonly string[] = VALID_SUBSCRIPTION_STATUSES;
 
 /** True si l'erreur SQLite vient d'une migration seq120 absente. */
 function isMissingSchemaError(err: unknown): boolean {
@@ -145,8 +141,8 @@ function isMissingSchemaError(err: unknown): boolean {
 
 /** Normalise un tier string en PlanTier valide (fallback 'free'). */
 function asPlanTier(value: unknown): PlanTier {
-  const v = typeof value === 'string' ? value.toLowerCase() : '';
-  return (VALID_TIERS as string[]).includes(v) ? (v as PlanTier) : 'free';
+  if (isValidPlanTier(value)) return value;
+  return 'free';
 }
 
 /** Normalise un status string en SubscriptionStatus valide (fallback 'active'). */
@@ -1281,7 +1277,7 @@ export async function applyStripeSubscriptionUpsert(
         (typeof price.nickname === 'string' && price.nickname) ||
         '';
       const v = lookup.toLowerCase();
-      if ((VALID_TIERS as string[]).includes(v)) planTier = v as PlanTier;
+      if (isValidPlanTier(v)) planTier = v;
     }
   } catch {
     /* best-effort */

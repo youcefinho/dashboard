@@ -9,6 +9,8 @@ import {
 } from '../lib/schemas';
 import { validationError } from './lib/validate-response';
 import { requireCapability, type Capability } from './capabilities';
+// Renforcement V2 — helpers PUR engine (validation clés checklist).
+import { validateItemKey } from './lib/onboarding-engine';
 import type {
   OnboardingChecklistItemKey,
   OnboardingChecklistItemState,
@@ -364,17 +366,8 @@ const EMPTY_CHECKLIST: OnboardingChecklistResponse = {
   lastActiveAt: null,
 };
 
-const VALID_ITEM_KEYS: ReadonlyArray<OnboardingChecklistItemKey> = [
-  'profile_completed',
-  'leads_imported',
-  'pipeline_configured',
-  'team_invited',
-  'integration_connected',
-  'docs_visited',
-  'ecommerce_catalog',
-  'ecommerce_first_product',
-  'ecommerce_channel',
-];
+
+
 
 // 6 items CRM toujours présents (socle non désactivable).
 const CRM_ITEM_KEYS: ReadonlyArray<OnboardingChecklistItemKey> = [
@@ -413,7 +406,7 @@ function parseItemsMap(
     if (!v || typeof v !== 'object' || Array.isArray(v)) return {};
     const out: Partial<Record<OnboardingChecklistItemKey, OnboardingChecklistItemState>> = {};
     for (const [k, raw2] of Object.entries(v as Record<string, unknown>)) {
-      if (!VALID_ITEM_KEYS.includes(k as OnboardingChecklistItemKey)) continue;
+      if (!validateItemKey(k)) continue;
       if (!raw2 || typeof raw2 !== 'object') continue;
       const r = raw2 as Record<string, unknown>;
       out[k as OnboardingChecklistItemKey] = {
@@ -662,7 +655,7 @@ export async function handleCompleteChecklistItem(
     const v = validate(onboardingChecklistCompleteSchema, body);
     if (!v.success) return validationError(v.error);
     const itemKey = v.data.itemKey;
-    if (!VALID_ITEM_KEYS.includes(itemKey as OnboardingChecklistItemKey)) {
+    if (!validateItemKey(itemKey)) {
       return json({ error: 'Unknown itemKey' }, 400);
     }
     const typedKey = itemKey as OnboardingChecklistItemKey;
@@ -732,7 +725,7 @@ export async function handleSkipChecklistItem(
     const v = validate(onboardingChecklistSkipSchema, body);
     if (!v.success) return validationError(v.error);
     const itemKey = v.data.itemKey;
-    if (!VALID_ITEM_KEYS.includes(itemKey as OnboardingChecklistItemKey)) {
+    if (!validateItemKey(itemKey)) {
       return json({ error: 'Unknown itemKey' }, 400);
     }
     const typedKey = itemKey as OnboardingChecklistItemKey;

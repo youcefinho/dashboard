@@ -33,8 +33,8 @@ import { resolveCouponDiscount, incrementCouponUsage } from './ecommerce-coupons
 // S3 M2 — validation d'entrée (schéma M1 figé, import only).
 import { validate, addCartItemSchema, updateCartItemSchema } from '../lib/schemas';
 import { validationError } from './lib/validate-response';
-// Renforcement V2 — cart-engine disponible (MAX_ITEM_QUANTITY, MAX_CART_ITEMS,
-// isValidCartToken) — sera câblé au prochain batch de validations.
+// Renforcement V2 — helpers PUR engine (limites quantité panier).
+import { MAX_ITEM_QUANTITY } from './lib/cart-engine';
 
 type Auth = { userId: string; role: string };
 
@@ -218,7 +218,7 @@ export async function handleAddCartItem(
   const body = vc.data as Record<string, unknown>;
 
   const variantId = sanitizeInput((body.variant_id as string) || '', 100);
-  const quantity = Math.max(1, Math.round(Number(body.quantity) || 1));
+  const quantity = Math.max(1, Math.min(MAX_ITEM_QUANTITY, Math.round(Number(body.quantity) || 1)));
   if (!variantId) {
     return json({ error: 'Variante requise', message: 'Précise la variante à ajouter au panier.' }, 400);
   }
@@ -296,7 +296,7 @@ export async function handleUpdateCartItem(
   ).bind(itemId, clientId).first()) as CartRow | null;
   if (!cart) return json({ error: 'Ligne de panier introuvable' }, 404);
 
-  const quantity = Math.max(0, Math.round(Number(body.quantity) || 0));
+  const quantity = Math.max(0, Math.min(MAX_ITEM_QUANTITY, Math.round(Number(body.quantity) || 0)));
   if (quantity === 0) {
     await env.DB.prepare('DELETE FROM cart_items WHERE id = ?').bind(itemId).run();
   } else {

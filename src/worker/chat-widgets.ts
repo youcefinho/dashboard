@@ -17,6 +17,8 @@ import type { CapAuth } from './capabilities';
 import { requireCapability } from './capabilities';
 import { json, audit, sanitizeInput } from './helpers';
 import { getClientModules } from './modules';
+// Renforcement V2 — helpers PUR engine (validation position widget).
+import { VALID_POSITIONS as ENGINE_VALID_POSITIONS } from './lib/chat-widgets-engine';
 
 type ChatWidgetsAuth = CapAuth & { capabilities?: Set<string> };
 
@@ -44,7 +46,7 @@ async function lookupAgencyId(env: Env, clientId: string): Promise<string | null
 }
 
 // Enums validés side-handler (migration seq131 §22-23 — pas de CHECK SQL).
-const VALID_POSITIONS = new Set(['bottom-right', 'bottom-left', 'top-right', 'top-left']);
+const VALID_POSITIONS = new Set<string>(ENGINE_VALID_POSITIONS);
 const VALID_PRESENCE_STATUSES = new Set(['online', 'away', 'offline']);
 const VALID_SESSION_STATUSES = new Set(['active', 'closed', 'offline_form']);
 

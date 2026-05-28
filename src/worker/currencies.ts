@@ -23,6 +23,8 @@ import { json, audit } from './helpers';
 import { resolveCapabilities, requireCapability } from './capabilities';
 import { fetchEcbRates } from './lib/currency-converter';
 import type { SupportedCurrencyExt } from '../lib/types';
+// Renforcement V2 — helpers PUR engine (validation devise).
+import { isSupportedCurrency } from './lib/currencies-engine';
 
 type Auth = CapAuth & { capabilities?: Set<string> };
 
@@ -49,9 +51,7 @@ const SUPPORTED_CURRENCIES: ReadonlyArray<{ code: SupportedCurrencyExt; symbol: 
   { code: 'MAD', symbol: 'د.م.' },
 ];
 
-const VALID_CURRENCY_CODES = new Set<string>(
-  SUPPORTED_CURRENCIES.map((c) => c.code),
-);
+
 
 // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -144,7 +144,7 @@ export async function handleRefreshRates(
     let base: SupportedCurrencyExt = 'EUR';
     if (typeof body.base === 'string' && body.base.length > 0) {
       const candidate = body.base.toUpperCase();
-      if (!VALID_CURRENCY_CODES.has(candidate)) {
+      if (!isSupportedCurrency(candidate)) {
         return json(
           { error: 'base invalide (valeurs : CAD|USD|EUR|DZD|MAD)' },
           400,
@@ -159,7 +159,7 @@ export async function handleRefreshRates(
 
     for (const [quote, rate] of Object.entries(rates)) {
       const quoteUp = quote.toUpperCase();
-      if (!VALID_CURRENCY_CODES.has(quoteUp)) continue;
+      if (!isSupportedCurrency(quoteUp)) continue;
       if (typeof rate !== 'number' || !Number.isFinite(rate) || rate <= 0) continue;
       if (quoteUp === base) continue;
 
@@ -214,13 +214,13 @@ export async function handleSetManualRate(
     const quoteRaw = typeof body.quote === 'string' ? body.quote.toUpperCase() : '';
     const rate = typeof body.rate === 'number' ? body.rate : Number.NaN;
 
-    if (!baseRaw || !VALID_CURRENCY_CODES.has(baseRaw)) {
+    if (!baseRaw || !isSupportedCurrency(baseRaw)) {
       return json(
         { error: 'base invalide (valeurs : CAD|USD|EUR|DZD|MAD)' },
         400,
       );
     }
-    if (!quoteRaw || !VALID_CURRENCY_CODES.has(quoteRaw)) {
+    if (!quoteRaw || !isSupportedCurrency(quoteRaw)) {
       return json(
         { error: 'quote invalide (valeurs : CAD|USD|EUR|DZD|MAD)' },
         400,
