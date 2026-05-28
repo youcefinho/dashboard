@@ -24,6 +24,11 @@
 import type { Env, RevenueByCurrency, CohortRow, TopProductRow } from './types';
 import { json } from './helpers';
 import { getClientModules } from './modules';
+// Renforcement V2 — constantes de fenêtre analytics depuis l'engine.
+import {
+  MAX_WINDOW_DAYS,
+  DEFAULT_WINDOW_DAYS,
+} from './lib/ecommerce-analytics-engine';
 
 type Auth = { userId: string; role: string };
 
@@ -32,9 +37,6 @@ type Auth = { userId: string; role: string };
 // 'pending'/'cancelled' EXCLUS = aucun revenu concrétisé). Recopié local.
 const COUNTED_STATUSES = ['paid', 'preparing', 'shipped', 'delivered', 'refunded'];
 
-// Bornes défensives (D1 : éviter scans/binds non bornés).
-const MAX_WINDOW_DAYS = 730;       // plafond fenêtre analytics (~2 ans)
-const DEFAULT_WINDOW_DAYS = 90;    // fenêtre par défaut si non précisée
 const COHORT_MONTHS = 12;          // fenêtre cohortes bornée (12 mois)
 const TOP_PRODUCTS_LIMIT = 20;     // top produits borné
 const REFUND_CHUNK = 50;           // chunk binds (pattern défensif E7)
