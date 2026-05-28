@@ -1,7 +1,8 @@
-// ── Module Documents + e-signature — Intralys CRM ───────────
 import { Resend } from 'resend';
 import type { Env } from './types';
 import { sanitizeInput, json, audit } from './helpers';
+// Renforcement V2 — documents-engine disponible (validateStatusTransition,
+// isDocumentExpired, DOC_TITLE_MAX_LEN) — sera câblé au prochain batch.
 
 // ── Interpolation des variables dans le HTML du document ────
 function interpolateVars(html: string, vars: Record<string, string>): string {

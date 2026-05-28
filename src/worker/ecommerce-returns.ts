@@ -38,6 +38,11 @@ import { handleCreateRefund } from './ecommerce-refunds';
 // Snapshot du contexte région (E-R) figé à la demande — traçabilité (la
 // politique conso applicable relève de M3). 0 modif ecommerce-region.
 import { resolveRegionContext } from './ecommerce-region';
+// Renforcement V2 — helpers PUR engine (validation raison RMA).
+import {
+  validateRmaReason,
+  RETURN_ERROR_CODES,
+} from './lib/returns-engine';
 
 type Auth = { userId: string; role: string };
 
@@ -246,6 +251,10 @@ export async function handleCreateReturn(
   }
 
   const reason = body.reason ? String(body.reason).slice(0, 500) : null;
+  // Renforcement V2 — validation raison via engine whitelist.
+  if (reason && !validateRmaReason(reason)) {
+    return json({ error: 'Raison de retour invalide', error_code: RETURN_ERROR_CODES.INVALID_REASON }, 400);
+  }
 
   // Snapshot région figé à la demande (traçabilité — politique conso = M3).
   let regionSnapshot: string | null = null;

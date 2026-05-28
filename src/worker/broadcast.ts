@@ -21,6 +21,12 @@ import { isUnsubscribed } from './compliance';
 // segments.ts ; import unidirectionnel broadcast.ts → segments.ts, ZÉRO cycle :
 // segments.ts n'importe PAS broadcast.ts).
 import { buildSegmentQuery } from './segments';
+// Renforcement V2 — helpers PUR engine (validation broadcast input).
+import {
+  MAX_SUBJECT_LENGTH,
+  MAX_RECIPIENTS,
+  BROADCAST_ERROR_CODES,
+} from './lib/broadcast-engine';
 
 // ── Helper tracking PARTAGÉ (broadcast + séquence) ──────────────────────────
 // Injecte le pixel d'ouverture et réécrit les liens sortants pour pointer vers
@@ -76,6 +82,10 @@ export async function handleEmailBroadcast(request: Request, env: Env, auth: { u
     channel?: 'email' | 'sms';
   };
   if (!body.subject) return json({ error: 'Sujet requis' }, 400);
+  // Renforcement V2 — validation longueur sujet via engine.
+  if (body.subject.length > MAX_SUBJECT_LENGTH) {
+    return json({ error: `Sujet trop long (max ${MAX_SUBJECT_LENGTH} caractères)`, error_code: BROADCAST_ERROR_CODES.SUBJECT_TOO_LONG }, 400);
+  }
 
   // ── LOT SMS/WHATSAPP seq 104 — MASS-SEND SMS (§6.H) ─────────────────────────
   // Chemin SMS COMPLÈTEMENT SÉPARÉ du chemin email (qui reste byte-identique
@@ -160,6 +170,10 @@ export async function handleEmailBroadcast(request: Request, env: Env, auth: { u
   }
 
   if (eligibleLeads.length === 0) return json({ error: 'Aucun lead éligible (tous désabonnés)' }, 400);
+  // Renforcement V2 — validation limite de destinataires via engine.
+  if (eligibleLeads.length > MAX_RECIPIENTS) {
+    return json({ error: `Trop de destinataires (max ${MAX_RECIPIENTS})`, error_code: BROADCAST_ERROR_CODES.RECIPIENTS_TOO_MANY }, 400);
+  }
 
   // §6.B/§6.F — broadcast PROGRAMMÉ : scheduled_at futur ⇒ status 'queued'
   // (valeur EXISTANTE du CHECK seq 24, AUCUNE valeur neuve) + scheduled_at posé,

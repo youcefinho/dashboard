@@ -32,6 +32,8 @@ import { json } from './helpers';
 import { getClientModules } from './modules';
 // RÉUTILISE le SEUL décideur financial_status M1 — JAMAIS dupliqué.
 import { recordRefundTransition } from './ecommerce-refunds';
+// Renforcement V2 — disputes-engine disponible (isValidDisputeStatus,
+// isWithinEvidenceWindow) — sera câblé au prochain batch de handlers.
 
 type Auth = { userId: string; role: string };
 

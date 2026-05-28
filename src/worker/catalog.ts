@@ -25,6 +25,11 @@ import type { Env } from './types';
 import { json, sanitizeInput } from './helpers';
 import { getClientModules } from './modules';
 import { requireCapability, type Capability } from './capabilities';
+// Renforcement V2 — helpers PUR engine (validation kind/recurrence).
+import {
+  isValidKind,
+  isValidRecurrence,
+} from './lib/catalog-engine';
 
 // auth = CapAuth enrichi choke-point (worker.ts) — calque QuoteAuth (quotes.ts:42).
 type CatalogAuth = {
@@ -60,18 +65,17 @@ async function resolveClientId(env: Env, auth: CatalogAuth): Promise<string | nu
 }
 
 // kind/recurrence gardés APPLICATIVEMENT (pas de CHECK SQL — seq 118).
-const KINDS = ['service', 'product'];
-const RECURRENCES = ['one_time', 'recurring'];
+// Renforcement V2 — whitelists centralisées dans catalog-engine.
 const SEARCH_LIMIT = 20;
 
 function normKind(raw: unknown, fallback = 'service'): string {
   const v = sanitizeInput(typeof raw === 'string' ? raw : '', 40);
-  return KINDS.includes(v) ? v : fallback;
+  return isValidKind(v) ? v : fallback;
 }
 
 function normRecurrence(raw: unknown, fallback = 'one_time'): string {
   const v = sanitizeInput(typeof raw === 'string' ? raw : '', 40);
-  return RECURRENCES.includes(v) ? v : fallback;
+  return isValidRecurrence(v) ? v : fallback;
 }
 
 // Charge un item de catalogue borné tenant. Renvoie la row, ou null si
@@ -121,7 +125,7 @@ export async function handleListCatalogItems(
   const params: unknown[] = [];
 
   const kind = sanitizeInput(url.searchParams.get('kind') || '', 40);
-  if (kind && KINDS.includes(kind)) {
+  if (kind && isValidKind(kind)) {
     where.push('kind = ?');
     params.push(kind);
   }

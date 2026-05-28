@@ -30,6 +30,11 @@ import type { Shipment, ShipmentStatus } from '../lib/types';
 import { json, audit } from './helpers';
 import { getClientModules } from './modules';
 import { recordPaymentTransition } from './ecommerce-payments';
+// Renforcement V2 — helpers PUR engine (validation statut expédition).
+import {
+  isValidStatus as isValidShipmentStatus,
+  SHIPMENT_ERROR_CODES,
+} from './lib/shipments-engine';
 
 type Auth = { userId: string; role: string };
 
@@ -348,9 +353,9 @@ export async function handleUpdateShipmentStatus(
   }
 
   const next = String(body.status || '') as ShipmentStatus;
-  const allValid: ShipmentStatus[] = ['preparing', 'shipped', 'in_transit', 'delivered', 'failed'];
-  if (!allValid.includes(next)) {
-    return json({ error: 'Statut invalide', message: "Statut d'expédition inconnu." }, 400);
+  // Renforcement V2 — validation statut via engine whitelist.
+  if (!isValidShipmentStatus(next)) {
+    return json({ error: 'Statut invalide', error_code: SHIPMENT_ERROR_CODES.INVALID_STATUS, message: "Statut d'expédition inconnu." }, 400);
   }
 
   const s = (await env.DB.prepare(

@@ -33,6 +33,8 @@ import { resolveCouponDiscount, incrementCouponUsage } from './ecommerce-coupons
 // S3 M2 — validation d'entrée (schéma M1 figé, import only).
 import { validate, addCartItemSchema, updateCartItemSchema } from '../lib/schemas';
 import { validationError } from './lib/validate-response';
+// Renforcement V2 — cart-engine disponible (MAX_ITEM_QUANTITY, MAX_CART_ITEMS,
+// isValidCartToken) — sera câblé au prochain batch de validations.
 
 type Auth = { userId: string; role: string };
 
