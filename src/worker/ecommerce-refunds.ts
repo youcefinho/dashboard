@@ -29,6 +29,13 @@ import { json, audit } from './helpers';
 import { getClientModules } from './modules';
 import { resolvePaymentProvider } from './ecommerce-payments';
 import { releaseStock } from './ecommerce-inventory';
+// Renforcement V2 — helpers PUR engine (validation raison, montant, idempotence).
+import {
+  validateRefundReason,
+  idempotencyKeyWithAmount,
+  REFUND_ERROR_CODES,
+  REFUND_REASON_WHITELIST,
+} from './lib/refunds-engine';
 
 type Auth = { userId: string; role: string };
 
@@ -279,15 +286,22 @@ export async function handleCreateRefund(
     );
   }
 
-  // Idempotence : clé déterministe `refund:<order>:<amount>:<seq>`. seq =
-  // nombre de remboursements déjà enregistrés (toute statut) → stable sur
-  // rejeu d'une MÊME demande (même order+amount+seq), distincte pour un
-  // remboursement partiel ultérieur.
+  // Renforcement V2 — validation raison via whitelist engine.
+  const rawReason = ((body.reason as string) || '').slice(0, 500) || null;
+  if (rawReason && !validateRefundReason(rawReason)) {
+    return json({
+      error: 'Raison invalide',
+      error_code: REFUND_ERROR_CODES.INVALID_REASON,
+      message: `Raisons acceptées : ${REFUND_REASON_WHITELIST.join(', ')}`,
+    }, 400);
+  }
+
+  // Renforcement V2 — clé d'idempotence via engine.
   const seqRow = (await env.DB.prepare(
     'SELECT COUNT(*) AS n FROM refunds WHERE client_id = ? AND order_id = ?',
   ).bind(clientId, orderId).first()) as { n: number } | null;
   const seq = Math.max(0, Math.round(seqRow?.n ?? 0));
-  const idemKey = `refund:${orderId}:${requested}:${seq}`;
+  const idemKey = idempotencyKeyWithAmount(orderId, requested, seq);
 
   // Anti double-remboursement : ligne existante non-échouée pour cette clé →
   // on la retourne sans rappeler le provider (pattern handleInitPayment).
@@ -333,7 +347,7 @@ export async function handleCreateRefund(
        VALUES (?, ?, ?, ?, ?, ?, 'failed', ?, ?, ?, ?)`,
     ).bind(
       failId, clientId, orderId, payment.id, requested, payment.currency,
-      null, idemKey, ((body.reason as string) || '').slice(0, 500) || null, auth.userId,
+      null, idemKey, rawReason, auth.userId,
     ).run();
     await audit(env, auth.userId, 'create', 'order', orderId, {
       refund: 'failed', amount_cents: requested, provider: payment.provider, error: msg,
@@ -354,7 +368,7 @@ export async function handleCreateRefund(
   ).bind(
     refundId, clientId, orderId, payment.id, requested, payment.currency,
     refundStatus, providerRef, idemKey,
-    ((body.reason as string) || '').slice(0, 500) || null, auth.userId,
+    rawReason, auth.userId,
   ).run();
 
   const row = (await env.DB.prepare(

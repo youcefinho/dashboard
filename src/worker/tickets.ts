@@ -45,6 +45,12 @@ import type { Env } from './types';
 import { json, sanitizeInput } from './helpers';
 import type { CapAuth } from './capabilities';
 import { requireCapability } from './capabilities';
+// Renforcement V2 — helpers PUR engine (validation statut/priorité/SLA, constantes).
+import {
+  isValidPriority,
+  VALID_PRIORITIES,
+  TICKETS_ERROR_CODES,
+} from './lib/tickets-engine';
 
 // Auth enrichi au choke-point (worker.ts) — calque le type passé à
 // routeProtected (userId/role/clientId/tenant/capabilities).
@@ -244,10 +250,14 @@ export async function handleGetTickets(
       conds.push('assigned_to = ?');
       binds.push(assignedTo);
     }
+    // Renforcement V2 — validation priorité via engine whitelist.
     const priority = url.searchParams.get('priority');
     if (priority) {
+      if (!isValidPriority(priority)) {
+        return json({ error: 'Priorité invalide', error_code: TICKETS_ERROR_CODES.INVALID_PRIORITY }, 400);
+      }
       conds.push('priority = ?');
-      binds.push(sanitizeInput(priority, 30));
+      binds.push(priority);
     }
 
     let sql = 'SELECT * FROM support_tickets';
@@ -288,6 +298,11 @@ export async function handleCreateTicket(
   const requesterEmail = sanitizeInput((body.requester_email as string) || '', 200).toLowerCase();
   const requesterPhone = sanitizeInput((body.requester_phone as string) || '', 30);
   const priority = sanitizeInput((body.priority as string) || 'normal', 30);
+  // Renforcement V2 — validation priorité via engine whitelist.
+  if (!isValidPriority(priority)) {
+    return json({ error: 'Priorité invalide', error_code: TICKETS_ERROR_CODES.INVALID_PRIORITY,
+      message: `Priorités acceptées : ${VALID_PRIORITIES.join(', ')}` }, 400);
+  }
   const slaLevel = isSlaLevel(body.sla_level) ? (body.sla_level as string) : 'none';
   const assignedTo =
     typeof body.assigned_to === 'string' ? sanitizeInput(body.assigned_to, 80) : null;

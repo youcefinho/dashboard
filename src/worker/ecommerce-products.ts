@@ -21,6 +21,13 @@ import { getClientModules } from './modules';
 // S3 M2 — validation d'entrée (schémas M1 figés, import only).
 import { validate, createProductSchema, updateProductSchema } from '../lib/schemas';
 import { validationError } from './lib/validate-response';
+// Renforcement V2 — helpers PUR engine (validation SKU, prix, devise).
+import {
+  validateSkuDetailed,
+  normalizePriceCents,
+  validateCurrency,
+  PRODUCT_ERROR_CODES,
+} from './lib/products-engine';
 
 type Auth = { userId: string; role: string };
 
@@ -249,12 +256,17 @@ export async function handleCreateProduct(
   const status = ['draft', 'active', 'archived'].includes(body.status as string)
     ? (body.status as string)
     : 'draft';
-  const basePrice = Number.isFinite(body.base_price as number)
-    ? Math.max(0, Math.round(body.base_price as number))
-    : 0; // cents
+  // Renforcement V2 — normalisation prix via engine (accepte string "12.50", float, cents).
+  const normalizedPrice = normalizePriceCents(body.base_price ?? 0);
+  const basePrice = normalizedPrice != null ? normalizedPrice : 0; // cents, fallback 0 si invalide
   const productType = sanitizeInput((body.product_type as string) || '', 100);
   const vendor = sanitizeInput((body.vendor as string) || '', 100);
-  const currency = sanitizeInput((body.currency as string) || 'CAD', 8) || 'CAD';
+  // Renforcement V2 — validation devise whitelist (CAD/USD/EUR/GBP/DZD).
+  const rawCurrency = sanitizeInput((body.currency as string) || 'CAD', 8) || 'CAD';
+  if (!validateCurrency(rawCurrency)) {
+    return json({ error: 'Devise non supportée', error_code: PRODUCT_ERROR_CODES.INVALID_CURRENCY }, 400);
+  }
+  const currency = rawCurrency.toUpperCase();
   const taxClass = sanitizeInput((body.tax_class as string) || 'standard', 50) || 'standard';
   const seoTitle = sanitizeInput((body.seo_title as string) || '', 200) || title;
   const seoDescription =
@@ -479,6 +491,17 @@ export async function handleCreateVariant(
 
   const title = sanitizeInput((body.title as string) || '', 200) || 'Default';
   const sku = sanitizeInput((body.sku as string) || '', 100) || null;
+  // Renforcement V2 — validation format SKU (regex + longueur) via engine PUR.
+  if (sku) {
+    const skuCheck = validateSkuDetailed(sku);
+    if (!skuCheck.ok) {
+      return json(
+        { error: 'SKU invalide', error_code: skuCheck.code || PRODUCT_ERROR_CODES.INVALID_SKU,
+          message: 'Le SKU doit contenir 2-64 caractères alphanumériques (a-z, 0-9, -, _, .).' },
+        400,
+      );
+    }
+  }
   if (sku && (await skuCollision(env, clientId, sku))) {
     return json(
       { error: 'SKU déjà utilisé', message: `Le SKU « ${sku} » est déjà associé à une autre variante de ta boutique.` },
@@ -548,6 +571,17 @@ export async function handleUpdateVariant(
   }
   if (typeof body.sku === 'string') {
     const sku = sanitizeInput(body.sku, 100) || null;
+    // Renforcement V2 — validation format SKU via engine PUR.
+    if (sku) {
+      const skuCheck = validateSkuDetailed(sku);
+      if (!skuCheck.ok) {
+        return json(
+          { error: 'SKU invalide', error_code: skuCheck.code || PRODUCT_ERROR_CODES.INVALID_SKU,
+            message: 'Le SKU doit contenir 2-64 caractères alphanumériques (a-z, 0-9, -, _, .).' },
+          400,
+        );
+      }
+    }
     if (sku && (await skuCollision(env, clientId, sku, variantId))) {
       return json(
         { error: 'SKU déjà utilisé', message: `Le SKU « ${sku} » est déjà associé à une autre variante de ta boutique.` },

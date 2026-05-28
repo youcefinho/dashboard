@@ -26,6 +26,12 @@
 import type { Env } from './types';
 import { json } from './helpers';
 import { getClientModules } from './modules';
+// Renforcement V2 — helpers PUR engine (validation code coupon, types, calcul remise).
+import {
+  validateCouponCode,
+  VALID_COUPON_TYPES,
+  COUPON_ERROR_CODES,
+} from './lib/coupons-engine';
 
 type Auth = { userId: string; role: string };
 
@@ -251,9 +257,10 @@ function normalizeCouponInput(body: Record<string, unknown>): {
   is_active: number;
   currency: string | null;
 } {
-  const code = (body.code as string || '').toString().trim().slice(0, 60);
+  const code = (body.code as string || '').toString().trim().toUpperCase().slice(0, 60);
   const dtRaw = (body.discount_type as string || '').toString().toLowerCase().trim();
-  const discount_type = dtRaw === 'fixed' ? 'fixed' : 'percent';
+  // Renforcement V2 — whitelist type coupon via engine (percent/fixed/bogo).
+  const discount_type = (VALID_COUPON_TYPES as readonly string[]).includes(dtRaw) ? dtRaw : 'percent';
 
   const pctNum = Number(body.discount_percent);
   const amtNum = Number(body.discount_amount);
@@ -303,7 +310,15 @@ export async function handleCreateCoupon(
 
   const c = normalizeCouponInput(body);
   if (!c.code) {
-    return json({ error: 'Code requis', message: 'Le code du coupon est obligatoire.' }, 400);
+    return json({ error: 'Code requis', error_code: COUPON_ERROR_CODES.CODE_REQUIRED, message: 'Le code du coupon est obligatoire.' }, 400);
+  }
+  // Renforcement V2 — validation format code (4-20 chars, alphanum upper + dashes) via engine PUR.
+  if (!validateCouponCode(c.code)) {
+    return json({
+      error: 'Format de code invalide',
+      error_code: COUPON_ERROR_CODES.CODE_INVALID_FORMAT,
+      message: 'Le code doit contenir 4 à 20 caractères alphanumériques (A-Z, 0-9) séparés par des tirets.',
+    }, 400);
   }
 
   const id = crypto.randomUUID();

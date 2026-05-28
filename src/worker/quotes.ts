@@ -36,6 +36,12 @@ import { Resend } from 'resend';
 import type { Env } from './types';
 import { json, sanitizeInput } from './helpers';
 import { requireCapability, type Capability } from './capabilities';
+// Renforcement V2 — helpers PUR engine (validation statut/transition devis).
+import {
+  isValidQuoteStatus,
+  validateQuoteTransition,
+  QUOTES_ERROR_CODES,
+} from './lib/quotes-engine';
 
 // auth = CapAuth enrichi choke-point (worker.ts:605-607) :
 //   { userId, role, clientId?, tenant?: TenantContext, capabilities?: Set }
@@ -328,8 +334,14 @@ export async function handleUpdateQuote(
 
   if (Object.prototype.hasOwnProperty.call(body, 'status')) {
     const status = sanitizeInput(body.status as string, 20);
-    if (!['draft', 'sent', 'accepted', 'declined', 'expired'].includes(status)) {
-      return json({ error: 'Statut invalide' }, 400);
+    // Renforcement V2 — validation statut via engine whitelist.
+    if (!isValidQuoteStatus(status)) {
+      return json({ error: 'Statut invalide', error_code: QUOTES_ERROR_CODES.INVALID_STATUS }, 400);
+    }
+    // Renforcement V2 — validation transition statut (ex: declined → accepted interdit).
+    const currentStatus = String(row.status ?? 'draft');
+    if (!validateQuoteTransition(currentStatus, status)) {
+      return json({ error: `Transition ${currentStatus} → ${status} non autorisée`, error_code: QUOTES_ERROR_CODES.INVALID_TRANSITION }, 409);
     }
     sets.push('status = ?');
     binds.push(status);

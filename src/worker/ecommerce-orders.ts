@@ -37,6 +37,11 @@ import {
   updateOrderStatusSchema,
 } from '../lib/schemas';
 import { validationError } from './lib/validate-response';
+// Renforcement V2 — helpers PUR engine (validation transition commandes).
+import {
+  validateOrderTransition,
+  ORDER_ERROR_CODES,
+} from './lib/orders-engine';
 
 type Auth = { userId: string; role: string };
 
@@ -459,15 +464,8 @@ export async function handleCreateManualOrder(
 
 // Machine à états validée. cancelled depuis pending/paid/preparing ;
 // refunded depuis paid/delivered.
-const STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
-  pending: ['paid', 'cancelled'],
-  paid: ['preparing', 'cancelled', 'refunded'],
-  preparing: ['shipped', 'cancelled'],
-  shipped: ['delivered'],
-  delivered: ['refunded'],
-  cancelled: [],
-  refunded: [],
-};
+// Renforcement V2 — STATUS_TRANSITIONS supprimée, remplacée par
+// validateOrderTransition de orders-engine (machine à états centralisée).
 
 interface OrderStatusRow {
   id: string;
@@ -508,12 +506,14 @@ export async function handleUpdateOrderStatus(
   if (current === next) {
     return json({ error: 'Aucun changement', message: `La commande est déjà « ${next} ».` }, 409);
   }
-  const allowed = STATUS_TRANSITIONS[current] || [];
-  if (!allowed.includes(next)) {
+  // Renforcement V2 — transition validée par engine PUR (machine à états centralisée).
+  const allowed = validateOrderTransition(current, next);
+  if (!allowed) {
     return json(
       {
         error: 'Transition invalide',
-        message: `Impossible de passer de « ${current} » à « ${next} ». Transitions permises : ${allowed.length ? allowed.join(', ') : 'aucune (état terminal)'}.`,
+        error_code: ORDER_ERROR_CODES.INVALID_TRANSITION,
+        message: `Impossible de passer de « ${current} » à « ${next} ».`,
       },
       409,
     );

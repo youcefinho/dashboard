@@ -7,6 +7,12 @@ import { hashPassword, verifyPassword } from './crypto';
 // directement pour ne pas entrer en collision avec `validate()` local.
 import { forgotPasswordSchema, resetPasswordSchema } from '../lib/schemas';
 import { checkRateLimit } from './lib/rate-limit';
+// Renforcement V2 — helpers PUR engine (validation email, password, normalisation).
+import {
+  validateEmailLogin,
+  validatePassword,
+  normalizeEmail,
+} from './lib/auth-engine';
 
 const LOGIN_WINDOW_HOURS = 1;
 const MAX_LOGIN_ATTEMPTS = 5;
@@ -24,9 +30,12 @@ const loginSchema = {
   parse(data: unknown) {
     const d = data as { email?: string; password?: string };
     if (!d.email || typeof d.email !== 'string') throw 'Email requis';
+    // Renforcement V2 — validation email via engine PUR.
+    if (!validateEmailLogin(d.email)) throw 'Format d\u2019email invalide';
     if (!d.password || typeof d.password !== 'string') throw 'Mot de passe requis';
-    if (d.password.length < 12) throw 'Mot de passe trop court (min 12 caractères)';
-    return { email: d.email.trim(), password: d.password };
+    const pwdCheck = validatePassword(d.password);
+    if (!pwdCheck.ok) throw pwdCheck.error || 'Mot de passe invalide';
+    return { email: normalizeEmail(d.email), password: d.password };
   },
 };
 
@@ -143,11 +152,14 @@ const registerSchema = {
   parse(data: unknown) {
     const d = data as { email?: string; password?: string; name?: string; company?: string };
     if (!d.email || typeof d.email !== 'string') throw 'Email requis';
+    // Renforcement V2 — validation email via engine PUR.
+    if (!validateEmailLogin(d.email)) throw 'Format d\u2019email invalide';
     if (!d.password || typeof d.password !== 'string') throw 'Mot de passe requis';
-    if (d.password.length < 12) throw 'Mot de passe trop court (min 12 caractères)';
+    const pwdCheck = validatePassword(d.password);
+    if (!pwdCheck.ok) throw pwdCheck.error || 'Mot de passe invalide';
     if (!d.name || typeof d.name !== 'string') throw 'Nom requis';
     return {
-      email: d.email.trim().toLowerCase(),
+      email: normalizeEmail(d.email),
       password: d.password,
       name: d.name.trim(),
       company:

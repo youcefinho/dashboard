@@ -5,6 +5,10 @@ import { sanitizeInput, json, audit } from './helpers';
 import { autoEnrollForTrigger } from './workflows';
 import { validate, publicFormSubmitSchema, createFormSchema } from '../lib/schemas';
 import { validationError } from './lib/validate-response';
+// Renforcement V2 — helpers PUR engine (détection bot).
+import {
+  detectBotSubmission,
+} from './lib/forms-engine';
 
 // ── LOT FORMS XL (Sprint 5) — éval conditionnelle serveur (Manager-B) ──────────
 // Structure d'un champ dans le JSON forms.fields (cf. §6.B-bis). conditional/step
@@ -64,6 +68,19 @@ export async function handlePublicFormSubmit(request: Request, env: Env): Promis
   //    Aucun signal au bot. Placé TÔT, avant toute écriture.
   const hp = submitData['_hp'];
   if (hp !== undefined && hp !== null && String(hp).trim() !== '') {
+    return json({
+      data: {
+        id: crypto.randomUUID(),
+        success_message: form.success_message,
+        redirect_url: form.redirect_url,
+        quiz_score: null,
+        quiz_result: null,
+      },
+    }, 201);
+  }
+
+  // Renforcement V2 — détection bot via engine PUR (vérifie le honeypot de façon centralisée).
+  if (detectBotSubmission(submitData)) {
     return json({
       data: {
         id: crypto.randomUUID(),
