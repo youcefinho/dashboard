@@ -34,10 +34,16 @@ vi.mock('../lib/auth', () => ({
 }));
 
 // API : getActiveSubAccount mockable (null par défaut → fallback user.id).
+// importOriginal conserve getSnapshots + tous les autres exports (évite les
+// unhandled rejections de SnapshotManager qui en dépend).
 const getActiveSubAccountMock = vi.fn();
-vi.mock('../lib/api', () => ({
-  getActiveSubAccount: () => getActiveSubAccountMock(),
-}));
+vi.mock('../lib/api', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../lib/api')>();
+  return {
+    ...actual,
+    getActiveSubAccount: () => getActiveSubAccountMock(),
+  };
+});
 
 // AppLayout : stub minimal — rend les children + title.
 vi.mock('../components/layout/AppLayout', () => ({
