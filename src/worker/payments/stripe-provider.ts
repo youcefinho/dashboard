@@ -26,6 +26,10 @@ import type {
   RegionContext,
 } from '../../lib/types';
 import type { PaymentProvider, PaymentOrderRef } from '../ecommerce-payments';
+// P1 sécurité (2026-05-28) — vérification signature webhook Stripe centralisée
+// dans payments-engine (HMAC SHA-256 WebCrypto + timing-safe compare identique,
+// mais now_ms injectable pour tests déterministes). Revue Rochdi : GO 2026-05-28.
+import { verifyStripeSignature } from '../lib/payments-engine';
 
 // ════════════════════════════════════════════════════════════════════════════
 // M2.1 — Client Stripe bas niveau (fetch, JAMAIS de SDK Node)
@@ -233,59 +237,7 @@ function checkoutReturnUrls(order: PaymentOrderRef): {
   };
 }
 
-/** Vérif HMAC-SHA256 de la signature Stripe via WebCrypto (≠ mock billing.ts). */
-async function verifyStripeSignature(
-  rawBody: string,
-  sigHeader: string | null,
-  secret: string,
-  toleranceSeconds = 300,
-): Promise<boolean> {
-  if (!sigHeader || !secret) return false;
 
-  // En-tête Stripe : `t=<ts>,v1=<sig>,v1=<sig2>...`
-  let timestamp = '';
-  const v1: string[] = [];
-  for (const part of sigHeader.split(',')) {
-    const [k, val] = part.split('=');
-    if (k === 't') timestamp = (val || '').trim();
-    else if (k === 'v1') v1.push((val || '').trim());
-  }
-  if (!timestamp || v1.length === 0) return false;
-
-  // Tolérance d'horodatage (anti-rejeu temporel) — distinct du mock billing.
-  const ts = Number(timestamp);
-  if (!Number.isFinite(ts)) return false;
-  const nowSec = Math.floor(Date.now() / 1000);
-  if (Math.abs(nowSec - ts) > toleranceSeconds) return false;
-
-  const enc = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    'raw',
-    enc.encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign'],
-  );
-  const signed = await crypto.subtle.sign(
-    'HMAC',
-    key,
-    enc.encode(`${timestamp}.${rawBody}`),
-  );
-  const expected = [...new Uint8Array(signed)]
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
-
-  // Comparaison à temps constant contre chaque v1 fourni.
-  return v1.some((candidate) => timingSafeEqualHex(candidate, expected));
-}
-
-/** Égalité hex à temps constant (anti timing-attack). */
-function timingSafeEqualHex(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
-}
 
 export const stripeProvider: PaymentProvider = {
   id: 'stripe',
@@ -393,7 +345,7 @@ export const stripeProvider: PaymentProvider = {
 
     // Authentification du webhook = signature vérifiée (jamais confiance au
     // payload sinon). KO → null (M1 : 400, aucune transition).
-    const ok = await verifyStripeSignature(rawBody, sigHeader, secret);
+    const ok = await verifyStripeSignature(rawBody, sigHeader || '', secret);
     if (!ok) return null;
 
     let event: {
