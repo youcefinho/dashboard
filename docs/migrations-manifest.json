@@ -2127,6 +2127,19 @@
         "index:idx_email_designs_client"
       ],
       "risk": "low"
+    },
+    {
+      "seq": 153,
+      "file": "migration-funnel-offers-seq153.sql",
+      "depends_on": [
+        "migration-email-designs-seq152.sql"
+      ],
+      "objects": [
+        "table:funnel_offers",
+        "index:idx_funnel_offers_client",
+        "index:idx_funnel_offers_funnel_step"
+      ],
+      "risk": "low"
     }
   ]
 }

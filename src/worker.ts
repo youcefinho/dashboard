@@ -176,6 +176,10 @@ import {
   handleDeleteFunnel, handleSaveFunnelPage, handlePublishFunnel, handleGetFunnelStats,
   handlePublicFunnelGet, handlePublicFunnelSubmit, handleTrackFunnelEvent,
 } from './worker/funnels';
+import {
+  handleFunnelCheckout, handleFunnelUpsell,
+  handleGetFunnelOffers, handleSaveFunnelOffer, handleDeleteFunnelOffer,
+} from './worker/funnel-checkout';
 // ── LOT SITE BUILDER (Sprint 10) — site multi-pages réutilisant le moteur funnel
 //    (Phase A fige le dispatch ; corps réels Phase B Manager-B dans sites.ts).
 //    Capability RÉUTILISÉE 'workflows.manage' (PAS d'ajout à ALL_CAPABILITIES).
@@ -685,6 +689,10 @@ export default {
       if (funnelPubTrack && method === 'POST') return await handleTrackFunnelEvent(request, env, funnelPubTrack[1]!);
       const funnelPubGet = path.match(/^\/api\/p\/([^/]+)$/);
       if (funnelPubGet && method === 'GET') return await handlePublicFunnelGet(env, url);
+      const funnelPubCheckout = path.match(/^\/api\/p\/([^/]+)\/checkout$/);
+      if (funnelPubCheckout && method === 'POST') return await handleFunnelCheckout(request, env, funnelPubCheckout[1]!);
+      const funnelPubUpsell = path.match(/^\/api\/p\/([^/]+)\/upsell$/);
+      if (funnelPubUpsell && method === 'POST') return await handleFunnelUpsell(request, env, funnelPubUpsell[1]!);
 
       // ── Sprint 44 Funnels Builder — endpoints PUBLICS (pré-requireAuth) ────
       //    Tables fb_* seq139 (distinctes seq83 funnels). Visitor anonyme
@@ -2234,6 +2242,11 @@ async function routeProtected(
   if (funnelPublishMatch && method === 'POST') return handlePublishFunnel(request, env, auth, funnelPublishMatch[1]!);
   const funnelStatsMatch = path.match(/^\/api\/funnels\/([^/]+)\/stats$/);
   if (funnelStatsMatch && method === 'GET') return handleGetFunnelStats(env, auth, funnelStatsMatch[1]!);
+  const funnelOffersMatch = path.match(/^\/api\/funnels\/([^/]+)\/offers$/);
+  if (funnelOffersMatch && method === 'GET') return handleGetFunnelOffers(env, auth, funnelOffersMatch[1]!);
+  if (funnelOffersMatch && method === 'POST') return handleSaveFunnelOffer(request, env, auth, funnelOffersMatch[1]!);
+  const funnelOfferIdMatch = path.match(/^\/api\/funnels\/([^/]+)\/offers\/([^/]+)$/);
+  if (funnelOfferIdMatch && method === 'DELETE') return handleDeleteFunnelOffer(env, auth, funnelOfferIdMatch[1]!, funnelOfferIdMatch[2]!);
   const funnelIdMatch = path.match(/^\/api\/funnels\/([^/]+)$/);
   if (funnelIdMatch && method === 'GET') return handleGetFunnel(env, auth, funnelIdMatch[1]!);
   if (funnelIdMatch && method === 'PUT') return handleUpdateFunnel(request, env, auth, funnelIdMatch[1]!);
