@@ -176,7 +176,55 @@ export async function handleGetInventory(
   if (!ctx) return json({ error: 'Variante introuvable' }, 404);
 
   const inv = await ensureInventory(env, variantId);
-  return json({ data: shapeInventory(inv) });
+
+  // Charger les stocks par localisation
+  let locStocksRes = await env.DB.prepare(
+    `SELECT ls.location_id, ls.quantity, ls.reserved, w.name AS warehouse_name
+       FROM location_stocks ls
+       JOIN warehouses w ON w.id = ls.location_id
+      WHERE ls.variant_id = ? AND ls.client_id = ? AND w.is_active = 1`
+  ).bind(variantId, clientId).all();
+
+  let locStocks = (locStocksRes?.results || []) as unknown as Array<{
+    location_id: string;
+    warehouse_name: string;
+    quantity: number;
+    reserved: number;
+  }>;
+
+  // Migration automatique à la volée du stock global existant
+  if (locStocks.length === 0 && (inv.quantity > 0 || inv.reserved > 0)) {
+    const defaultWh = await env.DB.prepare(
+      `SELECT id, name FROM warehouses WHERE client_id = ? AND is_active = 1 ORDER BY is_default DESC, name ASC LIMIT 1`
+    ).bind(clientId).first() as { id: string; name: string } | null;
+
+    if (defaultWh) {
+      await env.DB.prepare(
+        `INSERT INTO location_stocks (location_id, variant_id, client_id, quantity, reserved, updated_at)
+         VALUES (?, ?, ?, ?, ?, datetime('now'))`
+      ).bind(defaultWh.id, variantId, clientId, inv.quantity, inv.reserved).run();
+
+      locStocks = [{
+        location_id: defaultWh.id,
+        warehouse_name: defaultWh.name,
+        quantity: inv.quantity,
+        reserved: inv.reserved,
+      }];
+    }
+  }
+
+  const shaped = shapeInventory(inv);
+  return json({
+    data: {
+      ...shaped,
+      location_stocks: locStocks.map((r) => ({
+        location_id: r.location_id,
+        warehouse_name: r.warehouse_name,
+        quantity: r.quantity ?? 0,
+        reserved: r.reserved ?? 0,
+      })),
+    }
+  });
 }
 
 /**
@@ -206,12 +254,69 @@ export async function handleSetInventory(
   const params: unknown[] = [];
   let quantityDelta = 0;
 
-  if (Number.isFinite(body.quantity as number)) {
+  // 1) Gestion Multi-Localisation (location_stocks)
+  if (body.location_stocks && Array.isArray(body.location_stocks)) {
+    const locStocksInput = body.location_stocks as Array<{ location_id: string; quantity: number }>;
+    let computedTotalQty = 0;
+
+    for (const item of locStocksInput) {
+      if (!item.location_id || !Number.isFinite(item.quantity)) continue;
+      const newLocQty = Math.max(0, Math.round(item.quantity));
+      computedTotalQty += newLocQty;
+
+      // Charger l'ancien stock pour cette localisation
+      const oldLoc = await env.DB.prepare(
+        `SELECT quantity, reserved FROM location_stocks WHERE location_id = ? AND variant_id = ? AND client_id = ?`
+      ).bind(item.location_id, variantId, clientId).first() as { quantity: number; reserved: number } | null;
+
+      const oldQty = oldLoc?.quantity ?? 0;
+      const oldReserved = oldLoc?.reserved ?? 0;
+
+      // UPDATE ou INSERT
+      await env.DB.prepare(
+        `INSERT INTO location_stocks (location_id, variant_id, client_id, quantity, reserved, updated_at)
+         VALUES (?, ?, ?, ?, ?, datetime('now'))
+         ON CONFLICT(location_id, variant_id) DO UPDATE SET quantity = excluded.quantity, updated_at = datetime('now')`
+      ).bind(item.location_id, variantId, clientId, newLocQty, oldReserved).run();
+
+      const delta = newLocQty - oldQty;
+      if (delta !== 0) {
+        await env.DB.prepare(
+          `INSERT INTO inventory_movements
+             (id, variant_id, delta, reason, note, created_by)
+           VALUES (?, ?, ?, 'adjustment', ?, ?)`
+        ).bind(
+          crypto.randomUUID(), variantId, delta,
+          `Ajustement manuel (localisation ${item.location_id})`, auth.userId,
+        ).run();
+      }
+    }
+
+    // On prépare l'UPDATE de inventory.quantity
+    quantityDelta = computedTotalQty - (inv.quantity ?? 0);
+    sets.push('quantity = ?');
+    params.push(computedTotalQty);
+  } else if (Number.isFinite(body.quantity as number)) {
+    // Rétrocompatibilité : si stock global fourni, on l'applique sur le warehouse par défaut
     const newQty = Math.max(0, Math.round(body.quantity as number));
     quantityDelta = newQty - (inv.quantity ?? 0);
     sets.push('quantity = ?');
     params.push(newQty);
+
+    // Trouver le default warehouse
+    const defaultWh = await env.DB.prepare(
+      `SELECT id FROM warehouses WHERE client_id = ? AND is_active = 1 ORDER BY is_default DESC, name ASC LIMIT 1`
+    ).bind(clientId).first() as { id: string } | null;
+
+    if (defaultWh) {
+      await env.DB.prepare(
+        `INSERT INTO location_stocks (location_id, variant_id, client_id, quantity, reserved, updated_at)
+         VALUES (?, ?, ?, ?, ?, datetime('now'))
+         ON CONFLICT(location_id, variant_id) DO UPDATE SET quantity = excluded.quantity, updated_at = datetime('now')`
+      ).bind(defaultWh.id, variantId, clientId, newQty, inv.reserved).run();
+    }
   }
+
   if (Number.isFinite(body.low_stock_threshold as number)) {
     sets.push('low_stock_threshold = ?');
     params.push(Math.max(0, Math.round(body.low_stock_threshold as number)));
@@ -228,20 +333,17 @@ export async function handleSetInventory(
     sets.push('location = ?');
     params.push(sanitizeInput((body.location as string) || '', 200) || null);
   }
+
   if (sets.length === 0) return json({ error: 'Aucun champ à mettre à jour' }, 400);
 
   params.push(variantId);
-  // [S2 multi-tenant] déjà couvert upstream L159 (resolveVariant) — variantId
-  // prouvé appartenir au tenant clientId. inventory sans client_id : scope OK.
   await env.DB.prepare(
     `UPDATE inventory SET ${sets.join(', ')}, updated_at = datetime('now')
        WHERE variant_id = ?`,
   ).bind(...params).run();
 
-  // Si on a modifié la quantité, on trace le mouvement (audit trail intègre).
-  if (quantityDelta !== 0) {
-    // [S2 multi-tenant] déjà couvert upstream L159 (resolveVariant). Le
-    // mouvement hérite du scope tenant de la variante validée.
+  // Si on a modifié la quantité legacy globale (sans passer par location_stocks)
+  if (quantityDelta !== 0 && !body.location_stocks) {
     await env.DB.prepare(
       `INSERT INTO inventory_movements
          (id, variant_id, delta, reason, note, created_by)
@@ -256,15 +358,32 @@ export async function handleSetInventory(
     productId: ctx.productId,
   });
 
-  // [S2 multi-tenant] déjà couvert upstream L159 (resolveVariant).
   const fresh = await env.DB.prepare(
     'SELECT * FROM inventory WHERE variant_id = ?',
   ).bind(variantId).first() as InventoryRow;
 
-  // Best-effort : alerte si on vient de passer sous le seuil.
   await maybeNotifyLowStock(env, auth, clientId, ctx, fresh);
 
-  return json({ data: shapeInventory(fresh) });
+  // Charger les stocks locaux mis à jour
+  const locStocksRes = await env.DB.prepare(
+    `SELECT ls.location_id, ls.quantity, ls.reserved, w.name AS warehouse_name
+       FROM location_stocks ls
+       JOIN warehouses w ON w.id = ls.location_id
+      WHERE ls.variant_id = ? AND ls.client_id = ? AND w.is_active = 1`
+  ).bind(variantId, clientId).all();
+
+  const shaped = shapeInventory(fresh);
+  return json({
+    data: {
+      ...shaped,
+      location_stocks: ((locStocksRes?.results || []) as any[]).map((r) => ({
+        location_id: r.location_id,
+        warehouse_name: r.warehouse_name,
+        quantity: r.quantity ?? 0,
+        reserved: r.reserved ?? 0,
+      })),
+    }
+  });
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -284,12 +403,9 @@ export async function handleAdjustInventory(
 ): Promise<Response> {
   const clientId = await resolveClientId(env, auth);
   if (!clientId) return noClient();
-  // [S2 multi-tenant] gate PRÉSERVÉ AVANT toute écriture inventory.
   const ctx = await resolveVariant(env, clientId, variantId);
   if (!ctx) return json({ error: 'Variante introuvable' }, 404);
 
-  // S3 M2 — validation d'entrée (early-return additif), APRÈS le gate tenant
-  // S2 ci-dessus, AVANT la logique d'ajustement (inchangée).
   const parsed = await request.json().catch(() => null);
   const vi = validate(adjustInventorySchema, parsed);
   if (!vi.success) return validationError(vi.error);
@@ -309,52 +425,135 @@ export async function handleAdjustInventory(
   const referenceType = sanitizeInput((body.reference_type as string) || '', 50) || null;
   const referenceId = sanitizeInput((body.reference_id as string) || '', 100) || null;
 
-  const inv = await ensureInventory(env, variantId);
-  const newQty = (inv.quantity ?? 0) + delta;
+  // Récupérer le location_id ou warehouse_id
+  let locationId = (body.location_id || body.warehouse_id) as string | undefined;
 
-  if (
-    newQty < 0 &&
-    (inv.track_inventory ?? 1) === 1 &&
-    (inv.allow_backorder ?? 0) === 0
-  ) {
-    return json(
-      {
-        error: 'Stock insuffisant',
-        message: `Impossible : il ne reste que ${inv.quantity ?? 0} unité(s) pour « ${ctx.productTitle} »${ctx.sku ? ` (${ctx.sku})` : ''}. Active les commandes en souffrance (backorder) si tu veux autoriser le négatif.`,
-      },
-      409,
-    );
+  const inv = await ensureInventory(env, variantId);
+
+  // Si pas de localisation fournie, on cherche le default warehouse du client pour faire l'ajustement
+  if (!locationId) {
+    const defaultWh = await env.DB.prepare(
+      `SELECT id FROM warehouses WHERE client_id = ? AND is_active = 1 ORDER BY is_default DESC, name ASC LIMIT 1`
+    ).bind(clientId).first() as { id: string } | null;
+    if (defaultWh) {
+      locationId = defaultWh.id;
+    }
   }
 
-  // Transaction logique : update stock + trace le mouvement ensemble.
-  // [S2 multi-tenant] déjà couvert upstream L249 (resolveVariant) — variantId
-  // prouvé du tenant clientId. inventory/_movements sans client_id : scope OK.
-  await env.DB.prepare(
-    `UPDATE inventory SET quantity = ?, updated_at = datetime('now')
-       WHERE variant_id = ?`,
-  ).bind(newQty, variantId).run();
-  await env.DB.prepare(
-    `INSERT INTO inventory_movements
-       (id, variant_id, delta, reason, reference_type, reference_id, note, created_by)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-  ).bind(
-    crypto.randomUUID(), variantId, delta, reason,
-    referenceType, referenceId, note, auth.userId,
-  ).run();
+  if (locationId) {
+    // 1) Ajustement par localisation (location_stocks)
+    const oldLoc = await env.DB.prepare(
+      `SELECT quantity, reserved FROM location_stocks WHERE location_id = ? AND variant_id = ? AND client_id = ?`
+    ).bind(locationId, variantId, clientId).first() as { quantity: number; reserved: number } | null;
+
+    const oldQty = oldLoc?.quantity ?? 0;
+    const oldReserved = oldLoc?.reserved ?? 0;
+    const newLocQty = oldQty + delta;
+
+    if (
+      newLocQty < 0 &&
+      (inv.track_inventory ?? 1) === 1 &&
+      (inv.allow_backorder ?? 0) === 0
+    ) {
+      return json(
+        {
+          error: 'Stock insuffisant',
+          message: `Impossible : il ne reste que ${oldQty} unité(s) dans la localisation.`,
+        },
+        409,
+      );
+    }
+
+    await env.DB.prepare(
+      `INSERT INTO location_stocks (location_id, variant_id, client_id, quantity, reserved, updated_at)
+       VALUES (?, ?, ?, ?, ?, datetime('now'))
+       ON CONFLICT(location_id, variant_id) DO UPDATE SET quantity = excluded.quantity, updated_at = datetime('now')`
+    ).bind(locationId, variantId, clientId, newLocQty, oldReserved).run();
+
+    // Mouvement de stock local
+    await env.DB.prepare(
+      `INSERT INTO inventory_movements
+         (id, variant_id, delta, reason, reference_type, reference_id, note, created_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).bind(
+      crypto.randomUUID(), variantId, delta, reason,
+      referenceType, referenceId, note ?? `Ajustement de stock (localisation ${locationId})`, auth.userId,
+    ).run();
+
+    // Recalculer le stock global dans inventory
+    const totalStock = await env.DB.prepare(
+      `SELECT SUM(quantity) as total_qty, SUM(reserved) as total_res FROM location_stocks WHERE variant_id = ? AND client_id = ?`
+    ).bind(variantId, clientId).first() as { total_qty: number; total_res: number } | null;
+
+    const newTotalQty = totalStock?.total_qty ?? 0;
+    const newTotalRes = totalStock?.total_res ?? 0;
+
+    await env.DB.prepare(
+      `UPDATE inventory SET quantity = ?, reserved = ?, updated_at = datetime('now') WHERE variant_id = ?`
+    ).bind(newTotalQty, newTotalRes, variantId).run();
+  } else {
+    // 2) Ajustement global classique (legacy)
+    const newQty = (inv.quantity ?? 0) + delta;
+
+    if (
+      newQty < 0 &&
+      (inv.track_inventory ?? 1) === 1 &&
+      (inv.allow_backorder ?? 0) === 0
+    ) {
+      return json(
+        {
+          error: 'Stock insuffisant',
+          message: `Impossible : il ne reste que ${inv.quantity ?? 0} unité(s) pour « ${ctx.productTitle} »${ctx.sku ? ` (${ctx.sku})` : ''}. Active les commandes en souffrance (backorder) si tu veux autoriser le négatif.`,
+        },
+        409,
+      );
+    }
+
+    await env.DB.prepare(
+      `UPDATE inventory SET quantity = ?, updated_at = datetime('now')
+         WHERE variant_id = ?`,
+    ).bind(newQty, variantId).run();
+
+    await env.DB.prepare(
+      `INSERT INTO inventory_movements
+         (id, variant_id, delta, reason, reference_type, reference_id, note, created_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).bind(
+      crypto.randomUUID(), variantId, delta, reason,
+      referenceType, referenceId, note, auth.userId,
+    ).run();
+  }
 
   await audit(env, auth.userId, 'adjust', 'inventory', variantId, {
     delta, reason, productId: ctx.productId,
   });
 
-  // [S2 multi-tenant] déjà couvert upstream L249 (resolveVariant).
   const fresh = await env.DB.prepare(
     'SELECT * FROM inventory WHERE variant_id = ?',
   ).bind(variantId).first() as InventoryRow;
 
-  // Best-effort : alerte stock faible si l'ajustement fait passer sous le seuil.
   await maybeNotifyLowStock(env, auth, clientId, ctx, fresh);
 
-  return json({ data: shapeInventory(fresh) });
+  // Charger les stocks locaux
+  const locStocksRes = await env.DB.prepare(
+    `SELECT ls.location_id, ls.quantity, ls.reserved, w.name AS warehouse_name
+       FROM location_stocks ls
+       JOIN warehouses w ON w.id = ls.location_id
+      WHERE ls.variant_id = ? AND ls.client_id = ? AND w.is_active = 1`
+  ).bind(variantId, clientId).all();
+
+  const shaped = shapeInventory(fresh);
+  return json({
+    data: {
+      ...shaped,
+      location_stocks: ((locStocksRes?.results || []) as any[]).map((r) => ({
+        location_id: r.location_id,
+        warehouse_name: r.warehouse_name,
+        quantity: r.quantity ?? 0,
+        reserved: r.reserved ?? 0,
+      })),
+    }
+  });
 }
 
 /**
@@ -510,7 +709,7 @@ export interface StockOpResult {
  * tenant) — sinon comportement strictement inchangé (E3 a déjà validé l'ordre
  * et ses lignes upstream). Aucun appel légitime n'est cassé ni sur-restreint.
  */
-type StockRef = { type?: string; id?: string; by?: string; clientId?: string };
+type StockRef = { type?: string; id?: string; by?: string; clientId?: string; locationId?: string; warehouseId?: string };
 
 /**
  * [S2 multi-tenant] Garde commune des helpers stock exposés. Si `ref.clientId`
@@ -538,36 +737,80 @@ export async function reserveStock(
 ): Promise<StockOpResult> {
   const n = Math.max(0, Math.round(qty));
   if (n === 0) return { ok: true };
-  // [S2 multi-tenant] défense en profondeur : si clientId fourni par E3, la
-  // variante doit lui appartenir (chaîne products.client_id). Sinon rétro-compat.
   if (!(await guardStockTenant(env, variantId, ref))) {
     return { ok: false, reason: 'tenant_mismatch' };
   }
+
+  const locationId = ref?.locationId || ref?.warehouseId;
   const inv = await ensureInventory(env, variantId);
-  const available = (inv.quantity ?? 0) - (inv.reserved ?? 0);
 
-  if (
-    available < n &&
-    (inv.track_inventory ?? 1) === 1 &&
-    (inv.allow_backorder ?? 0) === 0
-  ) {
-    return { ok: false, reason: 'insufficient', available, quantity: inv.quantity, reserved: inv.reserved };
+  if (locationId) {
+    // Réservation locale
+    const oldLoc = await env.DB.prepare(
+      `SELECT quantity, reserved FROM location_stocks WHERE location_id = ? AND variant_id = ?`
+    ).bind(locationId, variantId).first() as { quantity: number; reserved: number } | null;
+
+    const oldQty = oldLoc?.quantity ?? 0;
+    const oldReserved = oldLoc?.reserved ?? 0;
+    const locAvailable = oldQty - oldReserved;
+
+    if (
+      locAvailable < n &&
+      (inv.track_inventory ?? 1) === 1 &&
+      (inv.allow_backorder ?? 0) === 0
+    ) {
+      return { ok: false, reason: 'insufficient', available: locAvailable, quantity: oldQty, reserved: oldReserved };
+    }
+
+    await env.DB.prepare(
+      `INSERT INTO location_stocks (location_id, variant_id, client_id, quantity, reserved, updated_at)
+       VALUES (?, ?, ?, ?, ?, datetime('now'))
+       ON CONFLICT(location_id, variant_id) DO UPDATE SET reserved = reserved + ?, updated_at = datetime('now')`
+    ).bind(locationId, variantId, ref?.clientId ?? 'system', oldQty, oldReserved + n, n).run();
+
+    // Mettre à jour globalement dans inventory
+    await env.DB.prepare(
+      `UPDATE inventory SET reserved = reserved + ?, updated_at = datetime('now') WHERE variant_id = ?`
+    ).bind(n, variantId).run();
+
+    await env.DB.prepare(
+      `INSERT INTO inventory_movements
+         (id, variant_id, delta, reason, reference_type, reference_id, note, created_by)
+       VALUES (?, ?, ?, 'reservation', ?, ?, ?, ?)`,
+    ).bind(
+      crypto.randomUUID(), variantId, -n,
+      ref?.type || 'order', ref?.id || null, `Réservation de stock (localisation ${locationId})`, ref?.by || null,
+    ).run();
+
+    return { ok: true, available: locAvailable - n };
+  } else {
+    // Réservation globale (legacy)
+    const available = (inv.quantity ?? 0) - (inv.reserved ?? 0);
+
+    if (
+      available < n &&
+      (inv.track_inventory ?? 1) === 1 &&
+      (inv.allow_backorder ?? 0) === 0
+    ) {
+      return { ok: false, reason: 'insufficient', available, quantity: inv.quantity, reserved: inv.reserved };
+    }
+
+    await env.DB.prepare(
+      `UPDATE inventory SET reserved = reserved + ?, updated_at = datetime('now')
+         WHERE variant_id = ?`,
+    ).bind(n, variantId).run();
+
+    await env.DB.prepare(
+      `INSERT INTO inventory_movements
+         (id, variant_id, delta, reason, reference_type, reference_id, note, created_by)
+       VALUES (?, ?, ?, 'reservation', ?, ?, ?, ?)`,
+    ).bind(
+      crypto.randomUUID(), variantId, -n,
+      ref?.type || 'order', ref?.id || null, 'Réservation de stock', ref?.by || null,
+    ).run();
+
+    return { ok: true, available: available - n };
   }
-
-  await env.DB.prepare(
-    `UPDATE inventory SET reserved = reserved + ?, updated_at = datetime('now')
-       WHERE variant_id = ?`,
-  ).bind(n, variantId).run();
-  await env.DB.prepare(
-    `INSERT INTO inventory_movements
-       (id, variant_id, delta, reason, reference_type, reference_id, note, created_by)
-     VALUES (?, ?, ?, 'reservation', ?, ?, ?, ?)`,
-  ).bind(
-    crypto.randomUUID(), variantId, -n,
-    ref?.type || 'order', ref?.id || null, 'Réservation de stock', ref?.by || null,
-  ).run();
-
-  return { ok: true, available: available - n };
 }
 
 /**
@@ -581,28 +824,63 @@ export async function releaseStock(
 ): Promise<StockOpResult> {
   const n = Math.max(0, Math.round(qty));
   if (n === 0) return { ok: true };
-  // [S2 multi-tenant] défense en profondeur (idem reserveStock).
   if (!(await guardStockTenant(env, variantId, ref))) {
     return { ok: false, reason: 'tenant_mismatch' };
   }
+
+  const locationId = ref?.locationId || ref?.warehouseId;
   const inv = await ensureInventory(env, variantId);
-  const release = Math.min(n, inv.reserved ?? 0);
-  if (release === 0) return { ok: true, reserved: inv.reserved ?? 0 };
 
-  await env.DB.prepare(
-    `UPDATE inventory SET reserved = reserved - ?, updated_at = datetime('now')
-       WHERE variant_id = ?`,
-  ).bind(release, variantId).run();
-  await env.DB.prepare(
-    `INSERT INTO inventory_movements
-       (id, variant_id, delta, reason, reference_type, reference_id, note, created_by)
-     VALUES (?, ?, ?, 'return', ?, ?, ?, ?)`,
-  ).bind(
-    crypto.randomUUID(), variantId, release,
-    ref?.type || 'order', ref?.id || null, 'Libération de réservation', ref?.by || null,
-  ).run();
+  if (locationId) {
+    // Libération locale
+    const oldLoc = await env.DB.prepare(
+      `SELECT quantity, reserved FROM location_stocks WHERE location_id = ? AND variant_id = ?`
+    ).bind(locationId, variantId).first() as { quantity: number; reserved: number } | null;
 
-  return { ok: true, reserved: (inv.reserved ?? 0) - release };
+    const oldReserved = oldLoc?.reserved ?? 0;
+    const release = Math.min(n, oldReserved);
+    if (release === 0) return { ok: true, reserved: oldReserved };
+
+    await env.DB.prepare(
+      `UPDATE location_stocks SET reserved = max(0, reserved - ?), updated_at = datetime('now')
+        WHERE location_id = ? AND variant_id = ?`
+    ).bind(release, locationId, variantId).run();
+
+    await env.DB.prepare(
+      `UPDATE inventory SET reserved = max(0, reserved - ?), updated_at = datetime('now') WHERE variant_id = ?`
+    ).bind(release, variantId).run();
+
+    await env.DB.prepare(
+      `INSERT INTO inventory_movements
+         (id, variant_id, delta, reason, reference_type, reference_id, note, created_by)
+       VALUES (?, ?, ?, 'return', ?, ?, ?, ?)`,
+    ).bind(
+      crypto.randomUUID(), variantId, release,
+      ref?.type || 'order', ref?.id || null, `Libération de réservation (localisation ${locationId})`, ref?.by || null,
+    ).run();
+
+    return { ok: true, reserved: oldReserved - release };
+  } else {
+    // Libération globale
+    const release = Math.min(n, inv.reserved ?? 0);
+    if (release === 0) return { ok: true, reserved: inv.reserved ?? 0 };
+
+    await env.DB.prepare(
+      `UPDATE inventory SET reserved = reserved - ?, updated_at = datetime('now')
+         WHERE variant_id = ?`,
+    ).bind(release, variantId).run();
+
+    await env.DB.prepare(
+      `INSERT INTO inventory_movements
+         (id, variant_id, delta, reason, reference_type, reference_id, note, created_by)
+       VALUES (?, ?, ?, 'return', ?, ?, ?, ?)`,
+    ).bind(
+      crypto.randomUUID(), variantId, release,
+      ref?.type || 'order', ref?.id || null, 'Libération de réservation', ref?.by || null,
+    ).run();
+
+    return { ok: true, reserved: (inv.reserved ?? 0) - release };
+  }
 }
 
 /**
@@ -616,39 +894,90 @@ export async function commitSale(
 ): Promise<StockOpResult> {
   const n = Math.max(0, Math.round(qty));
   if (n === 0) return { ok: true };
-  // [S2 multi-tenant] défense en profondeur (idem reserveStock).
   if (!(await guardStockTenant(env, variantId, ref))) {
     return { ok: false, reason: 'tenant_mismatch' };
   }
+
+  const locationId = ref?.locationId || ref?.warehouseId;
   const inv = await ensureInventory(env, variantId);
-  const newQty = (inv.quantity ?? 0) - n;
 
-  if (
-    newQty < 0 &&
-    (inv.track_inventory ?? 1) === 1 &&
-    (inv.allow_backorder ?? 0) === 0
-  ) {
-    return {
-      ok: false, reason: 'insufficient',
-      available: (inv.quantity ?? 0) - (inv.reserved ?? 0),
-      quantity: inv.quantity, reserved: inv.reserved,
-    };
+  if (locationId) {
+    // Vente locale
+    const oldLoc = await env.DB.prepare(
+      `SELECT quantity, reserved FROM location_stocks WHERE location_id = ? AND variant_id = ?`
+    ).bind(locationId, variantId).first() as { quantity: number; reserved: number } | null;
+
+    const oldQty = oldLoc?.quantity ?? 0;
+    const oldReserved = oldLoc?.reserved ?? 0;
+    const newLocQty = oldQty - n;
+
+    if (
+      newLocQty < 0 &&
+      (inv.track_inventory ?? 1) === 1 &&
+      (inv.allow_backorder ?? 0) === 0
+    ) {
+      return {
+        ok: false, reason: 'insufficient',
+        available: oldQty - oldReserved,
+        quantity: oldQty, reserved: oldReserved,
+      };
+    }
+
+    const releasedReserve = Math.min(n, oldReserved);
+    await env.DB.prepare(
+      `UPDATE location_stocks
+          SET quantity = ?, reserved = max(0, reserved - ?), updated_at = datetime('now')
+        WHERE location_id = ? AND variant_id = ?`
+    ).bind(newLocQty, releasedReserve, locationId, variantId).run();
+
+    await env.DB.prepare(
+      `UPDATE inventory
+          SET quantity = quantity - ?, reserved = max(0, reserved - ?), updated_at = datetime('now')
+        WHERE variant_id = ?`
+    ).bind(n, releasedReserve, variantId).run();
+
+    await env.DB.prepare(
+      `INSERT INTO inventory_movements
+         (id, variant_id, delta, reason, reference_type, reference_id, note, created_by)
+       VALUES (?, ?, ?, 'sale', ?, ?, ?, ?)`,
+    ).bind(
+      crypto.randomUUID(), variantId, -n,
+      ref?.type || 'order', ref?.id || null, `Vente confirmée (localisation ${locationId})`, ref?.by || null,
+    ).run();
+
+    return { ok: true, quantity: newLocQty };
+  } else {
+    // Vente globale
+    const newQty = (inv.quantity ?? 0) - n;
+
+    if (
+      newQty < 0 &&
+      (inv.track_inventory ?? 1) === 1 &&
+      (inv.allow_backorder ?? 0) === 0
+    ) {
+      return {
+        ok: false, reason: 'insufficient',
+        available: (inv.quantity ?? 0) - (inv.reserved ?? 0),
+        quantity: inv.quantity, reserved: inv.reserved,
+      };
+    }
+
+    const releasedReserve = Math.min(n, inv.reserved ?? 0);
+    await env.DB.prepare(
+      `UPDATE inventory
+          SET quantity = ?, reserved = reserved - ?, updated_at = datetime('now')
+        WHERE variant_id = ?`,
+    ).bind(newQty, releasedReserve, variantId).run();
+
+    await env.DB.prepare(
+      `INSERT INTO inventory_movements
+         (id, variant_id, delta, reason, reference_type, reference_id, note, created_by)
+       VALUES (?, ?, ?, 'sale', ?, ?, ?, ?)`,
+    ).bind(
+      crypto.randomUUID(), variantId, -n,
+      ref?.type || 'order', ref?.id || null, 'Vente confirmée', ref?.by || null,
+    ).run();
+
+    return { ok: true, quantity: newQty };
   }
-
-  const releasedReserve = Math.min(n, inv.reserved ?? 0);
-  await env.DB.prepare(
-    `UPDATE inventory
-        SET quantity = ?, reserved = reserved - ?, updated_at = datetime('now')
-      WHERE variant_id = ?`,
-  ).bind(newQty, releasedReserve, variantId).run();
-  await env.DB.prepare(
-    `INSERT INTO inventory_movements
-       (id, variant_id, delta, reason, reference_type, reference_id, note, created_by)
-     VALUES (?, ?, ?, 'sale', ?, ?, ?, ?)`,
-  ).bind(
-    crypto.randomUUID(), variantId, -n,
-    ref?.type || 'order', ref?.id || null, 'Vente confirmée', ref?.by || null,
-  ).run();
-
-  return { ok: true, quantity: newQty };
 }

@@ -2151,6 +2151,32 @@
         "column:subscriptions.parent_subscription_id"
       ],
       "risk": "low"
+    },
+    {
+      "seq": 155,
+      "file": "migration-promocodes-seq159.sql",
+      "depends_on": [
+        "migration-multi-product-subscriptions-seq158.sql"
+      ],
+      "objects": [
+        "table:promo_codes",
+        "index:idx_promo_codes_client",
+        "index:idx_promo_codes_code"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 156,
+      "file": "migration-multi-location-inventory-seq160.sql",
+      "depends_on": [
+        "migration-promocodes-seq159.sql"
+      ],
+      "objects": [
+        "table:location_stocks",
+        "index:idx_location_stocks_client",
+        "index:idx_location_stocks_variant"
+      ],
+      "risk": "low"
     }
   ]
 }

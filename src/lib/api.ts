@@ -1009,7 +1009,9 @@ export async function getVariantInventory(
 export async function setVariantInventory(
   variantId: string,
   body: Partial<Pick<InventoryRecord,
-    'quantity' | 'low_stock_threshold' | 'track_inventory' | 'allow_backorder' | 'location'>>,
+    'quantity' | 'low_stock_threshold' | 'track_inventory' | 'allow_backorder' | 'location'>> & {
+      location_stocks?: Array<{ location_id: string; quantity: number }>;
+    },
 ): Promise<ApiResponse<InventoryRecord>> {
   return apiFetch<InventoryRecord>(
     `/ecommerce/variants/${variantId}/inventory`,
@@ -1115,6 +1117,71 @@ export async function validateCoupon(payload: {
     method: 'POST',
     body: JSON.stringify(payload),
   });
+}
+
+export interface PromoCode {
+  id: string;
+  client_id?: string;
+  code: string;
+  discount_type: string;
+  value: number;
+  starts_at?: string | null;
+  expires_at?: string | null;
+  max_uses?: number | null;
+  current_uses?: number;
+  rules_json?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface PromoCodeInput {
+  code: string;
+  discount_type: string;
+  value: number;
+  starts_at?: string | null;
+  expires_at?: string | null;
+  max_uses?: number | null;
+  rules_json?: string;
+}
+
+export async function getEcommercePromoCodes(params?: {
+  limit?: number;
+  offset?: number;
+}): Promise<PagedResponse<PromoCode>> {
+  const sp = new URLSearchParams();
+  if (params?.limit != null) sp.set('limit', String(params.limit));
+  if (params?.offset != null) sp.set('offset', String(params.offset));
+  const qs = sp.toString();
+  return apiFetch<PromoCode[]>(`/ecommerce/promo-codes${qs ? `?${qs}` : ''}`);
+}
+
+export async function getEcommercePromoCode(id: string): Promise<ApiResponse<PromoCode>> {
+  return apiFetch<PromoCode>(`/ecommerce/promo-codes/${id}`);
+}
+
+export async function createEcommercePromoCode(
+  payload: PromoCodeInput,
+): Promise<ApiResponse<{ id: string }>> {
+  return apiFetch<{ id: string }>('/ecommerce/promo-codes', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateEcommercePromoCode(
+  id: string,
+  payload: Partial<PromoCodeInput>,
+): Promise<ApiResponse<{ id: string }>> {
+  return apiFetch<{ id: string }>(`/ecommerce/promo-codes/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteEcommercePromoCode(
+  id: string,
+): Promise<ApiResponse<unknown>> {
+  return apiFetch(`/ecommerce/promo-codes/${id}`, { method: 'DELETE' });
 }
 
 export interface ProductSubscription {

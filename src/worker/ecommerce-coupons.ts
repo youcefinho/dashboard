@@ -127,7 +127,8 @@ export async function resolveCouponDiscount(
   code: string,
   subtotalCents: number,
   currency?: string | null,
-): Promise<{ valid: boolean; discount_cents: number; code?: string; reason?: string; couponId?: string }> {
+  items?: Array<{ variant_id?: string; product_id?: string; price_cents: number; qty: number }>,
+): Promise<{ valid: boolean; discount_cents: number; code?: string; reason?: string; couponId?: string; isPromoCode?: boolean }> {
   const cleanCode = (code || '').toString().trim();
   if (!cleanCode) return { valid: false, discount_cents: 0, reason: 'Code requis' };
 
@@ -139,16 +140,74 @@ export async function resolveCouponDiscount(
         LIMIT 1`,
     ).bind(clientId, cleanCode).first()) as CouponRow | null;
   } catch {
-    // Table/colonnes absentes (seq 85 non jouée) — best-effort.
-    return { valid: false, discount_cents: 0, reason: 'Coupon indisponible' };
+    // Table/colonnes absentes — best-effort.
   }
 
-  if (!row) {
+  // Si on a un match dans coupons
+  if (row) {
+    // Fenêtre de validité
+    let nowIso = '';
+    try {
+      const nr = (await env.DB.prepare(
+        "SELECT datetime('now') AS now",
+      ).first()) as { now: string } | null;
+      nowIso = nr?.now || '';
+    } catch {
+      nowIso = '';
+    }
+    if (nowIso) {
+      if (row.starts_at && row.starts_at > nowIso) {
+        return { valid: false, discount_cents: 0, reason: 'Code promo invalide ou expiré' };
+      }
+      if (row.expires_at && row.expires_at < nowIso) {
+        return { valid: false, discount_cents: 0, reason: 'Code promo invalide ou expiré' };
+      }
+    }
+
+    // Quota global d'usage.
+    if (row.usage_limit != null && Number.isFinite(Number(row.usage_limit))) {
+      const used = Number(row.times_used ?? 0);
+      if (used >= Number(row.usage_limit)) {
+        return { valid: false, discount_cents: 0, reason: 'Code promo invalide ou expiré' };
+      }
+    }
+
+    // Plancher panier.
+    const sub = Math.max(0, Math.round(subtotalCents || 0));
+    if (row.min_order_cents != null && sub < Number(row.min_order_cents)) {
+      return { valid: false, discount_cents: 0, reason: 'Commande minimum non atteinte' };
+    }
+
+    // Devise
+    if (row.currency) {
+      const want = row.currency.toString().toUpperCase().trim();
+      const got = (currency || '').toString().toUpperCase().trim();
+      if (got && want !== got) {
+        return { valid: false, discount_cents: 0, reason: 'Devise non applicable' };
+      }
+    }
+
+    const discount = computeDiscountCents(row, sub);
+    return { valid: true, discount_cents: discount, code: row.code, couponId: row.id, isPromoCode: false };
+  }
+
+  // Si pas de match dans coupons, chercher dans promo_codes
+  let promo: Record<string, unknown> | null = null;
+  try {
+    promo = (await env.DB.prepare(
+      `SELECT * FROM promo_codes
+        WHERE client_id = ? AND code = ?
+        LIMIT 1`,
+    ).bind(clientId, cleanCode).first()) as Record<string, unknown> | null;
+  } catch {
+    // Table promo_codes absente — best-effort.
+  }
+
+  if (!promo) {
     return { valid: false, discount_cents: 0, reason: 'Code promo invalide ou expiré' };
   }
 
-  // Fenêtre de validité — comparaison lexicographique ISO (datetime('now')
-  // côté DB est ISO ; on borne via SQL pour éviter les soucis d'horloge JS).
+  // Fenêtre de validité promo
   let nowIso = '';
   try {
     const nr = (await env.DB.prepare(
@@ -159,55 +218,107 @@ export async function resolveCouponDiscount(
     nowIso = '';
   }
   if (nowIso) {
-    if (row.starts_at && row.starts_at > nowIso) {
+    const startsAt = promo.starts_at ? String(promo.starts_at) : '';
+    const expiresAt = promo.expires_at ? String(promo.expires_at) : '';
+    if (startsAt && startsAt > nowIso) {
       return { valid: false, discount_cents: 0, reason: 'Code promo invalide ou expiré' };
     }
-    if (row.expires_at && row.expires_at < nowIso) {
-      return { valid: false, discount_cents: 0, reason: 'Code promo invalide ou expiré' };
-    }
-  }
-
-  // Quota global d'usage.
-  if (row.usage_limit != null && Number.isFinite(Number(row.usage_limit))) {
-    const used = Number(row.times_used ?? 0);
-    if (used >= Number(row.usage_limit)) {
+    if (expiresAt && expiresAt < nowIso) {
       return { valid: false, discount_cents: 0, reason: 'Code promo invalide ou expiré' };
     }
   }
 
-  // Plancher panier.
-  const sub = Math.max(0, Math.round(subtotalCents || 0));
-  if (row.min_order_cents != null && sub < Number(row.min_order_cents)) {
+  // Quota global d'usage promo
+  if (promo.max_uses != null && Number.isFinite(Number(promo.max_uses))) {
+    const maxUses = Number(promo.max_uses);
+    const used = Number(promo.current_uses ?? 0);
+    if (used >= maxUses) {
+      return { valid: false, discount_cents: 0, reason: 'Code promo invalide ou expiré' };
+    }
+  }
+
+  // Parse des règles
+  let rules: {
+    min_order_cents?: number;
+    allowed_variant_ids?: string[];
+    allowed_product_ids?: string[];
+  } = {};
+  try {
+    rules = JSON.parse(String(promo.rules_json || '{}'));
+  } catch {
+    rules = {};
+  }
+
+  // Calcul du sous-total éligible si restrictions de variantes ou produits
+  let eligibleSubtotal = subtotalCents;
+  if (items && (rules.allowed_variant_ids || rules.allowed_product_ids)) {
+    eligibleSubtotal = 0;
+    const allowedVariants = new Set(rules.allowed_variant_ids || []);
+    const allowedProducts = new Set(rules.allowed_product_ids || []);
+    for (const item of items) {
+      const isVariantAllowed = rules.allowed_variant_ids ? allowedVariants.has(item.variant_id || '') : true;
+      const isProductAllowed = rules.allowed_product_ids ? allowedProducts.has(item.product_id || '') : true;
+      if (isVariantAllowed && isProductAllowed) {
+        eligibleSubtotal += (item.price_cents * item.qty);
+      }
+    }
+  }
+
+  if (items && (rules.allowed_variant_ids || rules.allowed_product_ids) && eligibleSubtotal === 0) {
+    return { valid: false, discount_cents: 0, reason: 'Articles non admissibles' };
+  }
+
+  // Plancher panier
+  const minOrder = rules.min_order_cents != null ? Number(rules.min_order_cents) : 0;
+  if (minOrder > 0 && eligibleSubtotal < minOrder) {
     return { valid: false, discount_cents: 0, reason: 'Commande minimum non atteinte' };
   }
 
-  // Devise — si le coupon impose une devise, elle doit matcher la commande.
-  if (row.currency) {
-    const want = row.currency.toString().toUpperCase().trim();
-    const got = (currency || '').toString().toUpperCase().trim();
-    if (got && want !== got) {
-      return { valid: false, discount_cents: 0, reason: 'Devise non applicable' };
-    }
+  // Calcul de la remise
+  const discountType = String(promo.discount_type || 'percent').toLowerCase();
+  const value = Number(promo.value ?? 0);
+  let discount = 0;
+  if (discountType === 'percent') {
+    discount = Math.round(eligibleSubtotal * (Math.min(value, 100) / 100));
+  } else {
+    discount = value;
   }
+  discount = Math.max(0, Math.min(discount, eligibleSubtotal));
 
-  const discount = computeDiscountCents(row, sub);
-  return { valid: true, discount_cents: discount, code: row.code, couponId: row.id };
+  return {
+    valid: true,
+    discount_cents: discount,
+    code: String(promo.code),
+    couponId: String(promo.id),
+    isPromoCode: true,
+  };
 }
 
 /**
- * Incrémente `coupons.times_used` (best-effort, borné tenant). Appelé à la
- * conversion réussie d'un panier (ecommerce-cart.ts). Jamais de throw.
+ * Incrémente l'usage du coupon ou du code promo (best-effort, borné tenant).
  */
 export async function incrementCouponUsage(
   env: Env, clientId: string, couponId: string,
 ): Promise<void> {
+  // 1. Tenter d'incrémenter dans coupons
   try {
-    await env.DB.prepare(
+    const res = await env.DB.prepare(
       `UPDATE coupons SET times_used = COALESCE(times_used, 0) + 1
         WHERE id = ? AND client_id = ?`,
     ).bind(couponId, clientId).run();
+    if (res.meta.changes > 0) return;
   } catch {
-    /* best-effort : compteur non bloquant */
+    //
+  }
+
+  // 2. Tenter d'incrémenter dans promo_codes
+  try {
+    await env.DB.prepare(
+      `UPDATE promo_codes SET current_uses = COALESCE(current_uses, 0) + 1
+        WHERE id = ? AND client_id = ?`,
+    ).bind(couponId, clientId).run();
+  } catch {
+    // best-effort
   }
 }
 

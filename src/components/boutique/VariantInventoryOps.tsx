@@ -26,6 +26,8 @@ import {
   deleteEcommerceVariant,
   getVariantInventory,
   setVariantInventory,
+  listWarehouses,
+  type Warehouse,
 } from '../../lib/api';
 import type { ProductVariant, InventoryRecord } from '../../lib/types';
 import { t, getLocale } from '../../lib/i18n';
@@ -457,11 +459,12 @@ function InventorySection({ variantId, currency: _currency, onChanged }: Invento
   const locale = getLocale();
 
   const [record, setRecord] = useState<InventoryRecord | null>(null);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Champs éditables.
-  const [quantity, setQuantity] = useState('');
+  const [localQuantities, setLocalQuantities] = useState<Record<string, string>>({});
   const [threshold, setThreshold] = useState('');
   const [track, setTrack] = useState(true);
   const [backorder, setBackorder] = useState(false);
@@ -469,16 +472,32 @@ function InventorySection({ variantId, currency: _currency, onChanged }: Invento
 
   const hydrate = useCallback((r: InventoryRecord) => {
     setRecord(r);
-    setQuantity(String(r.quantity ?? 0));
     setThreshold(String(r.low_stock_threshold ?? 0));
     setTrack(Boolean(r.track_inventory));
     setBackorder(Boolean(r.allow_backorder));
+
+    const initialLocs: Record<string, string> = {};
+    if (r.location_stocks) {
+      r.location_stocks.forEach(ls => {
+        initialLocs[ls.location_id] = String(ls.quantity ?? 0);
+      });
+    }
+    setLocalQuantities(initialLocs);
   }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
+      // 1) Charger les warehouses actifs
+      const whRes = await listWarehouses();
+      let activeWhs: Warehouse[] = [];
+      if (whRes.data) {
+        activeWhs = whRes.data.filter(w => w.is_active);
+        setWarehouses(activeWhs);
+      }
+
+      // 2) Charger l'inventaire
       const res = await getVariantInventory(variantId);
       if (res.error) {
         setError(res.error);
@@ -486,7 +505,6 @@ function InventorySection({ variantId, currency: _currency, onChanged }: Invento
       } else if (res.data) {
         hydrate(res.data);
       } else {
-        // Pas de record encore créé : on initialise un état vide neutre.
         setRecord(null);
       }
     } catch {
@@ -500,17 +518,32 @@ function InventorySection({ variantId, currency: _currency, onChanged }: Invento
 
   const onSave = useCallback(async () => {
     if (saving) return;
-    const qty = parseNonNegInt(quantity);
     const thr = parseNonNegInt(threshold);
-    if (qty === null || thr === null) {
+    if (thr === null) {
       setError(t('variants.inventory.invalid'));
       return;
     }
+
+    // Valider les stocks de chaque localisation
+    const locStocksPayload = [];
+    for (const w of warehouses) {
+      const val = localQuantities[w.id] || '0';
+      const qty = parseNonNegInt(val);
+      if (qty === null) {
+        setError(t('variants.inventory.invalid'));
+        return;
+      }
+      locStocksPayload.push({
+        location_id: w.id,
+        quantity: qty,
+      });
+    }
+
     setSaving(true);
     setError(null);
     try {
       const res = await setVariantInventory(variantId, {
-        quantity: qty,
+        location_stocks: locStocksPayload,
         low_stock_threshold: thr,
         track_inventory: track ? 1 : 0,
         allow_backorder: backorder ? 1 : 0,
@@ -529,15 +562,26 @@ function InventorySection({ variantId, currency: _currency, onChanged }: Invento
       toastError(msg);
     }
     setSaving(false);
-  }, [saving, quantity, threshold, track, backorder, variantId, hydrate, toastSuccess, toastError, onChanged]);
+  }, [saving, threshold, warehouses, localQuantities, track, backorder, variantId, hydrate, toastSuccess, toastError, onChanged]);
 
-  // Clamp défensif : available ≥ 0 (réservé peut dépasser quantité en cas de race).
   const available =
     record != null
       ? Math.max(0, (record.quantity ?? 0) - (record.reserved ?? 0))
       : null;
   const low =
     record != null && (record.quantity ?? 0) <= (record.low_stock_threshold ?? 0);
+
+  const getLocReserved = (locId: string): number => {
+    if (!record?.location_stocks) return 0;
+    const match = record.location_stocks.find(ls => ls.location_id === locId);
+    return match?.reserved ?? 0;
+  };
+
+  const getLocAvailable = (locId: string, qtyStr: string): number => {
+    const qty = parseInt(qtyStr, 10) || 0;
+    const res = getLocReserved(locId);
+    return Math.max(0, qty - res);
+  };
 
   return (
     <div aria-live="polite" aria-busy={loading} data-testid={`variants-inventory-${variantId}`}>
@@ -557,23 +601,23 @@ function InventorySection({ variantId, currency: _currency, onChanged }: Invento
           </Button>
         </div>
       ) : (
-        <div className="space-y-3">
-          {/* Résumé courant */}
+        <div className="space-y-4">
+          {/* Résumé global courant */}
           {record && (
-            <dl className="grid grid-cols-3 gap-x-4 gap-y-1 text-[12px]">
+            <dl className="grid grid-cols-3 gap-x-4 gap-y-1 text-[12px] bg-white p-3 rounded-xl border border-[var(--border-subtle)]">
               <div>
-                <dt className="text-[var(--text-muted)]">{t('variants.inventory.onHand')}</dt>
-                <dd className="font-semibold t-mono-num">
+                <dt className="text-[var(--text-muted)]">{t('variants.inventory.onHand')} (Total)</dt>
+                <dd className="font-semibold text-sm t-mono-num text-[var(--text-primary)]">
                   {formatNumber(record.quantity ?? 0, locale)}
                 </dd>
               </div>
               <div>
-                <dt className="text-[var(--text-muted)]">{t('variants.inventory.reserved')}</dt>
-                <dd className="t-mono-num">{formatNumber(record.reserved ?? 0, locale)}</dd>
+                <dt className="text-[var(--text-muted)]">{t('variants.inventory.reserved')} (Total)</dt>
+                <dd className="t-mono-num text-sm text-[var(--text-secondary)]">{formatNumber(record.reserved ?? 0, locale)}</dd>
               </div>
               <div>
-                <dt className="text-[var(--text-muted)]">{t('variants.inventory.available')}</dt>
-                <dd className="t-mono-num">
+                <dt className="text-[var(--text-muted)]">{t('variants.inventory.available')} (Total)</dt>
+                <dd className="t-mono-num text-sm text-[var(--text-primary)] font-semibold">
                   {formatNumber(available ?? 0, locale)}
                   {low && (
                     <Tag size="sm" variant="warning" className="ml-2">
@@ -586,21 +630,74 @@ function InventorySection({ variantId, currency: _currency, onChanged }: Invento
           )}
 
           <form
-            className="space-y-3"
+            className="space-y-4"
             onSubmit={(e) => {
               e.preventDefault();
               void onSave();
             }}
           >
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Input
-                label={t('variants.inventory.quantityLabel')}
-                inputMode="numeric"
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-                autoComplete="off"
-                data-testid={`variants-inv-qty-${variantId}`}
-              />
+            {/* Grille multi-entrepôt */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
+                Stock par localisation
+              </h4>
+              
+              {warehouses.length === 0 ? (
+                <p className="text-[12px] text-[var(--text-muted)] italic">
+                  Aucun entrepôt ou point de vente configuré.
+                </p>
+              ) : (
+                <div className="border border-[var(--border-subtle)] rounded-xl overflow-hidden bg-white">
+                  <table className="min-w-full divide-y divide-[var(--border-subtle)] text-[12px]">
+                    <thead className="bg-[var(--gray-50)] text-[var(--text-muted)] font-medium">
+                      <tr>
+                        <th scope="col" className="px-3 py-2 text-left">Localisation</th>
+                        <th scope="col" className="px-3 py-2 text-center w-24">Réservé</th>
+                        <th scope="col" className="px-3 py-2 text-center w-24">Disponible</th>
+                        <th scope="col" className="px-3 py-2 text-right w-32">Quantité (On Hand)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--border-subtle)]">
+                      {warehouses.map((w) => {
+                        const qtyStr = localQuantities[w.id] || '0';
+                        const resVal = getLocReserved(w.id);
+                        const availVal = getLocAvailable(w.id, qtyStr);
+                        return (
+                          <tr key={w.id} className="hover:bg-[var(--gray-50)] transition-colors">
+                            <td className="px-3 py-2">
+                              <span className="font-medium text-[var(--text-primary)]">{w.name}</span>
+                              {w.is_default === 1 && (
+                                <span className="ml-2 text-[10px] bg-[var(--primary)]/10 text-[var(--primary)] px-1.5 py-0.5 rounded font-semibold uppercase">
+                                  Défaut
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-3 py-2 text-center t-mono-num text-[var(--text-muted)]">
+                              {resVal}
+                            </td>
+                            <td className="px-3 py-2 text-center t-mono-num font-semibold text-[var(--text-primary)]">
+                              {availVal}
+                            </td>
+                            <td className="px-3 py-1 text-right">
+                              <input
+                                type="number"
+                                min="0"
+                                value={qtyStr}
+                                onChange={(e) => setLocalQuantities({ ...localQuantities, [w.id]: e.target.value })}
+                                className="w-24 text-right px-2 py-1 border border-[var(--border-subtle)] rounded bg-white text-[12px] font-mono focus:outline-none focus:border-[var(--primary)]"
+                                data-testid={`variants-inv-qty-${w.id}`}
+                              />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
               <Input
                 label={t('variants.inventory.thresholdLabel')}
                 inputMode="numeric"
@@ -629,16 +726,18 @@ function InventorySection({ variantId, currency: _currency, onChanged }: Invento
               ) : null}
             </div>
 
-            <Button
-              type="submit"
-              size="sm"
-              leftIcon={<Icon as={Save} size="sm" />}
-              isLoading={saving}
-              disabled={saving}
-              data-testid={`variants-inv-save-${variantId}`}
-            >
-              {t('variants.inventory.save')}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                type="submit"
+                size="sm"
+                leftIcon={<Icon as={Save} size="sm" />}
+                isLoading={saving}
+                disabled={saving}
+                data-testid={`variants-inv-save-${variantId}`}
+              >
+                {t('variants.inventory.save')}
+              </Button>
+            </div>
           </form>
         </div>
       )}

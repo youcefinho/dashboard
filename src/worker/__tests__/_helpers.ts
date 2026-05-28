@@ -41,11 +41,11 @@ export function createMockD1(): MockD1 {
         },
         all() {
           db.calls.push({ sql, args: boundArgs });
-          return { results: resolveRows(sql) };
+          return { results: resolveRows(sql, boundArgs) };
         },
         first() {
           db.calls.push({ sql, args: boundArgs });
-          const rows = resolveRows(sql);
+          const rows = resolveRows(sql, boundArgs);
           return rows.length ? rows[0] : null;
         },
         run() {
@@ -57,12 +57,53 @@ export function createMockD1(): MockD1 {
     },
   };
 
-  function resolveRows(sql: string): any[] {
+  function resolveRows(sql: string, boundArgs: any[] = []): any[] {
     const lower = sql.toLowerCase();
-    for (const s of seeds) {
-      if (lower.includes(s.needle)) return s.rows;
+    let selectedRows: any[] = db.defaultRows;
+    
+    // On trie par longueur de needle décroissante pour avoir le match le plus spécifique d'abord
+    const sortedSeeds = [...seeds].sort((a, b) => b.needle.length - a.needle.length);
+    
+    for (const s of sortedSeeds) {
+      if (lower.includes(s.needle)) {
+        selectedRows = s.rows;
+        break;
+      }
     }
-    return db.defaultRows;
+
+    if (!selectedRows || selectedRows.length === 0) {
+      return selectedRows;
+    }
+
+    // Filtrage intelligent basé sur les bindings et la clause WHERE
+    const whereRegex = /([\w\.]+)\s*=\s*\?/g;
+    const columns: string[] = [];
+    let match;
+    while ((match = whereRegex.exec(sql)) !== null) {
+      const col = match[1].toLowerCase();
+      const cleanCol = col.split('.').pop() || col;
+      columns.push(cleanCol);
+    }
+
+    if (columns.length > 0 && boundArgs.length > 0) {
+      return selectedRows.filter(row => {
+        if (!row || typeof row !== 'object') return true;
+        for (let i = 0; i < Math.min(columns.length, boundArgs.length); i++) {
+          const colName = columns[i];
+          const boundVal = boundArgs[i];
+          const rowKey = Object.keys(row).find(k => k.toLowerCase() === colName);
+          if (rowKey !== undefined) {
+            const rowVal = row[rowKey];
+            if (rowVal !== boundVal) {
+              return false;
+            }
+          }
+        }
+        return true;
+      });
+    }
+
+    return selectedRows;
   }
 
   return db;

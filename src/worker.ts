@@ -4983,6 +4983,29 @@ async function routeProtected(
       return cp.handleDeleteCoupon(env, auth, couponMatch[1]!);
     }
 
+    // Promo codes (Sprint 64)
+    if (path === '/api/ecommerce/promo-codes' && method === 'GET') {
+      const pc = await import('./worker/promo-codes');
+      return pc.handleListPromoCodes(env, auth, url);
+    }
+    if (path === '/api/ecommerce/promo-codes' && method === 'POST') {
+      const pc = await import('./worker/promo-codes');
+      return pc.handleCreatePromoCode(request, env, auth);
+    }
+    const promoCodeMatch = path.match(/^\/api\/ecommerce\/promo-codes\/([^/]+)$/);
+    if (promoCodeMatch && method === 'GET') {
+      const pc = await import('./worker/promo-codes');
+      return pc.handleGetPromoCode(env, auth, promoCodeMatch[1]!);
+    }
+    if (promoCodeMatch && method === 'PATCH') {
+      const pc = await import('./worker/promo-codes');
+      return pc.handleUpdatePromoCode(request, env, auth, promoCodeMatch[1]!);
+    }
+    if (promoCodeMatch && method === 'DELETE') {
+      const pc = await import('./worker/promo-codes');
+      return pc.handleDeletePromoCode(env, auth, promoCodeMatch[1]!);
+    }
+
     // Abonnements produit (route /run-due SPÉCIFIQUE avant le générique
     // /subscriptions/:id). Cycle = createOrderCore COD/mock — AUCUN
     // prélèvement réel (§6.E). ⚠ NE PAS confondre avec les `subscriptions`

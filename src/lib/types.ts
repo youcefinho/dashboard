@@ -1021,6 +1021,12 @@ export interface InventoryRecord {
   allow_backorder: number;
   location: string | null;
   updated_at: string;
+  location_stocks?: Array<{
+    location_id: string;
+    warehouse_name: string;
+    quantity: number;
+    reserved: number;
+  }>;
 }
 
 export interface InventoryMovement {
