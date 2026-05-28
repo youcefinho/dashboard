@@ -19,7 +19,7 @@ import { getNotifications, markNotificationRead, markAllNotificationsRead, getCl
 // on ne les modifie). Manager-C — owned AppLayout.tsx.
 import { applyTenantBranding, resetTenantBranding } from '@/lib/applyBranding';
 import type { TenantBranding, ClientBrandingMeta } from '@/lib/types';
-import { Search, Bell, Moon, Sun, Menu, Plus, Rows3, Rows2, Rows4, Check, X as XIcon, ExternalLink, BellOff, WifiOff } from 'lucide-react';
+import { Search, Bell, Moon, Sun, Menu, Plus, Rows3, Rows2, Rows4, Check, X as XIcon, ExternalLink, BellOff, WifiOff, PhoneCall } from 'lucide-react';
 import { Icon } from '@/components/ui';
 import { useDensity } from '@/lib/useDensity';
 import { MobileBottomNav } from './MobileBottomNav';
@@ -65,6 +65,7 @@ import { NotificationsPanel } from '@/components/notifications/NotificationsPane
 import { useNotificationsWs } from '@/hooks/useNotificationsWs';
 import { useToast } from '@/components/ui';
 import { t } from '@/lib/i18n';
+import { FloatingDialerPanel } from '@/components/dialer/FloatingDialerPanel';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -252,6 +253,8 @@ export function AppLayout({ children, title }: AppLayoutProps) {
   const [notifOpen, setNotifOpen] = useState(false);
   // Sprint 46 M3.2 — SlidePanel notifications (alternative au dropdown legacy)
   const [notifPanelOpen, setNotifPanelOpen] = useState(false);
+  // Sprint 54 — Power Dialer
+  const [dialerOpen, setDialerOpen] = useState(false);
   const toast = useToast();
   const [cmdOpen, setCmdOpen] = useState(false);
   // LOT G8 — état d'ouverture du panel assistant IA (raccourci Cmd+/)
@@ -536,6 +539,11 @@ export function AppLayout({ children, title }: AppLayoutProps) {
       e.preventDefault();
       setAssistantOpen(prev => !prev);
     }
+    // Sprint 54 — Alt+D toggle le Dialer
+    if (e.altKey && (e.key === 'd' || e.key === 'D')) {
+      e.preventDefault();
+      setDialerOpen(prev => !prev);
+    }
   }, []);
 
   useEffect(() => {
@@ -722,6 +730,17 @@ export function AppLayout({ children, title }: AppLayoutProps) {
                 aria-label={t('layout.theme_label')}
               >
                 {theme === 'dark' ? <Icon as={Sun} size={16} /> : <Icon as={Moon} size={16} />}
+              </button>
+            </Tooltip>
+
+            {/* Power Dialer (Sprint 54) */}
+            <Tooltip title="Power Dialer" description="Ouvrir le composeur d'appels en rafale">
+              <button
+                onClick={() => setDialerOpen(prev => !prev)}
+                className={`inline-flex items-center justify-center h-8 w-8 rounded-md transition-colors cursor-pointer ${dialerOpen ? 'bg-[var(--primary-soft)] text-[var(--primary)]' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'}`}
+                aria-label="Power Dialer"
+              >
+                <Icon as={PhoneCall} size={16} />
               </button>
             </Tooltip>
 
@@ -1017,6 +1036,11 @@ export function AppLayout({ children, title }: AppLayoutProps) {
         }}
         onItemClick={(notif) => void handleNotifClick(notif)}
       />
+      {/* Sprint 54 — Power Dialer flottant */}
+      {dialerOpen && (
+        <FloatingDialerPanel onClose={() => setDialerOpen(false)} />
+      )}
+
       {/* Sprint 34 vague 34-3B — Live regions invisibles pour annonces SR */}
       <LiveRegionPortal />
     </div>

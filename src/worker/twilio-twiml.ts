@@ -110,12 +110,46 @@ export async function handleTwilioVoiceTwiml(request: Request, env: Env): Promis
     const toNumber = (params['To'] || '').trim();
     const origin = getOrigin(request);
 
-    // Résolution agent à dial : sub_accounts.twilio_phone correspondant au tenant
-    // appelé. Best-effort : table absente / pas de match → fallback voicemail.
-    // Note : on choisit le PREMIER agent dispo (Phase C affinera : routing par
-    // disponibilité / round-robin). Fallback final = env.TWILIO_PHONE_NUMBER.
+    // Résolution de l'agent à appeler, des préférences de consentement et d'enregistrement.
     let agentNumber: string | null = null;
+    let recordCall = 0;
+    let playConsentMsg = 1;
+
     if (toNumber) {
+      try {
+        // 1. Tenter de résoudre via les règles de routage dynamique
+        const route = (await env.DB.prepare(
+          `SELECT r.target_type, r.target_id, r.record_call, r.play_consent_msg, n.client_id
+             FROM phone_routing_rules r
+             JOIN phone_numbers n ON r.phone_number_id = n.id
+            WHERE n.phone_number = ? AND n.status = 'active'
+            ORDER BY r.priority ASC LIMIT 1`,
+        )
+          .bind(toNumber)
+          .first()) as { target_type: string; target_id: string; record_call: number; play_consent_msg: number; client_id: string } | null;
+
+        if (route) {
+          recordCall = route.record_call === 1 ? 1 : 0;
+          playConsentMsg = route.play_consent_msg === 0 ? 0 : 1;
+
+          if (route.target_type === 'user') {
+            const u = (await env.DB.prepare(
+              'SELECT phone FROM users WHERE id = ? AND client_id = ? LIMIT 1',
+            )
+              .bind(route.target_id, route.client_id)
+              .first()) as { phone: string | null } | null;
+            agentNumber = u?.phone || null;
+          } else if (route.target_type === 'forward') {
+            agentNumber = route.target_id;
+          }
+        }
+      } catch {
+        agentNumber = null;
+      }
+    }
+
+    // 2. Fallback legacy si aucune règle de routage active trouvée
+    if (!agentNumber && toNumber) {
       try {
         const row = (await env.DB.prepare(
           `SELECT u.phone AS phone
@@ -147,12 +181,20 @@ export async function handleTwilioVoiceTwiml(request: Request, env: Env): Promis
       return new Response(xml, { headers: { 'Content-Type': 'text/xml' } });
     }
 
-    // Agent dispo : <Dial> avec recording dual-channel + transcription FR-CA.
-    // record='record-from-answer-dual' = enregistre les 2 canaux séparément
-    // depuis la réponse de l'agent (pas le ring). transcribe=true demande la
-    // transcription Twilio native (best-effort, fr-CA non garanti — on a aussi
-    // Whisper Phase B agent A3 en backup).
-    const xml = `${xmlHeader}\n<Response>\n  <Say voice="alice" language="fr-CA">Bonjour, votre appel est important. Veuillez patienter.</Say>\n  <Dial record="record-from-answer-dual" recordingStatusCallback="${escapeXml(recordingCb)}" transcribe="true" transcribeCallback="${escapeXml(transcribeCb)}" timeout="30">\n    <Number>${escapeXml(agentNumber)}</Number>\n  </Dial>\n  <Redirect method="POST">${escapeXml(`${origin}/api/twilio/twiml/voicemail`)}</Redirect>\n</Response>`;
+    // Détermination de la lecture du message de consentement Loi 25 (seulement si l'appel est enregistré)
+    const shouldPlayConsent = recordCall === 1 && playConsentMsg === 1;
+
+    let xml = `${xmlHeader}\n<Response>\n`;
+    if (shouldPlayConsent) {
+      xml += `  <Say voice="Polly.Chantal" language="fr-CA">Cet appel peut être enregistré pour des fins de contrôle de la qualité. Si vous ne consentez pas, veuillez raccrocher.</Say>\n`;
+    } else {
+      xml += `  <Say voice="alice" language="fr-CA">Bonjour, votre appel est important. Veuillez patienter.</Say>\n`;
+    }
+
+    const dialRecordAttr = recordCall === 1 ? ' record="record-from-answer-dual"' : '';
+    xml += `  <Dial${dialRecordAttr} recordingStatusCallback="${escapeXml(recordingCb)}" transcribe="true" transcribeCallback="${escapeXml(transcribeCb)}" timeout="30">\n    <Number>${escapeXml(agentNumber)}</Number>\n  </Dial>\n`;
+    xml += `  <Redirect method="POST">${escapeXml(`${origin}/api/twilio/twiml/voicemail`)}</Redirect>\n</Response>`;
+
     return new Response(xml, { headers: { 'Content-Type': 'text/xml' } });
   } catch {
     // Best-effort : panne inattendue → TwiML safe (jamais 500 vers Twilio).

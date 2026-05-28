@@ -2064,6 +2064,30 @@
         "index:idx_voicemails_created_at"
       ],
       "risk": "low"
+    },
+    {
+      "seq": 148,
+      "file": "migration-dialer-seq148.sql",
+      "depends_on": [
+        "migration-voicemail-seq147.sql"
+      ],
+      "objects": [
+        "table:dialer_campaigns",
+        "index:idx_dialer_campaigns_client"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 149,
+      "file": "migration-recording-compliance-seq149.sql",
+      "depends_on": [
+        "migration-dialer-seq148.sql"
+      ],
+      "objects": [
+        "column:phone_routing_rules.record_call",
+        "column:phone_routing_rules.play_consent_msg"
+      ],
+      "risk": "low"
     }
   ]
 }

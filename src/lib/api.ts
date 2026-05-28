@@ -229,6 +229,8 @@ export interface PhoneRoutingRule {
   condition_value: string;
   target_type: 'user' | 'ivr' | 'forward';
   target_id: string;
+  record_call?: number;
+  play_consent_msg?: number;
   created_at?: string;
   updated_at?: string;
 }
@@ -11951,4 +11953,101 @@ export async function deleteDnsRecord(
     method: 'DELETE',
   });
 }
+
+// ── Sprint 54 — Power Dialer (Moteur d'Appels en Rafale) ───────────────────
+
+export interface DialerCampaign {
+  id: string;
+  client_id: string;
+  name: string;
+  lead_ids: string[];
+  status: 'draft' | 'active' | 'paused' | 'completed';
+  current_index: number;
+  script_markdown: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface DialerCurrentLeadResponse {
+  campaign_completed: boolean;
+  current_index: number;
+  total_leads: number;
+  lead?: {
+    id: string;
+    client_id: string;
+    name: string;
+    email: string;
+    phone?: string;
+    [key: string]: any;
+  };
+  script?: string;
+}
+
+/**
+ * GET /api/dialer/campaigns — Récupère toutes les campagnes du client.
+ */
+export async function getDialerCampaigns(): Promise<ApiResponse<DialerCampaign[]>> {
+  return apiFetch<DialerCampaign[]>('/dialer/campaigns');
+}
+
+/**
+ * POST /api/dialer/campaigns — Crée une nouvelle campagne.
+ */
+export async function createDialerCampaign(body: {
+  name: string;
+  lead_ids: string[];
+  script_markdown?: string;
+}): Promise<ApiResponse<DialerCampaign>> {
+  return apiFetch<DialerCampaign>('/dialer/campaigns', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+/**
+ * GET /api/dialer/campaigns/:id — Récupère une campagne par son ID.
+ */
+export async function getDialerCampaign(id: string): Promise<ApiResponse<DialerCampaign>> {
+  return apiFetch<DialerCampaign>(`/dialer/campaigns/${encodeURIComponent(id)}`);
+}
+
+/**
+ * PATCH /api/dialer/campaigns/:id — Met à jour les informations d'une campagne.
+ */
+export async function updateDialerCampaign(
+  id: string,
+  body: {
+    name?: string;
+    status?: 'draft' | 'active' | 'paused' | 'completed';
+    current_index?: number;
+    script_markdown?: string;
+  }
+): Promise<ApiResponse<DialerCampaign>> {
+  return apiFetch<DialerCampaign>(`/dialer/campaigns/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  });
+}
+
+/**
+ * DELETE /api/dialer/campaigns/:id — Supprime une campagne.
+ */
+export async function deleteDialerCampaign(id: string): Promise<ApiResponse<{ success: boolean; message?: string }>> {
+  return apiFetch<{ success: boolean; message?: string }>(`/dialer/campaigns/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  });
+}
+
+/**
+ * GET /api/dialer/campaigns/:id/lead?direction=... — Récupère le prospect courant et gère la progression.
+ */
+export async function getDialerCurrentLead(
+  id: string,
+  direction: 'current' | 'next' | 'prev' = 'current'
+): Promise<ApiResponse<DialerCurrentLeadResponse>> {
+  return apiFetch<DialerCurrentLeadResponse>(
+    `/dialer/campaigns/${encodeURIComponent(id)}/lead?direction=${direction}`
+  );
+}
+
 

@@ -8,6 +8,7 @@ import {
   useConfirm,
   Skeleton,
   Icon,
+  Switch,
 } from '@/components/ui';
 import {
   getVirtualPhoneNumbers,
@@ -95,7 +96,12 @@ export function PhoneNumbersSettings() {
     try {
       const res = await getPhoneRoutingRules(num.id);
       if (res.data) {
-        setRules(res.data);
+        const mapped = res.data.map(r => ({
+          ...r,
+          record_call: r.record_call ?? 0,
+          play_consent_msg: r.play_consent_msg ?? 1,
+        }));
+        setRules(mapped);
       } else if (res.error) {
         toastError(res.error);
       }
@@ -186,6 +192,8 @@ export function PhoneNumbersSettings() {
       condition_value: '',
       target_type: 'forward',
       target_id: '',
+      record_call: 0,
+      play_consent_msg: 1,
     };
     setRules([...rules, newRule]);
   };
@@ -527,6 +535,28 @@ export function PhoneNumbersSettings() {
                             />
                           )}
                         </div>
+                      </div>
+
+                      {/* Options d'enregistrement et de consentement Loi 25 / LCAP */}
+                      <div className="flex flex-col sm:flex-row gap-4 pt-3 border-t border-[var(--border-subtle)]/40">
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={rule.record_call === 1}
+                            onCheckedChange={(checked) => handleUpdateRule(idx, 'record_call', checked ? 1 : 0)}
+                            label="Enregistrer l'appel"
+                            size="sm"
+                          />
+                        </div>
+                        {rule.record_call === 1 && (
+                          <div className="flex items-center gap-2">
+                            <Switch
+                              checked={rule.play_consent_msg === 1}
+                              onCheckedChange={(checked) => handleUpdateRule(idx, 'play_consent_msg', checked ? 1 : 0)}
+                              label="Message de consentement Loi 25"
+                              size="sm"
+                            />
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}

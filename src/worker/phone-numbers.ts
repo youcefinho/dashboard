@@ -287,22 +287,24 @@ export async function handleSaveRoutingRules(request: Request, env: Env, auth: {
 
     // Insérer les nouvelles règles
     for (let i = 0; i < newRules.length; i++) {
-      const r = newRules[i]!;
+      const r = newRules[i] as any;
       const ruleId = crypto.randomUUID();
       const priority = Number(r.priority || i + 1);
       const conditionType = sanitizeInput(r.condition_type || 'all', 20);
       const conditionValue = sanitizeInput(r.condition_value || '', 100);
       const targetType = sanitizeInput(r.target_type || 'forward', 20);
       const targetId = sanitizeInput(r.target_id || '', 100);
+      const recordCall = r.record_call === 1 || r.record_call === true ? 1 : 0;
+      const playConsentMsg = r.play_consent_msg === 0 || r.play_consent_msg === false ? 0 : 1;
 
       // Validation de base des enums pour éviter les injections de valeurs non whitelistées
       if (!['all', 'area_code'].includes(conditionType)) continue;
       if (!['user', 'ivr', 'forward'].includes(targetType)) continue;
 
       await env.DB.prepare(
-        `INSERT INTO phone_routing_rules (id, phone_number_id, priority, condition_type, condition_value, target_type, target_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`
-      ).bind(ruleId, id, priority, conditionType, conditionValue, targetType, targetId).run();
+        `INSERT INTO phone_routing_rules (id, phone_number_id, priority, condition_type, condition_value, target_type, target_id, record_call, play_consent_msg)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      ).bind(ruleId, id, priority, conditionType, conditionValue, targetType, targetId, recordCall, playConsentMsg).run();
     }
 
     // Audit Loi 25

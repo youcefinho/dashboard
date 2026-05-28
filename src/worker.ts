@@ -308,6 +308,14 @@ import {
   handlePurchasePhoneNumber, handleReleasePhoneNumber,
   handleGetRoutingRules, handleSaveRoutingRules
 } from './worker/phone-numbers';
+import {
+  handleGetDialerCampaigns,
+  handleCreateDialerCampaign,
+  handleGetDialerCampaign,
+  handleUpdateDialerCampaign,
+  handleDeleteDialerCampaign,
+  handleGetDialerCurrentLead,
+} from './worker/dialer';
 
 import { handleGetUsers, handleInviteUser, handleUpdateUserRole, handleDeleteUser, handleGetRoles, handleAcceptInvitation, handleRevokeInvitation, handleResendInvitation, handleListInvitations } from './worker/team';
 // ── LOT TEAM B/C — capabilities + sous-comptes (Phase A fige le dispatch) ───
@@ -1703,6 +1711,28 @@ async function routeProtected(
   if (ivrMenuIdMatch && method === 'DELETE') {
     const { handleDeleteIvrMenu } = await import('./worker/telephony');
     return handleDeleteIvrMenu(env, auth, ivrMenuIdMatch[1]!);
+  }
+
+  // ── Sprint 54 — Power Dialer campaigns ───────────────────
+  if (path === '/api/dialer/campaigns' && method === 'GET') {
+    return handleGetDialerCampaigns(request, env, auth);
+  }
+  if (path === '/api/dialer/campaigns' && method === 'POST') {
+    return handleCreateDialerCampaign(request, env, auth);
+  }
+  const dialerCampaignLeadMatch = path.match(/^\/api\/dialer\/campaigns\/([^/]+)\/lead$/);
+  if (dialerCampaignLeadMatch && method === 'GET') {
+    return handleGetDialerCurrentLead(request, env, auth, dialerCampaignLeadMatch[1]!);
+  }
+  const dialerCampaignIdMatch = path.match(/^\/api\/dialer\/campaigns\/([^/]+)$/);
+  if (dialerCampaignIdMatch && method === 'GET') {
+    return handleGetDialerCampaign(request, env, auth, dialerCampaignIdMatch[1]!);
+  }
+  if (dialerCampaignIdMatch && method === 'PATCH') {
+    return handleUpdateDialerCampaign(request, env, auth, dialerCampaignIdMatch[1]!);
+  }
+  if (dialerCampaignIdMatch && method === 'DELETE') {
+    return handleDeleteDialerCampaign(request, env, auth, dialerCampaignIdMatch[1]!);
   }
 
   // ── Sprint 34 (seq 129) — Twilio Voice outbound + recording + voicemails ──
@@ -4110,6 +4140,16 @@ async function routeProtected(
   const pnRoutingMatch = path.match(/^\/api\/phone-numbers\/([^/]+)\/routing$/);
   if (pnRoutingMatch && method === 'GET') return handleGetRoutingRules(request, env, auth, pnRoutingMatch[1]!);
   if (pnRoutingMatch && method === 'POST') return handleSaveRoutingRules(request, env, auth, pnRoutingMatch[1]!);
+
+  // Campagnes Power Dialer (Sprint 54)
+  if (path === '/api/dialer/campaigns' && method === 'GET') return handleGetDialerCampaigns(request, env, auth);
+  if (path === '/api/dialer/campaigns' && method === 'POST') return handleCreateDialerCampaign(request, env, auth);
+  const dialerLeadMatch = path.match(/^\/api\/dialer\/campaigns\/([^/]+)\/lead$/);
+  if (dialerLeadMatch && method === 'GET') return handleGetDialerCurrentLead(request, env, auth, dialerLeadMatch[1]!);
+  const dialerIdMatch = path.match(/^\/api\/dialer\/campaigns\/([^/]+)$/);
+  if (dialerIdMatch && method === 'GET') return handleGetDialerCampaign(request, env, auth, dialerIdMatch[1]!);
+  if (dialerIdMatch && method === 'PATCH') return handleUpdateDialerCampaign(request, env, auth, dialerIdMatch[1]!);
+  if (dialerIdMatch && method === 'DELETE') return handleDeleteDialerCampaign(request, env, auth, dialerIdMatch[1]!);
 
   if (path === '/api/team/users' && method === 'GET') return handleGetUsers(request, env, auth);
   if (path === '/api/team/invites' && method === 'GET') return handleListInvitations(request, env, auth);
