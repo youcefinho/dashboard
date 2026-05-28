@@ -7477,4 +7477,13 @@ export const en: Record<string, string> = {
   'coursesx.structure_empty': 'No modules in this course.',
   'coursesx.structure_error': 'Unable to load the course structure.',
   'coursesx.lessons_count': '{count} lessons',
+  'calsync.error.popup_blocked': 'Your browser blocked the Google window. Allow pop-ups for this site and try again.',
+  'calsync.error.reauth': 'Your Google access has expired. Reconnect the calendar to resume syncing.',
+  'agencies.mgmt.loading': 'Loading…',
+  'wlx.color_invalid': 'Invalid color (format #RGB or #RRGGBB).',
+  'wlx.logo_invalid': 'Invalid logo URL (http(s) required).',
+  'mktx.pack.installed_aria': 'Pack already installed',
+  'mktx.pack.idempotent_hint': 'Re-install is a no-op — install is idempotent.',
+  'chanx.retry': 'Retry',
+  'consentx.toast_type_invalid': 'Unknown consent type.',
 };

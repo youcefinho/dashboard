@@ -84,8 +84,8 @@ export function ExternalCalendarSync() {
     setLoadError(null);
     try {
       const res = await getCalendarConnections();
-      if (res.data) setConnections(res.data);
-      else if (res.error) setLoadError(res.error);
+      if (res.data) setConnections(Array.isArray(res.data) ? res.data : []);
+      else setLoadError(res.error || t('calsync.error.load'));
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : t('calsync.error.load'));
     } finally {
@@ -98,13 +98,20 @@ export function ExternalCalendarSync() {
   }, [loadConnections]);
 
   const handleConnect = useCallback(async () => {
+    if (isConnecting) return;
     setIsConnecting(true);
     try {
       const res = await getGcalAuthUrl();
-      if (res.data?.auth_url) {
+      const url = typeof res.data?.auth_url === 'string' ? res.data.auth_url : '';
+      if (url) {
         // Ouvre le flux OAuth Google dans un nouvel onglet.
-        window.open(res.data.auth_url, '_blank', 'noopener,noreferrer');
-        success(t('calsync.toast.connect_opened'));
+        const win = window.open(url, '_blank', 'noopener,noreferrer');
+        if (!win) {
+          // Popup bloquée : on remonte une erreur explicite plutôt qu'un silence.
+          toastError(t('calsync.error.popup_blocked'));
+        } else {
+          success(t('calsync.toast.connect_opened'));
+        }
       } else {
         toastError(res.error || t('calsync.error.connect'));
       }
@@ -113,24 +120,33 @@ export function ExternalCalendarSync() {
     } finally {
       setIsConnecting(false);
     }
-  }, [success, toastError]);
+  }, [success, toastError, isConnecting]);
 
   const handleSyncNow = useCallback(async () => {
+    if (isSyncing) return;
     setIsSyncing(true);
     try {
       const res = await syncGcal();
       if (res.data) {
-        success(t('calsync.toast.synced', { synced: res.data.synced, total: res.data.total }));
+        const synced = typeof res.data.synced === 'number' ? res.data.synced : 0;
+        const total = typeof res.data.total === 'number' ? res.data.total : 0;
+        success(t('calsync.toast.synced', { synced, total }));
         void loadConnections();
       } else {
-        toastError(res.error || t('calsync.error.sync'));
+        // Token expiré / révoqué : hint utilisateur pour reconnecter.
+        const msg = res.error || t('calsync.error.sync');
+        const lower = msg.toLowerCase();
+        const needsReauth =
+          lower.includes('token') || lower.includes('unauthorized') ||
+          lower.includes('401') || lower.includes('revoked') || lower.includes('expired');
+        toastError(needsReauth ? t('calsync.error.reauth') : msg);
       }
     } catch (err) {
       toastError(err instanceof Error ? err.message : t('calsync.error.sync'));
     } finally {
       setIsSyncing(false);
     }
-  }, [success, toastError, loadConnections]);
+  }, [success, toastError, loadConnections, isSyncing]);
 
   const handleLoadExternal = useCallback(async (connId: string) => {
     // Toggle : si déjà chargé, on masque.
@@ -147,7 +163,8 @@ export function ExternalCalendarSync() {
     try {
       const res = await listExternalCalendars(connId);
       if (res.data) {
-        setExternalCals((prev) => ({ ...prev, [connId]: res.data! }));
+        const safe = Array.isArray(res.data) ? res.data : [];
+        setExternalCals((prev) => ({ ...prev, [connId]: safe }));
       } else {
         setExternalError((prev) => ({ ...prev, [connId]: res.error || t('calsync.error.external') }));
       }
@@ -162,6 +179,7 @@ export function ExternalCalendarSync() {
   }, [externalCals]);
 
   const handlePreviewEvents = useCallback(async () => {
+    if (eventsLoading) return;
     setEventsLoading(true);
     setEventsError(null);
     try {
@@ -169,16 +187,22 @@ export function ExternalCalendarSync() {
       const in30d = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
       const res = await getGcalEvents(now.toISOString(), in30d.toISOString());
       if (res.data) {
-        setEvents(res.data.events.slice(0, 8).map((e, i) => normalizeGcalEvent(e, i)));
+        const list = Array.isArray(res.data.events) ? res.data.events : [];
+        setEvents(list.slice(0, 8).map((e, i) => normalizeGcalEvent(e, i)));
       } else {
-        setEventsError(res.error || t('calsync.error.events'));
+        const msg = res.error || t('calsync.error.events');
+        const lower = msg.toLowerCase();
+        const needsReauth =
+          lower.includes('token') || lower.includes('unauthorized') ||
+          lower.includes('401') || lower.includes('revoked') || lower.includes('expired');
+        setEventsError(needsReauth ? t('calsync.error.reauth') : msg);
       }
     } catch (err) {
       setEventsError(err instanceof Error ? err.message : t('calsync.error.events'));
     } finally {
       setEventsLoading(false);
     }
-  }, []);
+  }, [eventsLoading]);
 
   const fmtDate = (s: string | null): string => {
     if (!s) return '';
@@ -226,7 +250,12 @@ export function ExternalCalendarSync() {
 
       {/* ── Loading ── */}
       {isLoading && (
-        <div className="text-xs text-[var(--text-muted)]" aria-busy="true">
+        <div
+          className="text-xs text-[var(--text-muted)]"
+          aria-busy="true"
+          aria-live="polite"
+          role="status"
+        >
           {t('calsync.loading')}
         </div>
       )}
@@ -295,7 +324,12 @@ export function ExternalCalendarSync() {
 
                 {/* Calendriers externes de cette connexion */}
                 {extLoading && (
-                  <div className="text-xs text-[var(--text-muted)] mt-2" aria-busy="true">
+                  <div
+                    className="text-xs text-[var(--text-muted)] mt-2"
+                    aria-busy="true"
+                    aria-live="polite"
+                    role="status"
+                  >
                     {t('calsync.loading')}
                   </div>
                 )}
@@ -348,8 +382,20 @@ export function ExternalCalendarSync() {
             </Button>
           </div>
           {eventsError && (
-            <div className="text-xs text-[var(--danger)]" role="alert">
-              {eventsError}
+            <div
+              className="text-xs text-[var(--danger)] flex items-center justify-between gap-2"
+              role="alert"
+              aria-live="assertive"
+            >
+              <span className="break-all">{eventsError}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => void handlePreviewEvents()}
+                disabled={eventsLoading}
+              >
+                {t('calsync.action.retry')}
+              </Button>
             </div>
           )}
           {events && events.length === 0 && !eventsError && (

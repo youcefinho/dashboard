@@ -68,7 +68,7 @@ export function SubscriptionDetail({
       try {
         const res = await getEcommerceSubscription(subscriptionId);
         if (cancelled) return;
-        if (!res.data || res.error) {
+        if (!res || !res.data || res.error) {
           setLoadError(true);
         } else {
           setSub(res.data);
@@ -86,12 +86,13 @@ export function SubscriptionDetail({
 
   const reload = () => {
     // Force re-run en repassant par l'effet : on s'appuie sur subscriptionId.
-    if (!subscriptionId) return;
+    // Garde anti double-clic : ignore si une requête est déjà en vol.
+    if (!subscriptionId || isLoading) return;
     setLoadError(false);
     setIsLoading(true);
     void getEcommerceSubscription(subscriptionId)
       .then((res) => {
-        if (!res.data || res.error) setLoadError(true);
+        if (!res || !res.data || res.error) setLoadError(true);
         else setSub(res.data);
       })
       .catch(() => setLoadError(true))
@@ -146,19 +147,29 @@ export function SubscriptionDetail({
           <Row label={t('ecommerce.subscriptions.customer')}>{sub.customer_id || '—'}</Row>
           <Row label={t('ecommerce.subscriptions.variant')}>{sub.variant_id || '—'}</Row>
           <Row label={t('ecommerce.subscriptions.quantity')}>
-            <span className="t-mono-num">{sub.quantity}</span>
+            <span className="t-mono-num">
+              {Number.isFinite(sub.quantity) ? Math.max(0, sub.quantity) : 0}
+            </span>
           </Row>
           <Row label={t('ecommerce.subscriptions.interval')}>
-            {sub.interval_count > 1 ? `${sub.interval_count} ` : ''}
-            {intervalLabel(sub.interval_unit)}
+            {Number.isFinite(sub.interval_count) && sub.interval_count > 1
+              ? `${sub.interval_count} `
+              : ''}
+            {intervalLabel(sub.interval_unit || '')}
           </Row>
           <Row label={t('subsx.unit_price')}>
-            {sub.unit_price_cents > 0
-              ? formatMoneyCents(sub.unit_price_cents, locale, sub.currency || 'CAD')
+            {Number.isFinite(sub.unit_price_cents) && sub.unit_price_cents > 0
+              ? formatMoneyCents(
+                  Math.max(0, sub.unit_price_cents),
+                  locale,
+                  sub.currency || 'CAD',
+                )
               : '—'}
           </Row>
           <Row label={t('ecommerce.subscriptions.cycles')}>
-            <span className="t-mono-num">{sub.cycles_completed}</span>
+            <span className="t-mono-num">
+              {Number.isFinite(sub.cycles_completed) ? Math.max(0, sub.cycles_completed) : 0}
+            </span>
           </Row>
           <Row label={t('ecommerce.subscriptions.next_run')}>
             {sub.next_run_at ? formatDateTime(sub.next_run_at, locale) : '—'}

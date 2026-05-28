@@ -41,14 +41,21 @@ export function CourseModuleTree({ courseId }: CourseModuleTreeProps) {
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const res = await getCourseModules(courseId);
-    setLoading(false);
-    setLoaded(true);
-    // Discrimination §6.A : `data` présent → succès ; sinon champ `error`.
-    if (res.data) {
-      setModules(res.data as ModuleWithLessons[]);
-    } else {
-      setError(res.error || t('coursesx.structure_error'));
+    try {
+      const res = await getCourseModules(courseId);
+      // Discrimination §6.A : `data` présent → succès ; sinon champ `error`.
+      if (res.data) {
+        // Défensif : si `data` n'est pas un tableau, on neutralise.
+        setModules(Array.isArray(res.data) ? (res.data as ModuleWithLessons[]) : []);
+      } else {
+        setError(res.error || t('coursesx.structure_error'));
+      }
+    } catch (e: unknown) {
+      // Exception réseau → affiche message inline + retry, jamais silencieux.
+      setError(e instanceof Error ? e.message : t('coursesx.structure_error'));
+    } finally {
+      setLoading(false);
+      setLoaded(true);
     }
   }, [courseId]);
 
@@ -59,9 +66,14 @@ export function CourseModuleTree({ courseId }: CourseModuleTreeProps) {
     if (next && !loaded && !loading) void load();
   }, [open, loaded, loading, load]);
 
+  // Coercion défensive : sort_order peut arriver en string/null selon backend.
+  const orderNum = (v: unknown): number => {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : 0;
+  };
   const sortedModules = modules
     .slice()
-    .sort((a, b) => a.sort_order - b.sort_order);
+    .sort((a, b) => orderNum(a.sort_order) - orderNum(b.sort_order));
 
   return (
     <div className="course-module-tree">
@@ -74,6 +86,7 @@ export function CourseModuleTree({ courseId }: CourseModuleTreeProps) {
       >
         <ChevronRight
           size={13}
+          aria-hidden="true"
           style={{ transform: open ? 'rotate(90deg)' : 'none' }}
         />
         {t('coursesx.structure')}
@@ -108,9 +121,11 @@ export function CourseModuleTree({ courseId }: CourseModuleTreeProps) {
           ) : (
             <ul className="space-y-2">
               {sortedModules.map((m) => {
-                const lessons = (m.lessons ?? [])
+                // Défensif : lessons peut être null/undefined OU non-tableau.
+                const lessonsRaw = Array.isArray(m.lessons) ? m.lessons : [];
+                const lessons = lessonsRaw
                   .slice()
-                  .sort((a, b) => a.sort_order - b.sort_order);
+                  .sort((a, b) => orderNum(a.sort_order) - orderNum(b.sort_order));
                 return (
                   <li key={m.id}>
                     <p className="text-xs font-semibold flex items-center gap-2">

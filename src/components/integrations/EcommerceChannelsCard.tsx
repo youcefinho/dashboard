@@ -68,13 +68,19 @@ function ChannelConfigPanel({
   const loadLogs = useCallback(async () => {
     setLogsLoading(true);
     setLogsError(null);
-    const res = await getChannelSyncLog(channel.id);
-    if (res.error) {
-      // Honnêteté : M2 (sync-log) non branché → état neutre, pas de crash.
+    try {
+      const res = await getChannelSyncLog(channel.id);
+      if (res.error) {
+        // Honnêteté : M2 (sync-log) non branché → état neutre, pas de crash.
+        setLogs([]);
+        setLogsError(res.error);
+      } else {
+        // Défensif : si `data` n'est pas un tableau, on neutralise.
+        setLogs(Array.isArray(res.data) ? res.data : []);
+      }
+    } catch (e: unknown) {
       setLogs([]);
-      setLogsError(res.error);
-    } else {
-      setLogs(res.data ?? []);
+      setLogsError(e instanceof Error ? e.message : String(e));
     }
     setLogsLoading(false);
   }, [channel.id]);
@@ -82,19 +88,25 @@ function ChannelConfigPanel({
   useEffect(() => { if (open) void loadLogs(); }, [open, loadLogs]);
 
   const save = async () => {
+    if (saving) return; // anti double-submit
     if (!name.trim()) { toastError(t('chanx.name_required')); return; }
     setSaving(true);
-    const res = await updateChannel(channel.id, {
-      name: name.trim(),
-      shop_domain: shopDomain.trim() || null,
-      external_id: externalId.trim() || null,
-      active,
-    });
-    setSaving(false);
-    if (res.error) { toastError(res.error); return; }
-    success(t('chanx.saved'));
-    onSaved();
-    onClose();
+    try {
+      const res = await updateChannel(channel.id, {
+        name: name.trim(),
+        shop_domain: shopDomain.trim() || null,
+        external_id: externalId.trim() || null,
+        active,
+      });
+      if (res.error) { toastError(res.error); return; }
+      success(t('chanx.saved'));
+      onSaved();
+      onClose();
+    } catch (e: unknown) {
+      toastError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSaving(false);
+    }
   };
 
   const meta = TYPE_META[channel.type] ?? { label: channel.type, icon: '🔌' };
@@ -197,7 +209,16 @@ export function EcommerceChannelsCard() {
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const res = await getChannels();
+    let res;
+    try {
+      res = await getChannels();
+    } catch (e: unknown) {
+      // Exception réseau → état neutre + alerte inline (jamais silencieux).
+      setChannels([]);
+      setError(e instanceof Error ? e.message : String(e));
+      setLoading(false);
+      return;
+    }
     if (res.error) {
       // Honnêteté FLAG-AWARE : module non activé (404) → état "non configuré"
       // plutôt qu'une bannière d'erreur bruyante. On garde channels = [] afin
@@ -211,7 +232,8 @@ export function EcommerceChannelsCard() {
         setError(res.error);
       }
     } else {
-      setChannels(res.data ?? []);
+      // Défensif : si `data` n'est pas un tableau, on neutralise.
+      setChannels(Array.isArray(res.data) ? res.data : []);
     }
     setLoading(false);
   }, []);
@@ -219,17 +241,24 @@ export function EcommerceChannelsCard() {
   useEffect(() => { void load(); }, [load]);
 
   const doConnect = async (ch: SalesChannel) => {
+    if (busyId) return; // anti double-click
     setBusyId(ch.id);
-    const res = await connectChannel(ch.id);
-    setBusyId(null);
-    if (res.error || !res.data?.redirect_url) {
-      toastError(res.error || t('chanx.connect_unavailable'));
-      return;
+    try {
+      const res = await connectChannel(ch.id);
+      if (res.error || !res.data?.redirect_url) {
+        toastError(res.error || t('chanx.connect_unavailable'));
+        return;
+      }
+      window.location.href = res.data.redirect_url;
+    } catch (e: unknown) {
+      toastError(e instanceof Error ? e.message : t('chanx.connect_unavailable'));
+    } finally {
+      setBusyId(null);
     }
-    window.location.href = res.data.redirect_url;
   };
 
   const doSync = async (ch: SalesChannel) => {
+    if (busyId) return; // anti double-click
     const ok = await confirm({
       title: t('chanx.sync_confirm_title'),
       description: t('chanx.sync_confirm_desc', { name: ch.name }),
@@ -237,15 +266,22 @@ export function EcommerceChannelsCard() {
     });
     if (!ok) return;
     setBusyId(ch.id);
-    const res = await syncChannel(ch.id);
-    setBusyId(null);
-    if (res.error || !res.data) {
-      toastError(res.error || t('chanx.sync_unavailable'));
-      return;
+    try {
+      const res = await syncChannel(ch.id);
+      if (res.error || !res.data) {
+        toastError(res.error || t('chanx.sync_unavailable'));
+        return;
+      }
+      // Coercion défensive : si les compteurs ne sont pas numériques, on retombe sur 0.
+      const products = Number(res.data.synced?.products) || 0;
+      const orders = Number(res.data.synced?.orders) || 0;
+      success(t('chanx.sync_done', { products: String(products), orders: String(orders) }));
+      void load();
+    } catch (e: unknown) {
+      toastError(e instanceof Error ? e.message : t('chanx.sync_unavailable'));
+    } finally {
+      setBusyId(null);
     }
-    const { products, orders } = res.data.synced;
-    success(t('chanx.sync_done', { products: String(products), orders: String(orders) }));
-    void load();
   };
 
   return (
@@ -264,9 +300,14 @@ export function EcommerceChannelsCard() {
       ) : error ? (
         <div
           role="alert"
-          className="p-3 rounded-[var(--radius-md)] bg-[var(--danger)]/10 text-[var(--danger)] text-xs flex items-center gap-2"
+          className="p-3 rounded-[var(--radius-md)] bg-[var(--danger)]/10 text-[var(--danger)] text-xs flex items-center justify-between gap-2"
         >
-          <Icon as={AlertCircle} size={13} /> {error}
+          <span className="flex items-center gap-2 min-w-0">
+            <Icon as={AlertCircle} size={13} /> <span className="truncate">{error}</span>
+          </span>
+          <Button variant="ghost" size="sm" onClick={() => void load()} disabled={loading}>
+            {t('chanx.retry')}
+          </Button>
         </div>
       ) : !channels || channels.length === 0 ? (
         // Empty / non configuré : pas de canal branché. On reste honnête : pas

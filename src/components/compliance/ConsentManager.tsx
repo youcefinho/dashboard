@@ -23,9 +23,23 @@ import { FileCheck, Cookie, ClipboardList, ShieldCheck } from 'lucide-react';
 type ConsentEntry = Record<string, unknown>;
 
 const CONSENT_TYPES = ['email', 'sms', 'marketing', 'profiling'] as const;
+type ConsentType = typeof CONSENT_TYPES[number];
+
+// Whitelist défensive : refuse silencieusement tout type non listé côté UI.
+function isValidConsentType(v: string): v is ConsentType {
+  return (CONSENT_TYPES as readonly string[]).includes(v);
+}
 
 function asString(v: unknown): string {
   return v == null ? '' : String(v);
+}
+
+// Date safe-format : ne plante jamais sur un format inattendu (string vide, NaN…).
+function formatSafeDate(raw: string): string {
+  if (!raw) return '';
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return raw; // on rend la string brute plutôt que "Invalid Date"
+  return d.toLocaleString();
 }
 
 function isGranted(entry: ConsentEntry): boolean {
@@ -93,7 +107,8 @@ export function ConsentManager() {
     setHasQueried(true);
     getConsent(queryLeadId)
       .then((res) => {
-        if (!cancelled) setEntries(res.data || []);
+        // Défensif : si `data` n'est pas un tableau, on neutralise.
+        if (!cancelled) setEntries(Array.isArray(res.data) ? res.data : []);
       })
       .catch(() => {
         if (!cancelled) setLogError(true);
@@ -116,9 +131,15 @@ export function ConsentManager() {
   };
 
   const handleRecord = async () => {
+    if (saving) return; // anti double-submit
     const id = leadId.trim();
     if (!id) {
       toastError(t('consentx.toast_lead_required'));
+      return;
+    }
+    // Whitelist : ne jamais envoyer un type inconnu au serveur.
+    if (!isValidConsentType(consentType)) {
+      toastError(t('consentx.toast_type_invalid'));
       return;
     }
     setSaving(true);
@@ -185,7 +206,7 @@ export function ConsentManager() {
               <p className="text-[11px] text-[var(--text-muted)]">
                 {t('consentx.cookie_meta')
                   .replace('{version}', cookieMeta.version)
-                  .replace('{date}', new Date(cookieMeta.grantedAt).toLocaleString())}
+                  .replace('{date}', formatSafeDate(cookieMeta.grantedAt))}
               </p>
             )}
           </div>
@@ -218,6 +239,8 @@ export function ConsentManager() {
             <Button
               variant="secondary"
               onClick={handleLookup}
+              disabled={logLoading}
+              aria-busy={logLoading || undefined}
               data-testid="consent-lookup"
             >
               {t('consentx.lookup')}
@@ -320,7 +343,7 @@ export function ConsentManager() {
                       </p>
                       {when && (
                         <p className="text-[11px] text-[var(--text-muted)]">
-                          {new Date(when).toLocaleString()}
+                          {formatSafeDate(when)}
                         </p>
                       )}
                     </div>

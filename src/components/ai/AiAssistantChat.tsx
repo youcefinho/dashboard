@@ -26,6 +26,9 @@ function str(v: unknown): string {
   return typeof v === 'string' ? v : '';
 }
 
+// Plafond de longueur d'un message utilisateur (anti-abus / payload).
+const MAX_MESSAGE_LENGTH = 4000;
+
 // Identifiant d'une conversation listée (plusieurs schémas possibles côté worker).
 function convId(c: Record<string, unknown>): string {
   return str(c.id) || str(c.conversation_id) || str(c.uuid);
@@ -90,10 +93,15 @@ export function AiAssistantChat() {
   const loadConversations = useCallback(async () => {
     setLoadingList(true);
     setListError(null);
-    const res = await getAiConversations(50);
-    if (res.data) setConversations(res.data);
-    else if (res.error) setListError(res.error);
-    setLoadingList(false);
+    try {
+      const res = await getAiConversations(50);
+      if (res.data) setConversations(Array.isArray(res.data) ? res.data : []);
+      else setListError(res.error || t('aiassist.error'));
+    } catch (err) {
+      setListError(err instanceof Error ? err.message : t('aiassist.error'));
+    } finally {
+      setLoadingList(false);
+    }
   }, []);
 
   useEffect(() => { void loadConversations(); }, [loadConversations]);
@@ -112,10 +120,15 @@ export function AiAssistantChat() {
     setSendError(null);
     setLoadingThread(true);
     setThreadError(null);
-    const res = await getAiConversation(id);
-    if (res.data) setMessages(extractMessages(res.data));
-    else if (res.error) setThreadError(res.error);
-    setLoadingThread(false);
+    try {
+      const res = await getAiConversation(id);
+      if (res.data) setMessages(extractMessages(res.data));
+      else setThreadError(res.error || t('aiassist.error'));
+    } catch (err) {
+      setThreadError(err instanceof Error ? err.message : t('aiassist.error'));
+    } finally {
+      setLoadingThread(false);
+    }
   }, []);
 
   // ── Nouvelle conversation (réinitialise le fil, sans appel réseau) ─────────
@@ -129,8 +142,12 @@ export function AiAssistantChat() {
 
   // ── Envoi d'un message (aiChat) ───────────────────────────────────────────
   const handleSend = useCallback(async () => {
-    const text = draft.trim();
-    if (sending || !text) return;
+    if (sending) return;
+    const trimmed = draft.trim();
+    if (!trimmed) return;
+    // Cap défensif (le textarea limite déjà mais on re-vérifie côté logique).
+    const text =
+      trimmed.length > MAX_MESSAGE_LENGTH ? trimmed.slice(0, MAX_MESSAGE_LENGTH) : trimmed;
     setSending(true);
     setSendError(null);
     // Optimiste : on affiche immédiatement le message user.
@@ -157,8 +174,8 @@ export function AiAssistantChat() {
       } else {
         setSendError(res.error ?? t('aiassist.error'));
       }
-    } catch {
-      setSendError(t('aiassist.error'));
+    } catch (err) {
+      setSendError(err instanceof Error ? err.message : t('aiassist.error'));
     } finally {
       setSending(false);
     }
@@ -235,12 +252,14 @@ export function AiAssistantChat() {
                 >
                   <button
                     type="button"
-                    className="w-full text-left min-w-0"
+                    className="w-full text-left min-w-0 disabled:opacity-60 disabled:cursor-not-allowed"
                     aria-current={isActive ? 'true' : undefined}
                     onClick={() => void handleOpen(id)}
+                    disabled={!id || loadingThread || sending}
+                    aria-busy={loadingThread && isActive ? 'true' : undefined}
                   >
                     <div className="flex items-center gap-2">
-                      <MessageSquare size={14} className="text-[var(--text-muted)] shrink-0" />
+                      <MessageSquare size={14} className="text-[var(--text-muted)] shrink-0" aria-hidden="true" />
                       <span className="text-sm font-medium text-[var(--text-primary)] truncate">
                         {convLabel(c)}
                       </span>
@@ -350,10 +369,15 @@ export function AiAssistantChat() {
                   aria-label={t('aiassist.composer_label')}
                   placeholder={t('aiassist.composer_placeholder')}
                   value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setDraft(v.length > MAX_MESSAGE_LENGTH ? v.slice(0, MAX_MESSAGE_LENGTH) : v);
+                  }}
                   onKeyDown={onComposerKeyDown}
                   rows={2}
+                  maxLength={MAX_MESSAGE_LENGTH}
                   disabled={sending}
+                  aria-describedby="aiassist-composer-hint"
                 />
               </div>
               <Button
@@ -366,7 +390,15 @@ export function AiAssistantChat() {
                 {t('aiassist.send')}
               </Button>
             </div>
-            <p className="text-[11px] text-[var(--text-muted)]">{t('aiassist.send_hint')}</p>
+            <p
+              id="aiassist-composer-hint"
+              className="text-[11px] text-[var(--text-muted)] flex items-center justify-between gap-2"
+            >
+              <span>{t('aiassist.send_hint')}</span>
+              <span aria-live="polite" className="tabular-nums">
+                {draft.length}/{MAX_MESSAGE_LENGTH}
+              </span>
+            </p>
           </div>
         </Card>
       </div>

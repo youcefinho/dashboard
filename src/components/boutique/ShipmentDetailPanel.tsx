@@ -42,12 +42,18 @@ export function ShipmentDetailPanel({ shipmentId, open, onOpenChange }: Shipment
   const [loadError, setLoadError] = useState(false);
 
   const load = async () => {
-    if (!shipmentId) return;
+    if (!shipmentId || isLoading) return;
     setIsLoading(true);
     setLoadError(false);
     try {
       const res = await getShipment(shipmentId);
-      setShipment((res.data as Shipment) ?? null);
+      // Défense : res peut être null si apiFetch a été coupé en pleine vol.
+      if (!res || res.error || !res.data) {
+        setLoadError(true);
+        setShipment(null);
+      } else {
+        setShipment(res.data as Shipment);
+      }
     } catch {
       setLoadError(true);
     }
@@ -71,7 +77,11 @@ export function ShipmentDetailPanel({ shipmentId, open, onOpenChange }: Shipment
       open={open}
       onOpenChange={onOpenChange}
       title={t('ordersx.shipment_detail_title')}
-      description={shipment ? `#${shipment.id.slice(0, 8)}` : undefined}
+      description={
+        shipment && typeof shipment.id === 'string' && shipment.id.length > 0
+          ? `#${shipment.id.slice(0, 8)}`
+          : undefined
+      }
       size="md"
       closeLabel={t('ordersx.close')}
     >
@@ -95,8 +105,13 @@ export function ShipmentDetailPanel({ shipmentId, open, onOpenChange }: Shipment
           <p className="text-[13px] text-[var(--text-secondary)]">
             {t('ordersx.shipment_error_desc')}
           </p>
-          <Button size="sm" leftIcon={<RefreshCw size={14} />} onClick={() => void load()}
-            aria-label={t('ordersx.retry')}>
+          <Button
+            size="sm"
+            leftIcon={<RefreshCw size={14} />}
+            onClick={() => void load()}
+            disabled={isLoading}
+            aria-label={t('ordersx.retry')}
+          >
             {t('ordersx.retry')}
           </Button>
         </div>
@@ -175,13 +190,14 @@ export function ShipmentDetailPanel({ shipmentId, open, onOpenChange }: Shipment
             <span className="block text-[12px] uppercase tracking-wide text-[var(--text-muted)] mb-2">
               {t('shop.shipment.lines')}
             </span>
-            {shipment.items && shipment.items.length > 0 ? (
+            {Array.isArray(shipment.items) && shipment.items.length > 0 ? (
               <ul className="flex flex-col gap-1.5">
                 {shipment.items.map((it) => (
                   <li key={it.id} className="flex items-center justify-between gap-3 text-[13px]">
                     <span className="truncate text-[var(--text-secondary)]">{it.order_item_id}</span>
                     <span className="t-mono-num text-[var(--text-primary)] whitespace-nowrap">
-                      {t('shop.shipment.qty')}: {it.quantity}
+                      {t('shop.shipment.qty')}:{' '}
+                      {Number.isFinite(it.quantity) ? Math.max(0, it.quantity) : 0}
                     </span>
                   </li>
                 ))}

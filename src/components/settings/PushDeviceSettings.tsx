@@ -66,10 +66,13 @@ export function PushDeviceSettings() {
   };
 
   const handleRegister = useCallback(async () => {
+    if (busy) return; // anti double-submit
     setBusy(true);
     setActionError(null);
     try {
       // Best-effort : demande la permission de notification si dispo (non bloquant).
+      // typeof Notification === 'undefined' (iOS Safari < 16.4, navigateurs server-side
+      // rendering, certaines WebViews) → on saute proprement sans crash.
       if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
         try {
           await Notification.requestPermission();
@@ -93,9 +96,10 @@ export function PushDeviceSettings() {
     } finally {
       setBusy(false);
     }
-  }, [success, toastError]);
+  }, [busy, success, toastError]);
 
   const handleUnregister = useCallback(async () => {
+    if (busy) return; // anti double-submit
     const ok = await confirm({
       title: t('pushx.unregister_confirm_title'),
       description: t('pushx.unregister_confirm_desc'),
@@ -122,7 +126,7 @@ export function PushDeviceSettings() {
     } finally {
       setBusy(false);
     }
-  }, [confirm, success, toastError]);
+  }, [busy, confirm, success, toastError]);
 
   return (
     <Card className="p-5 space-y-4">

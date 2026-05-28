@@ -31,6 +31,8 @@ export function CouponValidateTester({ defaultCurrency }: CouponValidateTesterPr
   const [err, setErr] = useState<string | null>(null);
 
   const run = async () => {
+    // Garde anti double-submit : ignore les clics pendant qu'une requête est en vol.
+    if (testing) return;
     const trimmed = code.trim();
     if (!trimmed) {
       setErr(t('couponsx.validate_need_code'));
@@ -52,7 +54,7 @@ export function CouponValidateTester({ defaultCurrency }: CouponValidateTesterPr
         currency,
       });
       // Discrimination d'erreur = absence de `data` (apiFetch GELÉ).
-      if (!res.data) {
+      if (!res || !res.data) {
         setErr(t('couponsx.validate_error'));
       } else {
         setResult(res.data);
@@ -110,8 +112,9 @@ export function CouponValidateTester({ defaultCurrency }: CouponValidateTesterPr
           <Button
             variant="secondary"
             onClick={() => void run()}
-            disabled={testing}
+            disabled={testing || code.trim().length === 0}
             aria-busy={testing || undefined}
+            aria-label={t('couponsx.validate_action')}
             className="w-full"
           >
             {testing ? t('common.loading') : t('couponsx.validate_action')}
@@ -119,11 +122,30 @@ export function CouponValidateTester({ defaultCurrency }: CouponValidateTesterPr
         </div>
       </div>
 
-      {err && (
-        <p role="alert" className="text-[13px] text-[var(--danger)] mt-3">
-          {err}
-        </p>
-      )}
+      {/* État live commun : loading aria-busy + erreur role=alert + retry inline. */}
+      <div aria-live="polite" aria-busy={testing}>
+        {testing && (
+          <span role="status" className="sr-only">
+            {t('common.loading')}
+          </span>
+        )}
+        {err && (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <p role="alert" className="text-[13px] text-[var(--danger)]">
+              {err}
+            </p>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => void run()}
+              disabled={testing || code.trim().length === 0}
+              aria-label={t('common.retry')}
+            >
+              {t('common.retry')}
+            </Button>
+          </div>
+        )}
+      </div>
 
       {result && (
         <div className="mt-4 pt-4 border-t border-[var(--border-subtle)]" aria-live="polite">
@@ -135,7 +157,13 @@ export function CouponValidateTester({ defaultCurrency }: CouponValidateTesterPr
               <span className="text-[13px] text-[var(--text-secondary)]">
                 {t('couponsx.validate_discount')}{': '}
                 <span className="font-medium font-mono text-[var(--text-primary)]">
-                  {formatMoneyCents(result.discount_cents ?? 0, getLocale(), currency)}
+                  {formatMoneyCents(
+                    Number.isFinite(result.discount_cents) && (result.discount_cents ?? 0) > 0
+                      ? (result.discount_cents as number)
+                      : 0,
+                    getLocale(),
+                    currency,
+                  )}
                 </span>
               </span>
             </div>

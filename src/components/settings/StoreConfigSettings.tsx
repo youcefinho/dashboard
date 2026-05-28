@@ -78,23 +78,29 @@ export function StoreConfigSettings() {
   const load = useCallback(async () => {
     setLoading(true);
     setLoadError(false);
-    const [storeRes, payRes, clientsRes] = await Promise.all([
-      getStoreSettings(),
-      getPaymentConfig(),
-      getClients(),
-    ]);
+    try {
+      const [storeRes, payRes, clientsRes] = await Promise.all([
+        getStoreSettings(),
+        getPaymentConfig(),
+        getClients(),
+      ]);
 
-    if (storeRes.data) {
-      setStoreName(storeRes.data.name ?? '');
-      setStoreSlug(storeRes.data.slug ?? '');
-      setStoreCurrency(storeRes.data.currency || 'CAD');
-      setStoreEnabled(Boolean(storeRes.data.enabled));
-    }
-    if (payRes.data) setPayment(payRes.data);
-    if (clientsRes.data) setClients(clientsRes.data);
+      if (storeRes.data) {
+        setStoreName(storeRes.data.name ?? '');
+        setStoreSlug(storeRes.data.slug ?? '');
+        setStoreCurrency(storeRes.data.currency || 'CAD');
+        setStoreEnabled(Boolean(storeRes.data.enabled));
+      }
+      if (payRes.data) setPayment(payRes.data);
+      // Défensif : si le helper renvoie autre chose qu'un tableau, on neutralise.
+      setClients(Array.isArray(clientsRes.data) ? clientsRes.data : []);
 
-    // Erreur globale uniquement si les 3 sources ont échoué (aucune `data`).
-    if (!storeRes.data && !payRes.data && !clientsRes.data) {
+      // Erreur globale uniquement si les 3 sources ont échoué (aucune `data`).
+      if (!storeRes.data && !payRes.data && !clientsRes.data) {
+        setLoadError(true);
+      }
+    } catch {
+      // Toute exception réseau inattendue → état d'erreur global, jamais silencieux.
       setLoadError(true);
     }
     setLoading(false);
@@ -113,6 +119,7 @@ export function StoreConfigSettings() {
   const handleSaveStore = useCallback(
     async (e: FormEvent<HTMLFormElement>) => {
       e.preventDefault();
+      if (savingStore) return; // anti double-submit
       if (!storeValid) {
         toastError(t('storecfg.store.invalid'));
         return;
@@ -136,7 +143,7 @@ export function StoreConfigSettings() {
       setStoreEnabled(Boolean(res.data.enabled));
       success(t('storecfg.store.saved'));
     },
-    [storeValid, nameTrim, slugTrim, storeCurrency, storeEnabled, success, toastError],
+    [savingStore, storeValid, nameTrim, slugTrim, storeCurrency, storeEnabled, success, toastError],
   );
 
   // ── Business config ────────────────────────────────────────────────────────
@@ -149,6 +156,7 @@ export function StoreConfigSettings() {
   const handleSaveBiz = useCallback(
     async (e: FormEvent<HTMLFormElement>) => {
       e.preventDefault();
+      if (savingBiz) return; // anti double-submit
       if (!bizValid) {
         toastError(t('storecfg.biz.invalid'));
         return;
@@ -166,7 +174,7 @@ export function StoreConfigSettings() {
       }
       success(t('storecfg.biz.saved'));
     },
-    [bizValid, bizClientId, bizType, bizVoice, bizScoring, success, toastError],
+    [savingBiz, bizValid, bizClientId, bizType, bizVoice, bizScoring, success, toastError],
   );
 
   // ── Payment config (lecture seule — pilotée serveur) ────────────────────────

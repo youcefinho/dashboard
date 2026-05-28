@@ -126,20 +126,38 @@ export function FormSubmissionsPanel({
     if (!formId) return;
     setSubLoading(true);
     setSubError(null);
-    const res = await getFormSubmissions(formId);
-    if (res.data) setSubmissions(res.data);
-    else setSubError(res.error || t('common.loading_error'));
-    setSubLoading(false);
+    try {
+      const res = await getFormSubmissions(formId);
+      if (res.data) setSubmissions(Array.isArray(res.data) ? res.data : []);
+      else {
+        setSubmissions([]);
+        setSubError(res.error || t('common.loading_error'));
+      }
+    } catch {
+      setSubmissions([]);
+      setSubError(t('common.loading_error'));
+    } finally {
+      setSubLoading(false);
+    }
   }, [formId]);
 
   const loadAnalytics = useCallback(async () => {
     if (!formId) return;
     setAnLoading(true);
     setAnError(null);
-    const res = await getFormFieldAnalytics(formId);
-    if (res.data) setAnalytics(res.data);
-    else setAnError(res.error || t('common.loading_error'));
-    setAnLoading(false);
+    try {
+      const res = await getFormFieldAnalytics(formId);
+      if (res.data) setAnalytics(Array.isArray(res.data) ? res.data : []);
+      else {
+        setAnalytics([]);
+        setAnError(res.error || t('common.loading_error'));
+      }
+    } catch {
+      setAnalytics([]);
+      setAnError(t('common.loading_error'));
+    } finally {
+      setAnLoading(false);
+    }
   }, [formId]);
 
   useEffect(() => {
@@ -314,15 +332,17 @@ export function FormSubmissionsPanel({
                   </tr>
                 </thead>
                 <tbody>
-                  {analytics.map(row => {
-                    const rate = Number(row.dropoff_rate ?? 0);
+                  {analytics.map((row, i) => {
+                    const rawRate = Number(row.dropoff_rate ?? 0);
+                    const rate = Number.isFinite(rawRate) ? rawRate : 0;
+                    const fieldName = row.field_name || `field_${i}`;
                     return (
                       <tr
-                        key={row.field_name}
+                        key={fieldName}
                         className="border-b border-[var(--border-subtle)] last:border-0"
                       >
                         <td className="px-3 py-2 font-medium text-[var(--text-primary)]">
-                          {row.field_name}
+                          {row.field_name || '—'}
                         </td>
                         <td className="px-3 py-2 text-right text-[var(--text-secondary)]">
                           {Number(row.reached ?? 0).toLocaleString(locale)}

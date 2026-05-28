@@ -40,11 +40,13 @@ export function NotificationPreferencesSelfService() {
       .then((res) => {
         if (res.error) {
           setLoadError(res.error);
-        } else if (res.data) {
-          knownPrefs.current = res.data;
+        } else {
+          // Défensif : si `data` n'est pas un tableau, on traite comme vide.
+          const arr = Array.isArray(res.data) ? res.data : [];
+          knownPrefs.current = arr;
           // ON si AU MOINS un event_type est activé sur le channel.
-          setEmailOn(res.data.some((p) => p.channel === 'email' && p.enabled));
-          setSmsOn(res.data.some((p) => p.channel === 'sms' && p.enabled));
+          setEmailOn(arr.some((p) => p.channel === 'email' && p.enabled));
+          setSmsOn(arr.some((p) => p.channel === 'sms' && p.enabled));
         }
         setLoading(false);
       })
@@ -75,6 +77,7 @@ export function NotificationPreferencesSelfService() {
   };
 
   const handleSave = async () => {
+    if (saving) return; // anti double-submit
     setSaving(true);
     try {
       const res = await setNotificationPreferences(buildMatrix(emailOn, smsOn));

@@ -29,8 +29,10 @@ import { t } from '../../lib/i18n';
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatMoney(cents: number, currency: string): string {
-  const amount = (cents / 100).toFixed(2);
-  return `${amount} ${currency}`;
+  // Clamp défensif : valeurs négatives ou NaN ⇒ 0 ; protège l'affichage.
+  const safe = Number.isFinite(cents) && cents > 0 ? cents : 0;
+  const amount = (safe / 100).toFixed(2);
+  return `${amount} ${currency || ''}`.trim();
 }
 
 function parseDollarsToCents(value: string): number | null {
@@ -81,20 +83,29 @@ function GiftCardBalanceSection() {
 
   const onLookup = useCallback(async () => {
     const trimmed = code.trim();
-    if (!trimmed) return;
+    if (!trimmed || loading) return;
     setLoading(true);
     setError(null);
     setResult(null);
-    const res = await getGiftCardBalance(trimmed);
-    if (res.error) {
-      setError(res.error);
-      toastError(res.error);
-    } else if (res.data) {
-      setResult(res.data);
+    try {
+      const res = await getGiftCardBalance(trimmed);
+      if (res.error) {
+        setError(res.error);
+        toastError(res.error);
+      } else if (res.data) {
+        setResult(res.data);
+      } else {
+        // Réponse vide défensive : pas de data, pas d'error → considère "introuvable".
+        setError(null);
+      }
+    } catch {
+      const msg = t('common.error.load_failed');
+      setError(msg);
+      toastError(msg);
     }
     setLoading(false);
     setSearched(true);
-  }, [code, toastError]);
+  }, [code, loading, toastError]);
 
   return (
     <OpsCard
@@ -215,21 +226,31 @@ function GiftCardRedeemSection() {
 
     setLoading(true);
     setError(null);
-    const res = await redeemGiftCard(id, {
-      amount_cents: cents,
-      order_id: orderId.trim() || undefined,
-    });
-    if (res.error) {
-      setError(res.error);
-      toastError(res.error);
-    } else if (res.data) {
-      toastSuccess(
-        t('giftloyalty.redeem.success', {
-          balance: (res.data.balance_after_cents / 100).toFixed(2),
-        }),
-      );
-      setAmount('');
-      setOrderId('');
+    try {
+      const res = await redeemGiftCard(id, {
+        amount_cents: cents,
+        order_id: orderId.trim() || undefined,
+      });
+      if (res.error) {
+        setError(res.error);
+        toastError(res.error);
+      } else if (res.data) {
+        // Clamp défensif sur la balance retournée (jamais < 0 à l'affichage).
+        const bal = Number.isFinite(res.data.balance_after_cents)
+          ? Math.max(0, res.data.balance_after_cents)
+          : 0;
+        toastSuccess(
+          t('giftloyalty.redeem.success', {
+            balance: (bal / 100).toFixed(2),
+          }),
+        );
+        setAmount('');
+        setOrderId('');
+      }
+    } catch {
+      const msg = t('common.error.load_failed');
+      setError(msg);
+      toastError(msg);
     }
     setLoading(false);
   }, [cardId, amount, orderId, confirm, toastSuccess, toastError]);
@@ -331,20 +352,26 @@ function LoyaltyCustomerSection({ programs }: { programs: LoyaltyProgram[] }) {
 
   const onLookupBalance = useCallback(async () => {
     const cid = customerId.trim();
-    if (!cid) return;
+    if (!cid || balLoading) return;
     setBalLoading(true);
     setBalError(null);
     setBalance(null);
-    const res = await getCustomerLoyaltyBalance(cid);
-    if (res.error) {
-      setBalError(res.error);
-      toastError(res.error);
-    } else if (res.data) {
-      setBalance(res.data);
+    try {
+      const res = await getCustomerLoyaltyBalance(cid);
+      if (res.error) {
+        setBalError(res.error);
+        toastError(res.error);
+      } else if (res.data) {
+        setBalance(res.data);
+      }
+    } catch {
+      const msg = t('common.error.load_failed');
+      setBalError(msg);
+      toastError(msg);
     }
     setBalLoading(false);
     setBalSearched(true);
-  }, [customerId, toastError]);
+  }, [customerId, balLoading, toastError]);
 
   const onEarn = useCallback(async () => {
     const cents = parseDollarsToCents(earnSubtotal);
@@ -352,29 +379,39 @@ function LoyaltyCustomerSection({ programs }: { programs: LoyaltyProgram[] }) {
       setActionError(t('giftloyalty.loyalty.invalidEarn'));
       return;
     }
+    if (earnLoading) return;
     setEarnLoading(true);
     setActionError(null);
-    const res = await earnLoyaltyPoints({
-      program_id: programId.trim(),
-      customer_id: customerId.trim(),
-      subtotal_cents: cents,
-    });
-    if (res.error) {
-      setActionError(res.error);
-      toastError(res.error);
-    } else if (res.data) {
-      toastSuccess(
-        t('giftloyalty.loyalty.earnSuccess', {
-          points: res.data.points,
-          balance: res.data.balance_after,
-        }),
-      );
-      setEarnSubtotal('');
-      void onLookupBalance();
+    try {
+      const res = await earnLoyaltyPoints({
+        program_id: programId.trim(),
+        customer_id: customerId.trim(),
+        subtotal_cents: cents,
+      });
+      if (res.error) {
+        setActionError(res.error);
+        toastError(res.error);
+      } else if (res.data) {
+        const pts = Number.isFinite(res.data.points) ? Math.max(0, res.data.points) : 0;
+        const bal = Number.isFinite(res.data.balance_after) ? Math.max(0, res.data.balance_after) : 0;
+        toastSuccess(
+          t('giftloyalty.loyalty.earnSuccess', {
+            points: pts,
+            balance: bal,
+          }),
+        );
+        setEarnSubtotal('');
+        void onLookupBalance();
+      }
+    } catch {
+      const msg = t('common.error.load_failed');
+      setActionError(msg);
+      toastError(msg);
     }
     setEarnLoading(false);
   }, [
     earnSubtotal,
+    earnLoading,
     hasProgram,
     hasCustomer,
     programId,
@@ -399,29 +436,39 @@ function LoyaltyCustomerSection({ programs }: { programs: LoyaltyProgram[] }) {
     });
     if (!ok) return;
 
+    if (redeemLoading) return;
     setRedeemLoading(true);
     setActionError(null);
-    const res = await redeemLoyaltyPoints({
-      program_id: programId.trim(),
-      customer_id: customerId.trim(),
-      points,
-    });
-    if (res.error) {
-      setActionError(res.error);
-      toastError(res.error);
-    } else if (res.data) {
-      toastSuccess(
-        t('giftloyalty.loyalty.redeemSuccess', {
-          points: Math.abs(res.data.points),
-          balance: res.data.balance_after,
-        }),
-      );
-      setRedeemPoints('');
-      void onLookupBalance();
+    try {
+      const res = await redeemLoyaltyPoints({
+        program_id: programId.trim(),
+        customer_id: customerId.trim(),
+        points,
+      });
+      if (res.error) {
+        setActionError(res.error);
+        toastError(res.error);
+      } else if (res.data) {
+        const pts = Number.isFinite(res.data.points) ? Math.abs(res.data.points) : 0;
+        const bal = Number.isFinite(res.data.balance_after) ? Math.max(0, res.data.balance_after) : 0;
+        toastSuccess(
+          t('giftloyalty.loyalty.redeemSuccess', {
+            points: pts,
+            balance: bal,
+          }),
+        );
+        setRedeemPoints('');
+        void onLookupBalance();
+      }
+    } catch {
+      const msg = t('common.error.load_failed');
+      setActionError(msg);
+      toastError(msg);
     }
     setRedeemLoading(false);
   }, [
     redeemPoints,
+    redeemLoading,
     hasProgram,
     hasCustomer,
     programId,

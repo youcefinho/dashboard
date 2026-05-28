@@ -13,6 +13,22 @@ function asString(v: unknown): string {
   return typeof v === 'string' ? v : '';
 }
 
+// Validation défensive — formats acceptés AVANT envoi serveur.
+const HEX_RE = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+function isValidHex(v: string): boolean {
+  return HEX_RE.test(v.trim());
+}
+function isValidImageUrl(v: string): boolean {
+  const s = v.trim();
+  if (!s) return true; // vide = pas d'erreur (champ optionnel)
+  try {
+    const u = new URL(s);
+    return u.protocol === 'http:' || u.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 export function WhitelabelSelfServiceSettings() {
   const { success, error: toastError } = useToast();
   const [loading, setLoading] = useState(true);
@@ -50,7 +66,15 @@ export function WhitelabelSelfServiceSettings() {
     load();
   }, [load]);
 
+  // Validation UI préventive (additif — n'altère pas le happy-path serveur).
+  const colorInvalid = primaryColor.trim().length > 0 && !isValidHex(primaryColor);
+  const logoInvalid = !isValidImageUrl(logoUrl);
+  const canSave = !saving && !colorInvalid && !logoInvalid;
+
   const handleSave = async () => {
+    if (saving) return; // anti double-submit
+    if (colorInvalid) { toastError(t('wlx.color_invalid')); return; }
+    if (logoInvalid) { toastError(t('wlx.logo_invalid')); return; }
     setSaving(true);
     try {
       const res = await updateWhitelabel({
@@ -122,7 +146,14 @@ export function WhitelabelSelfServiceSettings() {
         onChange={(e) => setLogoUrl(e.target.value)}
         placeholder="https://…/logo.svg"
         type="url"
+        aria-invalid={logoInvalid || undefined}
+        aria-describedby={logoInvalid ? 'wlx-logo-err' : undefined}
       />
+      {logoInvalid && (
+        <p id="wlx-logo-err" role="alert" className="text-[11px] text-[var(--danger)] -mt-2">
+          {t('wlx.logo_invalid')}
+        </p>
+      )}
       <div>
         <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1">
           {t('wlx.brand_color')}
@@ -140,13 +171,20 @@ export function WhitelabelSelfServiceSettings() {
             onChange={(e) => setPrimaryColor(e.target.value)}
             placeholder="#009DDB"
             aria-label={t('wlx.brand_color')}
+            aria-invalid={colorInvalid || undefined}
+            aria-describedby={colorInvalid ? 'wlx-color-err' : undefined}
             className="font-mono"
           />
         </div>
+        {colorInvalid && (
+          <p id="wlx-color-err" role="alert" className="text-[11px] text-[var(--danger)] mt-1">
+            {t('wlx.color_invalid')}
+          </p>
+        )}
       </div>
 
       <div>
-        <Button onClick={() => void handleSave()} disabled={saving} aria-busy={saving}>
+        <Button onClick={() => void handleSave()} disabled={!canSave} aria-busy={saving}>
           {saving ? t('wlx.saving') : t('wlx.save')}
         </Button>
       </div>

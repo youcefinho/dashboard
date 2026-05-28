@@ -55,6 +55,8 @@ export function NewTicketModal({ open, onOpenChange, onCreated }: NewTicketModal
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
+    // Garde anti-double-submit : ignore les events tant que la requête vit.
+    if (submitting) return;
     setTouched(true);
     if (!isValid) return;
 
@@ -74,13 +76,19 @@ export function NewTicketModal({ open, onOpenChange, onCreated }: NewTicketModal
 
     try {
       const res = await createTicket(payload);
-      if (res.error || !res.data) {
+      if (res.error || !res.data || !res.data.id) {
         setSubmitError(res.error || t('common.error.load_failed'));
         setSubmitting(false);
         return;
       }
       setSubmitting(false);
-      onCreated(res.data.id);
+      // Isole une éventuelle exception du parent : la création est déjà
+      // un succès côté API, on ne doit pas l'inverser en erreur de soumission.
+      try {
+        onCreated(res.data.id);
+      } catch {
+        /* parent callback failure swallowed — ticket already created */
+      }
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error(err);
@@ -92,7 +100,12 @@ export function NewTicketModal({ open, onOpenChange, onCreated }: NewTicketModal
   return (
     <Modal
       open={open}
-      onOpenChange={onOpenChange}
+      // Bloque la fermeture pendant la soumission pour éviter d'orphaner
+      // une requête déjà en vol côté API.
+      onOpenChange={(next) => {
+        if (!next && submitting) return;
+        onOpenChange(next);
+      }}
       size="md"
       title={t('ticketsx.create.title')}
       description={t('ticketsx.create.subtitle')}
@@ -192,7 +205,8 @@ export function NewTicketModal({ open, onOpenChange, onCreated }: NewTicketModal
             variant="primary"
             size="sm"
             isLoading={submitting}
-            disabled={touched && !isValid}
+            disabled={submitting || (touched && !isValid)}
+            aria-disabled={submitting || (touched && !isValid) || undefined}
           >
             {t('ticketsx.create.submit')}
           </Button>

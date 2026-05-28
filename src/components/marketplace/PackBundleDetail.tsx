@@ -88,14 +88,19 @@ export function PackBundleDetail({ mode, id, clientId, onBack }: PackBundleDetai
     setError(null);
     setPack(null);
     setBundle(null);
-    if (mode === 'pack') {
-      const res = await getPackDetail(id);
-      if (res.data) setPack(res.data);
-      else if (res.error) setError(res.error);
-    } else {
-      const res = await getBundle(id);
-      if (res.data) setBundle(res.data);
-      else if (res.error) setError(res.error);
+    try {
+      if (mode === 'pack') {
+        const res = await getPackDetail(id);
+        if (res.data) setPack(res.data);
+        else if (res.error) setError(res.error);
+      } else {
+        const res = await getBundle(id);
+        if (res.data) setBundle(res.data);
+        else if (res.error) setError(res.error);
+      }
+    } catch (e: unknown) {
+      // Exception réseau inattendue → message inline + retry, jamais silencieux.
+      setError(e instanceof Error ? e.message : String(e));
     }
     setLoading(false);
   }, [mode, id]);
@@ -106,6 +111,7 @@ export function PackBundleDetail({ mode, id, clientId, onBack }: PackBundleDetai
 
   const handleInstall = useCallback(async () => {
     if (!pack) return;
+    if (installing || installed) return; // idempotence : pas de double-install
     const ok = await confirm({
       title: t('mktx.pack.install_confirm_title'),
       description: t('mktx.pack.install_confirm_desc').replace('{name}', pack.name),
@@ -113,15 +119,20 @@ export function PackBundleDetail({ mode, id, clientId, onBack }: PackBundleDetai
     });
     if (!ok) return;
     setInstalling(true);
-    const res = await installPack(pack.slug, clientId);
-    setInstalling(false);
-    if (res.data) {
-      setInstalled(true);
-      success(res.data.message || t('marketplace.installed'));
-    } else {
-      toastError(res.error || t('mktx.pack.install_error'));
+    try {
+      const res = await installPack(pack.slug, clientId);
+      if (res.data) {
+        setInstalled(true);
+        success(res.data.message || t('marketplace.installed'));
+      } else {
+        toastError(res.error || t('mktx.pack.install_error'));
+      }
+    } catch (e: unknown) {
+      toastError(e instanceof Error ? e.message : t('mktx.pack.install_error'));
+    } finally {
+      setInstalling(false);
     }
-  }, [pack, clientId, confirm, success, toastError]);
+  }, [pack, installing, installed, clientId, confirm, success, toastError]);
 
   const backBtn = (
     <Button
@@ -199,7 +210,9 @@ export function PackBundleDetail({ mode, id, clientId, onBack }: PackBundleDetai
             <Button
               variant={installed ? 'secondary' : 'primary'}
               isLoading={installing}
-              disabled={installed}
+              disabled={installed || installing}
+              aria-busy={installing || undefined}
+              aria-label={installed ? t('mktx.pack.installed_aria') : t('marketplace.install')}
               leftIcon={<Icon as={installed ? PackageCheck : Download} size="sm" />}
               onClick={() => void handleInstall()}
             >
@@ -224,6 +237,11 @@ export function PackBundleDetail({ mode, id, clientId, onBack }: PackBundleDetai
             <Tag variant="success" size="sm">
               {t('marketplace.free')}
             </Tag>
+            {installed && (
+              <p className="text-[11px] text-[var(--text-muted)]" role="status">
+                {t('mktx.pack.idempotent_hint')}
+              </p>
+            )}
           </div>
         </Card>
       </div>

@@ -21,6 +21,7 @@ import { Icon } from '../ui/Icon';
 import { Sparkline } from '../ui/Sparkline';
 import { getFunnelStats, type FunnelStats } from '../../lib/api';
 import { t, getLocale } from '../../lib/i18n';
+import { formatDate } from '../../lib/i18n/datetime';
 
 // ── Props ────────────────────────────────────────────────────────────────────
 
@@ -104,9 +105,14 @@ export function FunnelStatsPanel({ funnelId, funnelName }: FunnelStatsPanelProps
     void load();
   }, [load]);
 
-  const views = stats?.total_views ?? 0;
-  const submissions = stats?.total_submissions ?? 0;
-  const conversions = stats?.total_conversions ?? 0;
+  // Coercion défensive : l'API peut renvoyer ces champs en string ou null.
+  const toCount = (v: unknown): number => {
+    const n = Number(v);
+    return Number.isFinite(n) && n >= 0 ? n : 0;
+  };
+  const views = toCount(stats?.total_views);
+  const submissions = toCount(stats?.total_submissions);
+  const conversions = toCount(stats?.total_conversions);
   const isEmpty =
     !loading &&
     !loadError &&
@@ -142,7 +148,25 @@ export function FunnelStatsPanel({ funnelId, funnelName }: FunnelStatsPanelProps
 
   const maxStage = Math.max(views, submissions, conversions, 1);
   const rate = parseRate(stats?.conversion_rate);
-  const byDay = stats?.views_by_day ?? [];
+  // Garde-fou : views_by_day doit être un tableau pour les .map() en aval ;
+  // chaque count est re-typé en Number (l'API renvoie parfois des strings).
+  const rawByDay = stats?.views_by_day;
+  const byDay = Array.isArray(rawByDay)
+    ? rawByDay.map((d) => {
+        const n = Number(d?.count);
+        return { day: String(d?.day ?? ''), count: Number.isFinite(n) ? n : 0 };
+      })
+    : [];
+
+  // Formatte une date "YYYY-MM-DD" de l'axe X en libellé court locale-aware.
+  const fmtDay = (raw: string | undefined): string => {
+    if (!raw) return '';
+    try {
+      return formatDate(raw, getLocale(), { month: 'short', day: 'numeric' });
+    } catch {
+      return raw;
+    }
+  };
 
   return (
     <div className="space-y-5" aria-busy={loading || undefined}>
@@ -200,7 +224,12 @@ export function FunnelStatsPanel({ funnelId, funnelName }: FunnelStatsPanelProps
 
       {/* Loading skeletons */}
       {loading ? (
-        <div className="space-y-3" aria-hidden="true">
+        <div
+          className="space-y-3"
+          role="status"
+          aria-live="polite"
+          aria-label={t('common.loading')}
+        >
           <div className="grid grid-cols-3 gap-3">
             {Array.from({ length: 3 }).map((_, i) => (
               <Card key={i} className="p-3">
@@ -302,8 +331,8 @@ export function FunnelStatsPanel({ funnelId, funnelName }: FunnelStatsPanelProps
                   />
                 </div>
                 <div className="mt-2 flex items-center justify-between text-xs text-[var(--text-muted)] tabular-nums">
-                  <span>{byDay[0]?.day}</span>
-                  <span>{byDay[byDay.length - 1]?.day}</span>
+                  <span>{fmtDay(byDay[0]?.day)}</span>
+                  <span>{fmtDay(byDay[byDay.length - 1]?.day)}</span>
                 </div>
               </div>
             )}

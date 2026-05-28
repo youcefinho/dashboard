@@ -117,37 +117,51 @@ export function BookingManagement() {
   const [draft, setDraft] = useState<PageDraft>(EMPTY_PAGE_DRAFT);
   const [saving, setSaving] = useState(false);
 
+  // Garde anti-double-submit pour actions par-ligne (delete / no-show).
+  const [busyRowId, setBusyRowId] = useState<string | null>(null);
+
   // Charge pages + clients (client_id requis pour créer une page).
   const loadPages = useCallback(async () => {
     setPagesLoading(true);
     setPagesError(null);
-    const [pagesRes, clientsRes] = await Promise.all([
-      getBookingPages(),
-      getClients(),
-    ]);
-    if (clientsRes.data) setClients(clientsRes.data);
-    if (pagesRes.data) {
-      setPages(pagesRes.data);
-      setSelectedPageId((prev) => {
-        if (prev && pagesRes.data!.some((p) => str(p, 'id') === prev)) {
-          return prev;
-        }
-        const first = pagesRes.data![0];
-        return first ? str(first, 'id') || null : null;
-      });
-    } else {
-      setPagesError(pagesRes.error || t('common.loading_error'));
+    try {
+      const [pagesRes, clientsRes] = await Promise.all([
+        getBookingPages(),
+        getClients(),
+      ]);
+      setClients(Array.isArray(clientsRes.data) ? clientsRes.data : []);
+      if (pagesRes.data) {
+        const safePages = Array.isArray(pagesRes.data) ? pagesRes.data : [];
+        setPages(safePages);
+        setSelectedPageId((prev) => {
+          if (prev && safePages.some((p) => str(p, 'id') === prev)) {
+            return prev;
+          }
+          const first = safePages[0];
+          return first ? str(first, 'id') || null : null;
+        });
+      } else {
+        setPagesError(pagesRes.error || t('common.loading_error'));
+      }
+    } catch (err) {
+      setPagesError(err instanceof Error ? err.message : t('common.loading_error'));
+    } finally {
+      setPagesLoading(false);
     }
-    setPagesLoading(false);
   }, []);
 
   const loadRules = useCallback(async () => {
     setRulesLoading(true);
     setRulesError(null);
-    const res = await getAvailabilityRules();
-    if (res.data) setRules(res.data);
-    else setRulesError(res.error || t('common.loading_error'));
-    setRulesLoading(false);
+    try {
+      const res = await getAvailabilityRules();
+      if (res.data) setRules(Array.isArray(res.data) ? res.data : []);
+      else setRulesError(res.error || t('common.loading_error'));
+    } catch (err) {
+      setRulesError(err instanceof Error ? err.message : t('common.loading_error'));
+    } finally {
+      setRulesLoading(false);
+    }
   }, []);
 
   const loadBookings = useCallback(async (pageId: string | null) => {
@@ -159,10 +173,15 @@ export function BookingManagement() {
     }
     setBookingsLoading(true);
     setBookingsError(null);
-    const res = await getBookings(pageId);
-    if (res.data) setBookings(res.data);
-    else setBookingsError(res.error || t('common.loading_error'));
-    setBookingsLoading(false);
+    try {
+      const res = await getBookings(pageId);
+      if (res.data) setBookings(Array.isArray(res.data) ? res.data : []);
+      else setBookingsError(res.error || t('common.loading_error'));
+    } catch (err) {
+      setBookingsError(err instanceof Error ? err.message : t('common.loading_error'));
+    } finally {
+      setBookingsLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -213,33 +232,40 @@ export function BookingManagement() {
       return;
     }
     setSaving(true);
-    const res = editingId
-      ? await updateBookingPage(editingId, {
-          title: draft.title.trim(),
-          slug: draft.slug.trim(),
-          description: draft.description.trim() || null,
-          duration_minutes: draft.duration_minutes,
-          color: draft.color,
-        })
-      : await createBookingPage({
-          client_id: draft.client_id,
-          title: draft.title.trim(),
-          slug: draft.slug.trim(),
-          description: draft.description.trim() || undefined,
-          duration_minutes: draft.duration_minutes,
-          color: draft.color,
-        });
-    setSaving(false);
-    if (res.error || !res.data) {
-      toastError(res.error || t('bookingmgmt.page.error_save'));
-      return;
+    try {
+      const res = editingId
+        ? await updateBookingPage(editingId, {
+            title: draft.title.trim(),
+            slug: draft.slug.trim(),
+            description: draft.description.trim() || null,
+            duration_minutes: draft.duration_minutes,
+            color: draft.color,
+          })
+        : await createBookingPage({
+            client_id: draft.client_id,
+            title: draft.title.trim(),
+            slug: draft.slug.trim(),
+            description: draft.description.trim() || undefined,
+            duration_minutes: draft.duration_minutes,
+            color: draft.color,
+          });
+      if (res.error || !res.data) {
+        toastError(res.error || t('bookingmgmt.page.error_save'));
+        return;
+      }
+      success(t('bookingmgmt.page.saved'));
+      setModalOpen(false);
+      await loadPages();
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : t('bookingmgmt.page.error_save'));
+    } finally {
+      setSaving(false);
     }
-    success(t('bookingmgmt.page.saved'));
-    setModalOpen(false);
-    await loadPages();
   };
 
   const handleDeletePage = async (page: Record<string, unknown>) => {
+    const id = str(page, 'id');
+    if (!id || busyRowId === id) return;
     const ok = await confirm({
       title: t('bookingmgmt.page.delete'),
       description: t('bookingmgmt.page.delete_confirm'),
@@ -247,17 +273,26 @@ export function BookingManagement() {
       danger: true,
     });
     if (!ok) return;
-    const res = await deleteBookingPage(str(page, 'id'));
-    if (res.error || !res.data) {
-      toastError(res.error || t('bookingmgmt.page.error_save'));
-      return;
+    setBusyRowId(id);
+    try {
+      const res = await deleteBookingPage(id);
+      if (res.error || !res.data) {
+        toastError(res.error || t('bookingmgmt.page.error_save'));
+        return;
+      }
+      success(t('bookingmgmt.page.deleted'));
+      await loadPages();
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : t('bookingmgmt.page.error_save'));
+    } finally {
+      setBusyRowId(null);
     }
-    success(t('bookingmgmt.page.deleted'));
-    await loadPages();
   };
 
   // ── No-show ───────────────────────────────────────────────────
   const handleNoShow = async (booking: Record<string, unknown>) => {
+    const id = str(booking, 'id');
+    if (!id || busyRowId === id) return;
     const ok = await confirm({
       title: t('booking.noshow.action'),
       description: t('booking.noshow.confirm'),
@@ -265,13 +300,20 @@ export function BookingManagement() {
       danger: true,
     });
     if (!ok) return;
-    const res = await markNoShow(str(booking, 'id'));
-    if (res.error || !res.data) {
-      toastError(res.error || t('bookingmgmt.booking.error_noshow'));
-      return;
+    setBusyRowId(id);
+    try {
+      const res = await markNoShow(id);
+      if (res.error || !res.data) {
+        toastError(res.error || t('bookingmgmt.booking.error_noshow'));
+        return;
+      }
+      success(t('booking.noshow.done'));
+      await loadBookings(selectedPageId);
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : t('bookingmgmt.booking.error_noshow'));
+    } finally {
+      setBusyRowId(null);
     }
-    success(t('booking.noshow.done'));
-    await loadBookings(selectedPageId);
   };
 
   const setField = <K extends keyof PageDraft>(key: K, value: PageDraft[K]) =>
@@ -300,8 +342,10 @@ export function BookingManagement() {
             className="p-8 text-center text-[var(--text-muted)]"
             aria-busy="true"
             aria-live="polite"
+            role="status"
           >
-            {t('common.loading')}
+            <span className="sr-only">{t('common.loading')}</span>
+            <span aria-hidden="true">{t('common.loading')}</span>
           </div>
         ) : pagesError ? (
           <div className="p-6 flex flex-col items-start gap-3" role="alert">
@@ -368,18 +412,21 @@ export function BookingManagement() {
                   <button
                     type="button"
                     onClick={() => openEdit(page)}
-                    className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--primary)] hover:bg-[var(--bg-subtle)] transition-colors cursor-pointer"
+                    className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--primary)] hover:bg-[var(--bg-subtle)] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     aria-label={t('bookingmgmt.page.edit')}
+                    disabled={busyRowId === id}
                   >
-                    <Pencil size={16} />
+                    <Pencil size={16} aria-hidden="true" />
                   </button>
                   <button
                     type="button"
                     onClick={() => handleDeletePage(page)}
-                    className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-red-500 hover:bg-[var(--bg-subtle)] transition-colors cursor-pointer"
+                    className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-red-500 hover:bg-[var(--bg-subtle)] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     aria-label={t('bookingmgmt.page.delete')}
+                    disabled={busyRowId === id}
+                    aria-busy={busyRowId === id || undefined}
                   >
-                    <Trash2 size={16} />
+                    <Trash2 size={16} aria-hidden="true" />
                   </button>
                 </div>
               );
@@ -405,8 +452,10 @@ export function BookingManagement() {
             className="p-8 text-center text-[var(--text-muted)]"
             aria-busy="true"
             aria-live="polite"
+            role="status"
           >
-            {t('common.loading')}
+            <span className="sr-only">{t('common.loading')}</span>
+            <span aria-hidden="true">{t('common.loading')}</span>
           </div>
         ) : rulesError ? (
           <div className="p-6 flex flex-col items-start gap-3" role="alert">
@@ -477,8 +526,10 @@ export function BookingManagement() {
             className="p-8 text-center text-[var(--text-muted)]"
             aria-busy="true"
             aria-live="polite"
+            role="status"
           >
-            {t('common.loading')}
+            <span className="sr-only">{t('common.loading')}</span>
+            <span aria-hidden="true">{t('common.loading')}</span>
           </div>
         ) : bookingsError ? (
           <div className="p-6 flex flex-col items-start gap-3" role="alert">
@@ -546,11 +597,13 @@ export function BookingManagement() {
                     <button
                       type="button"
                       onClick={() => handleNoShow(bk)}
-                      className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-red-500 hover:bg-[var(--bg-subtle)] transition-colors cursor-pointer"
+                      className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-red-500 hover:bg-[var(--bg-subtle)] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                       aria-label={t('booking.noshow.action')}
                       title={t('booking.noshow.action')}
+                      disabled={busyRowId === id}
+                      aria-busy={busyRowId === id || undefined}
                     >
-                      <UserX size={16} />
+                      <UserX size={16} aria-hidden="true" />
                     </button>
                   )}
                 </div>
@@ -606,6 +659,7 @@ export function BookingManagement() {
             <input
               id="bkmgmt-title"
               type="text"
+              maxLength={200}
               className="w-full rounded-lg border border-[var(--border)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)]"
               value={draft.title}
               onChange={(e) => setField('title', e.target.value)}
@@ -621,6 +675,7 @@ export function BookingManagement() {
             <input
               id="bkmgmt-slug"
               type="text"
+              maxLength={120}
               className="w-full rounded-lg border border-[var(--border)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)]"
               value={draft.slug}
               onChange={(e) => setField('slug', e.target.value)}
@@ -636,6 +691,7 @@ export function BookingManagement() {
             <textarea
               id="bkmgmt-desc"
               rows={2}
+              maxLength={1000}
               className="w-full rounded-lg border border-[var(--border)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)]"
               value={draft.description}
               onChange={(e) => setField('description', e.target.value)}
@@ -653,11 +709,14 @@ export function BookingManagement() {
                 id="bkmgmt-duration"
                 type="number"
                 min={0}
+                max={1440}
                 className="w-full rounded-lg border border-[var(--border)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)]"
                 value={draft.duration_minutes}
-                onChange={(e) =>
-                  setField('duration_minutes', Number(e.target.value) || 0)
-                }
+                onChange={(e) => {
+                  const n = Number(e.target.value);
+                  const safe = Number.isFinite(n) && n >= 0 ? Math.min(n, 1440) : 0;
+                  setField('duration_minutes', safe);
+                }}
               />
             </div>
             <div>
@@ -685,7 +744,12 @@ export function BookingManagement() {
             >
               {t('booking.public.cancel')}
             </Button>
-            <Button onClick={handleSavePage} isLoading={saving}>
+            <Button
+              onClick={handleSavePage}
+              isLoading={saving}
+              disabled={saving}
+              aria-busy={saving || undefined}
+            >
               {t('bookingmgmt.page.save')}
             </Button>
           </div>

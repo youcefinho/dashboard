@@ -7479,5 +7479,14 @@ export const es: Record<string, string> = {
   'coursesx.structure_empty': 'No hay módulos en este curso.',
   'coursesx.structure_error': 'No se pudo cargar la estructura del curso.',
   'coursesx.lessons_count': '{count} lecciones',
+  'calsync.error.popup_blocked': 'Tu navegador bloqueó la ventana de Google. Permite las ventanas emergentes para este sitio e inténtalo de nuevo.',
+  'calsync.error.reauth': 'Tu acceso de Google ha caducado. Vuelve a conectar el calendario para reanudar la sincronización.',
+  'agencies.mgmt.loading': 'Cargando…',
+  'wlx.color_invalid': 'Color no válido (formato #RGB o #RRGGBB).',
+  'wlx.logo_invalid': 'URL de logotipo no válida (se requiere http(s)).',
+  'mktx.pack.installed_aria': 'Paquete ya instalado',
+  'mktx.pack.idempotent_hint': 'Reinstalar no tiene efecto: la instalación es idempotente.',
+  'chanx.retry': 'Reintentar',
+  'consentx.toast_type_invalid': 'Tipo de consentimiento desconocido.',
 };
 

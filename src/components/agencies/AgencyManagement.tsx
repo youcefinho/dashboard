@@ -47,7 +47,7 @@ export function AgencyManagement() {
     try {
       const res = await getAgencies();
       if (res.error || !res.data) setAgError(true);
-      else setAgencies(res.data);
+      else setAgencies(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error(err);
       setAgError(true);
@@ -67,7 +67,7 @@ export function AgencyManagement() {
     try {
       const res = await getSubAccounts();
       if (res.error || !res.data) setSubError(true);
-      else setSubs(res.data);
+      else setSubs(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error(err);
       setSubError(true);
@@ -90,6 +90,7 @@ export function AgencyManagement() {
 
   const submitAgency = async (e: FormEvent) => {
     e.preventDefault();
+    if (agSaving) return;
     const name = agName.trim();
     if (!name) {
       setAgNameErr(true);
@@ -152,6 +153,7 @@ export function AgencyManagement() {
 
   const submitSub = async (e: FormEvent) => {
     e.preventDefault();
+    if (sSaving) return;
     const name = sName.trim();
     const email = sEmail.trim();
     const nErr = !name;
@@ -238,7 +240,8 @@ export function AgencyManagement() {
         </div>
 
         {agLoading ? (
-          <Card className="p-4" aria-busy="true">
+          <Card className="p-4" aria-busy="true" role="status" aria-live="polite">
+            <span className="sr-only">{t('agencies.mgmt.loading')}</span>
             <div className="space-y-3">
               {[1, 2, 3].map((i) => (
                 <Skeleton key={i} className="h-5 w-full rounded" />
@@ -246,9 +249,9 @@ export function AgencyManagement() {
             </div>
           </Card>
         ) : agError ? (
-          <Card className="p-6" role="alert">
+          <Card className="p-6" role="alert" aria-live="polite">
             <p className="mb-3 text-sm text-[var(--danger)]">{t('agencies.mgmt.agency.load_error')}</p>
-            <Button variant="primary" onClick={() => void fetchAgencies()}>
+            <Button variant="primary" onClick={() => void fetchAgencies()} disabled={agLoading}>
               {t('agencies.mgmt.retry')}
             </Button>
           </Card>
@@ -304,7 +307,8 @@ export function AgencyManagement() {
         </div>
 
         {subLoading ? (
-          <Card className="p-4" aria-busy="true">
+          <Card className="p-4" aria-busy="true" role="status" aria-live="polite">
+            <span className="sr-only">{t('agencies.mgmt.loading')}</span>
             <div className="space-y-3">
               {[1, 2, 3].map((i) => (
                 <Skeleton key={i} className="h-5 w-full rounded" />
@@ -312,9 +316,9 @@ export function AgencyManagement() {
             </div>
           </Card>
         ) : subError ? (
-          <Card className="p-6" role="alert">
+          <Card className="p-6" role="alert" aria-live="polite">
             <p className="mb-3 text-sm text-[var(--danger)]">{t('agencies.mgmt.sub.load_error')}</p>
-            <Button variant="primary" onClick={() => void fetchSubs()}>
+            <Button variant="primary" onClick={() => void fetchSubs()} disabled={subLoading}>
               {t('agencies.mgmt.retry')}
             </Button>
           </Card>
@@ -384,6 +388,7 @@ export function AgencyManagement() {
             <Input
               id="mgmt-ag-name"
               value={agName}
+              maxLength={200}
               onChange={(e) => {
                 setAgName(e.target.value);
                 if (agNameErr) setAgNameErr(false);
@@ -406,6 +411,7 @@ export function AgencyManagement() {
             <Input
               id="mgmt-ag-domain"
               value={agDomain}
+              maxLength={253}
               onChange={(e) => setAgDomain(e.target.value)}
               placeholder="exemple.com"
             />
@@ -436,6 +442,7 @@ export function AgencyManagement() {
             <Input
               id="mgmt-sub-name"
               value={sName}
+              maxLength={200}
               onChange={(e) => {
                 setSName(e.target.value);
                 if (sNameErr) setSNameErr(false);
@@ -465,6 +472,8 @@ export function AgencyManagement() {
               id="mgmt-sub-email"
               type="email"
               value={sEmail}
+              maxLength={320}
+              autoComplete="email"
               onChange={(e) => {
                 setSEmail(e.target.value);
                 if (sEmailErr) setSEmailErr(false);
@@ -489,6 +498,7 @@ export function AgencyManagement() {
                 id="mgmt-sub-password"
                 type="password"
                 value={sPassword}
+                maxLength={128}
                 onChange={(e) => setSPassword(e.target.value)}
                 autoComplete="new-password"
               />
@@ -501,6 +511,7 @@ export function AgencyManagement() {
             <Input
               id="mgmt-sub-role"
               value={sRole}
+              maxLength={64}
               onChange={(e) => setSRole(e.target.value)}
               placeholder={t('agencies.mgmt.sub.role_placeholder')}
             />

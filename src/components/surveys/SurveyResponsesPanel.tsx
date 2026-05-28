@@ -19,7 +19,8 @@ import { Modal } from '../ui/Modal';
 import { Skeleton } from '../ui/Skeleton';
 import { EmptyState } from '../ui/EmptyState';
 import { useToast } from '../ui/Toast';
-import { t } from '../../lib/i18n';
+import { t, getLocale } from '../../lib/i18n';
+import { formatDateTime } from '../../lib/i18n/datetime';
 import {
   getSurvey,
   listResponses,
@@ -60,7 +61,24 @@ function fmtDate(iso?: string | null): string {
   if (!iso) return '—';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleString();
+  try {
+    return formatDateTime(iso, getLocale());
+  } catch {
+    return d.toLocaleString();
+  }
+}
+
+/** Rend défensivement une `answer_value` arbitraire en texte lisible. */
+function renderAnswerValue(v: unknown): string {
+  if (v == null) return '—';
+  if (typeof v === 'object') {
+    try {
+      return JSON.stringify(v);
+    } catch {
+      return '—';
+    }
+  }
+  return String(v);
 }
 
 // ── Composant ──────────────────────────────────────────────────────────────
@@ -85,26 +103,35 @@ export function SurveyResponsesPanel({ surveyId }: SurveyResponsesPanelProps) {
   const load = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
-    // Survey detail (header) + responses en parallèle.
-    const [surveyRes, listRes] = await Promise.all([
-      getSurvey(surveyId),
-      listResponses(surveyId, status ? { status } : undefined),
-    ]);
-    if (surveyRes.error) {
-      // Non bloquant : on garde la liste mais on signale via toast.
-      toastError(surveyRes.error);
-      setSurvey(null);
-    } else {
-      setSurvey(surveyRes.data ?? null);
-    }
-    if (listRes.error) {
-      toastError(listRes.error);
-      setLoadError(listRes.error);
+    try {
+      // Survey detail (header) + responses en parallèle.
+      const [surveyRes, listRes] = await Promise.all([
+        getSurvey(surveyId),
+        listResponses(surveyId, status ? { status } : undefined),
+      ]);
+      if (surveyRes.error) {
+        // Non bloquant : on garde la liste mais on signale via toast.
+        toastError(surveyRes.error);
+        setSurvey(null);
+      } else {
+        setSurvey(surveyRes.data ?? null);
+      }
+      if (listRes.error) {
+        toastError(listRes.error);
+        setLoadError(listRes.error);
+        setResponses([]);
+      } else {
+        setResponses(Array.isArray(listRes.data) ? listRes.data : []);
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : t('common.error.title');
+      toastError(msg);
+      setLoadError(msg);
       setResponses([]);
-    } else {
-      setResponses(listRes.data ?? []);
+      setSurvey(null);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [surveyId, status, toastError]);
 
   useEffect(() => {
@@ -116,14 +143,30 @@ export function SurveyResponsesPanel({ surveyId }: SurveyResponsesPanelProps) {
       setDetailLoading(true);
       setDetailError(null);
       setDetail(null);
-      const res = await getSurveyResponse(id);
-      if (res.error) {
-        toastError(res.error);
-        setDetailError(res.error);
-      } else {
-        setDetail(res.data ?? null);
+      try {
+        const res = await getSurveyResponse(id);
+        if (res.error) {
+          toastError(res.error);
+          setDetailError(res.error);
+        } else {
+          // Garde-fou : answers doit être un tableau pour les map() en aval.
+          const data = res.data ?? null;
+          if (data) {
+            setDetail({
+              ...data,
+              answers: Array.isArray(data.answers) ? data.answers : [],
+            });
+          } else {
+            setDetail(null);
+          }
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : t('common.error.title');
+        toastError(msg);
+        setDetailError(msg);
+      } finally {
+        setDetailLoading(false);
       }
-      setDetailLoading(false);
     },
     [toastError],
   );
@@ -271,9 +314,9 @@ export function SurveyResponsesPanel({ surveyId }: SurveyResponsesPanelProps) {
               </tr>
             </thead>
             <tbody>
-              {responses.map((r) => (
+              {responses.map((r, i) => (
                 <tr
-                  key={r.id}
+                  key={r.id ?? `resp_${i}`}
                   className="border-b border-[var(--border-subtle)] last:border-0"
                   data-testid="survey-response-row"
                 >
@@ -300,7 +343,8 @@ export function SurveyResponsesPanel({ surveyId }: SurveyResponsesPanelProps) {
                       variant="ghost"
                       size="sm"
                       leftIcon={<Icon as={Eye} size="sm" aria-hidden="true" />}
-                      onClick={() => openDetail(r.id)}
+                      onClick={() => r.id && openDetail(r.id)}
+                      disabled={!r.id}
                       aria-label={t('surveysx.view')}
                       data-testid="survey-response-view"
                     >
@@ -421,19 +465,16 @@ export function SurveyResponsesPanel({ surveyId }: SurveyResponsesPanelProps) {
                 </p>
               ) : (
                 <ul className="space-y-2" data-testid="survey-response-answers">
-                  {detail.answers.map((a) => (
+                  {detail.answers.map((a, i) => (
                     <li
-                      key={a.id}
+                      key={a.id ?? `${a.question_id ?? 'q'}_${i}`}
                       className="p-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-subtle,white)]"
                     >
                       <p className="text-[11px] text-[var(--text-muted)]">
                         {a.question_id}
                       </p>
                       <p className="text-sm text-[var(--text-primary)] break-words">
-                        {a.answer_text ??
-                          (a.answer_value != null
-                            ? String(a.answer_value)
-                            : '—')}
+                        {a.answer_text ?? renderAnswerValue(a.answer_value)}
                       </p>
                     </li>
                   ))}

@@ -96,12 +96,18 @@ export function VariantInventoryOps({
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const res = await getEcommerceVariants(productId);
-    if (res.error) {
-      setError(res.error);
+    try {
+      const res = await getEcommerceVariants(productId);
+      if (res.error) {
+        setError(res.error);
+        setVariants([]);
+      } else {
+        // Défense list : si la réponse n'est pas un Array, on retombe sur [].
+        setVariants(Array.isArray(res.data) ? res.data : []);
+      }
+    } catch {
+      setError(t('common.error.load_failed'));
       setVariants([]);
-    } else {
-      setVariants(res.data || []);
     }
     setLoading(false);
   }, [productId]);
@@ -131,6 +137,8 @@ export function VariantInventoryOps({
   };
 
   const submitForm = useCallback(async () => {
+    // Garde anti double-submit.
+    if (saving) return;
     const title = form.title.trim();
     if (!title) {
       toastError(t('variants.form.titleRequired'));
@@ -153,27 +161,33 @@ export function VariantInventoryOps({
     };
 
     setSaving(true);
-    if (editingId) {
-      const res = await updateEcommerceVariant(productId, editingId, body);
-      if (res.error) {
-        toastError(res.error);
-        setSaving(false);
-        return;
+    try {
+      if (editingId) {
+        const res = await updateEcommerceVariant(productId, editingId, body);
+        if (res.error) {
+          toastError(res.error);
+          setSaving(false);
+          return;
+        }
+        toastSuccess(t('variants.form.updated'));
+      } else {
+        const res = await createEcommerceVariant(productId, body);
+        if (res.error) {
+          toastError(res.error);
+          setSaving(false);
+          return;
+        }
+        toastSuccess(t('variants.form.created'));
       }
-      toastSuccess(t('variants.form.updated'));
-    } else {
-      const res = await createEcommerceVariant(productId, body);
-      if (res.error) {
-        toastError(res.error);
-        setSaving(false);
-        return;
-      }
-      toastSuccess(t('variants.form.created'));
+    } catch {
+      toastError(t('common.error.load_failed'));
+      setSaving(false);
+      return;
     }
     setSaving(false);
     cancelForm();
     void load();
-  }, [form, editingId, productId, toastSuccess, toastError, load]);
+  }, [form, saving, editingId, productId, toastSuccess, toastError, load]);
 
   const handleDelete = useCallback(async (v: ProductVariant) => {
     const ok = await confirm({
@@ -184,9 +198,14 @@ export function VariantInventoryOps({
       danger: true,
     });
     if (!ok) return;
-    const res = await deleteEcommerceVariant(productId, v.id);
-    if (res && res.error) {
-      toastError(res.error);
+    try {
+      const res = await deleteEcommerceVariant(productId, v.id);
+      if (res && res.error) {
+        toastError(res.error);
+        return;
+      }
+    } catch {
+      toastError(t('common.error.load_failed'));
       return;
     }
     toastSuccess(t('variants.delete.success'));
@@ -459,12 +478,20 @@ function InventorySection({ variantId, currency: _currency, onChanged }: Invento
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const res = await getVariantInventory(variantId);
-    if (res.error) {
-      setError(res.error);
+    try {
+      const res = await getVariantInventory(variantId);
+      if (res.error) {
+        setError(res.error);
+        setRecord(null);
+      } else if (res.data) {
+        hydrate(res.data);
+      } else {
+        // Pas de record encore créé : on initialise un état vide neutre.
+        setRecord(null);
+      }
+    } catch {
+      setError(t('common.error.load_failed'));
       setRecord(null);
-    } else if (res.data) {
-      hydrate(res.data);
     }
     setLoading(false);
   }, [variantId, hydrate]);
@@ -472,6 +499,7 @@ function InventorySection({ variantId, currency: _currency, onChanged }: Invento
   useEffect(() => { void load(); }, [load]);
 
   const onSave = useCallback(async () => {
+    if (saving) return;
     const qty = parseNonNegInt(quantity);
     const thr = parseNonNegInt(threshold);
     if (qty === null || thr === null) {
@@ -480,25 +508,34 @@ function InventorySection({ variantId, currency: _currency, onChanged }: Invento
     }
     setSaving(true);
     setError(null);
-    const res = await setVariantInventory(variantId, {
-      quantity: qty,
-      low_stock_threshold: thr,
-      track_inventory: track ? 1 : 0,
-      allow_backorder: backorder ? 1 : 0,
-    });
-    if (res.error) {
-      setError(res.error);
-      toastError(res.error);
-    } else if (res.data) {
-      hydrate(res.data);
-      toastSuccess(t('variants.inventory.saved'));
-      onChanged();
+    try {
+      const res = await setVariantInventory(variantId, {
+        quantity: qty,
+        low_stock_threshold: thr,
+        track_inventory: track ? 1 : 0,
+        allow_backorder: backorder ? 1 : 0,
+      });
+      if (res.error) {
+        setError(res.error);
+        toastError(res.error);
+      } else if (res.data) {
+        hydrate(res.data);
+        toastSuccess(t('variants.inventory.saved'));
+        onChanged();
+      }
+    } catch {
+      const msg = t('common.error.load_failed');
+      setError(msg);
+      toastError(msg);
     }
     setSaving(false);
-  }, [quantity, threshold, track, backorder, variantId, hydrate, toastSuccess, toastError, onChanged]);
+  }, [saving, quantity, threshold, track, backorder, variantId, hydrate, toastSuccess, toastError, onChanged]);
 
+  // Clamp défensif : available ≥ 0 (réservé peut dépasser quantité en cas de race).
   const available =
-    record != null ? (record.quantity ?? 0) - (record.reserved ?? 0) : null;
+    record != null
+      ? Math.max(0, (record.quantity ?? 0) - (record.reserved ?? 0))
+      : null;
   const low =
     record != null && (record.quantity ?? 0) <= (record.low_stock_threshold ?? 0);
 

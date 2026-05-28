@@ -71,8 +71,9 @@ export function ServerAnalyticsPanel({ days }: ServerAnalyticsPanelProps) {
       ]);
       setOverview(ovRes.data ?? null);
       setConversion(convRes.data ?? null);
-      setSources(srcRes.data?.sources ?? []);
-      setBaselines(blRes.data?.baselines ?? []);
+      // Défensif : si `sources` / `baselines` n'est pas un tableau, on neutralise.
+      setSources(Array.isArray(srcRes.data?.sources) ? srcRes.data!.sources : []);
+      setBaselines(Array.isArray(blRes.data?.baselines) ? blRes.data!.baselines : []);
       // Erreur seulement si TOUT échoue (dégradation gracieuse sinon).
       if (!ovRes.data && !convRes.data && !srcRes.data && !blRes.data) {
         setError(ovRes.error || convRes.error || srcRes.error || blRes.error || t('reportsx.error.load'));
@@ -129,15 +130,30 @@ export function ServerAnalyticsPanel({ days }: ServerAnalyticsPanelProps) {
     );
   }
 
-  const dailyData = (overview?.charts.daily_leads ?? []).map(d => ({
-    date: formatDate(new Date(d.date), getLocale(), { month: 'short', day: 'numeric' }),
-    count: d.count,
+  // Coercion défensive : un payload chart peut avoir count/percentage en string
+  // ou null. Number(x) || 0 garantit qu'on n'injecte jamais NaN dans recharts.
+  const toNum = (v: unknown): number => {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : 0;
+  };
+  const safeDate = (raw: unknown): string => {
+    const s = typeof raw === 'string' ? raw : '';
+    const d = new Date(s);
+    if (Number.isNaN(d.getTime())) return s;
+    return formatDate(d, getLocale(), { month: 'short', day: 'numeric' });
+  };
+
+  const dailyRaw = Array.isArray(overview?.charts?.daily_leads) ? overview!.charts.daily_leads : [];
+  const dailyData = dailyRaw.map(d => ({
+    date: safeDate(d.date),
+    count: toNum(d.count),
   }));
 
-  const funnelData = (conversion?.funnel ?? []).map(f => ({
+  const funnelRaw = Array.isArray(conversion?.funnel) ? conversion!.funnel : [];
+  const funnelData = funnelRaw.map(f => ({
     name: f.label || f.stage,
-    count: f.count,
-    percentage: f.percentage,
+    count: toNum(f.count),
+    percentage: toNum(f.percentage),
   }));
 
   const sortedSources = sources.slice().sort((a, b) => b.total_leads - a.total_leads);
@@ -183,7 +199,11 @@ export function ServerAnalyticsPanel({ days }: ServerAnalyticsPanelProps) {
             </Card>
           </div>
           {dailyData.length > 0 && (
-            <Card className="p-5">
+            <Card
+              className="p-5"
+              role="region"
+              aria-label={t('reportsx.overview.daily_leads')}
+            >
               <h4 className="text-xs font-semibold mb-3 text-[var(--text-secondary)]">{t('reportsx.overview.daily_leads')}</h4>
               <ResponsiveContainer width="100%" height={220}>
                 <AreaChart data={dailyData}>
@@ -212,7 +232,11 @@ export function ServerAnalyticsPanel({ days }: ServerAnalyticsPanelProps) {
             {t('reportsx.funnel.title')}
           </h3>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <Card className="p-5">
+            <Card
+              className="p-5"
+              role="region"
+              aria-label={t('reportsx.funnel.title')}
+            >
               <ResponsiveContainer width="100%" height={Math.max(220, funnelData.length * 48 + 40)}>
                 <BarChart data={funnelData} layout="vertical" margin={{ left: 20, right: 16 }}>
                   <XAxis type="number" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} allowDecimals={false} />

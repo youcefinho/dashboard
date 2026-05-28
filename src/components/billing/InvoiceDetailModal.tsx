@@ -38,11 +38,12 @@ export function InvoiceDetailModal({ invoiceId, onClose }: InvoiceDetailModalPro
     setError(null);
     try {
       const res = await getInvoice(id);
-      // §6.A : apiFetch GELÉ ⇒ discrimination sur présence de data / texte error
-      if (res.data) setInvoice(res.data);
-      else setError(res.error || t('common.error.load_failed'));
-    } catch (err) {
-      console.error(err);
+      // §6.A : apiFetch GELÉ ⇒ discrimination sur présence de data / texte error.
+      // Défense supplémentaire : res lui-même peut être null si fetch coupé.
+      if (res && res.data) setInvoice(res.data);
+      else setError((res && res.error) || t('common.error.load_failed'));
+    } catch {
+      // Erreur réseau non capturée par apiFetch (rare) : message générique i18n.
       setError(t('common.error.load_failed'));
     } finally {
       setIsLoading(false);
@@ -58,11 +59,17 @@ export function InvoiceDetailModal({ invoiceId, onClose }: InvoiceDetailModalPro
 
   const locale = getLocale();
   const currency = invoice?.currency || 'CAD';
-  const money = (v: number | null | undefined) => formatCurrency(v ?? 0, locale, currency);
-  const total = invoice ? (invoice.total ?? invoice.amount ?? 0) : 0;
+  // Clamp défensif : valeur non finie ou négative ⇒ 0 ; pas de "-NaN" affiché.
+  const money = (v: number | null | undefined) => {
+    const n = typeof v === 'number' && Number.isFinite(v) ? v : 0;
+    return formatCurrency(Math.max(0, n), locale, currency);
+  };
+  const totalRaw = invoice ? (invoice.total ?? invoice.amount ?? 0) : 0;
+  const total = Number.isFinite(totalRaw) ? Math.max(0, totalRaw) : 0;
   const hasBreakdown =
     invoice != null && invoice.subtotal != null && invoice.tax_tps != null && invoice.tax_tvq != null;
-  const items = invoice?.items ?? [];
+  // Défense list : si items n'est pas un Array (legacy / réponse partielle), on retombe sur [].
+  const items = Array.isArray(invoice?.items) ? (invoice!.items ?? []) : [];
 
   return (
     <Modal
@@ -74,7 +81,8 @@ export function InvoiceDetailModal({ invoiceId, onClose }: InvoiceDetailModalPro
     >
       <div className="space-y-5">
         {isLoading && (
-          <div className="space-y-3" aria-busy="true">
+          <div className="space-y-3" aria-busy="true" aria-live="polite" role="status">
+            <span className="sr-only">{t('common.loading')}</span>
             <Skeleton className="h-5 w-40 rounded" />
             <Skeleton className="h-3 w-64 rounded" />
             <Skeleton className="h-24 w-full rounded-xl" />
@@ -85,11 +93,18 @@ export function InvoiceDetailModal({ invoiceId, onClose }: InvoiceDetailModalPro
         {!isLoading && error && (
           <div
             role="alert"
+            aria-live="assertive"
             className="rounded-[var(--radius-md)] border border-[color-mix(in_srgb,var(--danger)_40%,transparent)] bg-[var(--danger-soft)] px-4 py-3 flex items-center justify-between gap-3"
           >
             <span className="text-[13px] text-[var(--danger)]">{error}</span>
             {invoiceId && (
-              <Button size="sm" variant="secondary" onClick={() => void load(invoiceId)}>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => void load(invoiceId)}
+                disabled={isLoading}
+                aria-label={t('common.retry')}
+              >
                 {t('common.retry')}
               </Button>
             )}
@@ -167,8 +182,10 @@ export function InvoiceDetailModal({ invoiceId, onClose }: InvoiceDetailModalPro
                     <tbody className="divide-y divide-[var(--border-subtle)]">
                       {items.map((it) => (
                         <tr key={it.id}>
-                          <td className="px-3 py-2 text-[var(--text-primary)]">{it.label}</td>
-                          <td className="px-3 py-2 text-right t-mono-num">{it.qty}</td>
+                          <td className="px-3 py-2 text-[var(--text-primary)]">{it.label || '—'}</td>
+                          <td className="px-3 py-2 text-right t-mono-num">
+                            {Number.isFinite(it.qty) ? Math.max(0, it.qty) : 0}
+                          </td>
                           <td className="px-3 py-2 text-right t-mono-num">{money(it.unit_price)}</td>
                           <td className="px-3 py-2 text-right t-mono-num font-medium">{money(it.line_total)}</td>
                         </tr>
