@@ -1867,6 +1867,31 @@ async function routeProtected(
     return new Response(JSON.stringify({ data: { success: true } }), { headers: { 'Content-Type': 'application/json' } });
   }
 
+  // Clavardage Interne Équipe (Sprint 57)
+  if (path === '/api/internal/channels' && method === 'GET') {
+    const { handleGetInternalChannels } = await import('./worker/internal-chat');
+    return await handleGetInternalChannels(env, auth);
+  }
+  if (path === '/api/internal/channels' && method === 'POST') {
+    const { handleCreateInternalChannel } = await import('./worker/internal-chat');
+    return await handleCreateInternalChannel(request, env, auth);
+  }
+  const intChanMsgsMatch = path.match(/^\/api\/internal\/channels\/([^/]+)\/messages$/);
+  if (intChanMsgsMatch && method === 'GET') {
+    const { handleGetInternalChannelMessages } = await import('./worker/internal-chat');
+    return await handleGetInternalChannelMessages(env, auth, intChanMsgsMatch[1]!);
+  }
+  if (intChanMsgsMatch && method === 'POST') {
+    const { handleSendInternalMessage } = await import('./worker/internal-chat');
+    return await handleSendInternalMessage(request, env, auth, intChanMsgsMatch[1]!);
+  }
+
+  // Softphone SIP WebRTC (Sprint 58)
+  if (path === '/api/twilio/webrtc/token' && method === 'GET') {
+    const { handleGetTwilioWebrtcToken } = await import('./worker/webrtc-token');
+    return await handleGetTwilioWebrtcToken(env, auth);
+  }
+
   // Templates & Snippets
   if (path === '/api/templates' && method === 'GET') return handleGetTemplates(env, auth, url);
   if (path === '/api/templates' && method === 'POST') return handleCreateTemplate(request, env, auth);

@@ -96,6 +96,29 @@ export class NotificationsRoom {
       }
     }
 
+    // ── Broadcast de chat interne ────────────────────────────────────────────
+    if (request.method === 'POST' && url.pathname.endsWith('/broadcast-chat')) {
+      try {
+        const payload = (await request.json()) as { message: any };
+        const msgStr = JSON.stringify({
+          type: 'internal_chat_message',
+          message: payload.message,
+        });
+        let delivered = 0;
+        for (const ws of this.sessions) {
+          try {
+            ws.send(msgStr);
+            delivered++;
+          } catch {
+            this.sessions.delete(ws);
+          }
+        }
+        return json({ ok: true, delivered });
+      } catch {
+        return json({ error: 'Invalid payload' }, 400);
+      }
+    }
+
     // ── Info debug ───────────────────────────────────────────────────────────
     if (url.pathname.endsWith('/info')) {
       return json({
@@ -159,6 +182,25 @@ export async function broadcastNotificationToUser(
     });
   } catch {
     /* best-effort — broadcast non critique */
+  }
+}
+
+export async function broadcastChatMessageToUser(
+  env: Env,
+  userId: string,
+  message: any,
+): Promise<void> {
+  if (!env.NOTIFICATION_ROOMS || !userId) return;
+  try {
+    const id = env.NOTIFICATION_ROOMS.idFromName(userId);
+    const stub = env.NOTIFICATION_ROOMS.get(id);
+    await stub.fetch('https://do/broadcast-chat', {
+      method: 'POST',
+      body: JSON.stringify({ message }),
+      headers: { 'content-type': 'application/json' },
+    });
+  } catch {
+    /* best-effort */
   }
 }
 

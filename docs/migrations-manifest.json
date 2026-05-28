@@ -2088,6 +2088,20 @@
         "column:phone_routing_rules.play_consent_msg"
       ],
       "risk": "low"
+    },
+    {
+      "seq": 150,
+      "file": "migration-internal-channels-seq150.sql",
+      "depends_on": [
+        "migration-recording-compliance-seq149.sql"
+      ],
+      "objects": [
+        "table:internal_channels",
+        "table:internal_messages",
+        "index:idx_internal_channels_client",
+        "index:idx_internal_messages_channel"
+      ],
+      "risk": "low"
     }
   ]
 }
