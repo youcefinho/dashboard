@@ -330,26 +330,89 @@ export async function createOrderCore(
     });
   }
 
-  // 2) Fiscalité : moteur unique computeTax (source unique, zéro dup formule).
-  //    QC = wrapper verbatim → tps=round(sub*0.05), tvq=round(sub*0.09975),
-  //    arrondies séparément, jamais en cascade (régression-zéro bit-pour-bit).
-  const { regime, country } = resolveTaxContext(input);
-  const tax = computeTax(regime, subtotalCents, { country });
+  // 2) Fiscalité : résolution via tax_rates en D1 (Sprint 70) avec fallback sur computeTax
+  let taxResult = null;
+  const targetCountry = input.tax_country
+    ? input.tax_country.toString().toUpperCase().slice(0, 2)
+    : undefined;
+  const targetState = input.shipping_address?.state || input.shipping_address?.province || input.shipping_address?.region;
+  const targetStateClean = typeof targetState === 'string'
+    ? targetState.trim().toUpperCase()
+    : undefined;
 
-  // Forme de retour FIGÉE (contrat E3, consommée par la conversion panier) :
-  // pour QC, lines[0]=TPS / lines[1]=TVQ. Pour les autres régimes (mono ou
-  // multi-lignes) on agrège dans tps_cents (= 1ère taxe) afin de préserver la
-  // forme legacy ; la ventilation complète part dans tax_breakdown_json.
-  const isQc = regime === 'qc';
-  const tpsCents = isQc
+  if (targetCountry) {
+    let rateRow = null;
+    if (targetStateClean) {
+      rateRow = await env.DB.prepare(
+        `SELECT rate_tps, rate_tvq, rate_tva FROM tax_rates 
+         WHERE client_id = ? AND country = ? AND UPPER(state_province) = ? AND is_active = 1 
+         LIMIT 1`
+      ).bind(clientId, targetCountry, targetStateClean).first() as { rate_tps: number; rate_tvq: number; rate_tva: number } | null;
+    }
+    if (!rateRow) {
+      rateRow = await env.DB.prepare(
+        `SELECT rate_tps, rate_tvq, rate_tva FROM tax_rates 
+         WHERE client_id = ? AND country = ? AND (state_province IS NULL OR state_province = '') AND is_active = 1 
+         LIMIT 1`
+      ).bind(clientId, targetCountry).first() as { rate_tps: number; rate_tvq: number; rate_tva: number } | null;
+    }
+
+    if (rateRow) {
+      const lines = [];
+      let totalTaxCents = 0;
+      
+      const EU_COUNTRIES = new Set([
+        'AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'DE', 'GR', 'HU',
+        'IE', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL', 'PL', 'PT', 'RO', 'SK', 'SI', 'ES', 'SE',
+      ]);
+      const isEu = EU_COUNTRIES.has(targetCountry);
+
+      if (isEu) {
+        // En Europe, la TVA est tax-inclusive par défaut
+        if (rateRow.rate_tva > 0) {
+          const tvaAmount = Math.round(subtotalCents - subtotalCents / (1 + rateRow.rate_tva));
+          lines.push({ label: `TVA (${targetCountry})`, rate: rateRow.rate_tva, amountCents: tvaAmount });
+          totalTaxCents += tvaAmount;
+        }
+        taxResult = { lines, totalTaxCents, taxInclusive: true };
+      } else {
+        // Hors Europe, c'est tax-exclusive par défaut
+        if (rateRow.rate_tps > 0) {
+          const tpsLabel = targetCountry === 'CA' ? (targetStateClean === 'QC' ? 'TPS' : 'GST') : 'Tax';
+          const tpsAmount = Math.round(subtotalCents * rateRow.rate_tps);
+          lines.push({ label: tpsLabel, rate: rateRow.rate_tps, amountCents: tpsAmount });
+          totalTaxCents += tpsAmount;
+        }
+        if (rateRow.rate_tvq > 0) {
+          const tvqLabel = targetCountry === 'CA' ? (targetStateClean === 'QC' ? 'TVQ' : 'PST') : 'Tax 2';
+          const tvqAmount = Math.round(subtotalCents * rateRow.rate_tvq);
+          lines.push({ label: tvqLabel, rate: rateRow.rate_tvq, amountCents: tvqAmount });
+          totalTaxCents += tvqAmount;
+        }
+        if (rateRow.rate_tva > 0) {
+          const tvaAmount = Math.round(subtotalCents * rateRow.rate_tva);
+          lines.push({ label: 'TVA', rate: rateRow.rate_tva, amountCents: tvaAmount });
+          totalTaxCents += tvaAmount;
+        }
+        taxResult = { lines, totalTaxCents, taxInclusive: false };
+      }
+    }
+  }
+
+  const { regime, country } = resolveTaxContext(input);
+  const tax = taxResult || computeTax(regime, subtotalCents, { country });
+
+  // Forme de retour FIGÉE (contrat E3, consommée par la conversion panier)
+  const isQcOrCanada = regime === 'qc' || targetCountry === 'CA';
+  const tpsCents = isQcOrCanada
     ? (tax.lines[0]?.amountCents ?? 0)
     : tax.totalTaxCents;
-  const tvqCents = isQc
+  const tvqCents = isQcOrCanada
     ? (tax.lines[1]?.amountCents ?? 0)
     : 0;
   const taxBreakdownJson = JSON.stringify(tax.lines);
 
-  // tax-INCLUSIVE (UE) : la taxe est déjà comprise dans le sous-total → ne pas
+  // tax-INCLUSIVE (UE) : la taxe est déjà comprise dans le sous-total -> ne pas
   // l'ajouter au total. tax-EXCLUSIVE (QC/DZ) : taxe ajoutée par-dessus.
   const totalCents = Math.max(
     0,
@@ -357,6 +420,7 @@ export async function createOrderCore(
       ? subtotalCents + shippingCents - discountCents
       : subtotalCents + tax.totalTaxCents + shippingCents - discountCents,
   );
+
 
   // 3) Réservation de stock AVANT l'écriture commande (rollback manuel si KO).
   const reservedOk: Array<{ variantId: string; qty: number }> = [];

@@ -671,16 +671,80 @@ export async function handleStoreShippingQuote(
       currency,
     });
 
-    // APERÇU taxe uniquement (le checkout laisse createOrderCore recalculer —
-    // §6.I.8 : NE PAS double-compter). Régime déduit du pays, fallback 'qc'.
+    // APERÇU taxe via tax_rates en D1 (Sprint 70) avec fallback sur computeTax
+    let taxResult = null;
+    const targetCountry = country ? country.toUpperCase() : undefined;
+    const targetState = address.state || address.province || address.region;
+    const targetStateClean = typeof targetState === 'string'
+      ? targetState.trim().toUpperCase()
+      : undefined;
+
+    if (targetCountry) {
+      let rateRow = null;
+      if (targetStateClean) {
+        rateRow = await env.DB.prepare(
+          `SELECT rate_tps, rate_tvq, rate_tva FROM tax_rates 
+           WHERE client_id = ? AND country = ? AND UPPER(state_province) = ? AND is_active = 1 
+           LIMIT 1`
+        ).bind(clientId, targetCountry, targetStateClean).first() as { rate_tps: number; rate_tvq: number; rate_tva: number } | null;
+      }
+      if (!rateRow) {
+        rateRow = await env.DB.prepare(
+          `SELECT rate_tps, rate_tvq, rate_tva FROM tax_rates 
+           WHERE client_id = ? AND country = ? AND (state_province IS NULL OR state_province = '') AND is_active = 1 
+           LIMIT 1`
+        ).bind(clientId, targetCountry).first() as { rate_tps: number; rate_tvq: number; rate_tva: number } | null;
+      }
+
+      if (rateRow) {
+        const lines = [];
+        let totalTaxCents = 0;
+        
+        const EU_COUNTRIES = new Set([
+          'AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'DE', 'GR', 'HU',
+          'IE', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL', 'PL', 'PT', 'RO', 'SK', 'SI', 'ES', 'SE',
+        ]);
+        const isEu = EU_COUNTRIES.has(targetCountry);
+
+        if (isEu) {
+          if (rateRow.rate_tva > 0) {
+            const tvaAmount = Math.round(subtotalCents - subtotalCents / (1 + rateRow.rate_tva));
+            lines.push({ label: `TVA (${targetCountry})`, rate: rateRow.rate_tva, amountCents: tvaAmount });
+            totalTaxCents += tvaAmount;
+          }
+          taxResult = { lines, totalTaxCents, taxInclusive: true };
+        } else {
+          if (rateRow.rate_tps > 0) {
+            const tpsLabel = targetCountry === 'CA' ? (targetStateClean === 'QC' ? 'TPS' : 'GST') : 'Tax';
+            const tpsAmount = Math.round(subtotalCents * rateRow.rate_tps);
+            lines.push({ label: tpsLabel, rate: rateRow.rate_tps, amountCents: tpsAmount });
+            totalTaxCents += tpsAmount;
+          }
+          if (rateRow.rate_tvq > 0) {
+            const tvqLabel = targetCountry === 'CA' ? (targetStateClean === 'QC' ? 'TVQ' : 'PST') : 'Tax 2';
+            const tvqAmount = Math.round(subtotalCents * rateRow.rate_tvq);
+            lines.push({ label: tvqLabel, rate: rateRow.rate_tvq, amountCents: tvqAmount });
+            totalTaxCents += tvqAmount;
+          }
+          if (rateRow.rate_tva > 0) {
+            const tvaAmount = Math.round(subtotalCents * rateRow.rate_tva);
+            lines.push({ label: 'TVA', rate: rateRow.rate_tva, amountCents: tvaAmount });
+            totalTaxCents += tvaAmount;
+          }
+          taxResult = { lines, totalTaxCents, taxInclusive: false };
+        }
+      }
+    }
+
     const regime = regimeForCountry(country) || 'qc';
-    const tax = computeTax(regime, subtotalCents, { country: country || undefined });
+    const tax = taxResult || computeTax(regime, subtotalCents, { country: country || undefined });
     const taxCents = tax.totalTaxCents;
 
     // Total aperçu : tax-inclusive (UE) ⇒ taxe déjà dans le sous-total.
     const totalCents = tax.taxInclusive
       ? subtotalCents + ship.price_cents
       : subtotalCents + taxCents + ship.price_cents;
+
 
     return json({
       data: {

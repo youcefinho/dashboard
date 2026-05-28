@@ -148,6 +148,8 @@ const BoutiquePOSPage = lazy(() => import('@/pages/boutique/POS').then(m => ({ d
 const BoutiqueGiftCardsLoyaltyPage = lazy(() => import('@/pages/boutique/GiftCardsLoyaltyPage').then(m => ({ default: m.GiftCardsLoyaltyPage })));
 // Sprint 40 (Agent B4) — Recovery workflow editor (séquence multi-touch) /boutique/recovery-workflow
 const BoutiqueRecoveryWorkflowPage = lazy(() => import('@/pages/boutique/RecoveryWorkflow').then(m => ({ default: m.RecoveryWorkflowPage })));
+// Sprint 69 — Système de Gestion de Retours & RMA
+const BoutiqueRetoursPage = lazy(() => import('@/pages/boutique/Retours').then(m => ({ default: m.RetoursPage })));
 const ForgotPasswordPage = lazy(() => import('@/pages/ForgotPassword').then(m => ({ default: m.ForgotPasswordPage })));
 const ResetPasswordPage = lazy(() => import('@/pages/ResetPassword').then(m => ({ default: m.ResetPasswordPage })));
 // ── Sprint 46 M2 — Admin analytics (org-wide dashboard) ─────
@@ -1221,6 +1223,13 @@ const boutiqueRecoveryWorkflowRoute = createRoute({
   component: () => (<LazyGuard><BoutiqueRecoveryWorkflowPage /></LazyGuard>),
 });
 
+// Sprint 69 — Système de Gestion de Retours & RMA (gated <ModuleGuard>)
+const boutiqueRetoursRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/boutique/retours',
+  component: () => (<LazyGuard><ModuleGuard module="ecommerce"><BoutiqueRetoursPage /></ModuleGuard></LazyGuard>),
+});
+
 // ── Sprint 46 M2.1 — Admin routes (wrapped by AdminGuard) ───
 const adminOverviewRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -1367,6 +1376,8 @@ const routeTree = rootRoute.addChildren([
   boutiqueGiftCardsLoyaltyRoute,
   // Sprint 40 (Agent B4) — Recovery workflow editor
   boutiqueRecoveryWorkflowRoute,
+  // Sprint 69 — Système de Gestion de Retours & RMA
+  boutiqueRetoursRoute,
   adminIndexRoute,
   adminOverviewRoute,
   // Sprint 24 — Observabilité

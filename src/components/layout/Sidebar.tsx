@@ -12,6 +12,8 @@ import {
   LayoutTemplate, Phone,
   // Sprint 21 — Onboarding durci : icône "Premiers pas"
   Sparkles,
+  // Sprint 69 — Système de Gestion de Retours & RMA
+  RotateCcw,
 } from 'lucide-react';
 import { Icon } from '@/components/ui';
 import { getSmartLists, getLeads, getTasks, getNotifications, getModules, getClientBranding, getActiveSubAccount, getOnboardingChecklist, type ModuleId } from '@/lib/api';
@@ -85,6 +87,7 @@ const NAV_SECTIONS: NavSection[] = [
       { path: '/boutique/produits', label: t('nav.shop_products'), icon: <Icon as={Package} size={18} />, moduleRequired: 'ecommerce' },
       { path: '/boutique/commandes', label: t('nav.shop_orders'), icon: <Icon as={ShoppingCart} size={18} />, moduleRequired: 'ecommerce' },
       { path: '/boutique/clients', label: t('nav.shop_customers'), icon: <Icon as={Contact} size={18} />, moduleRequired: 'ecommerce' },
+      { path: '/boutique/retours', label: t('nav.shop_returns'), icon: <Icon as={RotateCcw} size={18} />, moduleRequired: 'ecommerce' },
     ],
   },
   {

@@ -34,11 +34,13 @@ import { SlidePanel } from '../../components/ui/SlidePanel';
 import { CurrencySettings } from '../../components/settings/CurrencySettings';
 import { TaxRegionsManager } from '../../components/settings/TaxRegionsManager';
 import { TaxRulesEditor } from '../../components/settings/TaxRulesEditor';
+import { TaxRatesManager } from '../../components/settings/TaxRatesManager';
 import { listTaxRegions } from '../../lib/api';
 import type { TaxRegion } from '../../lib/types';
 import { t } from '../../lib/i18n';
 
-type CurrencyMultiTab = 'currency' | 'regions';
+type CurrencyMultiTab = 'currency' | 'regions' | 'rates';
+
 
 export function CurrencyMultiSettingsPage() {
   const [tab, setTab] = useState<CurrencyMultiTab>('currency');
@@ -67,6 +69,12 @@ export function CurrencyMultiSettingsPage() {
         description: t('shop.region.subtitle'),
       };
     }
+    if (tab === 'rates') {
+      return {
+        title: 'Taxes simplifiées',
+        description: t('shop.region.subtitle'),
+      };
+    }
     return {
       title: t('shop.currency.title'),
       description: t('shop.region.subtitle'),
@@ -74,7 +82,7 @@ export function CurrencyMultiSettingsPage() {
   }, [tab]);
 
   const handleTabChange = useCallback((value: string) => {
-    if (value === 'currency' || value === 'regions') {
+    if (value === 'currency' || value === 'regions' || value === 'rates') {
       setTab(value);
     }
   }, []);
@@ -126,6 +134,16 @@ export function CurrencyMultiSettingsPage() {
               {t('shop.tax.regions.title')}
             </span>
           </TabsTrigger>
+          <TabsTrigger
+            value="rates"
+            data-testid="tab-rates"
+            aria-label="Taxes simplifiées"
+          >
+            <span className="inline-flex items-center gap-1.5">
+              <Icon as={Receipt} size="sm" />
+              Taxes simplifiées
+            </span>
+          </TabsTrigger>
         </TabsList>
 
         {/* ── Tab Devises ─────────────────────────────────────────── */}
@@ -161,6 +179,11 @@ export function CurrencyMultiSettingsPage() {
           </div>
 
           <TaxRegionsManager />
+        </TabsContent>
+
+        {/* ── Tab Taxes simplifiées (Sprint 70) ────────────────── */}
+        <TabsContent value="rates" className="space-y-6 mt-4">
+          <TaxRatesManager />
         </TabsContent>
       </Tabs>
 
