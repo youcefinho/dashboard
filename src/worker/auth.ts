@@ -25,7 +25,7 @@ const loginSchema = {
     const d = data as { email?: string; password?: string };
     if (!d.email || typeof d.email !== 'string') throw 'Email requis';
     if (!d.password || typeof d.password !== 'string') throw 'Mot de passe requis';
-    if (d.password.length < 6) throw 'Mot de passe trop court (min 6 caractères)';
+    if (d.password.length < 12) throw 'Mot de passe trop court (min 12 caractères)';
     return { email: d.email.trim(), password: d.password };
   },
 };
@@ -34,7 +34,7 @@ const changePasswordSchema = {
   parse(data: unknown) {
     const d = data as { current?: string; next?: string };
     if (!d.current || !d.next) throw 'Mot de passe actuel et nouveau requis';
-    if (d.next.length < 8) throw 'Nouveau mot de passe trop court (min 8 caractères)';
+    if (d.next.length < 12) throw 'Nouveau mot de passe trop court (min 12 caractères)';
     return { current: d.current, next: d.next };
   },
 };
@@ -144,7 +144,7 @@ const registerSchema = {
     const d = data as { email?: string; password?: string; name?: string; company?: string };
     if (!d.email || typeof d.email !== 'string') throw 'Email requis';
     if (!d.password || typeof d.password !== 'string') throw 'Mot de passe requis';
-    if (d.password.length < 8) throw 'Mot de passe trop court (min 8 caractères)';
+    if (d.password.length < 12) throw 'Mot de passe trop court (min 12 caractères)';
     if (!d.name || typeof d.name !== 'string') throw 'Nom requis';
     return {
       email: d.email.trim().toLowerCase(),
@@ -339,7 +339,7 @@ export async function handleForgotPassword(request: Request, env: Env): Promise<
 
 export async function handleResetPassword(request: Request, env: Env): Promise<Response> {
   const body = await request.json().catch(() => ({}));
-  // Sprint 23 — retrofit zod : token min 10 / max 200, password min 8 / max 500.
+  // Sprint 23 — retrofit zod : token min 10 / max 200, password min 12 / max 500.
   // Avant : check manuel `if (!body.token || !body.password)`. Bornes max
   // ajoutées pour éviter payloads abusifs.
   const parsed = resetPasswordSchema.safeParse(body);

@@ -47,7 +47,7 @@ export function AcceptInvitationPage() {
     }
   }, [invalidLink]);
 
-  const passwordError = touched.password && password.length > 0 && password.length < 8
+  const passwordError = touched.password && password.length > 0 && password.length < 12
     ? t('team.accept.error_password_short')
     : '';
   // Renforcement : confirm utilise une clé dédiée (mismatch), pas la clé
@@ -59,7 +59,7 @@ export function AcceptInvitationPage() {
   // Renforcement : état "form globalement invalide" pour désactiver visuellement
   // le submit. Aide la perception (le handler re-valide quand même).
   const formInvalid =
-    password.length < 8 || confirm.length < 8 || confirm !== password;
+    password.length < 12 || confirm.length < 12 || confirm !== password;
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -69,7 +69,7 @@ export function AcceptInvitationPage() {
       setInvalidLink(true);
       return;
     }
-    if (password.length < 8) {
+    if (password.length < 12) {
       setError(t('team.accept.error_password_short'));
       return;
     }
@@ -101,7 +101,7 @@ export function AcceptInvitationPage() {
     // donc pas discriminer sur `code:'INVALID_INVITE'` ; on mappe sur le
     // `error` string réel renvoyé par handleAcceptInvitation (§6.B) :
     //   'Invitation invalide ou expirée' (INVALID_INVITE)  → lien invalide
-    //   'Mot de passe trop court (min 8 caractères)'        → password court
+    //   'Mot de passe trop court (min 12 caractères)'        → password court
     //   'Cet utilisateur existe déjà'                       → error_invalid
     const msg = ((result as { error?: string }).error || '').toLowerCase();
     if (msg.includes('invitation invalide') || msg.includes('expir')) {

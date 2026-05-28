@@ -21,7 +21,7 @@ export function ResetPasswordPage() {
       return;
     }
 
-    if (password.length < 8) {
+    if (password.length < 12) {
       setError(t('auth.reset.too_short'));
       return;
     }
@@ -125,7 +125,7 @@ export function ResetPasswordPage() {
                   placeholder={t('auth.reset.placeholder')}
                   autoComplete="new-password"
                   required
-                  minLength={8}
+                  minLength={12}
                   aria-describedby="reset-password-hint"
                 />
                 <p id="reset-password-hint" className="text-xs text-[var(--text-muted)] mt-1.5">

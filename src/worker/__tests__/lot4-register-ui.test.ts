@@ -102,7 +102,7 @@ describe('LOT 4 — register() client (§6.20)', () => {
 
   it('400 / 500 → { error } backend propagé sans token (mapping UI invalid/error)', async () => {
     const cases = [
-      [400, 'Mot de passe trop court (min 8 caractères)'],
+      [400, 'Mot de passe trop court (min 12 caractères)'],
       [500, 'Création du compte impossible'],
     ] as const;
     for (const [status, error] of cases) {

@@ -242,8 +242,8 @@ export async function handleAcceptInvitation(
   const name = sanitizeInput(body.name);
 
   if (!token) return json({ error: 'Invitation invalide ou expirée', code: 'INVALID_INVITE' }, 400);
-  if (!password || password.length < 8) {
-    return json({ error: 'Mot de passe trop court (min 8 caractères)' }, 400);
+  if (!password || password.length < 12) {
+    return json({ error: 'Mot de passe trop court (min 12 caractères)' }, 400);
   }
 
   const tokenHash = await sha256Hex(token);

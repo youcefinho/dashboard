@@ -286,8 +286,8 @@ export async function handlePortalSetPassword(
   if (!email || !password) {
     return json({ error: 'Email et mot de passe requis' }, 400);
   }
-  if (password.length < 6) {
-    return json({ error: 'Mot de passe trop court (min 6 caractères)' }, 400);
+  if (password.length < 12) {
+    return json({ error: 'Mot de passe trop court (min 12 caractères)' }, 400);
   }
 
   const tenant = await resolvePortalSiteTenant(env, slug);

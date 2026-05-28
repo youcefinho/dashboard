@@ -4,7 +4,7 @@
 // remplacement de logique vivante. Les helpers fournis ici sont des outils
 // purs (zéro I/O sauf Web Crypto) à utiliser dans tout nouveau code ou en
 // surcouche progressive — sans casser les schemas legacy d'auth.ts qui
-// restent volontairement permissifs (min 6/8 chars) pour rétro-compat
+// restent volontairement alignés à min 12 chars (NIST SP 800-63B)
 // totale avec les comptes existants.
 //
 // Sécurité production-grade :
@@ -49,7 +49,7 @@ export type AuthErrorCode = (typeof AUTH_ERROR_CODES)[keyof typeof AUTH_ERROR_CO
 
 export const MIN_PASSWORD_LENGTH = 12;
 export const MAX_PASSWORD_LENGTH = 128;
-export const MIN_PASSWORD_LENGTH_LEGACY = 6; // Schema legacy auth.ts loginSchema (rétro-compat)
+export const MIN_PASSWORD_LENGTH_LEGACY = 12; // Schema legacy auth.ts loginSchema (aligné sur MIN_PASSWORD_LENGTH)
 export const SESSION_TTL_MS = 24 * 3600 * 1000; // 24h (override prod legacy 72h conservé dans auth.ts)
 export const MAGIC_LINK_TTL_MS = 15 * 60 * 1000; // 15min
 export const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000; // 1h

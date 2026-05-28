@@ -42,7 +42,7 @@ export function SignupPage() {
   const emailError = touched.email && email.length > 0 && !emailValid
     ? t('auth.signup.invalid')
     : '';
-  const passwordError = touched.password && password.length > 0 && password.length < 8
+  const passwordError = touched.password && password.length > 0 && password.length < 12
     ? t('auth.signup.password_hint')
     : '';
   // Renforcement : erreur inline name quand champ touché ET vide.
@@ -52,13 +52,13 @@ export function SignupPage() {
 
   // Renforcement : état "form globalement invalide" pour désactiver visuellement
   // le submit (pas un blocage hard — handleSubmit re-valide). Aide la perception.
-  const formInvalid = !emailValid || password.length < 8 || name.trim().length === 0;
+  const formInvalid = !emailValid || password.length < 12 || name.trim().length === 0;
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
 
-    if (!emailValid || password.length < 8 || !name.trim()) {
+    if (!emailValid || password.length < 12 || !name.trim()) {
       setError(t('auth.signup.invalid'));
       return;
     }
