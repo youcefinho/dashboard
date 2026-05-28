@@ -2738,6 +2738,23 @@ export interface TaxRule {
   applies_from: string;
 }
 
+/**
+ * Taux de taxe simplifiés multi-régions (table `tax_rates`).
+ * Utilisé pour configurer des taxes TPS/TVQ/TVA de façon simple par pays/province.
+ */
+export interface TaxRate {
+  id: string;
+  client_id: string;
+  country: string;
+  state_province: string | null;
+  rate_tps: number;
+  rate_tvq: number;
+  rate_tva: number;
+  is_active: number;
+  created_at: string;
+  updated_at: string;
+}
+
 // ════════════════════════════════════════════════════════════
 // ── Sprint 40 ── Product Reviews + Abandoned Carts Recovery (seq135)
 // ════════════════════════════════════════════════════════════
@@ -2853,4 +2870,11 @@ export interface OrderRoutingRule {
   is_active: number;
   created_at?: string;
   updated_at?: string;
+}
+
+// ── Sprint 71 — RAG sur Base de Connaissances ──────────────────────────────
+export interface KbIndexStatus {
+  source_id: string;
+  chunks_count: number;
+  last_indexed_at: string;
 }

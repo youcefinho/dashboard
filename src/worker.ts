@@ -210,6 +210,7 @@ import {
 import {
   handleGetKBArticles, handleCreateKBArticle, handleGetKBArticle,
   handleUpdateKBArticle, handleDeleteKBArticle, handlePublicGetKBArticle,
+  handleTriggerKbIndexing, handleTriggerAllKbIndexing, handleGetKbIndexStatus,
 } from './worker/kb';
 // ── LOT G2 AFFILIATION — programme d'affiliation natif (Phase A fige le
 //    dispatch ; corps réels Phase B Manager-B dans affiliates.ts). Garde
@@ -2311,6 +2312,10 @@ async function routeProtected(
 
   if (path === '/api/kb' && method === 'GET') return handleGetKBArticles(env, auth, url);
   if (path === '/api/kb' && method === 'POST') return handleCreateKBArticle(request, env, auth);
+  if (path === '/api/kb/index-all' && method === 'POST') return handleTriggerAllKbIndexing(env, auth);
+  if (path === '/api/kb/index-status' && method === 'GET') return handleGetKbIndexStatus(env, auth);
+  const kbIndexMatch = path.match(/^\/api\/kb\/([^/]+)\/index$/);
+  if (kbIndexMatch && method === 'POST') return handleTriggerKbIndexing(env, auth, kbIndexMatch[1]!);
   const kbIdMatch = path.match(/^\/api\/kb\/([^/]+)$/);
   if (kbIdMatch && method === 'GET') return handleGetKBArticle(env, auth, kbIdMatch[1]!);
   if (kbIdMatch && method === 'PUT') return handleUpdateKBArticle(request, env, auth, kbIdMatch[1]!);
@@ -3458,6 +3463,26 @@ async function routeProtected(
         const m = await import('./worker/tax-regions');
         return m.handleDeleteTaxRule(env, auth, taxRuleDeleteMatch[1]!);
       }
+
+      // ── Tax rates (Sprint 70) ─────────────────────────────────────────────
+      if (path === '/api/tax-rates' && method === 'GET') {
+        const m = await import('./worker/ecommerce-taxes');
+        return m.handleListTaxRates(env, auth);
+      }
+      if (path === '/api/tax-rates' && method === 'POST') {
+        const m = await import('./worker/ecommerce-taxes');
+        return m.handleCreateTaxRate(request, env, auth);
+      }
+      const taxRateIdMatch = path.match(/^\/api\/tax-rates\/([^/]+)$/);
+      if (taxRateIdMatch && method === 'PUT') {
+        const m = await import('./worker/ecommerce-taxes');
+        return m.handleUpdateTaxRate(request, env, auth, taxRateIdMatch[1]!);
+      }
+      if (taxRateIdMatch && method === 'DELETE') {
+        const m = await import('./worker/ecommerce-taxes');
+        return m.handleDeleteTaxRate(env, auth, taxRateIdMatch[1]!);
+      }
+
 
       // ── Sprint 40 — Product Reviews + Abandoned Carts (AUTHED) ─────────────
       // 6 routes AUTHED. Capability `reports.view` (lecture queue + sequence

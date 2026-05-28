@@ -774,6 +774,15 @@ export async function handleTestBot(
     // Borné tenant strict. Si KB vide → retrieveTopK retournera [].
     const kbEntries = await searchKnowledge(env, clientId, scrubbedMessage);
 
+    // ── 3b. Recherche RAG sur la FAQ générale (kb_embeddings) ───────────────
+    let faqHits: Array<{ text_chunk: string; source_title: string; source_id: string; similarity: number }> = [];
+    try {
+      const { searchKbRag } = await import('./lib/kb-rag-engine');
+      faqHits = await searchKbRag(env, clientId, scrubbedMessage, 3);
+    } catch (err) {
+      console.error('[RAG] Recherche RAG sur FAQ échouée:', err);
+    }
+
     // ── 4. retrieveTopK (re-rank cosine top-3 sur résultats DB) ────────────
     // Lecture embedding_json depuis DB pour chaque entry retrouvée par LIKE.
     // OPTIMISATION : on ne lance retrieveTopK QUE si au moins une entry
@@ -833,12 +842,25 @@ export async function handleTestBot(
     // Re-rank si retrieveTopK a fourni un ordre, sinon LIKE order (kbEntries).
     const orderedKb: ChatKnowledgeBaseEntry[] =
       topHits.length > 0 ? topHits.map((h) => h.article) : kbEntries;
+
     const retrievedContext =
       orderedKb.length > 0
         ? orderedKb
             .map((a) => `- ${a.title}: ${a.content.slice(0, 500)}`)
             .join('\n')
         : '';
+
+    const retrievedFaqContext =
+      faqHits.length > 0
+        ? faqHits
+            .map((h) => `- [FAQ] ${h.source_title}: ${h.text_chunk.slice(0, 500)}`)
+            .join('\n')
+        : '';
+
+    // Concaténation des deux sources de connaissances
+    const combinedContext = [retrievedContext, retrievedFaqContext]
+      .filter((c) => c.trim().length > 0)
+      .join('\n\n');
 
     // Conserve buildBotPrompt si on a un historique (signature retro-compat) ;
     // sinon utilise buildPrompt générique (plus simple, sans bloc history).
@@ -851,8 +873,12 @@ export async function handleTestBot(
         scrubbedHistory,
         scrubbedMessage,
       );
+      // Injection de la FAQ générale dans le prompt historique si dispo
+      if (retrievedFaqContext) {
+        prompt = prompt.replace('Knowledge base context:', `Knowledge base context:\n${retrievedFaqContext}\n`);
+      }
     } else {
-      prompt = buildPrompt(systemPrompt, retrievedContext, scrubbedMessage);
+      prompt = buildPrompt(systemPrompt, combinedContext, scrubbedMessage);
     }
 
     // ── 6. truncateContext (cap ~3000 tokens / ~12000 chars) ───────────────
@@ -881,11 +907,17 @@ export async function handleTestBot(
         kb_matched: kbEntries.length,
         // RAG enrichissement (additif, non-breaking) :
         kb_retrieved: topHits.length,
-        // Loi 25 — annonce explicite que message a été scrubed avant LLM.
-        pii_scrubbed: scrubbedMessage !== message,
-        // Safety filter — escalation_required si keyword OR confidence < MIN_CONFIDENCE 0.5.
+        faq_matched: faqHits.length,
+        faq_hits: faqHits.map(h => ({
+          title: h.source_title,
+          chunk: h.text_chunk.slice(0, 100) + '...',
+          score: h.similarity
+        })),
+        // Safety check
         escalation_required: escalation.escalate,
         ...(escalation.reason ? { escalation_reason: escalation.reason } : {}),
+        // Loi 25 — annonce explicite que message a été scrubed avant LLM.
+        pii_scrubbed: scrubbedMessage !== message,
       },
     });
   } catch (err) {

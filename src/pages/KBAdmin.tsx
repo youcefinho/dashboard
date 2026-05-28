@@ -34,6 +34,7 @@ import {
 } from '@/lib/api';
 import { t } from '@/lib/i18n';
 import { BookOpen, ExternalLink, Plus, Trash2, Eye } from 'lucide-react';
+import { KbIndexManager } from '@/components/kb/KbIndexManager';
 
 type Draft = {
   id?: string;
@@ -57,6 +58,7 @@ export function KBAdminPage() {
   const { success, error: toastError } = useToast();
   const { articleId } = useParams({ strict: false }) as { articleId?: string };
 
+  const [activeTab, setActiveTab] = useState<'articles' | 'rag'>('articles');
   const [articles, setArticles] = useState<KBArticle[]>([]);
   const [loading, setLoading] = useState(true);
   // Renforcement — error state
@@ -183,17 +185,59 @@ export function KBAdminPage() {
             </h1>
             <p className="t-caption">{t('kb.articles_count', { n: articles.length })}</p>
           </div>
-          <Button
-            variant="primary"
-            size="sm"
-            leftIcon={<Plus size={14} />}
-            onClick={() => openEditor()}
-          >
-            {t('kb.new')}
-          </Button>
+          {activeTab === 'articles' && (
+            <Button
+              variant="primary"
+              size="sm"
+              leftIcon={<Plus size={14} />}
+              onClick={() => openEditor()}
+            >
+              {t('kb.new')}
+            </Button>
+          )}
         </div>
 
-        {loading ? (
+        {/* Onglets de navigation FAQ / RAG */}
+        <div style={{ display: 'flex', gap: 16, borderBottom: '1px solid var(--border)', marginBottom: 16 }}>
+          <button
+            onClick={() => setActiveTab('articles')}
+            style={{
+              padding: '8px 4px',
+              borderBottom: activeTab === 'articles' ? '2px solid var(--brand-primary)' : '2px solid transparent',
+              color: activeTab === 'articles' ? 'var(--text)' : 'var(--text-muted)',
+              background: 'none',
+              borderLeft: 'none',
+              borderRight: 'none',
+              borderTop: 'none',
+              cursor: 'pointer',
+              fontWeight: 500,
+              fontSize: '14px',
+            }}
+          >
+            Articles FAQ
+          </button>
+          <button
+            onClick={() => setActiveTab('rag')}
+            style={{
+              padding: '8px 4px',
+              borderBottom: activeTab === 'rag' ? '2px solid var(--brand-primary)' : '2px solid transparent',
+              color: activeTab === 'rag' ? 'var(--text)' : 'var(--text-muted)',
+              background: 'none',
+              borderLeft: 'none',
+              borderRight: 'none',
+              borderTop: 'none',
+              cursor: 'pointer',
+              fontWeight: 500,
+              fontSize: '14px',
+            }}
+          >
+            Base Vectorielle RAG
+          </button>
+        </div>
+
+        {activeTab === 'rag' ? (
+          <KbIndexManager />
+        ) : loading ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }} aria-busy="true" aria-live="polite">
             {[0, 1, 2].map((i) => (
               <Skeleton key={i} className="h-12 w-full rounded-[var(--radius-md)]" />

@@ -1,6 +1,6 @@
 // ── Client API — Helpers pour appeler le worker ─────────────
 
-import type { ApiResponse, Client, Lead, LeadDetail, DashboardStats, ActivityLogEntry, Message, EmailTemplate, Workflow, WorkflowStep, WorkflowEnrollment, SequenceStats, Appointment, Task, Subtask, TaskComment, TaskTemplate, LeadNote, LeadScore, CustomFieldValue, Conversation, ConversationStatus, Pipeline, PipelineStage, CustomFieldDef, SmartList, Snippet, Product, Order, Customer, ProductVariant, ProductCategory, ProductImage, InventoryRecord, PaymentInitResult, PaymentMethod, PaymentStatus, Shipment, ShipmentStatus, ShippingZone, ShippingRate, ShippingRateResult, ConsumerPolicy, ReturnRequest, Customer360, AbandonedCart, EcommerceRevenue, EcommerceCohorts, EcommerceLtv, EcommerceTopProducts, EcommerceSalesByChannel, ProductRecoResult, CustomerChurnPrediction, AiChatThread, AiChatMessage, AiPageContext, CustomHostname, OauthConnection, SmsTemplate, WhatsAppConnection, ExecLogEntry, WorkflowTemplate, WorkflowSimulationResult, FormFieldAnalyticsRow, StorefrontProduct, PublicCart, StoreSettings, CheckoutInput, CheckoutResult, PrivateFeedback, ReputationSettings, PublicReviewPage, SocialAccount, SocialPost, SocialProvider, AiContentFormat, AiContentItem, AiBrandVoice, ConversionBaseline, ConversionPrediction, ForecastResponse, ForecastTarget, ReportTemplate, OnboardingChecklistItemKey, OnboardingChecklistResponse, CookieConsent, CookieConsentRecord, AccountDeletionRequest, MyDataExport, AuditLogEntry, AuditLogQuery, CapabilityOverride, AlertRule, AlertEvent, AlertConditionType, AlertChannel, ObservabilityHealth, RequestMetricsBucket, ReleaseGatesStatus } from './types';
+import type { ApiResponse, Client, Lead, LeadDetail, DashboardStats, ActivityLogEntry, Message, EmailTemplate, Workflow, WorkflowStep, WorkflowEnrollment, SequenceStats, Appointment, Task, Subtask, TaskComment, TaskTemplate, LeadNote, LeadScore, CustomFieldValue, Conversation, ConversationStatus, Pipeline, PipelineStage, CustomFieldDef, SmartList, Snippet, Product, Order, Customer, ProductVariant, ProductCategory, ProductImage, InventoryRecord, PaymentInitResult, PaymentMethod, PaymentStatus, Shipment, ShipmentStatus, ShippingZone, ShippingRate, ShippingRateResult, ConsumerPolicy, ReturnRequest, Customer360, AbandonedCart, EcommerceRevenue, EcommerceCohorts, EcommerceLtv, EcommerceTopProducts, EcommerceSalesByChannel, ProductRecoResult, CustomerChurnPrediction, AiChatThread, AiChatMessage, AiPageContext, CustomHostname, OauthConnection, SmsTemplate, WhatsAppConnection, ExecLogEntry, WorkflowTemplate, WorkflowSimulationResult, FormFieldAnalyticsRow, StorefrontProduct, PublicCart, StoreSettings, CheckoutInput, CheckoutResult, PrivateFeedback, ReputationSettings, PublicReviewPage, SocialAccount, SocialPost, SocialProvider, AiContentFormat, AiContentItem, AiBrandVoice, ConversionBaseline, ConversionPrediction, ForecastResponse, ForecastTarget, ReportTemplate, OnboardingChecklistItemKey, OnboardingChecklistResponse, CookieConsent, CookieConsentRecord, AccountDeletionRequest, MyDataExport, AuditLogEntry, AuditLogQuery, CapabilityOverride, AlertRule, AlertEvent, AlertConditionType, AlertChannel, ObservabilityHealth, RequestMetricsBucket, ReleaseGatesStatus, KbIndexStatus } from './types';
 export type { Lead };
 import { Capacitor } from '@capacitor/core';
 import { MOCK_DASHBOARD_STATS, MOCK_CLIENTS, MOCK_LEADS } from './mockData';
@@ -4405,6 +4405,18 @@ export async function listDisputes(): Promise<ApiResponse<DisputeRecord[]>> {
 }
 
 /**
+ * GET /api/ecommerce/returns — récupère toutes les demandes de retour (RMA) du tenant (M2).
+ */
+export async function listAllReturns(params?: {
+  order_id?: string;
+}): Promise<ApiResponse<ReturnRequest[]>> {
+  const sp = new URLSearchParams();
+  if (params?.order_id) sp.set('order_id', params.order_id);
+  const qs = sp.toString();
+  return apiFetch<ReturnRequest[]>(`/ecommerce/returns${qs ? `?${qs}` : ''}`);
+}
+
+/**
  * GET /api/ecommerce/returns?order_id= — demandes de retour d'une commande
  * (M2). Dégrade proprement (liste vide via error) si pas encore câblé.
  */
@@ -6246,6 +6258,20 @@ export async function deleteKBArticle(
   id: string,
 ): Promise<ApiResponse<{ success: true }>> {
   return apiFetch<{ success: true }>(`/kb/${id}`, { method: 'DELETE' });
+}
+
+export async function triggerKbIndexing(
+  id: string,
+): Promise<ApiResponse<{ success: boolean; chunksCount: number }>> {
+  return apiFetch<{ success: boolean; chunksCount: number }>(`/kb/${id}/index`, { method: 'POST' });
+}
+
+export async function triggerAllKbIndexing(): Promise<ApiResponse<{ success: boolean; totalChunks: number }>> {
+  return apiFetch<{ success: boolean; totalChunks: number }>('/kb/index-all', { method: 'POST' });
+}
+
+export async function getKbIndexStatus(): Promise<ApiResponse<KbIndexStatus[]>> {
+  return apiFetch<KbIndexStatus[]>('/kb/index-status');
 }
 
 // ── Public (fetch brut, sans auth — calque getPublicFunnel) ─────────────────
@@ -8680,7 +8706,20 @@ import type {
   SupportedCurrencyExt,
   TaxRegion,
   TaxRule,
+  TaxRate,
 } from './types';
+
+export interface CreateTaxRateInput {
+  country: string;
+  state_province?: string | null;
+  rate_tps?: number;
+  rate_tvq?: number;
+  rate_tva?: number;
+  is_active?: number;
+}
+
+export type UpdateTaxRateInput = Partial<CreateTaxRateInput>;
+
 
 export interface CurrencyRateFilters {
   base?: SupportedCurrencyExt;
@@ -8810,6 +8849,40 @@ export async function deleteTaxRule(
     method: 'DELETE',
   });
 }
+
+// ── Tax rates (Sprint 70) ───────────────────────────────────────────────────
+
+export async function listTaxRates(): Promise<ApiResponse<TaxRate[]>> {
+  return apiFetch<TaxRate[]>('/tax-rates');
+}
+
+export async function createTaxRate(
+  input: CreateTaxRateInput,
+): Promise<ApiResponse<TaxRate>> {
+  return apiFetch<TaxRate>('/tax-rates', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateTaxRate(
+  id: string,
+  input: UpdateTaxRateInput,
+): Promise<ApiResponse<TaxRate>> {
+  return apiFetch<TaxRate>(`/tax-rates/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteTaxRate(
+  id: string,
+): Promise<ApiResponse<{ ok: true }>> {
+  return apiFetch<{ ok: true }>(`/tax-rates/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  });
+}
+
 
 // ════════════════════════════════════════════════════════════
 // ── Sprint 40 ── Product Reviews + Abandoned Carts Recovery (seq135)

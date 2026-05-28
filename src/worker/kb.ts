@@ -213,6 +213,17 @@ export async function handleCreateKBArticle(
         at,
       )
       .run();
+
+    // Indexation RAG asynchrone (best-effort)
+    const finalClientId = clientId || '';
+    import('./lib/kb-rag-engine').then(m => {
+      m.indexArticleChunks(env, finalClientId, id, title, bodyMd, status as 'draft' | 'published').catch(err => {
+        console.error('[RAG] Indexation asynchrone échouée lors de la création:', err);
+      });
+    }).catch(err => {
+      console.error('[RAG] Echec du chargement dynamique du moteur RAG:', err);
+    });
+
     return json({ data: { id } }, 201);
   } catch {
     return json({ error: 'Création impossible' }, 404);
@@ -303,6 +314,35 @@ export async function handleUpdateKBArticle(
     )
       .bind(...binds)
       .run();
+
+    // Récupérer l'état final de l'article pour ré-indexer de manière asynchrone (best-effort)
+    const clientId = auth.tenant?.clientId ?? auth.clientId ?? '';
+    const finalClientId = clientId || '';
+    env.DB.prepare('SELECT title, body_md, status, client_id FROM kb_articles WHERE id = ?')
+      .bind(articleId)
+      .first()
+      .then(finalRow => {
+        if (finalRow) {
+          import('./lib/kb-rag-engine').then(m => {
+            m.indexArticleChunks(
+              env,
+              (finalRow.client_id as string) || finalClientId,
+              articleId,
+              String(finalRow.title ?? ''),
+              String(finalRow.body_md ?? ''),
+              (finalRow.status as 'draft' | 'published') ?? 'draft'
+            ).catch(err => {
+              console.error('[RAG] Indexation asynchrone échouée lors de la mise à jour:', err);
+            });
+          }).catch(err => {
+            console.error('[RAG] Echec du chargement dynamique du moteur RAG pour ré-indexation:', err);
+          });
+        }
+      })
+      .catch(err => {
+        console.error('[RAG] Erreur lors de la récupération pour ré-indexation:', err);
+      });
+
     return json({ data: { success: true } });
   } catch {
     return json({ error: 'Article introuvable' }, 404);
@@ -325,6 +365,16 @@ export async function handleDeleteKBArticle(
     await env.DB.prepare('DELETE FROM kb_articles WHERE id = ?')
       .bind(articleId)
       .run();
+
+    // Suppression des chunks vectoriels
+    const clientId = auth.tenant?.clientId ?? auth.clientId ?? '';
+    env.DB.prepare('DELETE FROM kb_embeddings WHERE client_id = ? AND source_id = ?')
+      .bind(clientId, articleId)
+      .run()
+      .catch(err => {
+        console.error('[RAG] Echec du nettoyage des chunks à la suppression de l\'article:', err);
+      });
+
     return json({ data: { success: true } });
   } catch {
     return json({ error: 'Article introuvable' }, 404);
@@ -383,3 +433,89 @@ export async function handlePublicGetKBArticle(
     return json({ error: 'Article non trouvé' }, 404);
   }
 }
+
+// ── PROTÉGÉ : Réindexer un article KB via RAG (Indexation manuelle) ──────────
+export async function handleTriggerKbIndexing(
+  env: Env,
+  auth: TicketAuth,
+  articleId: string
+): Promise<Response> {
+  const g = helpdeskCapGuard(auth);
+  if (g) return g;
+  const articleOr = await loadKBInTenant(env, articleId, auth);
+  if (articleOr instanceof Response) return articleOr;
+  const article = articleOr;
+
+  const clientId = (article.client_id as string) || auth.tenant?.clientId || auth.clientId || '';
+  const { indexArticleChunks } = await import('./lib/kb-rag-engine');
+  const res = await indexArticleChunks(
+    env,
+    clientId,
+    articleId,
+    String(article.title ?? ''),
+    String(article.body_md ?? ''),
+    (article.status as 'draft' | 'published') ?? 'draft'
+  );
+  return json({ data: res });
+}
+
+// ── PROTÉGÉ : Réindexer tous les articles KB d'un coup ───────────────────────
+export async function handleTriggerAllKbIndexing(
+  env: Env,
+  auth: TicketAuth
+): Promise<Response> {
+  const g = helpdeskCapGuard(auth);
+  if (g) return g;
+  const clientId = auth.tenant?.clientId ?? auth.clientId ?? '';
+
+  try {
+    const { results } = await env.DB.prepare(
+      "SELECT id, title, body_md, status FROM kb_articles WHERE client_id = ?"
+    )
+      .bind(clientId)
+      .all();
+
+    const { indexArticleChunks } = await import('./lib/kb-rag-engine');
+    let totalChunks = 0;
+    for (const a of (results || []) as Array<Record<string, unknown>>) {
+      const res = await indexArticleChunks(
+        env,
+        clientId,
+        String(a.id),
+        String(a.title ?? ''),
+        String(a.body_md ?? ''),
+        (a.status as 'draft' | 'published') ?? 'draft'
+      );
+      totalChunks += res.chunksCount;
+    }
+    return json({ data: { success: true, totalChunks } });
+  } catch (err) {
+    return json({ error: err instanceof Error ? err.message : String(err) }, 500);
+  }
+}
+
+// ── PROTÉGÉ : Obtenir le statut d'indexation vectorielle (RAG) ───────────────
+export async function handleGetKbIndexStatus(
+  env: Env,
+  auth: TicketAuth
+): Promise<Response> {
+  const g = helpdeskCapGuard(auth);
+  if (g) return g;
+  const clientId = auth.tenant?.clientId ?? auth.clientId ?? '';
+
+  try {
+    const { results } = await env.DB.prepare(
+      `SELECT source_id, COUNT(*) as chunks_count, MAX(created_at) as last_indexed_at
+       FROM kb_embeddings
+       WHERE client_id = ?
+       GROUP BY source_id`
+    )
+      .bind(clientId)
+      .all();
+
+    return json({ data: results || [] });
+  } catch (err) {
+    return json({ error: err instanceof Error ? err.message : String(err) }, 500);
+  }
+}
+

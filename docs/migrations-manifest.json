@@ -2220,6 +2220,30 @@
         "index:uniq_tier_prices_variant_group_qty"
       ],
       "risk": "low"
+    },
+    {
+      "seq": 160,
+      "file": "migration-tax-rates-seq164.sql",
+      "depends_on": [
+        "migration-b2b-pricing-seq163.sql"
+      ],
+      "objects": [
+        "table:tax_rates",
+        "index:idx_tax_rates_client_country"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 161,
+      "file": "migration-kb-embeddings-seq165.sql",
+      "depends_on": [
+        "migration-tax-rates-seq164.sql"
+      ],
+      "objects": [
+        "table:kb_embeddings",
+        "index:idx_kb_embeddings_client_source"
+      ],
+      "risk": "low"
     }
   ]
 }
