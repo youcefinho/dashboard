@@ -177,7 +177,7 @@ describe('TEAM A — handleAcceptInvitation (CONTRAT §6.B)', () => {
     return { env: { DB: db } as unknown as Env, db };
   }
 
-  it('token valide + password ≥8 ⇒ INSERT users (role technique mappé) + finishLogin', async () => {
+  it('token valide + password ≥12 ⇒ INSERT users (role technique mappé) + finishLogin', async () => {
     const { env, db } = seqEnv({
       invite: {
         id: 'inv-1',
@@ -191,7 +191,7 @@ describe('TEAM A — handleAcceptInvitation (CONTRAT §6.B)', () => {
     const res = await handleAcceptInvitation(
       jreq('http://x/api/team/invites/accept', {
         token: 'sometoken-clear-value',
-        password: 'longenough8',
+        password: 'longenough12xx',
         name: 'Mary',
       }),
       env,
@@ -242,7 +242,7 @@ describe('TEAM A — handleAcceptInvitation (CONTRAT §6.B)', () => {
         },
       });
       await handleAcceptInvitation(
-        jreq('http://x/api/team/invites/accept', { token: 't', password: 'password8' }),
+        jreq('http://x/api/team/invites/accept', { token: 't', password: 'password12xxyz' }),
         env,
       );
       const insertUser = db.calls.find((c) => /insert into users/i.test(c.sql));
@@ -262,7 +262,7 @@ describe('TEAM A — handleAcceptInvitation (CONTRAT §6.B)', () => {
   it('token introuvable / expiré (status≠pending OU expires_at dépassé) ⇒ 400 INVALID_INVITE', async () => {
     const { env } = seqEnv({ invite: null }); // SELECT WHERE status='pending' AND expires_at>now ⇒ null
     const res = await handleAcceptInvitation(
-      jreq('http://x/api/team/invites/accept', { token: 'expired', password: 'password8' }),
+      jreq('http://x/api/team/invites/accept', { token: 'expired', password: 'password12xxyz' }),
       env,
     );
     expect(res.status).toBe(400);
@@ -276,14 +276,14 @@ describe('TEAM A — handleAcceptInvitation (CONTRAT §6.B)', () => {
     // Le SELECT filtre status='pending' : une invite déjà acceptée renvoie null.
     const { env } = seqEnv({ invite: null });
     const res = await handleAcceptInvitation(
-      jreq('http://x/api/team/invites/accept', { token: 'reused', password: 'password8' }),
+      jreq('http://x/api/team/invites/accept', { token: 'reused', password: 'password12xxyz' }),
       env,
     );
     expect(res.status).toBe(400);
     expect((await res.json()).code).toBe('INVALID_INVITE');
   });
 
-  it('password < 8 ⇒ 400, AUCUN INSERT users', async () => {
+  it('password < 12 ⇒ 400, AUCUN INSERT users', async () => {
     const { env, db } = seqEnv({
       invite: { id: 'i', email: 'a@b.co', agency_id: 'ag', scope: 'agency', client_id: null, role: 'member' },
     });
@@ -298,7 +298,7 @@ describe('TEAM A — handleAcceptInvitation (CONTRAT §6.B)', () => {
   it('token manquant ⇒ 400 INVALID_INVITE', async () => {
     const { env } = seqEnv({ invite: null });
     const res = await handleAcceptInvitation(
-      jreq('http://x/api/team/invites/accept', { password: 'password8' }),
+      jreq('http://x/api/team/invites/accept', { password: 'password12xxyz' }),
       env,
     );
     expect(res.status).toBe(400);
