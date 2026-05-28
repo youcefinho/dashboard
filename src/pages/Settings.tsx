@@ -58,6 +58,8 @@ import { ChannelSettings } from '@/components/settings/ChannelSettings';
 import { MigrationImportSettings } from '@/components/settings/MigrationImportSettings';
 // Sprint 3 GIGA — Templates SMS (LOT SMS/WhatsApp seq104)
 import { SmsTemplates } from '@/pages/settings/SmsTemplates';
+// Sprint 51 — Routage Dynamique de Numéros Virtuels
+import { PhoneNumbersSettings } from '@/components/settings/PhoneNumbersSettings';
 // ── Self-service additif : white-label (getWhitelabel/updateWhitelabel),
 //    préférences notifications (setNotificationPreferences), enregistrement
 //    push de l'appareil (registerDevice/unregisterDevice). 100 % additif —
@@ -221,7 +223,7 @@ export function SettingsPage() {
       case 'conso_conformite': return <ConsumerPolicySettings />;
       case 'canaux': return <ChannelSettings />;
       case 'migration_import': return <MigrationImportSettings />;
-      case 'telephonie': return <TelephonySettings />;
+      case 'telephonie': return <TelephonyTabSettings />;
       case 'sms_templates': return <SmsTemplates />;
       // Placeholder pour les autres
       default: return (
@@ -606,6 +608,49 @@ function PacksSettings() {
           </Card>
         ))
       ) : null}
+    </div>
+  );
+}
+
+// ── Sprint 51 — Routage Dynamique de Numéros Virtuels ────────────────────────
+// Wrapper pour basculer entre la gestion des menus SVI (IVR) et la gestion
+// des numéros de téléphone virtuels avec leurs règles de routage dynamique.
+function TelephonyTabSettings() {
+  const [subTab, setSubTab] = useState<'ivr' | 'numbers'>('ivr');
+
+  return (
+    <div className="space-y-6">
+      {/* Sélecteur d'onglets segmenté Premium */}
+      <div className="flex border-b border-[var(--border-subtle)] pb-px gap-6">
+        <button
+          onClick={() => setSubTab('ivr')}
+          className={`pb-3 text-sm font-semibold relative px-1 transition-all cursor-pointer ${
+            subTab === 'ivr'
+              ? 'text-[var(--primary)] font-bold'
+              : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
+          }`}
+        >
+          {t('telephony.ivr.title')}
+          {subTab === 'ivr' && (
+            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--primary)] rounded-full" />
+          )}
+        </button>
+        <button
+          onClick={() => setSubTab('numbers')}
+          className={`pb-3 text-sm font-semibold relative px-1 transition-all cursor-pointer ${
+            subTab === 'numbers'
+              ? 'text-[var(--primary)] font-bold'
+              : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
+          }`}
+        >
+          {t('telephony.phoneNumbers.title')}
+          {subTab === 'numbers' && (
+            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--primary)] rounded-full" />
+          )}
+        </button>
+      </div>
+
+      {subTab === 'ivr' ? <TelephonySettings /> : <PhoneNumbersSettings />}
     </div>
   );
 }

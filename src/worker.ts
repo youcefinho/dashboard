@@ -303,6 +303,11 @@ import {
   handleGetWebhooks, handleCreateWebhook, handleDeleteWebhook,
   handleGetClientCompliance, handleUpdateClientCompliance
 } from './worker/settings';
+import {
+  handleGetPhoneNumbers, handleSearchPhoneNumbers,
+  handlePurchasePhoneNumber, handleReleasePhoneNumber,
+  handleGetRoutingRules, handleSaveRoutingRules
+} from './worker/phone-numbers';
 
 import { handleGetUsers, handleInviteUser, handleUpdateUserRole, handleDeleteUser, handleGetRoles, handleAcceptInvitation, handleRevokeInvitation, handleResendInvitation, handleListInvitations } from './worker/team';
 // ── LOT TEAM B/C — capabilities + sous-comptes (Phase A fige le dispatch) ───
@@ -4095,6 +4100,16 @@ async function routeProtected(
     const { handleTestWebhook } = await import('./worker/settings');
     return handleTestWebhook(request, env);
   }
+
+  // Routage de numéros virtuels (Sprint 51)
+  if (path === '/api/phone-numbers' && method === 'GET') return handleGetPhoneNumbers(request, env, auth);
+  if (path === '/api/phone-numbers/search' && method === 'GET') return handleSearchPhoneNumbers(request, env, auth);
+  if (path === '/api/phone-numbers/purchase' && method === 'POST') return handlePurchasePhoneNumber(request, env, auth);
+  const pnIdMatch = path.match(/^\/api\/phone-numbers\/([^/]+)$/);
+  if (pnIdMatch && method === 'DELETE') return handleReleasePhoneNumber(request, env, auth, pnIdMatch[1]!);
+  const pnRoutingMatch = path.match(/^\/api\/phone-numbers\/([^/]+)\/routing$/);
+  if (pnRoutingMatch && method === 'GET') return handleGetRoutingRules(request, env, auth, pnRoutingMatch[1]!);
+  if (pnRoutingMatch && method === 'POST') return handleSaveRoutingRules(request, env, auth, pnRoutingMatch[1]!);
 
   if (path === '/api/team/users' && method === 'GET') return handleGetUsers(request, env, auth);
   if (path === '/api/team/invites' && method === 'GET') return handleListInvitations(request, env, auth);

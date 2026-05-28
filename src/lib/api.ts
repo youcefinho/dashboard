@@ -209,6 +209,71 @@ export async function acceptInvitation(
   return result;
 }
 
+// ── Téléphonie & Numéros Virtuels (Sprint 51) ─────────────────
+export interface VirtualPhoneNumber {
+  id: string;
+  client_id: string;
+  phone_number: string;
+  friendly_name: string;
+  twilio_sid: string;
+  status: 'active' | 'suspended' | 'released';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PhoneRoutingRule {
+  id: string;
+  phone_number_id: string;
+  priority: number;
+  condition_type: 'all' | 'area_code';
+  condition_value: string;
+  target_type: 'user' | 'ivr' | 'forward';
+  target_id: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export async function getVirtualPhoneNumbers(): Promise<ApiResponse<VirtualPhoneNumber[]>> {
+  return apiFetch<VirtualPhoneNumber[]>('/phone-numbers');
+}
+
+export async function searchVirtualPhoneNumbers(areaCode: string): Promise<ApiResponse<Array<{
+  phone_number: string;
+  friendly_name: string;
+  rate_center: string;
+  region: string;
+  iso_country: string;
+}>>> {
+  return apiFetch(`/phone-numbers/search?areaCode=${encodeURIComponent(areaCode)}`);
+}
+
+export async function purchaseVirtualPhoneNumber(body: {
+  phone_number: string;
+  friendly_name?: string;
+}): Promise<ApiResponse<VirtualPhoneNumber>> {
+  return apiFetch<VirtualPhoneNumber>('/phone-numbers/purchase', {
+    method: 'POST',
+    body: JSON.stringify(body)
+  });
+}
+
+export async function releaseVirtualPhoneNumber(id: string): Promise<ApiResponse<{ success: boolean }>> {
+  return apiFetch<{ success: boolean }>(`/phone-numbers/${id}`, {
+    method: 'DELETE'
+  });
+}
+
+export async function getPhoneRoutingRules(numberId: string): Promise<ApiResponse<PhoneRoutingRule[]>> {
+  return apiFetch<PhoneRoutingRule[]>(`/phone-numbers/${numberId}/routing`);
+}
+
+export async function savePhoneRoutingRules(numberId: string, rules: Array<Partial<PhoneRoutingRule>>): Promise<ApiResponse<{ success: boolean }>> {
+  return apiFetch<{ success: boolean }>(`/phone-numbers/${numberId}/routing`, {
+    method: 'POST',
+    body: JSON.stringify({ rules })
+  });
+}
+
 // ── LOT TEAM A (Phase B / M2) — gestion d'équipe ─────────────
 // Tous via apiFetch (auth + X-Sub-Account injectés). Remplace les `fetch`
 // bruts sans header de l'ancien TeamSettings (mock). Endpoints figés §6.B.

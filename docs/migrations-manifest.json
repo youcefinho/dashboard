@@ -2037,6 +2037,20 @@
         "index:idx_dns_records_domain"
       ],
       "risk": "low"
+    },
+    {
+      "seq": 146,
+      "file": "migration-phone-numbers-seq146.sql",
+      "depends_on": [
+        "migration-surveys-dns-seq145.sql"
+      ],
+      "objects": [
+        "table:phone_numbers",
+        "table:phone_routing_rules",
+        "index:idx_phone_numbers_client",
+        "index:idx_phone_routing_rules_num"
+      ],
+      "risk": "low"
     }
   ]
 }
