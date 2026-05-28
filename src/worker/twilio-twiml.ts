@@ -26,7 +26,7 @@
 
 import type { Env } from './types';
 import { verifyTwilioSignature } from './twilio-verify';
-import { downloadRecordingToR2, buildRecordingR2Key } from './lib/twilio-voice';
+import { downloadRecordingToR2, buildRecordingR2Key, transcribeRecording } from './lib/twilio-voice';
 
 // ── Helpers locaux ──────────────────────────────────────────────────────────
 
@@ -215,6 +215,7 @@ export async function handleTwilioVoicemailTwiml(request: Request, env: Env): Pr
 export async function handleTwilioRecordingStatusCallback(
   request: Request,
   env: Env,
+  ctx?: ExecutionContext,
 ): Promise<Response> {
   try {
     const params = await parseFormParams(request);
@@ -362,15 +363,17 @@ export async function handleTwilioRecordingStatusCallback(
           voicemailClientId = null;
         }
       }
+      const voicemailId = crypto.randomUUID();
+      let shouldTranscribe = false;
       try {
         await env.DB.prepare(
           `INSERT INTO voicemails
              (id, client_id, from_number, to_number, recording_url, recording_sid,
               recording_r2_key, duration_sec, transcription_status, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', datetime('now'))`,
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
         )
           .bind(
-            crypto.randomUUID(),
+            voicemailId,
             voicemailClientId,
             fromNumber || null,
             toNumber || null,
@@ -378,10 +381,41 @@ export async function handleTwilioRecordingStatusCallback(
             recordingSid,
             uploadedToR2 ? r2Key : null,
             safeDuration,
+            env.OPENAI_API_KEY ? 'pending' : 'skipped',
           )
           .run();
+        shouldTranscribe = !!env.OPENAI_API_KEY;
       } catch {
         // best-effort : table seq 129 absente.
+      }
+
+      // Si OPENAI_API_KEY est configurée et qu'on a R2 ou URL, on lance Whisper de manière asynchrone
+      if (shouldTranscribe && (uploadedToR2 || recordingUrl) && ctx) {
+        ctx.waitUntil((async () => {
+          try {
+            const audioRef = uploadedToR2 ? r2Key : recordingUrl;
+            const trans = await transcribeRecording(env, audioRef, 'fr');
+            if (trans.success && trans.data?.text) {
+              await env.DB.prepare(
+                `UPDATE voicemails
+                    SET transcription = ?,
+                        transcription_status = 'done',
+                        transcription_lang = ?
+                  WHERE id = ?`,
+              )
+                .bind(trans.data.text, trans.data.lang || 'fr', voicemailId)
+                .run();
+            } else {
+              await env.DB.prepare(
+                `UPDATE voicemails SET transcription_status = 'failed' WHERE id = ?`,
+              )
+                .bind(voicemailId)
+                .run();
+            }
+          } catch {
+            // best-effort
+          }
+        })());
       }
     }
 

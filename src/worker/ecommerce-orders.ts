@@ -37,10 +37,10 @@ import {
   updateOrderStatusSchema,
 } from '../lib/schemas';
 import { validationError } from './lib/validate-response';
-// Renforcement V2 — helpers PUR engine (validation transition commandes).
 import {
   validateOrderTransition,
   ORDER_ERROR_CODES,
+  ORDER_TRANSITIONS,
 } from './lib/orders-engine';
 
 type Auth = { userId: string; role: string };
@@ -509,11 +509,15 @@ export async function handleUpdateOrderStatus(
   // Renforcement V2 — transition validée par engine PUR (machine à états centralisée).
   const allowed = validateOrderTransition(current, next);
   if (!allowed) {
+    const transitions = ORDER_TRANSITIONS[current as OrderStatus] || [];
+    const transitionMsg = transitions.length === 0
+      ? 'aucune (état terminal)'
+      : `Transitions permises : ${transitions.join(', ')}`;
     return json(
       {
         error: 'Transition invalide',
         error_code: ORDER_ERROR_CODES.INVALID_TRANSITION,
-        message: `Impossible de passer de « ${current} » à « ${next} ».`,
+        message: `Impossible de passer de « ${current} » à « ${next} ». ${transitionMsg}`,
       },
       409,
     );

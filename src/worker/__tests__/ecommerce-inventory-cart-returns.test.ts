@@ -361,7 +361,7 @@ describe('handleCreateReturn — création RMA valide & cas invalides', () => {
     db.seed('from return_requests where id = ? and client_id', [
       {
         id: 'rma-1', client_id: CLIENT_A, order_id: 'o1', status: 'pending',
-        reason: 'défectueux', region_snapshot: null,
+        reason: 'defective', region_snapshot: null,
         created_at: '2026-01-01', updated_at: '2026-01-01',
       },
     ]);
@@ -373,7 +373,7 @@ describe('handleCreateReturn — création RMA valide & cas invalides', () => {
       req({
         order_id: 'o1',
         items: [{ order_item_id: 'oi-1', quantity: 2 }],
-        reason: 'défectueux',
+        reason: 'defective',
       }),
       ecomEnv(db) as never,
       AUTH,

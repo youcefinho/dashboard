@@ -60,6 +60,8 @@ import { MigrationImportSettings } from '@/components/settings/MigrationImportSe
 import { SmsTemplates } from '@/pages/settings/SmsTemplates';
 // Sprint 51 — Routage Dynamique de Numéros Virtuels
 import { PhoneNumbersSettings } from '@/components/settings/PhoneNumbersSettings';
+// Sprint 53 — Messagerie Vocale & Transcription Whisper
+import { VoicemailInbox } from '@/components/calls/VoicemailInbox';
 // ── Self-service additif : white-label (getWhitelabel/updateWhitelabel),
 //    préférences notifications (setNotificationPreferences), enregistrement
 //    push de l'appareil (registerDevice/unregisterDevice). 100 % additif —
@@ -616,7 +618,7 @@ function PacksSettings() {
 // Wrapper pour basculer entre la gestion des menus SVI (IVR) et la gestion
 // des numéros de téléphone virtuels avec leurs règles de routage dynamique.
 function TelephonyTabSettings() {
-  const [subTab, setSubTab] = useState<'ivr' | 'numbers'>('ivr');
+  const [subTab, setSubTab] = useState<'ivr' | 'numbers' | 'voicemail'>('ivr');
 
   return (
     <div className="space-y-6">
@@ -648,9 +650,28 @@ function TelephonyTabSettings() {
             <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--primary)] rounded-full" />
           )}
         </button>
+        <button
+          onClick={() => setSubTab('voicemail')}
+          className={`pb-3 text-sm font-semibold relative px-1 transition-all cursor-pointer ${
+            subTab === 'voicemail'
+              ? 'text-[var(--primary)] font-bold'
+              : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
+          }`}
+        >
+          {t('voice.voicemail.inbox_title')}
+          {subTab === 'voicemail' && (
+            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--primary)] rounded-full" />
+          )}
+        </button>
       </div>
 
-      {subTab === 'ivr' ? <TelephonySettings /> : <PhoneNumbersSettings />}
+      {subTab === 'ivr' ? (
+        <TelephonySettings />
+      ) : subTab === 'numbers' ? (
+        <PhoneNumbersSettings />
+      ) : (
+        <VoicemailInbox />
+      )}
     </div>
   );
 }

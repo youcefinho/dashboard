@@ -1080,7 +1080,7 @@ export default {
       }
       if (path === '/api/twilio/twiml/recording-status' && method === 'POST') {
         const m = await import('./worker/twilio-twiml');
-        return m.handleTwilioRecordingStatusCallback(request, env);
+        return m.handleTwilioRecordingStatusCallback(request, env, ctx);
       }
       if (path === '/api/twilio/twiml/transcription-callback' && method === 'POST') {
         const m = await import('./worker/twilio-twiml');

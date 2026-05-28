@@ -359,7 +359,7 @@ describe('handleCreateReturn — validation intégrée', () => {
     db.seed('returning id', [{ id: 'ret-1' }]);
     db.seed('return_request_id, order_item_id, quantity, restock', []);
     const res = await handleCreateReturn(
-      req({ order_id: 'ord-1', items: [{ order_item_id: 'oi-1', quantity: 1 }], reason: 'Trop petit' }),
+      req({ order_id: 'ord-1', items: [{ order_item_id: 'oi-1', quantity: 1 }], reason: 'size_fit' }),
       env(db) as never, AUTH,
     );
     await expectNotValidation(res);
