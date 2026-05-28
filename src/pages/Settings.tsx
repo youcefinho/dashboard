@@ -668,7 +668,8 @@ function TelephonySettings() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | 'new' | null>(null);
   const [draftName, setDraftName] = useState('');
-  const [draftConfig, setDraftConfig] = useState('');
+  const [draftGreeting, setDraftGreeting] = useState('');
+  const [draftOptions, setDraftOptions] = useState<Array<{ digit: string; action: 'dial' | 'voicemail'; target: string }>>([]);
   const [configError, setConfigError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -688,33 +689,63 @@ function TelephonySettings() {
   const startNew = () => {
     setEditingId('new');
     setDraftName('');
-    setDraftConfig('{\n  "greeting": "Bonjour, merci d\'appeler.",\n  "options": [\n    { "digit": "1", "action": "forward", "to": "" }\n  ]\n}');
+    setDraftGreeting('Bonjour, merci d\'appeler.');
+    setDraftOptions([{ digit: '1', action: 'dial', target: '' }]);
     setConfigError(null);
   };
 
   const startEdit = (menu: IvrMenu) => {
     setEditingId(menu.id);
     setDraftName(menu.name || '');
-    // Re-indente le JSON stocké pour l'édition (best-effort)
-    let pretty = menu.config_json || '';
-    try { pretty = JSON.stringify(JSON.parse(menu.config_json || '{}'), null, 2); } catch { /* garde brut */ }
-    setDraftConfig(pretty);
+    let parsed: any = {};
+    try {
+      parsed = JSON.parse(menu.config_json || '{}');
+    } catch {
+      parsed = {};
+    }
+    setDraftGreeting(parsed.greeting || '');
+
+    // Normaliser les options : mapper "forward" vers "dial" et "to" vers "target"
+    const normalizedOptions = (parsed.options || []).map((o: any) => ({
+      digit: o.digit || '1',
+      action: o.action === 'forward' ? 'dial' : (o.action || 'dial'),
+      target: o.target || o.to || ''
+    }));
+    setDraftOptions(normalizedOptions);
     setConfigError(null);
   };
 
   const cancel = () => { setEditingId(null); setConfigError(null); };
 
   const handleSave = async () => {
-    if (!draftName.trim()) { setConfigError(t('telephony.ivr.config')); return; }
-    // Validation JSON côté client avant envoi (config_json textarea v1)
-    let parsed: unknown;
-    try { parsed = JSON.parse(draftConfig || '{}'); }
-    catch { setConfigError(t('telephony.ivr.invalid_json')); return; }
+    if (!draftName.trim()) { setConfigError('Le nom du menu SVI est requis.'); return; }
+    if (!draftGreeting.trim()) { setConfigError('Le message d\'accueil est requis.'); return; }
+
+    // Validation des options vides
+    for (let i = 0; i < draftOptions.length; i++) {
+      const opt = draftOptions[i]!;
+      if (opt.action === 'dial' && !opt.target.trim()) {
+        setConfigError(`Veuillez spécifier un numéro de destination pour la touche ${opt.digit}.`);
+        return;
+      }
+    }
+
+    // Valider les doublons de touches
+    const digits = draftOptions.map(o => o.digit);
+    const hasDuplicates = digits.some((d, idx) => digits.indexOf(d) !== idx);
+    if (hasDuplicates) {
+      setConfigError('Chaque touche (chiffre) doit être unique dans le menu.');
+      return;
+    }
+
     setSaving(true);
     const res = await saveIvrMenu({
       id: editingId && editingId !== 'new' ? editingId : undefined,
       name: draftName.trim(),
-      config: parsed,
+      config: {
+        greeting: draftGreeting.trim(),
+        options: draftOptions
+      },
     });
     setSaving(false);
     if (res.error) { toastError(res.error); return; }
@@ -744,6 +775,28 @@ function TelephonySettings() {
     const res = await deleteIvrMenu(menu.id);
     if (res.error) { toastError(res.error); return; }
     reload();
+  };
+
+  const handleAddOption = () => {
+    const usedDigits = new Set(draftOptions.map(o => o.digit));
+    const allDigits = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '*', '#'];
+    const available = allDigits.find(d => !usedDigits.has(d));
+    if (!available) return;
+
+    setDraftOptions([...draftOptions, { digit: available, action: 'dial', target: '' }]);
+  };
+
+  const handleRemoveOption = (index: number) => {
+    setDraftOptions(draftOptions.filter((_, i) => i !== index));
+  };
+
+  const handleUpdateOption = (index: number, key: 'digit' | 'action' | 'target', value: string) => {
+    const updated = [...draftOptions];
+    updated[index] = { ...updated[index]!, [key]: value };
+    if (key === 'action' && value === 'voicemail') {
+      updated[index]!.target = '';
+    }
+    setDraftOptions(updated);
   };
 
   if (loading) {
@@ -791,30 +844,97 @@ function TelephonySettings() {
 
       {/* Éditeur (création ou édition) */}
       {editingId !== null && (
-        <Card className="p-5 space-y-3 border-[var(--primary)]">
-          <Input
-            label={t('telephony.ivr.title')}
-            value={draftName}
-            onChange={(e) => setDraftName(e.target.value)}
-            placeholder={t('telephony.ivr.title')}
-          />
-          <div>
-            <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1">
-              {t('telephony.ivr.config')}
-            </label>
-            <textarea
-              value={draftConfig}
-              onChange={(e) => { setDraftConfig(e.target.value); setConfigError(null); }}
-              rows={10}
-              spellCheck={false}
-              className="w-full px-3 py-2 text-xs font-mono bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-[var(--text-primary)] resize-y focus:border-[var(--brand-primary)] focus:outline-none"
+        <Card className="p-5 space-y-4 border-[var(--primary)]">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Nom du menu SVI"
+              value={draftName}
+              onChange={(e) => setDraftName(e.target.value)}
+              placeholder="ex: Réception principale"
             />
-            {configError && <p className="text-xs text-[var(--danger)] mt-1">{configError}</p>}
-            <p className="text-[10px] text-[var(--text-muted)] mt-1">
-              {t('telephony.ivr.option')} : {`{ "digit": "1", "action": "forward", "to": "+1..." }`}
-            </p>
+            <Input
+              label="Message d'accueil vocal (lu par synthèse)"
+              value={draftGreeting}
+              onChange={(e) => setDraftGreeting(e.target.value)}
+              placeholder="ex: Bonjour, merci d'appeler Intralys."
+            />
           </div>
-          <div className="flex gap-2">
+
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
+                Options du menu (Touches téléphoniques)
+              </label>
+              <Button size="sm" onClick={handleAddOption} leftIcon={<Icon as={Plus} size="sm" />}>
+                Ajouter une touche
+              </Button>
+            </div>
+
+            {draftOptions.length === 0 ? (
+              <p className="text-xs text-[var(--text-muted)] italic text-center py-4 border border-dashed border-[var(--border-subtle)] rounded-lg">
+                Aucune touche configurée. L'appel raccrochera après le message d'accueil.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {draftOptions.map((opt, idx) => (
+                  <div key={idx} className="flex flex-wrap items-end gap-3 p-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-subtle)]/30">
+                    <div className="w-20">
+                      <label className="block text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-1">
+                        Touche
+                      </label>
+                      <select
+                        value={opt.digit}
+                        onChange={(e) => handleUpdateOption(idx, 'digit', e.target.value)}
+                        className="w-full px-2 py-1.5 text-xs bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none"
+                      >
+                        {['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '*', '#'].map(d => (
+                          <option key={d} value={d}>{d}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="w-40">
+                      <label className="block text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-1">
+                        Action
+                      </label>
+                      <select
+                        value={opt.action}
+                        onChange={(e) => handleUpdateOption(idx, 'action', e.target.value as any)}
+                        className="w-full px-2 py-1.5 text-xs bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none"
+                      >
+                        <option value="dial">Transférer l'appel</option>
+                        <option value="voicemail">Messagerie vocale</option>
+                      </select>
+                    </div>
+
+                    {opt.action === 'dial' && (
+                      <div className="flex-1 min-w-[200px]">
+                        <Input
+                          label="Numéro de redirection"
+                          placeholder="ex: +15145550100"
+                          value={opt.target}
+                          onChange={(e) => handleUpdateOption(idx, 'target', e.target.value)}
+                        />
+                      </div>
+                    )}
+
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => handleRemoveOption(idx)}
+                      className="text-[var(--danger)] hover:bg-[var(--danger)]/10"
+                      title="Retirer cette touche"
+                    >
+                      <Icon as={Trash2} size="sm" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {configError && <p className="text-xs text-[var(--danger)] mt-1">{configError}</p>}
+          </div>
+
+          <div className="flex gap-2 pt-2">
             <Button size="sm" disabled={saving} onClick={() => void handleSave()}>
               <Icon as={Check} size={14} className="mr-1" /> {t('action.save')}
             </Button>
