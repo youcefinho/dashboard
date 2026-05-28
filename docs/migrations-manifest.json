@@ -2177,6 +2177,49 @@
         "index:idx_location_stocks_variant"
       ],
       "risk": "low"
+    },
+    {
+      "seq": 157,
+      "file": "migration-order-routing-rules-seq161.sql",
+      "depends_on": [
+        "migration-multi-location-inventory-seq160.sql"
+      ],
+      "objects": [
+        "table:order_routing_rules",
+        "index:idx_order_routing_rules_client",
+        "column:orders.warehouse_id"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 158,
+      "file": "migration-dropship-partners-seq162.sql",
+      "depends_on": [
+        "migration-order-routing-rules-seq161.sql"
+      ],
+      "objects": [
+        "table:dropship_partners",
+        "index:idx_dropship_partners_client",
+        "column:users.dropship_partner_id",
+        "column:dropship_suppliers.dropship_partner_id"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 159,
+      "file": "migration-b2b-pricing-seq163.sql",
+      "depends_on": [
+        "migration-dropship-partners-seq162.sql"
+      ],
+      "objects": [
+        "table:customer_groups",
+        "table:customer_group_assignments",
+        "table:tier_prices",
+        "index:idx_customer_groups_client",
+        "index:uniq_customer_group_assignments",
+        "index:uniq_tier_prices_variant_group_qty"
+      ],
+      "risk": "low"
     }
   ]
 }

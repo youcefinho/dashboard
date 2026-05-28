@@ -38,9 +38,11 @@ import {
   deleteTeamUser,
   getClients,
   getTeamInvites,
+  listDropshipPartners,
   type TeamUser,
   type TeamRole,
   type TeamInvite,
+  type DropshipPartner,
 } from '@/lib/api';
 import type { Client } from '@/lib/types';
 import {
@@ -125,6 +127,11 @@ export function TeamSettings() {
   const [newClientId, setNewClientId] = useState('');
   const [scopeError, setScopeError] = useState('');
   const [inviting, setInviting] = useState(false);
+  const [partners, setPartners] = useState<DropshipPartner[]>([]);
+  const [editingUser, setEditingUser] = useState<TeamUser | null>(null);
+  const [editRole, setEditRole] = useState<GenericRole>('member');
+  const [editPartnerId, setEditPartnerId] = useState<string>('');
+  const [savingUser, setSavingUser] = useState(false);
 
   // ── Sprint 26 vague 26-3A — wizard state
   const [wizardOpen, setWizardOpen] = useState(false);
@@ -169,6 +176,7 @@ export function TeamSettings() {
     // source que le reste de l'app, tenant-scoped via apiFetch). Pas
     // d'endpoint dédié inventé.
     void getClients().then((c) => { if (c.data) setClients(c.data); });
+    void listDropshipPartners().then((p) => { if (p.data) setPartners(p.data); });
   }, [refreshUsers, refreshInvites]);
 
   // ── Invitation rapide (modale) ──────────────────────────────
@@ -233,6 +241,26 @@ export function TeamSettings() {
     } else {
       toast.error(t('team.users.not_found'));
     }
+  };
+
+  const openEditModal = (u: TeamUser) => {
+    setEditingUser(u);
+    setEditRole(effectiveGeneric(u));
+    setEditPartnerId(u.dropship_partner_id || '');
+  };
+
+  const saveUserChanges = async () => {
+    if (!editingUser) return;
+    setSavingUser(true);
+    const res = await updateTeamUserRole(editingUser.id, GENERIC_TO_TECH[editRole], editPartnerId || null);
+    setSavingUser(false);
+    if (res.data && res.data.success) {
+      toast.success(t('team.users.role_label'));
+      setEditingUser(null);
+      void refreshUsers();
+      return;
+    }
+    toast.error(t('team.users.not_found'));
   };
 
   const removeUser = async (id: string) => {
@@ -638,19 +666,24 @@ export function TeamSettings() {
                   <div className="hidden md:block text-xs text-[var(--text-muted)] min-w-[110px] text-right" title={t('team.users.last_login')}>
                     {formatLastLogin(u.last_login_at)}
                   </div>
-                  <DropdownMenu
-                    trigger={
-                      <button
-                        type="button"
-                        className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--primary)] hover:bg-[var(--bg-subtle)] transition-colors cursor-pointer"
-                        aria-label="Actions"
+                    <DropdownMenu
+                      trigger={
+                        <button
+                          type="button"
+                          className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--primary)] hover:bg-[var(--bg-subtle)] transition-colors cursor-pointer"
+                          aria-label="Actions"
+                        >
+                          <MoreVertical size={16} />
+                        </button>
+                      }
+                    >
+                      <DropdownMenuItem
+                        leftIcon={<Pencil size={14} />}
+                        onSelect={() => openEditModal(u)}
                       >
-                        <MoreVertical size={16} />
-                      </button>
-                    }
-                  >
-                    <DropdownMenuItem leftIcon={<Pencil size={14} />}>{t('set.team.edit')}</DropdownMenuItem>
-                    <DropdownMenuItem leftIcon={<Ban size={14} />}>{t('set.team.disable')}</DropdownMenuItem>
+                        {t('set.team.edit')}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem leftIcon={<Ban size={14} />}>{t('set.team.disable')}</DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       variant="danger"
@@ -803,6 +836,45 @@ export function TeamSettings() {
         persistKey="team-invite"
         completeLabel={`Envoyer ${pendingInvites.length || ''} invitation${pendingInvites.length > 1 ? 's' : ''}`.trim()}
       />
+
+      {/* Modale d'édition d'utilisateur pour associer rôle et partenaire dropship */}
+      <Modal open={!!editingUser} onOpenChange={() => setEditingUser(null)} title={t('set.team.edit')}>
+        <div className="space-y-4">
+          <div>
+            <p className="text-sm font-semibold text-[var(--text-primary)]">
+              {editingUser?.name || editingUser?.email}
+            </p>
+            <p className="text-xs text-[var(--text-muted)] mt-0.5">{editingUser?.email}</p>
+          </div>
+          <Select
+            label={t('team.invite.role_label')}
+            value={editRole}
+            onChange={(e) => setEditRole(e.target.value as GenericRole)}
+          >
+            {roleKeys.map((rk) => (
+              <option key={rk} value={rk}>{GENERIC_ROLE_LABEL[rk]}</option>
+            ))}
+          </Select>
+          <Select
+            label="Partenaire Dropship"
+            value={editPartnerId}
+            onChange={(e) => setEditPartnerId(e.target.value)}
+          >
+            <option value="">Aucun partenaire</option>
+            {partners.map((p) => (
+              <option key={p.id} value={p.id}>{p.company_name}</option>
+            ))}
+          </Select>
+          <Button
+            className="w-full"
+            onClick={() => void saveUserChanges()}
+            disabled={savingUser}
+            isLoading={savingUser}
+          >
+            Enregistrer
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 }

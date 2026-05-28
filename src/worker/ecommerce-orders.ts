@@ -42,6 +42,8 @@ import {
   ORDER_ERROR_CODES,
   ORDER_TRANSITIONS,
 } from './lib/orders-engine';
+import { evaluateRoutingRules } from './lib/order-routing-engine';
+import { resolveTierPrice } from './lib/pricing-engine';
 
 type Auth = { userId: string; role: string };
 
@@ -147,6 +149,8 @@ export interface CreateOrderInput {
   // changer et conservent un comportement strictement identique.
   tax_region?: TaxRegime | string;
   tax_country?: string;
+  shipping_address?: any;
+  billing_address?: any;
 }
 
 export interface CreateOrderResult {
@@ -195,7 +199,15 @@ export async function createOrderCore(
   createdBy?: string,
 ): Promise<CreateOrderResult> {
   const email = sanitizeInput(input.email || '', 200);
-  const customerId = input.customer_id || null;
+  let customerId = input.customer_id || null;
+  if (!customerId && email) {
+    try {
+      const custRow = await env.DB.prepare(
+        'SELECT id FROM customers WHERE email = ? AND client_id = ? LIMIT 1',
+      ).bind(email, clientId).first() as { id: string } | null;
+      if (custRow) customerId = custRow.id;
+    } catch { /* best-effort */ }
+  }
   const note = sanitizeInput(input.note || '', 2000);
   const source = sanitizeInput(input.source || 'web', 50) || 'web';
   const shippingCents = Number.isFinite(input.shipping_cents as number)
@@ -211,6 +223,43 @@ export async function createOrderCore(
       error: 'Commande vide',
       message: 'Ajoute au moins un article pour créer une commande.',
     });
+  }
+
+  // Chargement des règles de routage pour évaluation
+  let routingRules: any[] = [];
+  try {
+    const rulesRes = await env.DB.prepare(
+      `SELECT * FROM order_routing_rules WHERE client_id = ? AND is_active = 1 ORDER BY priority DESC`
+    ).bind(clientId).all();
+    routingRules = rulesRes.results || [];
+  } catch {
+    // Ignore, best-effort
+  }
+
+  // Chargement des warehouses actifs pour validation et fallback par défaut
+  let activeWarehouses: any[] = [];
+  let defaultWarehouseId: string | null = null;
+  try {
+    const whsRes = await env.DB.prepare(
+      `SELECT id, is_default FROM warehouses WHERE client_id = ? AND is_active = 1`
+    ).bind(clientId).all();
+    activeWarehouses = whsRes.results || [];
+    const defWh = activeWarehouses.find(w => w.is_default === 1);
+    if (defWh) defaultWarehouseId = defWh.id;
+  } catch {
+    // Ignore, best-effort
+  }
+
+  // Résolution du warehouse id cible
+  let warehouseId: string | null = null;
+  if (input.shipping_address) {
+    const matchedWhId = evaluateRoutingRules(routingRules, input.shipping_address);
+    if (matchedWhId && activeWarehouses.some(w => w.id === matchedWhId)) {
+      warehouseId = matchedWhId;
+    }
+  }
+  if (!warehouseId) {
+    warehouseId = defaultWarehouseId;
   }
 
   // 1) Résolution + snapshots + calcul du subtotal (avant tout écriture DB).
@@ -253,9 +302,20 @@ export async function createOrderCore(
     }
 
     // Prix effectif : price_override (si défini, même 0) sinon base_price.
-    const unitPrice = v.price_override != null
+    let unitPrice = v.price_override != null
       ? Math.max(0, Math.round(v.price_override))
       : Math.max(0, Math.round(v.base_price ?? 0));
+
+    if (customerId) {
+      try {
+        const resolved = await resolveTierPrice(env, v.variant_id, customerId, quantity);
+        if (resolved && resolved.group_applied) {
+          unitPrice = resolved.price_cents;
+        }
+      } catch {
+        // Fallback
+      }
+    }
     const lineTotal = unitPrice * quantity;
     subtotalCents += lineTotal;
 
@@ -304,11 +364,18 @@ export async function createOrderCore(
     const res = await reserveStock(env, r.variantId, r.quantity, {
       type: 'order',
       by: createdBy,
+      clientId,
+      locationId: warehouseId || undefined,
     });
     if (!res.ok) {
       // Libère ce qui a déjà été réservé pour cette tentative (pas d'orphelin).
       for (const done of reservedOk) {
-        await releaseStock(env, done.variantId, done.qty, { type: 'order', by: createdBy });
+        await releaseStock(env, done.variantId, done.qty, {
+          type: 'order',
+          by: createdBy,
+          clientId,
+          locationId: warehouseId || undefined,
+        });
       }
       throw new OrderError(409, {
         error: 'Stock insuffisant',
@@ -342,14 +409,18 @@ export async function createOrderCore(
        (id, client_id, customer_id, order_number, status, financial_status,
         fulfillment_status, subtotal_cents, tps_cents, tvq_cents,
         shipping_cents, discount_cents, total_cents, email, note, source,
-        tax_region, tax_breakdown_json, currency, placed_at)
+        tax_region, tax_breakdown_json, currency, placed_at, warehouse_id,
+        shipping_address_json, billing_address_json)
      VALUES (?, ?, ?, ?, 'pending', 'unpaid', 'unfulfilled', ?, ?, ?, ?, ?, ?,
-             ?, ?, ?, ?, ?, ?, datetime('now'))`,
+             ?, ?, ?, ?, ?, ?, datetime('now'), ?, ?, ?)`,
   ).bind(
     orderId, clientId, customerId, orderNumber,
     subtotalCents, tpsCents, tvqCents, shippingCents, discountCents, totalCents,
     email, note, source,
     regime.toUpperCase(), taxBreakdownJson, orderCurrency,
+    warehouseId,
+    input.shipping_address ? JSON.stringify(input.shipping_address) : null,
+    input.billing_address ? JSON.stringify(input.billing_address) : null,
   ).run();
 
   for (const r of resolved) {
@@ -498,8 +569,8 @@ export async function handleUpdateOrderStatus(
   const next = v.data.status as OrderStatus;
 
   const order = (await env.DB.prepare(
-    'SELECT id, status, paid_at, cancelled_at FROM orders WHERE id = ? AND client_id = ?',
-  ).bind(id, clientId).first()) as OrderStatusRow | null;
+    'SELECT id, status, paid_at, cancelled_at, warehouse_id FROM orders WHERE id = ? AND client_id = ?',
+  ).bind(id, clientId).first()) as (OrderStatusRow & { warehouse_id: string | null }) | null;
   if (!order) return json({ error: 'Commande introuvable' }, 404);
 
   const current = order.status;
@@ -557,9 +628,13 @@ export async function handleUpdateOrderStatus(
     // ne PAS changer le comportement E3 ; le pont paiement passe par le helper.
     for (const ln of lines) {
       if (ln.variant_id) {
-        await commitSale(env, ln.variant_id, ln.quantity, {
-          type: 'order', id, by: auth.userId,
-        });
+         await commitSale(env, ln.variant_id, ln.quantity, {
+           type: 'order',
+           id,
+           by: auth.userId,
+           clientId,
+           locationId: order.warehouse_id || undefined,
+         });
       }
     }
   } else if (next === 'cancelled' && !order.cancelled_at) {
@@ -568,9 +643,13 @@ export async function handleUpdateOrderStatus(
     // consommée → releaseStock no-op (reserved déjà à 0, garde-fou interne).
     for (const ln of lines) {
       if (ln.variant_id) {
-        await releaseStock(env, ln.variant_id, ln.quantity, {
-          type: 'order', id, by: auth.userId,
-        });
+         await releaseStock(env, ln.variant_id, ln.quantity, {
+           type: 'order',
+           id,
+           by: auth.userId,
+           clientId,
+           locationId: order.warehouse_id || undefined,
+         });
       }
     }
   }
@@ -717,8 +796,8 @@ export async function commitOrderSale(
   by?: string,
 ): Promise<{ committed: boolean }> {
   const order = (await env.DB.prepare(
-    'SELECT id, status, paid_at, cancelled_at FROM orders WHERE id = ? AND client_id = ?',
-  ).bind(orderId, clientId).first()) as OrderStatusRow | null;
+    'SELECT id, status, paid_at, cancelled_at, warehouse_id FROM orders WHERE id = ? AND client_id = ?',
+  ).bind(orderId, clientId).first()) as (OrderStatusRow & { warehouse_id: string | null }) | null;
   if (!order) return { committed: false };
 
   // Idempotence : déjà payé (paid_at posé) ⇒ no-op total (rejeu webhook sûr).
@@ -735,7 +814,11 @@ export async function commitOrderSale(
   for (const ln of lines) {
     if (ln.variant_id) {
       await commitSale(env, ln.variant_id, ln.quantity, {
-        type: 'order', id: orderId, by,
+        type: 'order',
+        id: orderId,
+        by,
+        clientId,
+        locationId: order.warehouse_id || undefined,
       });
     }
   }

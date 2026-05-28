@@ -2835,3 +2835,22 @@ export const RECOVERY_DISCOUNT_PCT = {
   2: 5,
   3: 10,
 } as const;
+
+// ── Sprint 66 — Moteur de Routage Intelligent des Commandes ─────────────────
+export interface OrderRoutingCondition {
+  field: 'shipping_country' | 'shipping_country_subdiv' | 'shipping_postal_code';
+  operator: 'equals' | 'not_equals' | 'contains' | 'starts_with';
+  value: string;
+}
+
+export interface OrderRoutingRule {
+  id: string;
+  client_id: string;
+  name: string;
+  priority: number;
+  conditions_json: string; // stringified OrderRoutingCondition[]
+  action_warehouse_id: string;
+  is_active: number;
+  created_at?: string;
+  updated_at?: string;
+}

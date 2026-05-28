@@ -96,7 +96,7 @@ export async function handleGetUsers(
     // code (pattern tenant-context.ts:72-83).
     try {
       const { results } = await env.DB.prepare(
-        'SELECT id, name, email, role, role_generic, last_login_at, created_at FROM users LIMIT 50',
+        'SELECT id, name, email, role, role_generic, last_login_at, created_at, dropship_partner_id FROM users LIMIT 50',
       ).all();
       return json({ data: results || [] });
     } catch {
@@ -115,8 +115,8 @@ export async function handleGetUsers(
   const placeholders = accessible.map(() => '?').join(',');
   try {
     const sql = placeholders
-      ? `SELECT id, name, email, role, role_generic, last_login_at, created_at FROM users WHERE agency_id = ? OR client_id IN (${placeholders}) LIMIT 50`
-      : 'SELECT id, name, email, role, role_generic, last_login_at, created_at FROM users WHERE agency_id = ? LIMIT 50';
+      ? `SELECT id, name, email, role, role_generic, last_login_at, created_at, dropship_partner_id FROM users WHERE agency_id = ? OR client_id IN (${placeholders}) LIMIT 50`
+      : 'SELECT id, name, email, role, role_generic, last_login_at, created_at, dropship_partner_id FROM users WHERE agency_id = ? LIMIT 50';
     const { results } = await env.DB.prepare(sql)
       .bind(agencyId, ...accessible)
       .all();
@@ -424,18 +424,38 @@ export async function handleUpdateUserRole(
   const url = new URL(request.url);
   const userId = url.pathname.split('/').pop() || '';
   const body = (await request.json()) as any;
-  const newRole = sanitizeInput(body.role);
+  
+  const newRole = typeof body.role === 'string' ? sanitizeInput(body.role) : undefined;
+  const dropshipPartnerId = body.dropship_partner_id !== undefined
+    ? (body.dropship_partner_id ? sanitizeInput(body.dropship_partner_id) : null)
+    : undefined;
 
-  if (!newRole) return json({ error: 'Rôle manquant' }, 400);
+  if (newRole === undefined && dropshipPartnerId === undefined) {
+    return json({ error: 'Rôle ou partenaire manquant' }, 400);
+  }
 
   if (!isLegacy(auth)) {
     const guard = await assertTargetInTenant(env, userId, auth!);
     if (guard) return guard;
   }
 
-  await env.DB.prepare('UPDATE users SET role = ? WHERE id = ?').bind(newRole, userId).run();
+  const sets: string[] = [];
+  const binds: unknown[] = [];
+  if (newRole !== undefined) {
+    sets.push('role = ?');
+    binds.push(newRole);
+  }
+  if (dropshipPartnerId !== undefined) {
+    sets.push('dropship_partner_id = ?');
+    binds.push(dropshipPartnerId);
+  }
+
+  binds.push(userId);
+  await env.DB.prepare(`UPDATE users SET ${sets.join(', ')} WHERE id = ?`).bind(...binds).run();
+
   await audit(env, auditActor(request, auth), 'user.role_change', 'user', userId, {
     role: newRole,
+    dropship_partner_id: dropshipPartnerId,
   });
   return json({ data: { success: true } });
 }

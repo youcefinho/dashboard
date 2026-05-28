@@ -68,6 +68,7 @@ import { createOrderCore } from './ecommerce-orders';
 import { resolveShippingRate } from './ecommerce-shipping-zones';
 import { computeTax, type TaxRegime } from './ecommerce-tax-engine';
 import { resolveCouponDiscount, incrementCouponUsage } from './ecommerce-coupons';
+import { resolveTierPrice } from './lib/pricing-engine';
 
 // Auth enrichi au choke-point (worker.ts) pour les routes PRO settings — calque
 // le type passé à routeProtected (userId/role/clientId/tenant/capabilities).
@@ -185,7 +186,7 @@ interface CartLineRow {
  * createOrderCore).
  */
 async function loadCartLines(
-  env: Env, clientId: string, cartId: string,
+  env: Env, clientId: string, cartId: string, customerId?: string | null,
 ): Promise<CartLineRow[]> {
   const { results } = await env.DB.prepare(
     `SELECT ci.id AS id, ci.variant_id AS variant_id, ci.quantity AS quantity,
@@ -197,7 +198,20 @@ async function loadCartLines(
       WHERE ci.cart_id = ?
       ORDER BY ci.added_at ASC`,
   ).bind(clientId, cartId).all();
-  return (results || []) as unknown as CartLineRow[];
+  const lines = (results || []) as unknown as CartLineRow[];
+  if (customerId && lines.length > 0) {
+    for (const line of lines) {
+      try {
+        const resolved = await resolveTierPrice(env, line.variant_id, customerId, line.quantity);
+        if (resolved && resolved.group_applied) {
+          line.unit_price_cents = resolved.price_cents;
+        }
+      } catch {
+        // Fallback
+      }
+    }
+  }
+  return lines;
 }
 
 /** Construit la projection PublicCart (token + items + subtotal). */
@@ -341,13 +355,30 @@ export async function handleStoreProducts(
 
 /** GET /api/store/:slug/products/:pslug — fiche produit publique. */
 export async function handleStoreProduct(
-  env: Env, slug: string, pslug: string,
+  env: Env, slug: string, pslug: string, url?: URL,
 ): Promise<Response> {
   const clientId = await resolveStoreClientId(env, slug);
   if (!clientId) return json({ error: 'Boutique introuvable' }, 404);
   try {
     const cleanPslug = sanitizeInput(pslug || '', 200);
     const currency = await storeCurrency(env, clientId);
+
+    // Résolution customerId
+    let customerId: string | null = null;
+    if (url) {
+      const customerIdParam = url.searchParams.get('customer_id');
+      if (customerIdParam) {
+        customerId = sanitizeInput(customerIdParam, 100);
+      } else {
+        const token = url.searchParams.get('token');
+        if (token) {
+          const cart = await findActiveCartByToken(env, clientId, token);
+          if (cart?.customer_id) {
+            customerId = cart.customer_id;
+          }
+        }
+      }
+    }
 
     // Produit ACTIF borné client_id + slug (calque handlePublicGetProduct).
     const product = (await env.DB.prepare(
@@ -370,14 +401,31 @@ export async function handleStoreProduct(
         WHERE v.product_id = ?
         ORDER BY v.position ASC, v.created_at ASC`,
     ).bind(product.id).all();
-    const variants = ((variantRows || []) as Array<Record<string, unknown>>).map((v) => ({
-      variant_id: String(v.variant_id),
-      title: v.title != null ? String(v.title) : null,
-      price_cents: v.price_override != null
+
+    const variants = [];
+    for (const v of (variantRows || []) as Array<Record<string, unknown>>) {
+      let priceCents = v.price_override != null
         ? Math.max(0, Math.round(Number(v.price_override)))
-        : Math.max(0, Math.round(Number(product.base_price) || 0)),
-      in_stock: Number(v.available) > 0,
-    }));
+        : Math.max(0, Math.round(Number(product.base_price) || 0));
+
+      if (customerId) {
+        try {
+          const resolved = await resolveTierPrice(env, String(v.variant_id), customerId, 1);
+          if (resolved && resolved.group_applied) {
+            priceCents = resolved.price_cents;
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      variants.push({
+        variant_id: String(v.variant_id),
+        title: v.title != null ? String(v.title) : null,
+        price_cents: priceCents,
+        in_stock: Number(v.available) > 0,
+      });
+    }
 
     const image = (await env.DB.prepare(
       `SELECT url FROM product_images WHERE product_id = ?
@@ -412,7 +460,20 @@ export async function handleStoreGetCart(
     const currency = await storeCurrency(env, clientId);
     let cart = await findActiveCartByToken(env, clientId, token);
     if (!cart) cart = await createCart(env, clientId, token);
-    const lines = await loadCartLines(env, clientId, cart.id);
+
+    let customerId = cart.customer_id;
+    const customerIdParam = url.searchParams.get('customer_id');
+    if (customerIdParam) {
+      customerId = sanitizeInput(customerIdParam, 100);
+      if (customerId && cart.customer_id !== customerId) {
+        await env.DB.prepare(
+          'UPDATE carts SET customer_id = ? WHERE id = ?',
+        ).bind(customerId, cart.id).run();
+        cart.customer_id = customerId;
+      }
+    }
+
+    const lines = await loadCartLines(env, clientId, cart.id, customerId);
     return json({ data: shapePublicCart(cart, lines, currency) });
   } catch {
     return json({ data: { token: '', items: [], subtotal_cents: 0 } });
@@ -455,9 +516,17 @@ export async function handleStoreAddCartItem(
     const qty = Math.max(1, Math.round(Number(body.qty ?? body.quantity) || 1));
     const token = sanitizeInput((body.cart_token as string) || (body.token as string) || '', 100) || null;
     const currency = await storeCurrency(env, clientId);
+    const customerId = sanitizeInput((body.customer_id as string) || '', 100) || null;
 
     let cart = await findActiveCartByToken(env, clientId, token);
     if (!cart) cart = await createCart(env, clientId, token);
+
+    if (customerId && cart.customer_id !== customerId) {
+      await env.DB.prepare(
+        'UPDATE carts SET customer_id = ? WHERE id = ?',
+      ).bind(customerId, cart.id).run();
+      cart.customer_id = customerId;
+    }
 
     const existing = (await env.DB.prepare(
       'SELECT id, quantity FROM cart_items WHERE cart_id = ? AND variant_id = ?',
@@ -475,7 +544,7 @@ export async function handleStoreAddCartItem(
       "UPDATE carts SET updated_at = datetime('now') WHERE id = ?",
     ).bind(cart.id).run();
 
-    const lines = await loadCartLines(env, clientId, cart.id);
+    const lines = await loadCartLines(env, clientId, cart.id, cart.customer_id);
     return json({ data: shapePublicCart(cart, lines, currency) }, 201);
   } catch {
     return json({ error: 'Ajout impossible' }, 400);
@@ -510,7 +579,7 @@ export async function handleStoreUpdateCartItem(
     ).bind(cart.id).run();
 
     const currency = await storeCurrency(env, clientId);
-    const lines = await loadCartLines(env, clientId, cart.id);
+    const lines = await loadCartLines(env, clientId, cart.id, cart.customer_id);
     return json({ data: shapePublicCart(cart, lines, currency) });
   } catch {
     return json({ error: 'Mise à jour impossible' }, 400);
@@ -538,7 +607,7 @@ export async function handleStoreDeleteCartItem(
     ).bind(cart.id).run();
 
     const currency = await storeCurrency(env, clientId);
-    const lines = await loadCartLines(env, clientId, cart.id);
+    const lines = await loadCartLines(env, clientId, cart.id, cart.customer_id);
     return json({ data: shapePublicCart(cart, lines, currency) });
   } catch {
     return json({ error: 'Suppression impossible' }, 400);
@@ -559,13 +628,20 @@ export async function handleStoreShippingQuote(
     ).toUpperCase();
     const token = sanitizeInput((body.cart_token as string) || (body.token as string) || '', 100) || null;
     const currency = await storeCurrency(env, clientId);
+    const customerId = sanitizeInput((body.customer_id as string) || '', 100) || null;
 
     // Sous-total panier (token) borné tenant.
     let subtotalCents = 0;
     let weightGrams: number | null = null;
     const cart = await findActiveCartByToken(env, clientId, token);
     if (cart) {
-      const lines = await loadCartLines(env, clientId, cart.id);
+      if (customerId && cart.customer_id !== customerId) {
+        await env.DB.prepare(
+          'UPDATE carts SET customer_id = ? WHERE id = ?',
+        ).bind(customerId, cart.id).run();
+        cart.customer_id = customerId;
+      }
+      const lines = await loadCartLines(env, clientId, cart.id, cart.customer_id);
       for (const ln of lines) {
         subtotalCents += Math.max(0, Math.round(ln.unit_price_cents || 0))
           * Math.max(1, Math.round(ln.quantity || 1));
@@ -652,7 +728,27 @@ export async function handleStoreCheckout(
   // — pas de résolution product→variant ici, le cart stocke déjà des variant_id).
   const cart = await findActiveCartByToken(env, clientId, token);
   if (!cart) return json({ error: 'Panier introuvable' }, 404);
-  const lines = await loadCartLines(env, clientId, cart.id);
+
+  // Résolution du customer_id
+  let customerId = cart.customer_id || sanitizeInput((body.customer_id as string) || '', 100) || null;
+  if (!customerId && email) {
+    try {
+      const custRow = await env.DB.prepare(
+        'SELECT id FROM customers WHERE email = ? AND client_id = ? LIMIT 1',
+      ).bind(email, clientId).first() as { id: string } | null;
+      if (custRow) customerId = custRow.id;
+    } catch { /* best-effort */ }
+  }
+
+  // Mettre à jour le panier avec le customerId s'il a changé
+  if (customerId && cart.customer_id !== customerId) {
+    await env.DB.prepare(
+      'UPDATE carts SET customer_id = ? WHERE id = ?',
+    ).bind(customerId, cart.id).run();
+    cart.customer_id = customerId;
+  }
+
+  const lines = await loadCartLines(env, clientId, cart.id, cart.customer_id);
   if (lines.length === 0) return json({ error: 'Panier vide' }, 400);
 
   const currency = await storeCurrency(env, clientId);
@@ -714,7 +810,7 @@ export async function handleStoreCheckout(
       env,
       clientId,
       {
-        customer_id: null,                  // GUEST — email sans customer_id.
+        customer_id: cart.customer_id,      // Client résolu (B2B ou enregistré) ou null.
         email,
         items: lines.map((l) => ({
           variant_id: l.variant_id,
@@ -728,6 +824,8 @@ export async function handleStoreCheckout(
         source: 'storefront',
         tax_region: taxRegion,
         tax_country: taxCountry,
+        shipping_address: address,
+        billing_address: body.billing_address || address,
       },
       // Pas de createdBy (acheteur anonyme). L'audit createOrderCore est skip.
     );

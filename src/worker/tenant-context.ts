@@ -26,6 +26,7 @@ export interface TenantContext {
   agencyId: string | null;
   accountLevel: string;
   accessibleClientIds: string[];
+  dropshipPartnerId?: string | null;
 }
 
 /**
@@ -44,7 +45,7 @@ export interface TenantContext {
  *   comportement).
  *
  * Coût ≤ 3 requêtes :
- *   1. SELECT users (client_id, account_level, agency_id) — 1 req
+ *   1. SELECT users (client_id, account_level, agency_id, dropship_partner_id) — 1 req
  *   2. SELECT user_sub_accounts (jonction) — 1 req
  *   3. SELECT clients.agency_id — conditionnel (1 req) seulement si un
  *      clientId est résolu et agencyId pas déjà connu.
@@ -61,33 +62,43 @@ export async function resolveTenantContext(
   let agencyId: string | null = null;
   let accountLevel = 'user';
   let accessibleClientIds: string[] = [];
+  let dropshipPartnerId: string | null = null;
 
-  // ── 1) users : client_id (toujours) + account_level/agency_id (best-effort,
+  // ── 1) users : client_id (toujours) + account_level/agency_id/dropship_partner_id (best-effort,
   //       colonnes potentiellement absentes si migration 78 pas encore jouée).
   try {
     const u = (await env.DB.prepare(
-      'SELECT client_id, account_level, agency_id FROM users WHERE id = ?',
+      'SELECT client_id, account_level, agency_id, dropship_partner_id FROM users WHERE id = ?',
     )
       .bind(userId)
       .first()) as
-      | { client_id: string | null; account_level: string | null; agency_id: string | null }
+      | { client_id: string | null; account_level: string | null; agency_id: string | null; dropship_partner_id: string | null }
       | null;
     if (u) {
       clientId = u.client_id || null;
       // account_level absent (NULL / colonne pré-migration) ⇒ 'user'.
       accountLevel = u.account_level || 'user';
       agencyId = u.agency_id || null;
+      dropshipPartnerId = u.dropship_partner_id || null;
     }
   } catch {
     // Colonnes account_level/agency_id absentes (pré-migration 78) : on
     // retombe sur un SELECT minimal client_id uniquement (legacy strict).
     try {
-      const u2 = (await env.DB.prepare('SELECT client_id FROM users WHERE id = ?')
+      const u2 = (await env.DB.prepare('SELECT client_id, dropship_partner_id FROM users WHERE id = ?')
         .bind(userId)
-        .first()) as { client_id: string | null } | null;
+        .first()) as { client_id: string | null; dropship_partner_id?: string | null } | null;
       clientId = u2?.client_id || null;
+      dropshipPartnerId = u2?.dropship_partner_id || null;
     } catch {
-      clientId = null;
+      try {
+        const u3 = (await env.DB.prepare('SELECT client_id FROM users WHERE id = ?')
+          .bind(userId)
+          .first()) as { client_id: string | null } | null;
+        clientId = u3?.client_id || null;
+      } catch {
+        clientId = null;
+      }
     }
   }
 
@@ -152,7 +163,7 @@ export async function resolveTenantContext(
   // ── Legacy strict : aucun client + aucune jonction ⇒ tout null/[]
   //     (identique getClientModules:68).
   if (!clientId && accessibleClientIds.length === 0) {
-    return { userId, role, clientId: null, agencyId: null, accountLevel, accessibleClientIds: [] };
+    return { userId, role, clientId: null, agencyId: null, accountLevel, accessibleClientIds: [], dropshipPartnerId };
   }
 
   // ── 3) clients.agency_id du tenant courant (conditionnel : seulement si on
@@ -183,5 +194,5 @@ export async function resolveTenantContext(
     }
   }
 
-  return { userId, role, clientId, agencyId, accountLevel, accessibleClientIds };
+  return { userId, role, clientId, agencyId, accountLevel, accessibleClientIds, dropshipPartnerId };
 }

@@ -17,6 +17,8 @@ import {
   ArrowLeftRight,
   Truck,
   Route as RouteIcon,
+  MapPin,
+  Users as UsersIcon,
 } from 'lucide-react';
 import { AppLayout } from '../../components/layout/AppLayout';
 import { PageHero } from '../../components/ui/PageHero';
@@ -32,10 +34,12 @@ import { InventoryTransfersList } from '../../components/warehouse/InventoryTran
 import { DropshipSuppliersManager } from '../../components/warehouse/DropshipSuppliersManager';
 import { DropshipRoutingsEditor } from '../../components/warehouse/DropshipRoutingsEditor';
 import { DropshipOrdersDashboard } from '../../components/warehouse/DropshipOrdersDashboard';
+import { OrderRoutingRulesManager } from '../../components/warehouse/OrderRoutingRulesManager';
+import { DropshipPartnersTab } from '../../components/warehouse/DropshipPartnersTab';
 import { ErrorBoundary } from '../ErrorBoundary';
 import { t } from '../../lib/i18n';
 
-type WarehouseTab = 'warehouses' | 'transfers' | 'suppliers' | 'routings';
+type WarehouseTab = 'warehouses' | 'transfers' | 'suppliers' | 'routings' | 'routing' | 'partners';
 
 export function WarehousePage() {
   const [tab, setTab] = useState<WarehouseTab>('warehouses');
@@ -58,6 +62,16 @@ export function WarehousePage() {
           title: t('dropship.routings.title'),
           description: t('warehouse.routings.description'),
         };
+      case 'routing':
+        return {
+          title: t('warehouse.routing.title'),
+          description: t('warehouse.routing.description'),
+        };
+      case 'partners':
+        return {
+          title: t('warehouse.partners.title'),
+          description: t('warehouse.partners.description'),
+        };
       case 'warehouses':
       default:
         return {
@@ -72,7 +86,9 @@ export function WarehousePage() {
       value === 'warehouses' ||
       value === 'transfers' ||
       value === 'suppliers' ||
-      value === 'routings'
+      value === 'routings' ||
+      value === 'routing' ||
+      value === 'partners'
     ) {
       setTab(value);
     }
@@ -135,6 +151,26 @@ export function WarehousePage() {
               {t('dropship.routings.title')} & {t('dropship.orders.title')}
             </span>
           </TabsTrigger>
+          <TabsTrigger
+            value="routing"
+            data-testid="tab-routing"
+            aria-label={t('warehouse.routing.title')}
+          >
+            <span className="inline-flex items-center gap-1.5">
+              <Icon as={MapPin} size="sm" />
+              {t('warehouse.routing.title')}
+            </span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="partners"
+            data-testid="tab-partners"
+            aria-label={t('warehouse.partners.title')}
+          >
+            <span className="inline-flex items-center gap-1.5">
+              <Icon as={UsersIcon} size="sm" />
+              {t('warehouse.partners.title')}
+            </span>
+          </TabsTrigger>
         </TabsList>
 
         {/* ── Tab Warehouses (B1) ────────────────────────────────────────── */}
@@ -163,6 +199,20 @@ export function WarehousePage() {
           <ErrorBoundary>
             <DropshipRoutingsEditor />
             <DropshipOrdersDashboard />
+          </ErrorBoundary>
+        </TabsContent>
+
+        {/* ── Tab Routage des commandes (Sprint 66) ───────────────────────── */}
+        <TabsContent value="routing" className="space-y-6 mt-4">
+          <ErrorBoundary>
+            <OrderRoutingRulesManager />
+          </ErrorBoundary>
+        </TabsContent>
+
+        {/* ── Tab Partenaires (Sprint 67) ───────────────────────── */}
+        <TabsContent value="partners" className="space-y-6 mt-4">
+          <ErrorBoundary>
+            <DropshipPartnersTab />
           </ErrorBoundary>
         </TabsContent>
       </Tabs>

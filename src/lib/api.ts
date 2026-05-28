@@ -287,6 +287,7 @@ export interface TeamUser {
   role_generic: string | null;
   last_login_at: string | null;
   created_at: string | null;
+  dropship_partner_id?: string | null;
 }
 
 export interface TeamRole {
@@ -327,11 +328,15 @@ export async function resendTeamInvite(id: string): Promise<ApiResponse<{ succes
 
 export async function updateTeamUserRole(
   id: string,
-  role: string
+  role?: string,
+  dropshipPartnerId?: string | null
 ): Promise<ApiResponse<{ success: boolean }>> {
+  const body: Record<string, any> = {};
+  if (role !== undefined) body.role = role;
+  if (dropshipPartnerId !== undefined) body.dropship_partner_id = dropshipPartnerId;
   return apiFetch<{ success: boolean }>(`/team/users/${id}`, {
     method: 'PATCH',
-    body: JSON.stringify({ role }),
+    body: JSON.stringify(body),
   });
 }
 
@@ -721,6 +726,46 @@ export async function updateOrderStatus(
   return apiFetch<{ id: string; status: string }>(`/ecommerce/orders/${id}/status`, {
     method: 'PATCH',
     body: JSON.stringify({ status }),
+  });
+}
+
+import type { OrderRoutingRule } from './types';
+
+export async function getOrderRoutingRules(params?: {
+  limit?: number;
+  offset?: number;
+}): Promise<PagedResponse<OrderRoutingRule>> {
+  const sp = new URLSearchParams();
+  if (params?.limit != null) sp.set('limit', String(params.limit));
+  if (params?.offset != null) sp.set('offset', String(params.offset));
+  const qs = sp.toString();
+  return apiFetch<OrderRoutingRule[]>(`/ecommerce/order-routing-rules${qs ? `?${qs}` : ''}`);
+}
+
+export async function createOrderRoutingRule(
+  body: Partial<OrderRoutingRule>,
+): Promise<ApiResponse<{ id: string }>> {
+  return apiFetch<{ id: string }>('/ecommerce/order-routing-rules', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+export async function updateOrderRoutingRule(
+  id: string,
+  body: Partial<OrderRoutingRule>,
+): Promise<ApiResponse<{ id: string }>> {
+  return apiFetch<{ id: string }>(`/ecommerce/order-routing-rules/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(body),
+  });
+}
+
+export async function deleteOrderRoutingRule(
+  id: string,
+): Promise<ApiResponse<{ id: string }>> {
+  return apiFetch<{ id: string }>(`/ecommerce/order-routing-rules/${id}`, {
+    method: 'DELETE',
   });
 }
 
@@ -10402,6 +10447,7 @@ export interface DropshipSupplier {
   contact_email: string | null;
   default_shipping_cost_cents: number;
   is_active: number;
+  dropship_partner_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -10416,6 +10462,25 @@ export interface DropshipSupplierInput {
   contact_email?: string | null;
   default_shipping_cost_cents?: number;
   is_active?: 0 | 1;
+  dropship_partner_id?: string | null;
+}
+
+/** Partenaire dropship (grossiste tiers) */
+export interface DropshipPartner {
+  id: string;
+  client_id: string;
+  company_name: string;
+  email: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Input création/mise à jour partenaire dropship. */
+export interface DropshipPartnerInput {
+  company_name?: string;
+  email?: string;
+  status?: string;
 }
 
 /** Routing variant → supplier (table dropship_routings). UNIQUE par variant×client. */
@@ -10451,6 +10516,22 @@ export interface DropshipOrder {
   tracking_number: string | null;
   created_at: string;
   updated_at: string;
+  // Propriétés optionnelles jointes pour le portail
+  customer_id?: string | null;
+  shipping_address?: string | null;
+  contact_email?: string | null;
+  contact_phone?: string | null;
+  order_notes?: string | null;
+  items?: Array<{
+    id: string;
+    order_id: string;
+    product_id: string;
+    variant_id: string;
+    quantity: number;
+    price_cents: number;
+    name: string;
+    supplier_sku: string | null;
+  }>;
 }
 
 /** Résultat retourné par POST /api/dropship-orders/route/:orderId. */
@@ -10654,6 +10735,62 @@ export async function routeOrderToSupplier(
   return apiFetch<RouteOrderToSupplierResult>(
     `/dropship-orders/route/${orderId}`,
     { method: 'POST' },
+  );
+}
+
+// ── Sprint 67 — Portail Fournisseurs & Dropshipping (seq162) ───────────────
+
+/** GET /api/dropship-partners — liste les partenaires dropship. */
+export async function listDropshipPartners(): Promise<ApiResponse<DropshipPartner[]>> {
+  return apiFetch<DropshipPartner[]>('/dropship-partners');
+}
+
+/** POST /api/dropship-partners — crée un partenaire dropship. */
+export async function createDropshipPartner(
+  body: DropshipPartnerInput,
+): Promise<ApiResponse<DropshipPartner>> {
+  return apiFetch<DropshipPartner>('/dropship-partners', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+/** PATCH /api/dropship-partners/:id — met à jour un partenaire dropship. */
+export async function updateDropshipPartner(
+  partnerId: string,
+  body: DropshipPartnerInput,
+): Promise<ApiResponse<DropshipPartner>> {
+  return apiFetch<DropshipPartner>(`/dropship-partners/${partnerId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  });
+}
+
+/** DELETE /api/dropship-partners/:id — supprime un partenaire dropship. */
+export async function deleteDropshipPartner(
+  partnerId: string,
+): Promise<ApiResponse<{ id: string; deleted: boolean }>> {
+  return apiFetch<{ id: string; deleted: boolean }>(`/dropship-partners/${partnerId}`, {
+    method: 'DELETE',
+  });
+}
+
+/** GET /api/dropship-portal/orders — liste les commandes associées au partenaire connecté. */
+export async function listPortalDropshipOrders(): Promise<ApiResponse<DropshipOrder[]>> {
+  return apiFetch<DropshipOrder[]>('/dropship-portal/orders');
+}
+
+/** POST /api/dropship-portal/orders/:id/ship — confirme l'expédition d'une commande avec son numéro de suivi. */
+export async function shipPortalDropshipOrder(
+  dropshipOrderId: string,
+  trackingNumber: string,
+): Promise<ApiResponse<{ success: boolean; id: string; status: string; tracking_number: string }>> {
+  return apiFetch<{ success: boolean; id: string; status: string; tracking_number: string }>(
+    `/dropship-portal/orders/${dropshipOrderId}/ship`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ tracking_number: trackingNumber }),
+    },
   );
 }
 

@@ -736,7 +736,7 @@ export default {
       //    /cart/:itemId avant /cart). Corps réels Phase B Manager-B
       //    (storefront-public.ts). Paiement MOCK impératif (E4/E6 inactif).
       const storeProductMatch = path.match(/^\/api\/store\/([^/]+)\/products\/([^/]+)$/);
-      if (storeProductMatch && method === 'GET') return await handleStoreProduct(env, storeProductMatch[1]!, storeProductMatch[2]!);
+      if (storeProductMatch && method === 'GET') return await handleStoreProduct(env, storeProductMatch[1]!, storeProductMatch[2]!, url);
       const storeProductsMatch = path.match(/^\/api\/store\/([^/]+)\/products$/);
       if (storeProductsMatch && method === 'GET') return await handleStoreProducts(env, storeProductsMatch[1]!, url);
       const storeCartItemMatch = path.match(/^\/api\/store\/([^/]+)\/cart\/([^/]+)$/);
@@ -1424,6 +1424,20 @@ export default {
     const baseAuthCtx = { ...auth, clientId: tenantCtx.clientId ?? undefined, tenant: tenantCtx };
     const capabilities = await resolveCapabilities(env, baseAuthCtx);
     const authCtx = { ...baseAuthCtx, capabilities };
+
+    // Garde anti-IDOR globale pour les partenaires dropship
+    if (tenantCtx.dropshipPartnerId) {
+      const isPortalRoute =
+        path === '/api/dropship-portal/orders' ||
+        path.match(/^\/api\/dropship-portal\/orders\/([^/]+)\/ship$/) ||
+        path === '/api/auth/logout' ||
+        path === '/api/auth/me' ||
+        path === '/api/me';
+      
+      if (!isPortalRoute) {
+        return json({ error: 'Accès interdit aux utilisateurs partenaires' }, 403);
+      }
+    }
 
     try {
       // ── Sprint 24 — Observabilité : capture la réponse pour enregistrer la
@@ -3827,6 +3841,36 @@ async function routeProtected(
         return m.handleListDropshipOrders(env, auth);
       }
 
+      // ── Sprint 67 — Portail Fournisseurs & Dropshipping (AUTHED) ──────────
+      // Portail Partenaire
+      if (path === '/api/dropship-portal/orders' && method === 'GET') {
+        const m = await import('./worker/dropship-portal');
+        return m.handleListPortalDropshipOrders(env, auth);
+      }
+      const portalShipMatch = path.match(/^\/api\/dropship-portal\/orders\/([^/]+)\/ship$/);
+      if (portalShipMatch && method === 'POST') {
+        const m = await import('./worker/dropship-portal');
+        return m.handleShipPortalDropshipOrder(request, env, auth, portalShipMatch[1]!);
+      }
+      // Administration des partenaires
+      if (path === '/api/dropship-partners' && method === 'GET') {
+        const m = await import('./worker/dropship-portal');
+        return m.handleListDropshipPartners(env, auth);
+      }
+      if (path === '/api/dropship-partners' && method === 'POST') {
+        const m = await import('./worker/dropship-portal');
+        return m.handleCreateDropshipPartner(request, env, auth);
+      }
+      const partnerIdMatch = path.match(/^\/api\/dropship-partners\/([^/]+)$/);
+      if (partnerIdMatch && method === 'PATCH') {
+        const m = await import('./worker/dropship-portal');
+        return m.handleUpdateDropshipPartner(request, env, auth, partnerIdMatch[1]!);
+      }
+      if (partnerIdMatch && method === 'DELETE') {
+        const m = await import('./worker/dropship-portal');
+        return m.handleDeleteDropshipPartner(env, auth, partnerIdMatch[1]!);
+      }
+
       // ── Sprint 48 — B2B wholesale + Bundles + Pre-orders (AUTHED) ────────
       // 22 routes étendant le pipeline e-commerce S(E1+) (ecommerce-*.ts
       // INTOUCHÉS). Caps FIGÉES : clients.manage (groups CRUD + assign,
@@ -4471,6 +4515,29 @@ async function routeProtected(
     const guard = await requireModule(env, auth.userId, 'ecommerce');
     if (guard) return guard;
     const ec = await import('./worker/ecommerce');
+
+    // Order Routing Rules (Sprint 66)
+    if (path === '/api/ecommerce/order-routing-rules' && method === 'GET') {
+      const { handleListOrderRoutingRules } = await import('./worker/order-routing-rules');
+      return await handleListOrderRoutingRules(env, auth, url);
+    }
+    if (path === '/api/ecommerce/order-routing-rules' && method === 'POST') {
+      const { handleCreateOrderRoutingRule } = await import('./worker/order-routing-rules');
+      return await handleCreateOrderRoutingRule(request, env, auth);
+    }
+    const ruleMatch = path.match(/^\/api\/ecommerce\/order-routing-rules\/([^/]+)$/);
+    if (ruleMatch && method === 'GET') {
+      const { handleGetOrderRoutingRule } = await import('./worker/order-routing-rules');
+      return await handleGetOrderRoutingRule(env, auth, ruleMatch[1]!);
+    }
+    if (ruleMatch && method === 'PUT') {
+      const { handleUpdateOrderRoutingRule } = await import('./worker/order-routing-rules');
+      return await handleUpdateOrderRoutingRule(request, env, auth, ruleMatch[1]!);
+    }
+    if (ruleMatch && method === 'DELETE') {
+      const { handleDeleteOrderRoutingRule } = await import('./worker/order-routing-rules');
+      return await handleDeleteOrderRoutingRule(env, auth, ruleMatch[1]!);
+    }
 
     // Products
     if (path === '/api/ecommerce/products' && method === 'GET') return ec.handleListProducts(env, auth, url);

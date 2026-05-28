@@ -8,7 +8,9 @@ import { getEcommerceProduct } from '@/lib/api';
 import { t, getLocale } from '@/lib/i18n';
 import { formatMoneyCents } from '@/lib/i18n/number';
 import type { Product } from '@/lib/types';
-import { Pencil, Package, Image as ImageIcon } from 'lucide-react';
+import { Pencil, Package, Image as ImageIcon, Calculator } from 'lucide-react';
+import { Modal } from '../ui/Modal';
+import { TierPricesEditor } from '../b2b/TierPricesEditor';
 
 interface ProductDetailPanelProps {
   productId: string | null;
@@ -29,6 +31,7 @@ function statusLabel(s?: string) {
 export function ProductDetailPanel({ productId, open, onOpenChange, onEdit }: ProductDetailPanelProps) {
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(false);
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open || !productId) return;
@@ -46,9 +49,10 @@ export function ProductDetailPanel({ productId, open, onOpenChange, onEdit }: Pr
       : '—';
 
   return (
-    <SlidePanel
-      open={open}
-      onOpenChange={onOpenChange}
+    <>
+      <SlidePanel
+        open={open}
+        onOpenChange={onOpenChange}
       title={product?.title || t('shop.product_detail')}
       description={product ? statusLabel(product.status) : undefined}
       size="lg"
@@ -131,11 +135,23 @@ export function ProductDetailPanel({ productId, open, onOpenChange, onEdit }: Pr
                   <div key={v.id} className="flex items-center gap-3 px-3 py-2.5 text-[13px]">
                     <span className="font-medium flex-1 min-w-0 truncate">{v.title}</span>
                     {v.sku && <span className="text-[11px] font-mono text-[var(--text-muted)]">{v.sku}</span>}
-                    <span className="t-mono-num">
-                      {v.price_override != null
-                        ? formatMoneyCents(v.price_override, getLocale(), product.currency || 'CAD')
-                        : formatMoneyCents(product.base_price || 0, getLocale(), product.currency || 'CAD')}
-                    </span>
+                    <div className="flex items-center gap-1">
+                      <span className="t-mono-num">
+                        {v.price_override != null
+                          ? formatMoneyCents(v.price_override, getLocale(), product.currency || 'CAD')
+                          : formatMoneyCents(product.base_price || 0, getLocale(), product.currency || 'CAD')}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="p-1 h-auto text-[var(--text-muted)] hover:text-[var(--primary)]"
+                        onClick={() => setSelectedVariantId(v.id)}
+                        title="Gérer les tarifs B2B"
+                        aria-label={`Gérer les tarifs B2B pour ${v.title}`}
+                      >
+                        <Icon as={Calculator} size="sm" />
+                      </Button>
+                    </div>
                     {qty != null && (
                       <Tag size="sm" variant={low ? 'warning' : 'neutral'}>
                         {qty} {low ? `· ${t('shop.low_stock')}` : ''}
@@ -149,6 +165,17 @@ export function ProductDetailPanel({ productId, open, onOpenChange, onEdit }: Pr
         </div>
       )}
     </SlidePanel>
+    <Modal
+      open={Boolean(selectedVariantId)}
+      onOpenChange={(op) => { if (!op) setSelectedVariantId(null); }}
+      title="Tarifs B2B par Segment"
+      size="lg"
+    >
+      {selectedVariantId && (
+        <TierPricesEditor variantId={selectedVariantId} />
+      )}
+    </Modal>
+  </>
   );
 }
 
