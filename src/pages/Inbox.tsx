@@ -476,7 +476,7 @@ export function InboxPage() {
   // dans le fil avec status="sending", puis transitionne à "sent" au retour
   // serveur, ou "failed" si erreur (avec retry possible).
   // Sprint 20 : `bodyOverride` permet le retry depuis un message failed
-  const handleSend = async (bodyOverride?: string) => {
+  const handleSend = async (bodyOverride?: string, isNoteOverride?: boolean, scheduledAtOverride?: string) => {
     const text = (bodyOverride ?? composerText).trim();
     if (!text || !selectedConvId || !activeConv) return;
     const tmpId = `tmp-${crypto.randomUUID()}`;
@@ -486,10 +486,10 @@ export function InboxPage() {
       client_id: activeConv.client_id || '',
       conversation_id: selectedConvId,
       direction: 'outbound',
-      channel: activeConv.channel,
+      channel: isNoteOverride ? 'internal_note' : activeConv.channel,
       subject: '',
       body: text,
-      status: 'sending' as Message['status'],
+      status: scheduledAtOverride ? 'scheduled' as Message['status'] : 'sending' as Message['status'],
       sent_by: 'me',
       external_id: '',
       metadata: '',
@@ -506,7 +506,7 @@ export function InboxPage() {
     setIsSending(true);
 
     // Si Webchat, on envoie via WS (déjà optimistic via le backend WS pour le serveur)
-    if (activeConv.channel === 'webchat') {
+    if (activeConv.channel === 'webchat' && !isNoteOverride && !scheduledAtOverride) {
       const sent = sendWsMessage(text);
       if (!sent) {
         // Fallback REST si WS déconnecté
@@ -533,13 +533,11 @@ export function InboxPage() {
       }
     } else {
       // Sprint 44 M2.3 — Offline-first : si pas de réseau, enqueue dans outbox.
-      // Message reste affiché en optimistic avec status 'queued' (icon Clock).
-      // Auto-flush au retour online (setup dans AppLayout).
-      if (!navigator.onLine) {
+      if (!navigator.onLine && !scheduledAtOverride) {
         try {
           await enqueueOutbound({
             conversationId: selectedConvId,
-            channel: activeConv.channel,
+            channel: isNoteOverride ? 'internal_note' : activeConv.channel,
             body: text,
             tmpMessageId: tmpId,
           });
@@ -555,7 +553,7 @@ export function InboxPage() {
             messages: (prev.messages || []).map(m => m.id === tmpId ? { ...m, status: 'failed' as Message['status'] } : m)
           } : prev);
           toast.error(t('inbox.toast.storage_error'), {
-            action: { label: t('inbox.toast.retry'), onClick: () => void handleSend(text) },
+            action: { label: t('inbox.toast.retry'), onClick: () => void handleSend(text, isNoteOverride, scheduledAtOverride) },
           });
         }
         setIsSending(false);
@@ -563,15 +561,18 @@ export function InboxPage() {
       }
 
       // API REST classique
-      const res = await sendConversationMessage(selectedConvId, { body: text });
+      const res = await sendConversationMessage(selectedConvId, {
+        body: text,
+        channel: isNoteOverride ? 'internal_note' : undefined,
+        scheduledAt: scheduledAtOverride,
+      });
       if (res.error || !res.data?.success) {
         // Sprint 44 M2.3 — Si erreur réseau (TypeError/network), enqueue plutôt
-        // que de marquer failed direct (l'user n'a probablement plus de connexion).
-        if (!navigator.onLine) {
+        if (!navigator.onLine && !scheduledAtOverride) {
           try {
             await enqueueOutbound({
               conversationId: selectedConvId,
-              channel: activeConv.channel,
+              channel: isNoteOverride ? 'internal_note' : activeConv.channel,
               body: text,
               tmpMessageId: tmpId,
             });
@@ -589,7 +590,7 @@ export function InboxPage() {
         } : prev);
         // Sprint 41 M3.3 — Toast échec + CTA Réessayer
         toast.error(t('inbox.toast.send_error'), {
-          action: { label: t('inbox.toast.retry'), onClick: () => void handleSend(text) },
+          action: { label: t('inbox.toast.retry'), onClick: () => void handleSend(text, isNoteOverride, scheduledAtOverride) },
         });
       } else {
         // Recharger la conversation pour récupérer l'ID réel du message et le statut serveur
@@ -599,8 +600,12 @@ export function InboxPage() {
           setActiveConv(updated.data);
         }
         void loadConversations();
-        // Sprint 41 M3.3 — Toast succès envoi (info subtle, ne pas spammer)
-        toast.success(t('inbox.toast.sent'));
+        
+        if (scheduledAtOverride) {
+          toast.success(t('inbox.toast.scheduled'));
+        } else {
+          toast.success(t('inbox.toast.sent'));
+        }
       }
     }
 

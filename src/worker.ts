@@ -1481,6 +1481,12 @@ export default {
         .then(() => undefined)
         .catch(() => undefined),
     );
+    ctx.waitUntil(
+      import('./worker/scheduled-messages')
+        .then((m) => m.processScheduledMessages(env))
+        .then(() => undefined)
+        .catch(() => undefined),
+    );
     // ── LOT PROACTIVE-C Sprint A — IA proactive batch (churn + NBA + alertes) ─
     // BEST-EFFORT (calque EXACT du pattern E7 / broadcasts / scheduled-reports).
     // Échec isolé ⇒ ne casse PAS le cron ni RFM / workflows / broadcasts /

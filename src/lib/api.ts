@@ -1501,7 +1501,7 @@ export async function createConversation(params: {
 
 export async function sendConversationMessage(
   conversationId: string,
-  message: { body: string; subject?: string }
+  message: { body: string; subject?: string; channel?: string; scheduledAt?: string }
 ): Promise<ApiResponse<{ id: string; success: boolean; status: string }>> {
   return apiFetch<{ id: string; success: boolean; status: string }>(`/conversations/${conversationId}/messages`, {
     method: 'POST',

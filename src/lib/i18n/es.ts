@@ -334,6 +334,14 @@ export const es: Record<string, string> = {
   'inbox.tone.detailed': 'Detallado',
   'inbox.tone.awaiting': 'En espera',
   'inbox.ai_draft': 'Borrador IA',
+  'inbox.mode_client_message': 'Mensaje al cliente ({{channel}})',
+  'inbox.mode_internal_note': 'Nota interna',
+  'inbox.save_note': 'Guardar nota',
+  'inbox.schedule_send': 'Programar envío',
+  'inbox.schedule_message': 'Programar mensaje',
+  'inbox.scheduled_for': 'Programado para',
+  'inbox.schedule_error_past': 'La fecha de programación debe ser en el futuro.',
+  'inbox.toast.scheduled': 'Mensaje programado con éxito',
 
   // ── Calendar ────────────────────────────────────────────────────────────
   'calendar.title': 'Calendario',

@@ -332,6 +332,14 @@ export const en: Record<string, string> = {
   'inbox.tone.detailed': 'Detailed',
   'inbox.tone.awaiting': 'Awaiting',
   'inbox.ai_draft': 'AI draft',
+  'inbox.mode_client_message': 'Client message ({{channel}})',
+  'inbox.mode_internal_note': 'Internal note',
+  'inbox.save_note': 'Save note',
+  'inbox.schedule_send': 'Schedule send',
+  'inbox.schedule_message': 'Schedule message',
+  'inbox.scheduled_for': 'Scheduled for',
+  'inbox.schedule_error_past': 'The schedule date must be in the future.',
+  'inbox.toast.scheduled': 'Message scheduled successfully',
 
   // ── Calendar ────────────────────────────────────────────────────────────
   'calendar.title': 'Calendar',

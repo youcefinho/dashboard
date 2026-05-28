@@ -41,8 +41,9 @@ export function NewConversationPane({ onCancel, onSent, snippets = [], templates
     return () => clearTimeout(timer);
   }, [search]);
 
-  const handleSend = async () => {
-    if (!selectedLead || !composerText.trim()) return;
+  const handleSend = async (bodyOverride?: string, isNoteOverride?: boolean, scheduledAtOverride?: string) => {
+    const text = (bodyOverride ?? composerText).trim();
+    if (!selectedLead || !text) return;
     setIsSending(true);
 
     try {
@@ -51,7 +52,7 @@ export function NewConversationPane({ onCancel, onSent, snippets = [], templates
         method: 'POST',
         body: JSON.stringify({
           lead_id: selectedLead.id,
-          channel,
+          channel: isNoteOverride ? 'internal_note' : channel,
           subject
         })
       });
@@ -61,8 +62,10 @@ export function NewConversationPane({ onCancel, onSent, snippets = [], templates
         await apiFetch(`/conversations/${convRes.data.id}/messages`, {
           method: 'POST',
           body: JSON.stringify({
-            body: composerText,
-            subject
+            body: text,
+            subject,
+            channel: isNoteOverride ? 'internal_note' : undefined,
+            scheduledAt: scheduledAtOverride
           })
         });
         

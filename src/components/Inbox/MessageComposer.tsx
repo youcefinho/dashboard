@@ -1,6 +1,6 @@
 import { useRef, useState, useMemo, useEffect } from 'react';
 import { Button, AiSparkles, Textarea, Icon, AiLoadingShimmer } from '@/components/ui';
-import { Send, FileText, Variable, AlertTriangle, Sparkles, Reply, X as XIcon } from 'lucide-react';
+import { Send, FileText, Variable, AlertTriangle, Sparkles, Reply, X as XIcon, Clock } from 'lucide-react';
 import type { MessageChannel, Snippet, EmailTemplate, Lead } from '@/lib/types';
 import { CHANNEL_LABELS } from '@/lib/types';
 import { interpolateTemplate } from '@/lib/api';
@@ -25,12 +25,12 @@ import { analyzeTone, toneLeadMismatch } from '@/lib/toneAnalyzer';
 import { proofreadText, type ProofreadIssue } from '@/lib/proofread';
 import { shouldSuggestLangSwitch } from '@/lib/langDetect';
 import { ProofreadOverlay } from './ProofreadOverlay';
-import { getLocale } from '@/lib/i18n';
+import { getLocale, t } from '@/lib/i18n';
 
 interface Props {
   composerText: string;
   setComposerText: (t: string) => void;
-  handleSend: (bodyOverride?: string) => void | Promise<void>;
+  handleSend: (bodyOverride?: string, isNoteOverride?: boolean, scheduledAtOverride?: string) => void | Promise<void>;
   isSending: boolean;
   channel: MessageChannel;
   snippets?: Snippet[];
@@ -77,6 +77,11 @@ export function MessageComposer({
   const [slashMode, setSlashMode] = useState<SlashMode>(null);
   const [slashQuery, setSlashQuery] = useState('');
   const [showTemplates, setShowTemplates] = useState(false);
+  const [isNoteMode, setIsNoteMode] = useState(false);
+  const [scheduledAt, setScheduledAt] = useState<string | null>(null);
+  const [showSchedulePopover, setShowSchedulePopover] = useState(false);
+  const [scheduleDate, setScheduleDate] = useState('');
+  const [scheduleTime, setScheduleTime] = useState('');
   // Sprint 32 vague 32-2A — popover drafts AI
   const [showDrafts, setShowDrafts] = useState(false);
   // Sprint 34 vague 34-3A — stub loading state pour préfigurer l'appel Claude Haiku
@@ -507,21 +512,27 @@ export function MessageComposer({
     const bodyToRecord = composerText.trim();
     try {
       if (presentTokens.length === 0) {
-        await Promise.resolve(handleSend());
+        await Promise.resolve(handleSend(undefined, isNoteMode, scheduledAt || undefined));
       } else {
         const { resolved } = resolveVars(composerText, leadCtx);
-        await Promise.resolve(handleSend(resolved));
+        await Promise.resolve(handleSend(resolved, isNoteMode, scheduledAt || undefined));
       }
-      if (leadId && bodyToRecord) {
+      if (leadId && bodyToRecord && !isNoteMode && !scheduledAt) {
         recordReply(leadId, bodyToRecord);
         setQuickReplies(getQuickReplies(leadId));
       }
+      setScheduledAt(null);
+      setScheduleDate('');
+      setScheduleTime('');
+      setShowSchedulePopover(false);
     } catch {
       // Erreur d'envoi : ne pas enregistrer le quick reply.
     }
   };
 
-  const placeholder = `Répondre via ${CHANNEL_LABELS[channel] || channel} (tapez / pour modèles, /var pour variables)...`;
+  const placeholder = isNoteMode
+    ? "Saisir une note interne visible uniquement par l'équipe (tapez /var pour variables)..."
+    : `Répondre via ${CHANNEL_LABELS[channel] || channel} (tapez / pour modèles, /var pour variables)...`;
   const channelTemplates = templates.filter((t) => t.channel === channel);
 
   // ── Premium picker style (réutilisé pour snippets + templates + vars) ──
@@ -541,6 +552,54 @@ export function MessageComposer({
 
   return (
     <div className="border-t border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3 relative">
+      {/* Sélecteur de canal / mode Note interne */}
+      <div className="flex items-center gap-1 border-b border-[var(--border-subtle)] pb-2 mb-2 text-xs">
+        <button
+          type="button"
+          onClick={() => setIsNoteMode(false)}
+          className={`px-3 py-1 rounded-md font-medium transition-all ${
+            !isNoteMode
+              ? 'bg-[var(--primary-subtle)] text-[var(--primary)] shadow-sm'
+              : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
+          }`}
+        >
+          {t('inbox.mode_client_message', { channel: CHANNEL_LABELS[channel] || channel })}
+        </button>
+        <button
+          type="button"
+          onClick={() => setIsNoteMode(true)}
+          className={`px-3 py-1 rounded-md font-medium transition-all ${
+            isNoteMode
+              ? 'bg-amber-100/70 text-amber-800 border border-amber-200/50 shadow-sm dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-900/50'
+              : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
+          }`}
+        >
+          {t('inbox.mode_internal_note')}
+        </button>
+      </div>
+
+      {/* Date de planification du message */}
+      {scheduledAt && (
+        <div className="flex items-center justify-between bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-900/50 rounded-lg p-2 mb-2 text-xs text-purple-700 dark:text-purple-300">
+          <div className="flex items-center gap-2">
+            <Icon as={Clock} size="xs" />
+            <span>
+              {t('inbox.scheduled_for')}&nbsp;: {new Date(scheduledAt).toLocaleString(locale, {
+                dateStyle: 'short',
+                timeStyle: 'short',
+              })}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setScheduledAt(null)}
+            className="text-purple-500 hover:text-purple-700 dark:hover:text-purple-200 font-semibold"
+          >
+            {t('action.cancel')}
+          </button>
+        </div>
+      )}
+
       {/* ── Sprint 44 M3.1 — Reply header (swipe-to-reply target) ── */}
       {replyTo && (
         <div
@@ -880,7 +939,11 @@ export function MessageComposer({
             resize="none"
             maxLength={2000}
             showCounter
-            className="text-xs pr-10 min-h-[64px]"
+            className={`text-xs pr-10 min-h-[64px] transition-all ${
+              isNoteMode
+                ? 'bg-amber-50/40 border-amber-200 focus-within:border-amber-300 dark:bg-amber-950/10 dark:border-amber-900/50 text-amber-900 dark:text-amber-100'
+                : 'text-[var(--text-primary)]'
+            }`}
           />
           {/* ── Sprint 49 M1.3 — Proofread underline overlay (non-intrusif) ── */}
           {proofIssues.length > 0 && (
@@ -921,18 +984,102 @@ export function MessageComposer({
             className="absolute bottom-2 right-2"
           />
         </div>
-        <div className="flex flex-col gap-1.5 h-full">
-          <Button
-            size="sm"
-            onClick={() => void onSendResolved()}
-            isLoading={isSending}
-            leftIcon={<Icon as={Send} size="sm" />}
-            className="h-[28px]"
-          >
-            Envoyer
-          </Button>
+        <div className="flex flex-col gap-1.5 h-full self-end">
+          <div className="flex items-center gap-1">
+            {!isNoteMode && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowSchedulePopover(!showSchedulePopover)}
+                className={`h-[28px] px-2 ${
+                  scheduledAt
+                    ? 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/20'
+                    : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+                }`}
+                title={t('inbox.schedule_send')}
+              >
+                <Icon as={Clock} size="sm" />
+              </Button>
+            )}
+            <Button
+              size="sm"
+              onClick={() => void onSendResolved()}
+              isLoading={isSending}
+              leftIcon={<Icon as={isNoteMode ? FileText : Send} size="sm" />}
+              className={`h-[28px] ${
+                isNoteMode
+                  ? 'bg-amber-600 hover:bg-amber-700 text-white border-amber-700'
+                  : 'bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)]'
+              }`}
+            >
+              {isNoteMode ? t('inbox.save_note') : t('action.send')}
+            </Button>
+          </div>
         </div>
       </div>
+
+      {/* Popover de Planification */}
+      {showSchedulePopover && (
+        <div
+          className="absolute bottom-full mb-2 right-3 w-64 rounded-xl overflow-hidden z-20 p-3 flex flex-col gap-2"
+          style={pickerWrapStyle}
+        >
+          <div
+            className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1"
+          >
+            {t('inbox.schedule_message')}
+          </div>
+          <div className="flex flex-col gap-2">
+            <label className="text-[10px] font-medium text-[var(--text-secondary)]">
+              {t('form.label.date')}
+            </label>
+            <input
+              type="date"
+              value={scheduleDate}
+              onChange={(e) => setScheduleDate(e.target.value)}
+              className="text-xs p-1.5 border border-[var(--border-subtle)] rounded bg-[var(--bg-input)] text-[var(--text-primary)]"
+              min={new Date().toISOString().split('T')[0]}
+            />
+            <label className="text-[10px] font-medium text-[var(--text-secondary)]">
+              {t('form.label.time')}
+            </label>
+            <input
+              type="time"
+              value={scheduleTime}
+              onChange={(e) => setScheduleTime(e.target.value)}
+              className="text-xs p-1.5 border border-[var(--border-subtle)] rounded bg-[var(--bg-input)] text-[var(--text-primary)]"
+            />
+            <div className="flex gap-2 mt-1">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setShowSchedulePopover(false)}
+                className="flex-1 text-[10px]"
+              >
+                {t('action.cancel')}
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => {
+                  if (scheduleDate && scheduleTime) {
+                    const dt = new Date(`${scheduleDate}T${scheduleTime}`);
+                    if (dt.getTime() > Date.now()) {
+                      setScheduledAt(dt.toISOString());
+                      setShowSchedulePopover(false);
+                    } else {
+                      alert(t('inbox.schedule_error_past'));
+                    }
+                  }
+                }}
+                className="flex-1 text-[10px]"
+                disabled={!scheduleDate || !scheduleTime}
+              >
+                {t('action.apply')}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

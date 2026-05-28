@@ -195,8 +195,29 @@ export async function handleSendConversationMessage(
 
   if (!conv) return json({ error: 'Conversation introuvable' }, 404);
 
+  const bodyChannel = sanitizeInput(body.channel as string, 30);
+  const channel = (bodyChannel === 'internal_note') ? 'internal_note' : (conv.channel as string);
+
+  // Gestion des messages programmés
+  const scheduledAt = sanitizeInput(body.scheduledAt as string, 50);
+  if (scheduledAt) {
+    const t = Date.parse(scheduledAt);
+    if (isNaN(t) || t <= Date.now()) {
+      return json({ error: 'Date de planification invalide ou passée' }, 400);
+    }
+    const scheduledId = crypto.randomUUID();
+    await env.DB.prepare(
+      `INSERT INTO scheduled_messages (id, lead_id, client_id, conversation_id, channel, subject, body, sent_by, scheduled_at, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`
+    ).bind(
+      scheduledId, conv.lead_id as string, conv.client_id as string,
+      conversationId, channel, subject || '', messageBody, auth.userId, new Date(t).toISOString()
+    ).run();
+
+    return json({ data: { id: scheduledId, success: true, status: 'scheduled' } });
+  }
+
   const messageId = crypto.randomUUID();
-  const channel = conv.channel as string;
   let status = 'sent';
 
   // Envoi réel selon le canal (email via Resend, SMS via Twilio)
