@@ -7296,6 +7296,16 @@ export async function generateSocialPost(
   });
 }
 
+/** Génère une image via IA. POST /api/social/generate-image. */
+export async function generateSocialImage(
+  payload: { prompt: string },
+): Promise<ApiResponse<{ url: string; fileId: string }>> {
+  return apiFetch<{ url: string; fileId: string }>('/social/generate-image', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
 // ── SPRINT 12 « IA contenu — atelier centralisé » (helpers FIGÉS Phase A) ───
 // Routes /api/ai/content/* GARDÉES (auth + capGuard ai.use côté worker). AUCUN
 // client_id envoyé dans le body : le worker borne le tenant depuis l'AUTH (le

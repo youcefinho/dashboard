@@ -10,10 +10,10 @@
 // AUCUN CSS global. Libellés via t('social.*'). Pas de crash si IA indisponible.
 
 import { useState } from 'react';
-import { Button, Card, useToast } from '@/components/ui';
+import { Button, Card, useToast, Modal, AiLoadingShimmer } from '@/components/ui';
 import { Plus, X, Sparkles } from 'lucide-react';
 import type { SocialPost, SocialProvider } from '@/lib/types';
-import { generateSocialPost } from '@/lib/api';
+import { generateSocialPost, generateSocialImage } from '@/lib/api';
 import { NetworkPreview, NetworkIcon, networkLabel } from './NetworkPreview';
 import { t } from '@/lib/i18n';
 
@@ -50,6 +50,13 @@ export function PostComposer({ initial, editing = null, saving = false, onSave, 
   const [aiPrompt, setAiPrompt] = useState('');
   const [generating, setGenerating] = useState(false);
 
+  // États pour le générateur d'images IA
+  const [aiImageModalOpen, setAiImageModalOpen] = useState(false);
+  const [aiImagePrompt, setAiImagePrompt] = useState('');
+  const [generatingImage, setGeneratingImage] = useState(false);
+  const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
+  const [generationError, setGenerationError] = useState<string | null>(null);
+
   const toggleNetwork = (n: SocialProvider) => {
     setNetworks((cur) => (cur.includes(n) ? cur.filter((x) => x !== n) : [...cur, n]));
   };
@@ -84,6 +91,36 @@ export function PostComposer({ initial, editing = null, saving = false, onSave, 
     } finally {
       setGenerating(false);
     }
+  };
+
+  const handleGenerateImage = async () => {
+    if (!aiImagePrompt.trim() || generatingImage) return;
+    setGeneratingImage(true);
+    setGenerationError(null);
+    setGeneratedImageUrl(null);
+    try {
+      const res = await generateSocialImage(aiImagePrompt.trim());
+      if (res.data?.url) {
+        setGeneratedImageUrl(res.data.url);
+      } else {
+        setGenerationError(res.error ?? t('social.ai.image.error'));
+        toast.error(res.error ?? t('social.ai.image.error'));
+      }
+    } catch (err) {
+      console.error(err);
+      setGenerationError(t('social.ai.image.error'));
+      toast.error(t('social.ai.image.error'));
+    } finally {
+      setGeneratingImage(false);
+    }
+  };
+
+  const handleInsertGeneratedImage = () => {
+    if (!generatedImageUrl) return;
+    setMedia((cur) => (cur.includes(generatedImageUrl) ? cur : [...cur, generatedImageUrl]));
+    setAiImageModalOpen(false);
+    setGeneratedImageUrl(null);
+    setAiImagePrompt('');
   };
 
   const buildDraft = (): ComposerDraft => ({
@@ -174,17 +211,25 @@ export function PostComposer({ initial, editing = null, saving = false, onSave, 
             <label className="block text-sm font-medium text-[var(--text-primary)] mb-1.5">
               {t('social.media_label')}
             </label>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <input
                 type="url"
                 value={mediaInput}
                 onChange={(e) => setMediaInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addMedia(); } }}
                 placeholder="https://…"
-                className="flex-1 px-3 py-2 text-sm bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] focus:border-[var(--primary)] focus:outline-none"
+                className="flex-1 min-w-[200px] px-3 py-2 text-sm bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] focus:border-[var(--primary)] focus:outline-none"
               />
               <Button variant="secondary" leftIcon={<Plus size={14} />} disabled={!mediaInput.trim()} onClick={addMedia}>
                 {t('social.media_add')}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                leftIcon={<Sparkles size={14} className="text-violet-500" />}
+                onClick={() => setAiImageModalOpen(true)}
+              >
+                {t('social.ai.image.button')}
               </Button>
             </div>
             {media.length > 0 && (
@@ -245,6 +290,80 @@ export function PostComposer({ initial, editing = null, saving = false, onSave, 
           </div>
         )}
       </div>
+
+      <Modal
+        open={aiImageModalOpen}
+        onOpenChange={(open) => {
+          setAiImageModalOpen(open);
+          if (!open) {
+            setGeneratedImageUrl(null);
+            setGenerationError(null);
+            setGeneratingImage(false);
+          }
+        }}
+        title={t('social.ai.image.title')}
+        size="md"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-[var(--text-primary)] mb-1">
+              {t('social.ai.image.prompt_label')}
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={aiImagePrompt}
+                onChange={(e) => setAiImagePrompt(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleGenerateImage(); } }}
+                placeholder={t('social.ai.image.prompt_placeholder')}
+                className="flex-1 px-3 py-2 text-sm bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] focus:border-[var(--primary)] focus:outline-none"
+                disabled={generatingImage}
+              />
+              <Button
+                variant="primary"
+                leftIcon={<Sparkles size={14} />}
+                isLoading={generatingImage}
+                disabled={!aiImagePrompt.trim() || generatingImage}
+                onClick={() => void handleGenerateImage()}
+              >
+                {t('social.ai.image.generate')}
+              </Button>
+            </div>
+          </div>
+
+          {generatingImage && (
+            <div className="flex flex-col items-center justify-center p-8 border border-dashed border-[var(--border-subtle)] rounded-[var(--radius-lg)] bg-[var(--bg-subtle)] space-y-3">
+              <AiLoadingShimmer text={t('social.ai.image.generating')} />
+            </div>
+          )}
+
+          {generationError && (
+            <div className="p-4 border border-red-200 bg-red-50 text-red-700 text-sm rounded-[var(--radius-lg)]">
+              {generationError}
+            </div>
+          )}
+
+          {generatedImageUrl && (
+            <div className="space-y-3">
+              <div className="relative aspect-video w-full rounded-[var(--radius-lg)] border border-[var(--border-subtle)] overflow-hidden bg-[var(--bg-subtle)]">
+                <img
+                  src={generatedImageUrl}
+                  alt="Visuel généré par l'IA"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="secondary" onClick={() => setAiImageModalOpen(false)}>
+                  {t('common.close')}
+                </Button>
+                <Button variant="primary" onClick={handleInsertGeneratedImage}>
+                  {t('social.ai.image.insert')}
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 }

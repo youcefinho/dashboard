@@ -4156,6 +4156,10 @@ async function routeProtected(
     const { handleGenerateSocialPost } = await import('./worker/social-ai');
     return handleGenerateSocialPost(request, env, auth);
   }
+  if (path === '/api/social/generate-image' && method === 'POST') {
+    const { handleGenerateSocialImage } = await import('./worker/social-ai');
+    return handleGenerateSocialImage(request, env, auth);
+  }
   if (path === '/api/social/accounts' && method === 'GET') {
     const { handleListSocialAccounts } = await import('./worker/social-accounts');
     return handleListSocialAccounts(request, env, auth);
