@@ -308,6 +308,30 @@ export function ConversationsList({
                       {conv.last_message_preview || '—'}
                     </p>
                   </div>
+                  {(conv.last_inbound_sentiment && conv.last_inbound_sentiment !== 'Neutre' || conv.last_inbound_intent && conv.last_inbound_intent !== 'Autre') && (
+                    <div className="flex items-center gap-1 mt-1 flex-wrap" style={{ contentVisibility: 'auto' }}>
+                      {conv.last_inbound_sentiment && conv.last_inbound_sentiment !== 'Neutre' && (
+                        <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded border ${
+                          conv.last_inbound_sentiment === 'Fâché'
+                            ? 'bg-red-50 text-red-700 border-red-200'
+                            : 'bg-green-50 text-green-700 border-green-200'
+                        }`}>
+                          {conv.last_inbound_sentiment}
+                        </span>
+                      )}
+                      {conv.last_inbound_intent && conv.last_inbound_intent !== 'Autre' && (
+                        <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded border ${
+                          conv.last_inbound_intent === 'Désabonnement'
+                            ? 'bg-red-50 text-red-700 border-red-200'
+                            : conv.last_inbound_intent === 'Prendre RDV'
+                            ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                            : 'bg-amber-50 text-amber-700 border-amber-200'
+                        }`}>
+                          {conv.last_inbound_intent}
+                        </span>
+                      )}
+                    </div>
+                  )}
                   <div className="inbox-list-row-meta">
                     {hasUnread && (
                       <span className="inbox-list-row-unread-badge">

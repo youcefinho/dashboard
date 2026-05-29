@@ -106,6 +106,8 @@ export interface MessageBubbleProps {
    * ex 'queued' | 'sent' | 'delivered' | 'undelivered' | 'failed'.
    */
   deliveryStatus?: string;
+  sentiment?: string | null;
+  detectedIntent?: string | null;
 }
 
 const SWIPE_REPLY_THRESHOLD = 40;
@@ -138,6 +140,8 @@ export function MessageBubble({
   copyableText,
   channel,
   deliveryStatus,
+  sentiment,
+  detectedIntent,
 }: MessageBubbleProps) {
   const isSent = direction === 'sent';
   const isFailed = status === 'failed';
@@ -440,6 +444,32 @@ export function MessageBubble({
                 attachments={attachments}
                 tone={isSent && !isNote && !isFailed ? 'on-brand' : 'on-surface'}
               />
+            </div>
+          )}
+
+          {/* Sentiment and Intent badges for incoming messages */}
+          {(sentiment && sentiment !== 'Neutre' || detectedIntent && detectedIntent !== 'Autre') && (
+            <div className="flex items-center gap-1.5 mt-2 border-t border-[var(--border-subtle)] pt-1.5 flex-wrap">
+              {sentiment && sentiment !== 'Neutre' && (
+                <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded border ${
+                  sentiment === 'Fâché'
+                    ? 'bg-red-50/80 text-red-700 border-red-200'
+                    : 'bg-green-50/80 text-green-700 border-green-200'
+                }`}>
+                  {sentiment}
+                </span>
+              )}
+              {detectedIntent && detectedIntent !== 'Autre' && (
+                <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded border ${
+                  detectedIntent === 'Désabonnement'
+                    ? 'bg-red-50/80 text-red-700 border-red-200'
+                    : detectedIntent === 'Prendre RDV'
+                    ? 'bg-indigo-50/80 text-indigo-700 border-indigo-200'
+                    : 'bg-amber-50/80 text-amber-700 border-amber-200'
+                }`}>
+                  {detectedIntent}
+                </span>
+              )}
             </div>
           )}
 

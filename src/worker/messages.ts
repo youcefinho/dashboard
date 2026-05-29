@@ -3,6 +3,7 @@ import { Resend } from 'resend';
 import type { Env } from './types';
 import { sanitizeInput, json, audit, sendSms, createNotification, isLeadDnd } from './helpers';
 import { findOrCreateConversation } from './conversations';
+import { analyzeSentimentAndIntent } from './lib/sentiment-intent-engine';
 import { isUnsubscribed, generateCaslFooter, generateAmfDisclaimer, generateUnsubscribeToken } from './compliance';
 import {
   sanitizeBody as engineSanitizeBody,
@@ -347,11 +348,17 @@ export async function handleInboundSms(request: Request, env: Env): Promise<Resp
     const convId = await findOrCreateConversation(env, lead.id, lead.client_id, 'sms');
     const sanitizedBody = sanitizeInput(body, 1600);
 
+    // Analyser le sentiment et l'intention de vente
+    const { sentiment, intent } = await analyzeSentimentAndIntent(env, sanitizedBody);
+
     // Sauvegarder le message inbound
     await env.DB.prepare(
-      `INSERT INTO messages (id, lead_id, client_id, conversation_id, direction, channel, body, status, sent_by, external_id)
-       VALUES (?, ?, ?, ?, 'inbound', 'sms', ?, 'delivered', ?, ?)`
-    ).bind(crypto.randomUUID(), lead.id, lead.client_id, convId, sanitizedBody, from, sid).run();
+      `INSERT INTO messages (id, lead_id, client_id, conversation_id, direction, channel, body, status, sent_by, external_id, sentiment, detected_intent)
+       VALUES (?, ?, ?, ?, 'inbound', 'sms', ?, 'delivered', ?, ?, ?, ?)`
+    ).bind(
+      crypto.randomUUID(), lead.id, lead.client_id, convId,
+      sanitizedBody, from, sid, sentiment, intent
+    ).run();
 
     // Mettre à jour la conversation
     await env.DB.prepare(
@@ -429,10 +436,16 @@ export async function handleInboundEmail(request: Request, env: Env): Promise<Re
     // Trouver ou créer la conversation
     const convId = await findOrCreateConversation(env, lead.id, lead.client_id, 'email');
 
+    // Analyser le sentiment et l'intention de vente
+    const { sentiment, intent } = await analyzeSentimentAndIntent(env, bodyText);
+
     await env.DB.prepare(
-      `INSERT INTO messages (id, lead_id, client_id, conversation_id, direction, channel, subject, body, status, sent_by)
-       VALUES (?, ?, ?, ?, 'inbound', 'email', ?, ?, 'delivered', ?)`
-    ).bind(crypto.randomUUID(), lead.id, lead.client_id, convId, subject, bodyText, fromEmail).run();
+      `INSERT INTO messages (id, lead_id, client_id, conversation_id, direction, channel, subject, body, status, sent_by, sentiment, detected_intent)
+       VALUES (?, ?, ?, ?, 'inbound', 'email', ?, ?, 'delivered', ?, ?, ?)`
+    ).bind(
+      crypto.randomUUID(), lead.id, lead.client_id, convId,
+      subject, bodyText, fromEmail, sentiment, intent
+    ).run();
 
     // Mettre à jour la conversation
     await env.DB.prepare(

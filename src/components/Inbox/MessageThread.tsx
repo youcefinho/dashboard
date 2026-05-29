@@ -104,6 +104,8 @@ export const MessageThread = forwardRef<HTMLDivElement, Props>(({ messages, onRe
                 deliveryStatus={
                   (msg as { delivery_status?: string }).delivery_status ?? undefined
                 }
+                sentiment={msg.sentiment ?? undefined}
+                detectedIntent={msg.detected_intent ?? undefined}
               />
             );
           })}

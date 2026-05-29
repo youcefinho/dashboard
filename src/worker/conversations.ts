@@ -25,7 +25,9 @@ export async function handleGetConversations(
   const assigned = url.searchParams.get('assigned');
   const limit = clampLimit(url.searchParams.get('limit')).limit;
 
-  let query = `SELECT c.*, l.name as lead_name, l.email as lead_email, l.phone as lead_phone, l.avatar_url as lead_avatar, u.name as assigned_name
+  let query = `SELECT c.*, l.name as lead_name, l.email as lead_email, l.phone as lead_phone, l.avatar_url as lead_avatar, u.name as assigned_name,
+      (SELECT m.sentiment FROM messages m WHERE m.conversation_id = c.id AND m.direction = 'inbound' ORDER BY m.created_at DESC LIMIT 1) as last_inbound_sentiment,
+      (SELECT m.detected_intent FROM messages m WHERE m.conversation_id = c.id AND m.direction = 'inbound' ORDER BY m.created_at DESC LIMIT 1) as last_inbound_intent
     FROM conversations c
     LEFT JOIN leads l ON c.lead_id = l.id
     LEFT JOIN users u ON c.assigned_to = u.id

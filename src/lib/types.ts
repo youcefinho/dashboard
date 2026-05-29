@@ -211,6 +211,8 @@ export interface Conversation {
   lead_phone?: string;
   lead_avatar?: string;
   assigned_name?: string;
+  last_inbound_sentiment?: string | null;
+  last_inbound_intent?: string | null;
 }
 
 export interface Message {
@@ -229,6 +231,8 @@ export interface Message {
   created_at: string;
   // Sprint 3 GIGA — statut de livraison SMS (delivery receipts Twilio ; NULL = legacy)
   delivery_status?: string | null;
+  sentiment?: string | null;
+  detected_intent?: string | null;
   // Jointures optionnelles
   lead_name?: string;
   sender_name?: string;

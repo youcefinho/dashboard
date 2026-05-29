@@ -2256,6 +2256,18 @@
         "index:idx_chatbot_sessions_client"
       ],
       "risk": "low"
+    },
+    {
+      "seq": 163,
+      "file": "migration-sentiment-intent-seq168.sql",
+      "depends_on": [
+        "migration-chatbot-sessions-seq166.sql"
+      ],
+      "objects": [
+        "column:messages.sentiment",
+        "column:messages.detected_intent"
+      ],
+      "risk": "low"
     }
   ]
 }
