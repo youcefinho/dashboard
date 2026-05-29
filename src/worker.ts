@@ -247,6 +247,7 @@ import {
 import { handleGetPipelineBottlenecks, handleGetActivityAnomalies } from './worker/pipeline-insights';
 import { handlePublicUnsubscribe, handleGetUnsubscribes, handleLogConsent, handleGetConsent, handleForgetLead, handleExportPii } from './worker/compliance';
 import { handleGetSubAccounts, handleCreateSubAccount, handleUpdateSubAccount, handleCreateSnapshot, handleApplySnapshot, handleGetWhitelabel, handleUpdateWhitelabel, handleWidgetScript } from './worker/sub-accounts';
+import { handleListAccountSnapshots, handleCreateAccountSnapshot, handleApplyAccountSnapshot, handleDeleteAccountSnapshot } from './worker/account-snapshots';
 // gcal.ts et gbp.ts déplacés en _v2-backlog/ (Sprint Consolidation)
 
 import { handleEmailBroadcast, handleGetBroadcasts, handleGetBroadcastDetail } from './worker/broadcast';
@@ -327,6 +328,7 @@ import {
 import { handleGetUsers, handleInviteUser, handleUpdateUserRole, handleDeleteUser, handleGetRoles, handleAcceptInvitation, handleRevokeInvitation, handleResendInvitation, handleListInvitations, handleUpdateRolePermission } from './worker/team';
 // ── LOT TEAM B/C — capabilities + sous-comptes (Phase A fige le dispatch) ───
 import { resolveCapabilities, handleGetMyCapabilities } from './worker/capabilities';
+import { handleGetSystemAuditLogs } from './worker/system-audit';
 import { handleUpdateClient, handleDeleteClient, handleGetClientBranding, handleUpdateClientBranding, handleGetAgencyReports, handleGetCustomDomains, handleAddCustomDomain, handleDeleteCustomDomain } from './worker/clients-admin';
 
 import { handleFeedback, handleNps } from './worker/feedback';
@@ -1658,6 +1660,14 @@ async function routeProtected(
   const clientIdMatch = path.match(/^\/api\/clients\/([^/]+)$/);
   if (clientIdMatch && method === 'PATCH') return handleUpdateClient(request, env, auth, clientIdMatch[1]!);
   if (clientIdMatch && method === 'DELETE') return handleDeleteClient(request, env, auth, clientIdMatch[1]!);
+
+  // Account Snapshots (Sprint 85 - Configurations Portables)
+  if (path === '/api/account-snapshots' && method === 'GET') return handleListAccountSnapshots(env, auth);
+  if (path === '/api/account-snapshots' && method === 'POST') return handleCreateAccountSnapshot(request, env, auth);
+  const accountSnapshotApplyMatch = path.match(/^\/api\/account-snapshots\/([^/]+)\/apply$/);
+  if (accountSnapshotApplyMatch && method === 'POST') return handleApplyAccountSnapshot(request, env, auth, accountSnapshotApplyMatch[1]!);
+  const accountSnapshotIdMatch = path.match(/^\/api\/account-snapshots\/([^/]+)$/);
+  if (accountSnapshotIdMatch && method === 'DELETE') return handleDeleteAccountSnapshot(request, env, auth, accountSnapshotIdMatch[1]!);
 
   // Leads
   if (path === '/api/leads' && method === 'GET') return handleGetLeads(env, auth, url);
@@ -3233,6 +3243,26 @@ async function routeProtected(
         return m.handleDeleteSnapshot(env, auth, snapshotDeleteMatch[1]!);
       }
 
+      // ── Sprint 85 — Snapshots de Comptes / Configurations Portables (AUTHED) ──
+      if (path === '/api/account-snapshots' && method === 'GET') {
+        const m = await import('./worker/account-snapshots');
+        return m.handleListAccountSnapshots(env, auth);
+      }
+      if (path === '/api/account-snapshots' && method === 'POST') {
+        const m = await import('./worker/account-snapshots');
+        return m.handleCreateAccountSnapshot(request, env, auth);
+      }
+      const accSnapshotApplyMatch = path.match(/^\/api\/account-snapshots\/([^/]+)\/apply$/);
+      if (accSnapshotApplyMatch && method === 'POST') {
+        const m = await import('./worker/account-snapshots');
+        return m.handleApplyAccountSnapshot(request, env, auth, accSnapshotApplyMatch[1]!);
+      }
+      const accSnapshotDeleteMatch = path.match(/^\/api\/account-snapshots\/([^/]+)$/);
+      if (accSnapshotDeleteMatch && method === 'DELETE') {
+        const m = await import('./worker/account-snapshots');
+        return m.handleDeleteAccountSnapshot(request, env, auth, accSnapshotDeleteMatch[1]!);
+      }
+
       // ── Sprint 36 — Live chat widget (AUTHED) ──────────────────────────────
       // 9 routes : 5 CRUD widgets + 2 sessions (list+detail) + 2 presence agent.
       // ENRICHISSEMENT du webchat existant (DO WebchatRoom + tables seq25). Ne
@@ -4386,6 +4416,11 @@ async function routeProtected(
       ctx.waitUntil(cachePut(cacheKey, res.clone(), 30));
     }
     return res;
+  }
+
+  // ── Sprint 84 — Journal d'Audit Système (System Audit Logs) ──────────────────
+  if (path === '/api/system-audit-logs' && method === 'GET') {
+    return handleGetSystemAuditLogs(request, env, auth);
   }
 
   // Mobile Prep (P3.10)

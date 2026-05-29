@@ -5,6 +5,7 @@ import { Resend } from 'resend';
 import { hashPassword } from './crypto';
 import { finishLogin } from './auth';
 import { requireCapability, type Capability } from './capabilities';
+import { auditSystem } from './system-audit';
 
 // ── LOT TEAM B-bis — garde de capability CONDITIONNELLE (mode-agence-only) ───
 // Enforce UNIQUEMENT si l'auth porte un contexte agence (tenant.agencyId !=
@@ -223,6 +224,21 @@ export async function handleInviteUser(
     scope,
     clientId,
   });
+
+  const actorId = auth?.userId || null;
+  const sysClientId = auth?.clientId || clientId || 'system';
+  const ip = request.headers.get('CF-Connecting-IP');
+  await auditSystem(
+    env,
+    sysClientId,
+    actorId,
+    'user.invite',
+    'user_invitation',
+    id,
+    { email, role, scope, clientId },
+    ip
+  );
+
   return json({ data: { success: true, message: 'Invitation envoyée avec succès' } }, 201);
 }
 
@@ -457,6 +473,21 @@ export async function handleUpdateUserRole(
     role: newRole,
     dropship_partner_id: dropshipPartnerId,
   });
+
+  const actorId = auth?.userId || null;
+  const sysClientId = auth?.clientId || 'system';
+  const ip = request.headers.get('CF-Connecting-IP');
+  await auditSystem(
+    env,
+    sysClientId,
+    actorId,
+    'user.role_change',
+    'user',
+    userId,
+    { role: newRole, dropship_partner_id: dropshipPartnerId },
+    ip
+  );
+
   return json({ data: { success: true } });
 }
 
@@ -479,6 +510,21 @@ export async function handleDeleteUser(
   // Hard delete pour le MVP (comportement legacy conservé).
   await env.DB.prepare('DELETE FROM users WHERE id = ?').bind(userId).run();
   await audit(env, auditActor(request, auth), 'user.remove', 'user', userId);
+
+  const actorId = auth?.userId || null;
+  const sysClientId = auth?.clientId || 'system';
+  const ip = request.headers.get('CF-Connecting-IP');
+  await auditSystem(
+    env,
+    sysClientId,
+    actorId,
+    'user.remove',
+    'user',
+    userId,
+    { deleted_user_id: userId },
+    ip
+  );
+
   return json({ data: { success: true } });
 }
 
@@ -723,6 +769,20 @@ export async function handleUpdateRolePermission(
     capability,
     allowed: allowedVal,
   });
+
+  const actorId = auth?.userId || null;
+  const sysClientId = auth?.clientId || 'system';
+  const ip = request.headers.get('CF-Connecting-IP');
+  await auditSystem(
+    env,
+    sysClientId,
+    actorId,
+    'role_permission.update',
+    'role_permissions',
+    roleName,
+    { role_name: roleName, capability, allowed: allowedVal },
+    ip
+  );
 
   return json({ data: { success: true } });
 }

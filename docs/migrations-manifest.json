@@ -2354,6 +2354,31 @@
         "index:idx_role_permissions_role"
       ],
       "risk": "low"
+    },
+    {
+      "seq": 179,
+      "file": "migration-system-audit-logs-seq179.sql",
+      "depends_on": [
+        "migration-rbac-permissions-seq178.sql"
+      ],
+      "objects": [
+        "table:system_audit_logs",
+        "index:idx_system_audit_logs_client",
+        "index:idx_system_audit_logs_created"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 180,
+      "file": "migration-account-snapshots-seq180.sql",
+      "depends_on": [
+        "migration-system-audit-logs-seq179.sql"
+      ],
+      "objects": [
+        "table:account_snapshots",
+        "index:idx_account_snapshots_client"
+      ],
+      "risk": "low"
     }
   ]
 }

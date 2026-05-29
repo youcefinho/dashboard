@@ -12471,5 +12471,90 @@ export async function toggleChatbotSession(id: string, active: boolean): Promise
   });
 }
 
+// ── Sprint 84 — Journal d'Audit Système ──────────────────────────────────────
+
+export interface SystemAuditLogEntry {
+  id: string;
+  user_id: string | null;
+  action: string;
+  target_type: string;
+  target_id: string | null;
+  payload_json: string | null;
+  ip_address: string | null;
+  created_at: string;
+}
+
+export interface SystemAuditLogsResponse {
+  data: SystemAuditLogEntry[];
+  pagination: {
+    total: number;
+    limit: number;
+    offset: number;
+  };
+}
+
+export async function getSystemAuditLogs(params?: {
+  limit?: number;
+  offset?: number;
+  action?: string;
+  target_type?: string;
+}): Promise<ApiResponse<SystemAuditLogsResponse>> {
+  const sp = new URLSearchParams();
+  if (params?.limit != null) sp.set('limit', String(params.limit));
+  if (params?.offset != null) sp.set('offset', String(params.offset));
+  if (params?.action) sp.set('action', params.action);
+  if (params?.target_type) sp.set('target_type', params.target_type);
+  const qs = sp.toString();
+  return apiFetch<SystemAuditLogsResponse>(`/system-audit-logs${qs ? `?${qs}` : ''}`);
+}
+
+// ── Sprint 85 — Snapshots de Comptes ──────────────────────────────────────────
+
+export interface AccountSnapshot {
+  id: string;
+  client_id: string;
+  name: string;
+  description: string | null;
+  created_by: string;
+  created_at: string;
+}
+
+export async function getAccountSnapshots(): Promise<ApiResponse<AccountSnapshot[]>> {
+  return apiFetch<AccountSnapshot[]>('/account-snapshots');
+}
+
+export async function createAccountSnapshot(
+  name: string,
+  description?: string
+): Promise<ApiResponse<AccountSnapshot>> {
+  return apiFetch<AccountSnapshot>('/account-snapshots', {
+    method: 'POST',
+    body: JSON.stringify({ name, description }),
+  });
+}
+
+export async function applyAccountSnapshot(
+  snapshotId: string,
+  targetClientId: string
+): Promise<ApiResponse<{ success: boolean; target_client_id: string }>> {
+  return apiFetch<{ success: boolean; target_client_id: string }>(
+    `/account-snapshots/${encodeURIComponent(snapshotId)}/apply`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ target_client_id: targetClientId }),
+    }
+  );
+}
+
+export async function deleteAccountSnapshot(
+  snapshotId: string
+): Promise<ApiResponse<{ success: boolean }>> {
+  return apiFetch<{ success: boolean }>(`/account-snapshots/${encodeURIComponent(snapshotId)}`, {
+    method: 'DELETE',
+  });
+}
+
+
+
 
 

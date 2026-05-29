@@ -24,6 +24,8 @@ import { Skeleton } from '../components/ui/Skeleton';
 import { SnapshotManager } from '../components/snapshots/SnapshotManager';
 import { SnapshotImportWizard } from '../components/snapshots/SnapshotImportWizard';
 import { SnapshotDetail } from '../components/snapshots/SnapshotDetail';
+import { AccountSnapshotManager } from '../components/snapshots/AccountSnapshotManager';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/Tabs';
 import { useAuth } from '../lib/auth';
 import { getActiveSubAccount, getSnapshots, type SnapshotMeta } from '../lib/api';
 import { t } from '../lib/i18n';
@@ -31,6 +33,7 @@ import { t } from '../lib/i18n';
 export function SnapshotsPage() {
   const { user } = useAuth();
   const [wizardOpen, setWizardOpen] = useState<boolean>(false);
+  const [activeTab, setActiveTab] = useState<string>('saves');
 
   // ── Inspection détail (additif) ───────────────────────────────────────────
   const [detailId, setDetailId] = useState<string | null>(null);
@@ -90,87 +93,106 @@ export function SnapshotsPage() {
         highlight={t('snapshots.page.title')}
         description={t('snapshots.page.description')}
         actions={
-          <Button
-            variant="premium"
-            onClick={handleOpenWizard}
-            leftIcon={<Icon as={Upload} size="sm" />}
-            aria-label={t('snapshots.action.import')}
-          >
-            {t('snapshots.action.import')}
-          </Button>
+          activeTab === 'saves' ? (
+            <Button
+              variant="premium"
+              onClick={handleOpenWizard}
+              leftIcon={<Icon as={Upload} size="sm" />}
+              aria-label={t('snapshots.action.import')}
+            >
+              {t('snapshots.action.import')}
+            </Button>
+          ) : undefined
         }
       />
 
-      <SnapshotManager />
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="mb-6">
+          <TabsTrigger value="saves" aria-label={t('snapshots.page.title')}>
+            {t('snapshots.page.title')}
+          </TabsTrigger>
+          <TabsTrigger value="configs" aria-label={t('account_snapshots.title')}>
+            {t('account_snapshots.title')}
+          </TabsTrigger>
+        </TabsList>
 
-      {/* ── Inspection détail (additif, n'altère pas la liste du manager) ──── */}
-      <section className="mt-8 space-y-3" data-testid="snapshot-inspect">
-        <div className="min-w-0">
-          <h2 className="t-h2">{t('snapx.inspect_title')}</h2>
-          <p className="t-caption text-[var(--gray-500)] mt-1">
-            {t('snapx.inspect_description')}
-          </p>
-        </div>
+        <TabsContent value="saves" className="space-y-6 focus-visible:outline-none">
+          <SnapshotManager />
 
-        {loading ? (
-          <div
-            className="flex flex-wrap gap-2"
-            data-testid="snapshot-inspect-loading"
-            aria-busy="true"
-          >
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-9 w-40 rounded-lg" />
-            ))}
-          </div>
-        ) : errorMsg ? (
-          <div
-            role="alert"
-            data-testid="snapshot-inspect-error"
-            className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700"
-          >
-            {errorMsg}
-          </div>
-        ) : snapshots.length === 0 ? (
-          <p
-            className="text-sm text-[var(--text-muted)] italic"
-            data-testid="snapshot-inspect-empty"
-          >
-            {t('snapshots.list.empty')}
-          </p>
-        ) : (
-          <ul
-            className="flex flex-wrap gap-2 list-none p-0 m-0"
-            data-testid="snapshot-inspect-list"
-            aria-label={t('snapx.inspect_title')}
-          >
-            {snapshots.map((snap) => (
-              <li key={snap.id}>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  leftIcon={<Icon as={Eye} size="sm" />}
-                  onClick={() => setDetailId(snap.id)}
-                  aria-label={`${t('snapx.view_detail')} — ${snap.name}`}
-                >
-                  {snap.name}
-                </Button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+          {/* ── Inspection détail (additif, n'altère pas la liste du manager) ──── */}
+          <section className="mt-8 space-y-3" data-testid="snapshot-inspect">
+            <div className="min-w-0">
+              <h2 className="t-h2">{t('snapx.inspect_title')}</h2>
+              <p className="t-caption text-[var(--gray-500)] mt-1">
+                {t('snapx.inspect_description')}
+              </p>
+            </div>
 
-      <SnapshotDetail
-        snapshotId={detailId}
-        onClose={handleCloseDetail}
-        onMutated={handleDetailMutated}
-      />
+            {loading ? (
+              <div
+                className="flex flex-wrap gap-2"
+                data-testid="snapshot-inspect-loading"
+                aria-busy="true"
+              >
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <Skeleton key={i} className="h-9 w-40 rounded-lg" />
+                ))}
+              </div>
+            ) : errorMsg ? (
+              <div
+                role="alert"
+                data-testid="snapshot-inspect-error"
+                className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700"
+              >
+                {errorMsg}
+              </div>
+            ) : snapshots.length === 0 ? (
+              <p
+                className="text-sm text-[var(--text-muted)] italic"
+                data-testid="snapshot-inspect-empty"
+              >
+                {t('snapshots.list.empty')}
+              </p>
+            ) : (
+              <ul
+                className="flex flex-wrap gap-2 list-none p-0 m-0"
+                data-testid="snapshot-inspect-list"
+                aria-label={t('snapx.inspect_title')}
+              >
+                {snapshots.map((snap) => (
+                  <li key={snap.id}>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      leftIcon={<Icon as={Eye} size="sm" />}
+                      onClick={() => setDetailId(snap.id)}
+                      aria-label={`${t('snapx.view_detail')} — ${snap.name}`}
+                    >
+                      {snap.name}
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
 
-      <SnapshotImportWizard
-        open={wizardOpen}
-        onClose={handleCloseWizard}
-        targetClientId={targetClientId}
-      />
+          <SnapshotDetail
+            snapshotId={detailId}
+            onClose={handleCloseDetail}
+            onMutated={handleDetailMutated}
+          />
+
+          <SnapshotImportWizard
+            open={wizardOpen}
+            onClose={handleCloseWizard}
+            targetClientId={targetClientId}
+          />
+        </TabsContent>
+
+        <TabsContent value="configs" className="focus-visible:outline-none">
+          <AccountSnapshotManager />
+        </TabsContent>
+      </Tabs>
     </AppLayout>
   );
 }
