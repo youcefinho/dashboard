@@ -1603,6 +1603,12 @@ export default {
     ctx.waitUntil(import('./worker/gbp-sync').then(m => m.processGbpReviewsSync(env)).catch(() => {}));
     // ── Sprint 33 — Calendar pull sync (Google + Outlook, best-effort, calque GBP) ─
     ctx.waitUntil(import('./worker/calendar-sync').then(m => m.processCalendarPullSync(env)).catch(() => {}));
+    // ── Sprint 87 — Facturation multidevises sync (Exchange Rates) ───
+    ctx.waitUntil(
+      import('./worker/currencies')
+        .then((m) => m.syncExchangeRates(env))
+        .catch(() => {})
+    );
   },
 
   async queue(batch: MessageBatch<any>, env: Env): Promise<void> {
@@ -5229,6 +5235,32 @@ async function routeProtected(
     const { getLinkedCustomerForLead } = await import('./worker/customer-reconcile');
     const linked = await getLinkedCustomerForLead(env, leadLinkedCustMatch[1]!);
     return json({ data: linked });
+  }
+
+  // Currencies / devises (Sprint 39 & Sprint 87)
+  if (path === '/api/currencies' && method === 'GET') {
+    const cur = await import('./worker/currencies');
+    return cur.handleListCurrencies(env, auth);
+  }
+  if (path === '/api/currencies/rates' && method === 'GET') {
+    const cur = await import('./worker/currencies');
+    return cur.handleListRates(env, auth, url);
+  }
+  if (path === '/api/currencies/rates/refresh' && method === 'POST') {
+    const cur = await import('./worker/currencies');
+    return cur.handleRefreshRates(request, env, auth);
+  }
+  if (path === '/api/currencies/rates/override' && method === 'POST') {
+    const cur = await import('./worker/currencies');
+    return cur.handleSetManualRate(request, env, auth);
+  }
+  if (path === '/api/currencies/exchange-rates' && method === 'GET') {
+    const cur = await import('./worker/currencies');
+    return cur.handleGetExchangeRates(env, auth);
+  }
+  if (path === '/api/currencies/exchange-rates/sync' && method === 'POST') {
+    const cur = await import('./worker/currencies');
+    return cur.handleForceSyncExchangeRates(env, auth);
   }
 
   // Debug (à retirer avant prod)

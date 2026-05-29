@@ -2379,6 +2379,17 @@
         "index:idx_account_snapshots_client"
       ],
       "risk": "low"
+    },
+    {
+      "seq": 182,
+      "file": "migration-currency-exchange-rates-seq182.sql",
+      "depends_on": [
+        "migration-account-snapshots-seq180.sql"
+      ],
+      "objects": [
+        "table:currency_exchange_rates"
+      ],
+      "risk": "low"
     }
   ]
 }

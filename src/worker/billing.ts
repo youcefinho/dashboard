@@ -113,6 +113,14 @@ export async function handleCreateInvoice(
   const leadId = sanitizeInput(body.lead_id as string, 100);
   const description = sanitizeInput(body.description as string, 500);
 
+  let currency = 'CAD';
+  if (typeof body.currency === 'string' && body.currency.trim()) {
+    const cand = body.currency.trim().toUpperCase();
+    if (['CAD', 'USD', 'EUR', 'DZD', 'MAD'].includes(cand)) {
+      currency = cand;
+    }
+  }
+
   // ── Chemin ENRICHI : lignes d'articles + taxes SERVEUR (§6.C) ────────────
   // payment_url = NULL (§6.E — JAMAIS d'URL Stripe factice). Rétro-compat :
   // si pas d'`items`, on retombe sur le chemin legacy `amount`-seul ci-après.
@@ -129,16 +137,17 @@ export async function handleCreateInvoice(
 
     await env.DB.prepare(
       `INSERT INTO invoices
-         (id, client_id, lead_id, amount, description, status, payment_url,
+         (id, client_id, lead_id, amount, currency, description, status, payment_url,
           invoice_number, subtotal, tax_tps, tax_tvq, total, due_date,
           tps_number, tvq_number)
-       VALUES (?, ?, ?, ?, ?, 'draft', NULL, ?, ?, ?, ?, ?, ?, ?, ?)`
+       VALUES (?, ?, ?, ?, ?, ?, 'draft', NULL, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
       .bind(
         invoiceId,
         clientId,
         leadId || null,
         totals.total,
+        currency,
         description || null,
         invoiceNumber,
         totals.subtotal,
@@ -174,9 +183,9 @@ export async function handleCreateInvoice(
   const invoiceId = `inv_${crypto.randomUUID()}`;
 
   await env.DB.prepare(
-    `INSERT INTO invoices (id, client_id, lead_id, amount, description, status, payment_url)
-     VALUES (?, ?, ?, ?, ?, 'draft', NULL)`
-  ).bind(invoiceId, clientId, leadId || null, amount, description || null).run();
+    `INSERT INTO invoices (id, client_id, lead_id, amount, currency, description, status, payment_url)
+     VALUES (?, ?, ?, ?, ?, ?, 'draft', NULL)`
+  ).bind(invoiceId, clientId, leadId || null, amount, currency, description || null).run();
 
   return json({ data: { id: invoiceId, payment_url: null } }, 201);
 }

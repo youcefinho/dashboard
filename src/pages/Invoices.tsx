@@ -49,6 +49,7 @@ export function InvoicesPage() {
   // New invoice form state (lignes d'articles + client/lead + échéance)
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState('');
+  const [currency, setCurrency] = useState('CAD');
   const [rows, setRows] = useState<LineRow[]>([blankRow()]);
   const [targetKind, setTargetKind] = useState<'client' | 'lead'>('client');
   const [targetId, setTargetId] = useState('');
@@ -99,6 +100,7 @@ export function InvoicesPage() {
   const resetForm = () => {
     setDescription('');
     setDueDate('');
+    setCurrency('CAD');
     setRows([blankRow()]);
     setTargetKind('client');
     setTargetId('');
@@ -117,6 +119,7 @@ export function InvoicesPage() {
       const res = await createInvoiceFull({
         description: description || undefined,
         due_date: dueDate || undefined,
+        currency,
         ...(targetId ? (targetKind === 'client' ? { client_id: targetId } : { lead_id: targetId }) : {}),
         items,
       });
@@ -548,9 +551,21 @@ export function InvoicesPage() {
             <Input value={description} onChange={e => setDescription(e.target.value)} placeholder={t('invoices.modal.desc_placeholder')} />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">{t('invoice.due_date')}</label>
-            <Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">{t('invoice.due_date')}</label>
+              <Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Devise</label>
+              <Select value={currency} onChange={e => setCurrency(e.target.value)}>
+                <option value="CAD">CAD (CA$)</option>
+                <option value="USD">USD ($)</option>
+                <option value="EUR">EUR (€)</option>
+                <option value="DZD">DZD (دج)</option>
+                <option value="MAD">MAD (د.م.)</option>
+              </Select>
+            </div>
           </div>
 
           {/* Lignes d'articles — total ligne calculé pour AFFICHAGE seul (§6.C : serveur recalcule) */}
@@ -594,7 +609,7 @@ export function InvoicesPage() {
                       />
                     </div>
                     <div className="w-24 text-right text-[12px] t-mono-num pb-2.5 text-[var(--text-secondary)]">
-                      {formatCurrency(lineTotal, getLocale(), 'CAD')}
+                      {formatCurrency(lineTotal, getLocale(), currency)}
                     </div>
                     {rows.length > 1 && (
                       <button
@@ -613,7 +628,7 @@ export function InvoicesPage() {
             <div className="flex justify-end mt-3 text-[12px] text-[var(--text-muted)]">
               {t('invoice.subtotal')} :&nbsp;
               <span className="t-mono-num font-semibold text-[var(--text-secondary)]">
-                {formatCurrency(previewSubtotal, getLocale(), 'CAD')}
+                {formatCurrency(previewSubtotal, getLocale(), currency)}
               </span>
               &nbsp;· {t('invoice.tax_tps')} + {t('invoice.tax_tvq')} calculées au serveur
             </div>

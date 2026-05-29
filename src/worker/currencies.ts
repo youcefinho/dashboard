@@ -264,3 +264,63 @@ export async function handleSetManualRate(
     return json({ error: err instanceof Error ? err.message : String(err) }, 500);
   }
 }
+
+/**
+ * Synchronise les taux d'échange en interrogeant la banque centrale (Frankfurter API)
+ * pour toutes les devises supportées.
+ */
+export async function syncExchangeRates(env: Env): Promise<void> {
+  const currencies: SupportedCurrencyExt[] = ['CAD', 'USD', 'EUR', 'DZD', 'MAD'];
+  for (const base of currencies) {
+    try {
+      const rates = await fetchEcbRates(base);
+      const now = new Date().toISOString();
+      for (const [target, rate] of Object.entries(rates)) {
+        if (typeof rate === 'number' && rate > 0) {
+          await env.DB.prepare(
+            `INSERT INTO currency_exchange_rates (base, target, rate, updated_at)
+             VALUES (?, ?, ?, ?)
+             ON CONFLICT(base, target) DO UPDATE SET rate = excluded.rate, updated_at = excluded.updated_at`,
+          )
+            .bind(base, target, rate, now)
+            .run();
+        }
+      }
+    } catch (err) {
+      console.error(`[Cron Currency] Failed to sync ${base}:`, err);
+    }
+  }
+}
+
+/**
+ * GET /api/currencies/exchange-rates — récupère tous les taux d'échange de currency_exchange_rates
+ */
+export async function handleGetExchangeRates(env: Env, _auth: Auth): Promise<Response> {
+  try {
+    const { results } = await env.DB.prepare(
+      `SELECT base, target, rate, updated_at FROM currency_exchange_rates`
+    ).all();
+    return json({ data: results || [] });
+  } catch (err) {
+    return json({ error: err instanceof Error ? err.message : String(err) }, 500);
+  }
+}
+
+/**
+ * POST /api/currencies/exchange-rates/sync — force la synchronisation (admin)
+ */
+export async function handleForceSyncExchangeRates(env: Env, auth: Auth): Promise<Response> {
+  const denied = await requireSettingsManage(env, auth);
+  if (denied) return denied;
+
+  try {
+    await syncExchangeRates(env);
+    await audit(env, auth.userId, 'currency_exchange_rates_synced', 'currency_exchange_rates', 'all', {
+      by: auth.userId
+    });
+    return json({ data: { success: true } });
+  } catch (err) {
+    return json({ error: err instanceof Error ? err.message : String(err) }, 500);
+  }
+}
+

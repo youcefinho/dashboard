@@ -3310,6 +3310,7 @@ export async function createInvoiceFull(data: {
   lead_id?: string;
   description?: string;
   due_date?: string;
+  currency?: string;
   items: InvoiceLineInput[];
 }): Promise<ApiResponse<{ id: string; invoice_number?: string }>> {
   return apiFetch<{ id: string; invoice_number?: string }>('/invoices', {
