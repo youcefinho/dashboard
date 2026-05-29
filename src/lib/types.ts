@@ -233,6 +233,7 @@ export interface Message {
   delivery_status?: string | null;
   sentiment?: string | null;
   detected_intent?: string | null;
+  translated_content?: string | null;
   // Jointures optionnelles
   lead_name?: string;
   sender_name?: string;

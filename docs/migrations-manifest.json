@@ -2281,6 +2281,17 @@
         "index:idx_weekly_ai_insights_created"
       ],
       "risk": "low"
+    },
+    {
+      "seq": 165,
+      "file": "migration-translation-seq171.sql",
+      "depends_on": [
+        "migration-weekly-insights-seq170.sql"
+      ],
+      "objects": [
+        "column:messages.translated_content"
+      ],
+      "risk": "low"
     }
   ]
 }

@@ -341,6 +341,9 @@ export const frCA: Record<string, string> = {
   'inbox.scheduled_for': 'Planifié pour',
   'inbox.schedule_error_past': 'La date de planification doit être dans le futur.',
   'inbox.toast.scheduled': 'Message planifié avec succès',
+  'inbox.translation.show': 'Afficher la traduction',
+  'inbox.translation.hide': "Voir l'original",
+  'inbox.translation.loading': 'Traduction en cours...',
 
   // ── Calendar ────────────────────────────────────────────────────────────
   'calendar.title': 'Calendrier',

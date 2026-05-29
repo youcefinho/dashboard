@@ -225,7 +225,7 @@ import {
   handleUpdateCommissionStatus,
 } from './worker/affiliates';
 import { handleGetTriggerLinks, handleCreateTriggerLink, handleDeleteTriggerLink, handleTriggerLinkClick, handleGetTriggerLinkStats } from './worker/trigger-links';
-import { handleAiGenerate, handleAiSuggestWorkflow, handleAiSummarizeConversation, handleAiSuggestNextAction, handleAiSummarizeLeads, handleAiDrafts, handleAiClassifyConversation, handleAiClassifyLead, handleAiNlQuery, handleAiComposeSuggest, handleAiProofread, handleAiSuggestReplies, handleGetWeeklyInsight, handleGenerateWeeklyInsight } from './worker/ai';
+import { handleAiGenerate, handleAiSuggestWorkflow, handleAiSummarizeConversation, handleAiSuggestNextAction, handleAiSummarizeLeads, handleAiDrafts, handleAiClassifyConversation, handleAiClassifyLead, handleAiNlQuery, handleAiComposeSuggest, handleAiProofread, handleAiSuggestReplies, handleGetWeeklyInsight, handleGenerateWeeklyInsight, handleTranslateMessage } from './worker/ai';
 // Sprint 43 M3 — Reactions / QuickReplies / LeadScore backend
 import { handleGetReactions, handleAddReaction, handleRemoveReaction } from './worker/reactions';
 import { handleGetQuickReplies, handleAddQuickReply } from './worker/quick-replies';
@@ -1700,6 +1700,8 @@ async function routeProtected(
 
   // Messages / Inbox
   if (path === '/api/messages' && method === 'GET') return handleGetInboxMessages(env, auth, url);
+  const messageTranslateMatch = path.match(/^\/api\/messages\/([^/]+)\/translate$/);
+  if (messageTranslateMatch && method === 'POST') return handleTranslateMessage(env, auth, messageTranslateMatch[1]!);
 
   // ── LOT TELEPHONY-F — téléphonie 2-way (call_logs + IVR config) ───────────
   // Module telephony.ts NEUF (voice.ts intouché). Capabilities réutilisées :

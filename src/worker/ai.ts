@@ -1458,5 +1458,89 @@ ${JSON.stringify(metrics, null, 2)}`;
   });
 }
 
+export async function handleTranslateMessage(
+  env: Env,
+  auth: { userId: string; role: string; clientId?: string },
+  messageId: string
+): Promise<Response> {
+  const message = await env.DB.prepare('SELECT * FROM messages WHERE id = ?').bind(messageId).first() as Record<string, unknown> | null;
+  if (!message) {
+    return json({ error: 'Message introuvable' }, 404);
+  }
+
+  // Sécurité multi-tenant : vérifier que l'utilisateur a accès au client du message
+  if (auth.role !== 'admin' && auth.clientId && message.client_id !== auth.clientId) {
+    return json({ error: 'Accès non autorisé' }, 403);
+  }
+
+  if (message.translated_content) {
+    return json({ data: { translated_content: message.translated_content } });
+  }
+
+  const originalText = (message.body as string || '').trim();
+  if (!originalText) {
+    return json({ data: { translated_content: '' } });
+  }
+
+  let translation = '';
+
+  const useMock = isAiMockMode(env);
+  if (useMock) {
+    await new Promise(r => setTimeout(r, 400));
+    translation = translateMockFallback(originalText);
+  } else {
+    try {
+      const systemPrompt = `Tu es un traducteur expert bidirectionnel (anglais <-> français québécois) intégré à un CRM immobilier au Québec (Intralys).
+Consignes strictes :
+- Si le message source est principalement en anglais, traduis-le en français québécois. Le ton doit être professionnel, chaleureux et naturel pour le Québec (tutoiement chaleureux pour les leads/prospects, écris "courriel" au lieu de "email", "rendez-vous" au lieu de "meeting", "courtier" au lieu de "broker").
+- Si le message source est principalement en français, traduis-le en anglais (US/CA professionnel, amical et poli).
+- Reste fidèle au sens d'origine. Ne rajoute aucun commentaire personnel.
+- Réponds UNIQUEMENT avec la traduction finale du message, sans guillemets de début/fin, sans préambule ni explication.`;
+
+      const userPrompt = `Texte à traduire :\n${originalText}`;
+      translation = await callLLM(env, systemPrompt, userPrompt);
+      translation = translation.trim();
+    } catch (err) {
+      console.error('Translation LLM error:', err);
+      translation = translateMockFallback(originalText);
+    }
+  }
+
+  await env.DB.prepare('UPDATE messages SET translated_content = ? WHERE id = ?')
+    .bind(translation, messageId)
+    .run();
+
+  return json({ data: { translated_content: translation } });
+}
+
+function translateMockFallback(text: string): string {
+  const clean = text.toLowerCase().trim();
+  if (clean.includes('hello') || clean.includes('hi ')) {
+    return "Bonjour ! Comment puis-je vous aider aujourd'hui avec votre projet immobilier ? 😊";
+  }
+  if (clean.includes('bonjour') || clean.includes('salut')) {
+    return "Hello! How can I help you today with your real estate project? 😊";
+  }
+  if (clean.includes('yes') || clean.includes('sure')) {
+    return "Oui, absolument !";
+  }
+  if (clean.includes('oui')) {
+    return "Yes, absolutely!";
+  }
+  if (clean.includes('thank you') || clean.includes('thanks')) {
+    return "Merci beaucoup ! Passez une excellente journée.";
+  }
+  if (clean.includes('merci')) {
+    return "Thank you very much! Have a great day.";
+  }
+  
+  const containsEnglishWord = /\b(the|is|and|to|of|in|you|that|it|he|was|for|on|are|as|with|his|they|i|at|be|this|have|from|or|one|had|by|word|but|not|what|all|were|we|when|your|can|said|there|use|an|each|which|she|do|how|their|if|will|up|other|about|out|many|then|them|these|so|some|her|would|make|like|him|into|time|has|look|two|more|write|go|see|number|no|way|could|people|my|than|first|water|been|call|who|oil|its|now|find|long|down|day|did|get|come|made|may|part)\b/i.test(clean);
+  if (containsEnglishWord) {
+    return `[Traduction (MOCK)] ${text} (traduit en français)`;
+  }
+  return `[Translation (MOCK)] ${text} (translated to English)`;
+}
+
+
 
 

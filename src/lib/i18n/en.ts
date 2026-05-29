@@ -340,6 +340,9 @@ export const en: Record<string, string> = {
   'inbox.scheduled_for': 'Scheduled for',
   'inbox.schedule_error_past': 'The schedule date must be in the future.',
   'inbox.toast.scheduled': 'Message scheduled successfully',
+  'inbox.translation.show': 'Show translation',
+  'inbox.translation.hide': 'Show original',
+  'inbox.translation.loading': 'Translating...',
 
   // ── Calendar ────────────────────────────────────────────────────────────
   'calendar.title': 'Calendar',

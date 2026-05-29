@@ -106,6 +106,7 @@ export const MessageThread = forwardRef<HTMLDivElement, Props>(({ messages, onRe
                 }
                 sentiment={msg.sentiment ?? undefined}
                 detectedIntent={msg.detected_intent ?? undefined}
+                translatedContent={msg.translated_content ?? undefined}
               />
             );
           })}

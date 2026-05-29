@@ -26,7 +26,7 @@
 // (réglage CSS — voir index.css).
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Check, CheckCheck, Clock3, AlertCircle, RotateCw, Reply, Smile, Forward, Copy as CopyIcon, Trash2 } from 'lucide-react';
+import { Check, CheckCheck, Clock3, AlertCircle, RotateCw, Reply, Smile, Forward, Copy as CopyIcon, Trash2, Languages } from 'lucide-react';
 import { Avatar } from '@/components/ui/Avatar';
 import { Icon } from '@/components/ui/Icon';
 import type { MessageStatus } from '@/lib/types';
@@ -38,10 +38,11 @@ import { getReactions, toggleReaction } from '@/lib/reactions';
 import { triggerHaptic } from '@/lib/sensorial';
 // Sprint 48 M3.2 — Intl time formatter (locale-aware)
 import { formatTime as i18nFormatTime } from '@/lib/i18n/datetime';
-import { getLocale } from '@/lib/i18n';
+import { getLocale, t } from '@/lib/i18n';
 // Sprint 44 M3.2 — Long-press → contextual actions sheet
 import { useLongPress } from '@/hooks/useLongPress';
 import { ContextualActionsSheet, type ContextualAction } from '@/components/ui/ContextualActionsSheet';
+import { translateMessage } from '@/lib/api';
 
 export interface MessageBubbleProps {
   direction: 'sent' | 'received';
@@ -108,6 +109,7 @@ export interface MessageBubbleProps {
   deliveryStatus?: string;
   sentiment?: string | null;
   detectedIntent?: string | null;
+  translatedContent?: string;
 }
 
 const SWIPE_REPLY_THRESHOLD = 40;
@@ -142,11 +144,51 @@ export function MessageBubble({
   deliveryStatus,
   sentiment,
   detectedIntent,
+  translatedContent,
 }: MessageBubbleProps) {
   const isSent = direction === 'sent';
   const isFailed = status === 'failed';
   const isSending = status === 'sending';
   const [hovered, setHovered] = useState(false);
+
+  const [translatedText, setTranslatedText] = useState<string | null>(translatedContent || null);
+  const [showTranslation, setShowTranslation] = useState(false);
+  const [isLoadingTranslation, setIsLoadingTranslation] = useState(false);
+
+  // Sync translation prop update
+  useEffect(() => {
+    if (translatedContent) {
+      setTranslatedText(translatedContent);
+    }
+  }, [translatedContent]);
+
+  const handleToggleTranslation = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (showTranslation) {
+      setShowTranslation(false);
+      return;
+    }
+
+    if (translatedText) {
+      setShowTranslation(true);
+      return;
+    }
+
+    if (!messageId) return;
+
+    setIsLoadingTranslation(true);
+    try {
+      const res = await translateMessage(messageId);
+      if (res.data?.translated_content) {
+        setTranslatedText(res.data.translated_content);
+        setShowTranslation(true);
+      }
+    } catch (err) {
+      console.error('Translation error:', err);
+    } finally {
+      setIsLoadingTranslation(false);
+    }
+  };
 
   // ── Sprint 44 M3.1 — Swipe-to-reply state ─────────────────────────────────
   // Touch-only horizontal swipe. Threshold 40px → trigger onReply().
@@ -434,7 +476,33 @@ export function MessageBubble({
             </p>
           )}
           {text && (
-            <p className="text-xs whitespace-pre-wrap break-words leading-relaxed">{text}</p>
+            <p className="text-xs whitespace-pre-wrap break-words leading-relaxed">
+              {showTranslation && translatedText ? translatedText : text}
+            </p>
+          )}
+
+          {messageId && !isNote && text && !isSending && !isFailed && (
+            <div className="mt-1 flex items-center justify-start gap-1">
+              <button
+                type="button"
+                onClick={handleToggleTranslation}
+                className={`inline-flex items-center gap-1 text-[10px] font-semibold transition-colors duration-150 py-0.5 rounded ${
+                  isSent
+                    ? 'text-white/80 hover:text-white'
+                    : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+                }`}
+                disabled={isLoadingTranslation}
+              >
+                <Languages className={`h-3.5 w-3.5 ${isLoadingTranslation ? 'animate-spin' : ''}`} />
+                <span>
+                  {isLoadingTranslation
+                    ? t('inbox.translation.loading')
+                    : showTranslation
+                    ? t('inbox.translation.hide')
+                    : t('inbox.translation.show')}
+                </span>
+              </button>
+            </div>
           )}
 
           {/* Attachments (Sprint 26 vague 26-1B) */}

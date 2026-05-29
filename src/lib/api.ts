@@ -1640,6 +1640,14 @@ export async function sendMessage(
   });
 }
 
+export async function translateMessage(
+  messageId: string
+): Promise<ApiResponse<{ translated_content: string }>> {
+  return apiFetch<{ translated_content: string }>(`/messages/${messageId}/translate`, {
+    method: 'POST',
+  });
+}
+
 export async function getInboxMessages(params?: {
   channel?: string;
   limit?: number;
