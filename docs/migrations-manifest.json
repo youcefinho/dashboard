@@ -2390,6 +2390,51 @@
         "table:currency_exchange_rates"
       ],
       "risk": "low"
+    },
+    {
+      "seq": 183,
+      "file": "migration-tenant-domains-seq183.sql",
+      "depends_on": [
+        "migration-currency-exchange-rates-seq182.sql"
+      ],
+      "objects": [
+        "table:tenant_domains",
+        "index:idx_tenant_domains_client"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 184,
+      "file": "migration-branding-settings-seq184.sql",
+      "depends_on": [
+        "migration-tenant-domains-seq183.sql"
+      ],
+      "objects": [
+        "table:branding_settings"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 185,
+      "file": "migration-agency-saas-plans-seq185.sql",
+      "depends_on": [
+        "migration-branding-settings-seq184.sql"
+      ],
+      "objects": [
+        "table:agency_saas_plans"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 188,
+      "file": "migration-privacy-purge-rules-seq188.sql",
+      "depends_on": [
+        "migration-agency-saas-plans-seq185.sql"
+      ],
+      "objects": [
+        "table:privacy_purge_rules"
+      ],
+      "risk": "low"
     }
   ]
 }
