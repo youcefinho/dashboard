@@ -2894,3 +2894,12 @@ export interface ChatbotSession {
   updated_at: string;
 }
 
+// ── Sprint 75 — Sparkle Weekly Analytics Reports ────────────────────────────
+export interface WeeklyAiInsight {
+  id: string;
+  client_id: string;
+  content: string;
+  metric_changes_json: string;
+  created_at: string;
+}
+

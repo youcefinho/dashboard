@@ -1,28 +1,28 @@
-// ── Page Dashboard — Vue globale (Sprint Design v2 — Maquette) ──
-
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { getDashboardStats, getLeads, getClients, exportLeadsCsv } from '@/lib/api';
+import { getDashboardStats, getLeads, getClients, exportLeadsCsv, getWeeklyInsight, generateWeeklyInsight } from '@/lib/api';
 import { t } from '@/lib/i18n';
 import { usePanelStack, AnimatedNumber } from '@/components/ui';
 import {
   STATUS_LABELS, STATUS_COLORS, ACTIVITY_LABELS,
-  type DashboardStats, type Lead, type Client,
+  type DashboardStats, type Lead, type Client, type WeeklyAiInsight,
 } from '@/lib/types';
 import { XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 import {
   TrendingUp, TrendingDown, Users, Target, DollarSign, Zap,
   Download, ArrowRight, Settings2,
-  ChevronUp, ChevronDown, Eye, EyeOff,
+  ChevronUp, ChevronDown, Eye, EyeOff, Sparkles, RefreshCw, AlertCircle
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { ProactiveAlertsWidget } from '@/components/ProactiveAlertsWidget';
 import { DashboardLayoutManager } from '@/components/dashboard/DashboardLayoutManager';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 // ── Types widgets configurables ──────────────────────────────
-type WidgetId = 'stats' | 'clients' | 'chart' | 'activity' | 'contacts' | 'pipeline_donut' | 'top_sources';
+type WidgetId = 'stats' | 'clients' | 'chart' | 'activity' | 'contacts' | 'pipeline_donut' | 'top_sources' | 'weekly_insight';
 
 interface WidgetConfig {
   id: WidgetId;
@@ -41,16 +41,18 @@ const WIDGET_LABEL_KEYS: Record<WidgetId, string> = {
   pipeline_donut: 'dashboard.page.widget_pipeline_donut',
   top_sources: 'dashboard.page.widget_top_sources',
   contacts: 'dashboard.page.widget_contacts',
+  weekly_insight: 'dashboard.page.widget_weekly_insight',
 };
 
 const DEFAULT_WIDGETS: WidgetConfig[] = [
   { id: 'stats', label: 'KPIs principaux', icon: '📊', visible: true, order: 0 },
-  { id: 'clients', label: 'Sous-comptes clients', icon: '🏢', visible: true, order: 1 },
-  { id: 'chart', label: 'Graphique acquisition', icon: '📈', visible: true, order: 2 },
-  { id: 'activity', label: 'Activité récente', icon: '⚡', visible: true, order: 3 },
-  { id: 'pipeline_donut', label: 'Répartition pipeline', icon: '🎯', visible: true, order: 4 },
-  { id: 'top_sources', label: 'Top sources', icon: '🔗', visible: true, order: 5 },
-  { id: 'contacts', label: 'Derniers contacts', icon: '👥', visible: true, order: 6 },
+  { id: 'weekly_insight', label: 'Analyse Hebdomadaire IA', icon: '✨', visible: true, order: 1 },
+  { id: 'clients', label: 'Sous-comptes clients', icon: '🏢', visible: true, order: 2 },
+  { id: 'chart', label: 'Graphique acquisition', icon: '📈', visible: true, order: 3 },
+  { id: 'activity', label: 'Activité récente', icon: '⚡', visible: true, order: 4 },
+  { id: 'pipeline_donut', label: 'Répartition pipeline', icon: '🎯', visible: true, order: 5 },
+  { id: 'top_sources', label: 'Top sources', icon: '🔗', visible: true, order: 6 },
+  { id: 'contacts', label: 'Derniers contacts', icon: '👥', visible: true, order: 7 },
 ];
 
 function loadWidgetConfig(): WidgetConfig[] {
@@ -308,6 +310,7 @@ export function DashboardPage() {
         {widgets.filter(w => w.visible).map(w => {
           switch (w.id) {
             case 'stats': return <DashboardStatsWidgets key={w.id} />
+            case 'weekly_insight': return <DashboardWeeklyInsightWidget key={w.id} />
             case 'clients': return <DashboardClientsWidget key={w.id} />
             case 'chart': return <DashboardChartWidget key={w.id} />
             case 'activity': return null; // rendu inline avec chart
@@ -782,6 +785,210 @@ function StatCardMockup({ label, value, icon, iconBg, iconColor, delta, deltaUp,
           <span style={{ color: iconColor }}>{icon}</span>
         </div>
       </div>
+    </div>
+  );
+}
+
+function DashboardWeeklyInsightWidget() {
+  const [insight, setInsight] = useState<WeeklyAiInsight | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchInsight = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await getWeeklyInsight();
+      if (res.error) {
+        setError(res.error);
+      } else if (res.data) {
+        setInsight(res.data);
+      }
+    } catch (err) {
+      setError(t('dashboard.error.generic') || 'Une erreur est survenue lors du chargement.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const handleGenerate = async () => {
+    setGenerating(true);
+    setError(null);
+    try {
+      const res = await generateWeeklyInsight();
+      if (res.error) {
+        setError(res.error);
+      } else if (res.data) {
+        setInsight(res.data);
+      }
+    } catch (err) {
+      setError(t('dashboard.error.generic') || 'Une erreur est survenue lors de la génération.');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  useEffect(() => {
+    void fetchInsight();
+  }, [fetchInsight]);
+
+  if (loading) {
+    return (
+      <div className="relative overflow-hidden p-6 rounded-2xl mb-6"
+        style={{
+          background: 'var(--bg-surface)',
+          border: '1px solid var(--border-subtle)',
+        }}>
+        <div className="flex items-center justify-between mb-4">
+          <Skeleton className="h-6 w-48" />
+          <Skeleton className="h-8 w-32" />
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-16 w-full" />
+          ))}
+        </div>
+        <Skeleton className="h-40 w-full" />
+      </div>
+    );
+  }
+
+  // Parse les métriques si présentes
+  let metrics: any = null;
+  if (insight?.metric_changes_json) {
+    try {
+      metrics = JSON.parse(insight.metric_changes_json);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  return (
+    <div className="relative overflow-hidden p-6 rounded-2xl mb-6 transition-all duration-300 hover:shadow-[0_20px_40px_-10px_rgba(0,157,219,0.1)]"
+      style={{
+        background: 'linear-gradient(135deg, #FFFFFF 0%, #FAFBFC 50%, #F0FAFE 100%)',
+        border: '1px solid var(--border-subtle)',
+        boxShadow: '0 1px 3px rgba(15,23,42,0.03), 0 10px 30px -10px rgba(0,157,219,0.08)',
+      }}>
+      
+      {/* Orb décoratif de fond */}
+      <div aria-hidden className="absolute -top-16 -right-16 w-48 h-48 rounded-full pointer-events-none opacity-40"
+        style={{
+          background: 'radial-gradient(circle, rgba(0,157,219,0.2) 0%, transparent 70%)',
+          filter: 'blur(30px)'
+        }} />
+
+      <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-4"
+        style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+        <div>
+          <h3 className="text-base font-semibold flex items-center gap-2">
+            <Sparkles size={18} className="text-[var(--brand-primary)]" />
+            {t('dashboard.page.widget_weekly_insight')}
+          </h3>
+          <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+            {insight ? `${t('dashboard.weekly_insight.generated_on')} ${new Date(insight.created_at).toLocaleDateString('fr-CA', { dateStyle: 'long' })}` : t('dashboard.weekly_insight.no_data')}
+          </p>
+        </div>
+        <button
+          onClick={handleGenerate}
+          disabled={generating}
+          className={`h-9 px-4 rounded-lg text-xs font-semibold flex items-center gap-2 transition duration-200 cursor-pointer ${
+            generating ? 'opacity-50 cursor-not-allowed bg-[var(--bg-subtle)] text-[var(--text-muted)]' : 'bg-[var(--brand-primary)] text-white hover:bg-[var(--brand-primary)]/90 shadow-sm hover:shadow'
+          }`}
+        >
+          <RefreshCw size={14} className={generating ? 'animate-spin' : ''} />
+          {generating ? t('dashboard.weekly_insight.generating') : t('dashboard.weekly_insight.generate')}
+        </button>
+      </div>
+
+      {error && (
+        <div className="p-3 rounded-lg mb-4 flex items-center gap-2 text-xs" style={{ background: 'var(--danger-soft)', border: '1px solid var(--danger)/20', color: 'var(--danger)' }}>
+          <AlertCircle size={14} />
+          <span>{error}</span>
+        </div>
+      )}
+
+      {metrics && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          {/* Métrique Leads */}
+          <div className="p-3.5 rounded-xl border" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)] mb-1">
+              {t('dashboard.weekly_insight.leads')}
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-bold text-[var(--text-primary)]">{metrics.leads_this_week}</span>
+              <span className={`inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                metrics.leads_delta_pct >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+              }`}>
+                {metrics.leads_delta_pct >= 0 ? '+' : ''}{metrics.leads_delta_pct}%
+              </span>
+            </div>
+          </div>
+
+          {/* Métrique Deals Conclus */}
+          <div className="p-3.5 rounded-xl border" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)] mb-1">
+              {t('dashboard.weekly_insight.deals')}
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-bold text-[var(--text-primary)]">{metrics.deals_won_this_week}</span>
+              {metrics.deals_won_delta !== 0 && (
+                <span className={`inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                  metrics.deals_won_delta >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                }`}>
+                  {metrics.deals_won_delta >= 0 ? '+' : ''}{metrics.deals_won_delta}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Valeur du Pipeline */}
+          <div className="p-3.5 rounded-xl border" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)] mb-1">
+              {t('dashboard.weekly_insight.pipeline_val')}
+            </div>
+            <div className="text-2xl font-bold text-[var(--text-primary)]">
+              {(metrics.pipeline_value / 1000).toFixed(1)}K $
+            </div>
+          </div>
+
+          {/* Messages échangés */}
+          <div className="p-3.5 rounded-xl border" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)] mb-1">
+              {t('dashboard.weekly_insight.messages')}
+            </div>
+            <div className="text-2xl font-bold text-[var(--text-primary)]">
+              {metrics.messages_count}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {insight ? (
+        <div className="prose prose-sm max-w-none dark:prose-invert prose-headings:font-bold prose-headings:text-[var(--text-primary)] text-sm leading-relaxed"
+          style={{ color: 'var(--text-secondary)' }}>
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            {insight.content}
+          </ReactMarkdown>
+        </div>
+      ) : (
+        !loading && !generating && (
+          <div className="text-center py-8">
+            <Sparkles size={24} className="mx-auto text-[var(--text-muted)] mb-2" />
+            <p className="text-xs text-[var(--text-muted)] mb-4">
+              {t('dashboard.weekly_insight.click_generate')}
+            </p>
+            <button
+              onClick={handleGenerate}
+              className="h-8 px-4 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 transition duration-200 cursor-pointer bg-[var(--brand-primary)] text-white hover:bg-[var(--brand-primary)]/90"
+            >
+              <Sparkles size={12} />
+              {t('dashboard.weekly_insight.generate_first')}
+            </button>
+          </div>
+        )
+      )}
     </div>
   );
 }

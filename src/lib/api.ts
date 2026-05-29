@@ -1,6 +1,6 @@
 // ── Client API — Helpers pour appeler le worker ─────────────
 
-import type { ApiResponse, Client, Lead, LeadDetail, DashboardStats, ActivityLogEntry, Message, EmailTemplate, Workflow, WorkflowStep, WorkflowEnrollment, SequenceStats, Appointment, Task, Subtask, TaskComment, TaskTemplate, LeadNote, LeadScore, CustomFieldValue, Conversation, ConversationStatus, Pipeline, PipelineStage, CustomFieldDef, SmartList, Snippet, Product, Order, Customer, ProductVariant, ProductCategory, ProductImage, InventoryRecord, PaymentInitResult, PaymentMethod, PaymentStatus, Shipment, ShipmentStatus, ShippingZone, ShippingRate, ShippingRateResult, ConsumerPolicy, ReturnRequest, Customer360, AbandonedCart, EcommerceRevenue, EcommerceCohorts, EcommerceLtv, EcommerceTopProducts, EcommerceSalesByChannel, ProductRecoResult, CustomerChurnPrediction, AiChatThread, AiChatMessage, AiPageContext, CustomHostname, OauthConnection, SmsTemplate, WhatsAppConnection, ExecLogEntry, WorkflowTemplate, WorkflowSimulationResult, FormFieldAnalyticsRow, StorefrontProduct, PublicCart, StoreSettings, CheckoutInput, CheckoutResult, PrivateFeedback, ReputationSettings, PublicReviewPage, SocialAccount, SocialPost, SocialProvider, AiContentFormat, AiContentItem, AiBrandVoice, ConversionBaseline, ConversionPrediction, ForecastResponse, ForecastTarget, ReportTemplate, OnboardingChecklistItemKey, OnboardingChecklistResponse, CookieConsent, CookieConsentRecord, AccountDeletionRequest, MyDataExport, AuditLogEntry, AuditLogQuery, CapabilityOverride, AlertRule, AlertEvent, AlertConditionType, AlertChannel, ObservabilityHealth, RequestMetricsBucket, ReleaseGatesStatus, KbIndexStatus, ChatbotSession } from './types';
+import type { ApiResponse, Client, Lead, LeadDetail, DashboardStats, ActivityLogEntry, Message, EmailTemplate, Workflow, WorkflowStep, WorkflowEnrollment, SequenceStats, Appointment, Task, Subtask, TaskComment, TaskTemplate, LeadNote, LeadScore, CustomFieldValue, Conversation, ConversationStatus, Pipeline, PipelineStage, CustomFieldDef, SmartList, Snippet, Product, Order, Customer, ProductVariant, ProductCategory, ProductImage, InventoryRecord, PaymentInitResult, PaymentMethod, PaymentStatus, Shipment, ShipmentStatus, ShippingZone, ShippingRate, ShippingRateResult, ConsumerPolicy, ReturnRequest, Customer360, AbandonedCart, EcommerceRevenue, EcommerceCohorts, EcommerceLtv, EcommerceTopProducts, EcommerceSalesByChannel, ProductRecoResult, CustomerChurnPrediction, AiChatThread, AiChatMessage, AiPageContext, CustomHostname, OauthConnection, SmsTemplate, WhatsAppConnection, ExecLogEntry, WorkflowTemplate, WorkflowSimulationResult, FormFieldAnalyticsRow, StorefrontProduct, PublicCart, StoreSettings, CheckoutInput, CheckoutResult, PrivateFeedback, ReputationSettings, PublicReviewPage, SocialAccount, SocialPost, SocialProvider, AiContentFormat, AiContentItem, AiBrandVoice, ConversionBaseline, ConversionPrediction, ForecastResponse, ForecastTarget, ReportTemplate, OnboardingChecklistItemKey, OnboardingChecklistResponse, CookieConsent, CookieConsentRecord, AccountDeletionRequest, MyDataExport, AuditLogEntry, AuditLogQuery, CapabilityOverride, AlertRule, AlertEvent, AlertConditionType, AlertChannel, ObservabilityHealth, RequestMetricsBucket, ReleaseGatesStatus, KbIndexStatus, ChatbotSession, WeeklyAiInsight } from './types';
 export type { Lead };
 import { Capacitor } from '@capacitor/core';
 import { MOCK_DASHBOARD_STATS, MOCK_CLIENTS, MOCK_LEADS } from './mockData';
@@ -596,6 +596,16 @@ export async function getDashboardStats(): Promise<ApiResponse<DashboardStats>> 
     return { data: MOCK_DASHBOARD_STATS };
   }
   return result;
+}
+
+export async function getWeeklyInsight(): Promise<ApiResponse<WeeklyAiInsight>> {
+  return apiFetch<WeeklyAiInsight>('/ai/weekly-insight');
+}
+
+export async function generateWeeklyInsight(): Promise<ApiResponse<WeeklyAiInsight>> {
+  return apiFetch<WeeklyAiInsight>('/ai/weekly-insight/generate', {
+    method: 'POST',
+  });
 }
 
 // ── Clients ─────────────────────────────────────────────────

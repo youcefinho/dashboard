@@ -1288,4 +1288,175 @@ Exemple de format attendu : \
   return json({ data: { suggestions } });
 }
 
+/**
+ * Fallback local déterministe pour générer le rapport hebdomadaire IA
+ * basé sur les métriques et deltas calculés en SQLite/D1.
+ */
+function localWeeklyInsightFallback(metrics: any): string {
+  const leadsPct = metrics.leads_delta_pct >= 0 ? `une hausse de **${metrics.leads_delta_pct}%**` : `une baisse de **${Math.abs(metrics.leads_delta_pct)}%**`;
+  const dealsText = metrics.deals_won_this_week > 0 ? `vous avez conclu **${metrics.deals_won_this_week} ventes**` : `aucune vente n'a été conclue cette semaine`;
+  
+  return `### 🌟 Points forts de la semaine
+- **Acquisition de leads** : Nous constatons ${leadsPct} du nombre de nouveaux contacts par rapport à la semaine précédente, avec un total de **${metrics.leads_this_week} nouveaux leads**.
+- **Engagement client** : Un volume d'échanges soutenu avec **${metrics.messages_count} messages** échangés, montrant un intérêt marqué de vos prospects.
+
+### ⚠️ Opportunités d'amélioration
+- **Conversion du pipeline** : Actuellement, ${dealsText}. Il y a un volume de **${(metrics.pipeline_value / 1000).toFixed(1)}K $** de transactions potentiellement actives en cours de négociation qui méritent une attention immédiate.
+- **Réactivité** : Certains leads n'ont pas reçu de suivi régulier depuis plus de 48 heures.
+
+### 🎯 Plan d'action recommandé
+1. **Prioriser les relances** : Contacter en priorité les leads de l'étape *Négociation* pour sécuriser les ventes du mois.
+2. **Optimiser le Calendly** : Proposer activement des rencontres stratégiques gratuites via SMS copilote.
+3. **Mettre à jour les fiches** : Qualifier et taguer les nouveaux prospects entrants pour affiner le ciblage.`;
+}
+
+/**
+ * GET /api/ai/weekly-insight
+ * Retourne le dernier rapport d'insight hebdomadaire généré pour le client.
+ */
+export async function handleGetWeeklyInsight(_request: Request, env: Env, auth: { userId: string; role: string; clientId?: string }): Promise<Response> {
+  const clientId = auth.clientId || 'default-client';
+  
+  const lastInsight = await env.DB.prepare(
+    `SELECT * FROM weekly_ai_insights 
+     WHERE client_id = ? 
+     ORDER BY created_at DESC 
+     LIMIT 1`
+  ).bind(clientId).first() as {
+    id: string;
+    client_id: string;
+    content: string;
+    metric_changes_json: string;
+    created_at: string;
+  } | null;
+
+  return json({ data: lastInsight });
+}
+
+/**
+ * POST /api/ai/weekly-insight/generate
+ * Calcule les métriques hebdomadaires, interroge l'IA et stocke le rapport narratif.
+ */
+export async function handleGenerateWeeklyInsight(_request: Request, env: Env, auth: { userId: string; role: string; clientId?: string }): Promise<Response> {
+  const clientId = auth.clientId || 'default-client';
+
+  // 1. Calculer les métriques D1 en parallèle
+  const [
+    leadsThisWeekRow,
+    leadsPrevWeekRow,
+    dealsWonThisWeekRow,
+    dealsWonPrevWeekRow,
+    pipelineValueRow,
+    messagesCountRow
+  ] = await Promise.all([
+    env.DB.prepare(
+      `SELECT COUNT(*) as count FROM leads WHERE client_id = ? AND created_at >= datetime('now', '-7 days')`
+    ).bind(clientId).first() as Promise<{ count: number } | null>,
+    env.DB.prepare(
+      `SELECT COUNT(*) as count FROM leads WHERE client_id = ? AND created_at >= datetime('now', '-14 days') AND created_at < datetime('now', '-7 days')`
+    ).bind(clientId).first() as Promise<{ count: number } | null>,
+    env.DB.prepare(
+      `SELECT COUNT(*) as count FROM leads WHERE client_id = ? AND status = 'won' AND updated_at >= datetime('now', '-7 days')`
+    ).bind(clientId).first() as Promise<{ count: number } | null>,
+    env.DB.prepare(
+      `SELECT COUNT(*) as count FROM leads WHERE client_id = ? AND status = 'won' AND updated_at >= datetime('now', '-14 days') AND updated_at < datetime('now', '-7 days')`
+    ).bind(clientId).first() as Promise<{ count: number } | null>,
+    env.DB.prepare(
+      `SELECT SUM(deal_value) as val FROM leads WHERE client_id = ? AND status NOT IN ('won', 'lost')`
+    ).bind(clientId).first() as Promise<{ val: number } | null>,
+    env.DB.prepare(
+      `SELECT COUNT(*) as count FROM messages m 
+       JOIN leads l ON m.lead_id = l.id 
+       WHERE l.client_id = ? AND m.created_at >= datetime('now', '-7 days')`
+    ).bind(clientId).first() as Promise<{ count: number } | null>
+  ]);
+
+  const leadsThisWeek = Number(leadsThisWeekRow?.count || 0);
+  const leadsPrevWeek = Number(leadsPrevWeekRow?.count || 0);
+  let leadsDeltaPct = 0;
+  if (leadsPrevWeek > 0) {
+    leadsDeltaPct = Math.round(((leadsThisWeek - leadsPrevWeek) / leadsPrevWeek) * 100);
+  } else if (leadsThisWeek > 0) {
+    leadsDeltaPct = 100;
+  }
+
+  const dealsWonThisWeek = Number(dealsWonThisWeekRow?.count || 0);
+  const dealsWonPrevWeek = Number(dealsWonPrevWeekRow?.count || 0);
+  const dealsWonDelta = dealsWonThisWeek - dealsWonPrevWeek;
+
+  const pipelineValue = Number(pipelineValueRow?.val || 0);
+  const messagesCount = Number(messagesCountRow?.count || 0);
+
+  const metrics = {
+    leads_this_week: leadsThisWeek,
+    leads_prev_week: leadsPrevWeek,
+    leads_delta_pct: leadsDeltaPct,
+    deals_won_this_week: dealsWonThisWeek,
+    deals_won_prev_week: dealsWonPrevWeek,
+    deals_won_delta: dealsWonDelta,
+    pipeline_value: pipelineValue,
+    messages_count: messagesCount
+  };
+
+  // 2. Charger le brand voice du client
+  let brandVoice = 'Professionnel, chaleureux et québécois naturel.';
+  const client = await env.DB.prepare(
+    'SELECT brand_voice FROM clients WHERE id = ?'
+  ).bind(clientId).first() as { brand_voice?: string } | null;
+  if (client?.brand_voice) {
+    brandVoice = client.brand_voice;
+  }
+
+  let content = '';
+
+  // 3. Si mode mock, appeler le fallback local
+  if (isAiMockMode(env)) {
+    content = localWeeklyInsightFallback(metrics);
+  } else {
+    // 4. Sinon, inférence Claude Haiku
+    const systemPrompt = `Tu es un expert en intelligence d'affaires pour les agences immobilières et PME au Québec. \
+Ton du client : ${brandVoice}. \
+Analyse les KPIs de la semaine écoulée comparés à la semaine précédente, et rédige un rapport hebdomadaire narratif en français québécois naturel. \
+Le ton doit être professionnel, encourageant, perspicace et orienté vers l'action commerciale. \
+\
+Formatte ton rapport en Markdown avec EXACTEMENT les 3 sections suivantes : \
+### 🌟 Points forts de la semaine \
+<Analyse des réussites, par exemple hausse des leads, deals gagnés ou forte activité de messagerie. Sois concret et concis.> \
+\
+### ⚠️ Opportunités d'amélioration \
+<Analyse des points faibles, baisse de performance ou leads dormants à réactiver.> \
+\
+### 🎯 Plan d'action recommandé \
+<3 recommandations ultra-précises et actionnables pour la semaine prochaine (ex: relancer tel segment, proposer tel CTA, etc.).> \
+\
+Voici les métriques de la semaine : \
+${JSON.stringify(metrics, null, 2)}`;
+
+    try {
+      content = await callLLM(env, systemPrompt, `Calcule l'analyse narrative des KPIs.`);
+    } catch (err) {
+      console.error('Erreur génération Weekly Insight LLM:', err);
+      content = localWeeklyInsightFallback(metrics);
+    }
+  }
+
+  // 5. Enregistrer en base de données
+  const insightId = crypto.randomUUID();
+  await env.DB.prepare(
+    `INSERT INTO weekly_ai_insights (id, client_id, content, metric_changes_json, created_at)
+     VALUES (?, ?, ?, ?, datetime('now'))`
+  ).bind(insightId, clientId, content, JSON.stringify(metrics)).run();
+
+  return json({
+    data: {
+      id: insightId,
+      client_id: clientId,
+      content,
+      metric_changes_json: JSON.stringify(metrics),
+      created_at: new Date().toISOString()
+    }
+  });
+}
+
+
 

@@ -242,3 +242,12 @@ export interface AlertEventRow {
   payload: string;
   resolved_at: string | null;
 }
+
+// ── Sprint 75 — Sparkle Weekly Analytics Reports ────────────────────────────
+export interface WeeklyAiInsight {
+  id: string;
+  client_id: string;
+  content: string;
+  metric_changes_json: string;
+  created_at: string;
+}

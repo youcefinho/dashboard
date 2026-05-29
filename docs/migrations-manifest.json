@@ -2268,6 +2268,19 @@
         "column:messages.detected_intent"
       ],
       "risk": "low"
+    },
+    {
+      "seq": 164,
+      "file": "migration-weekly-insights-seq170.sql",
+      "depends_on": [
+        "migration-sentiment-intent-seq168.sql"
+      ],
+      "objects": [
+        "table:weekly_ai_insights",
+        "index:idx_weekly_ai_insights_client",
+        "index:idx_weekly_ai_insights_created"
+      ],
+      "risk": "low"
     }
   ]
 }
