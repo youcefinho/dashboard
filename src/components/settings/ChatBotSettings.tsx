@@ -46,6 +46,8 @@ import { Icon } from '../ui/Icon';
 import { Modal } from '../ui/Modal';
 import { Skeleton } from '../ui/Skeleton';
 import { useToast } from '../ui/Toast';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '../ui/Tabs';
+import { ChatbotSessionsTracker } from '../kb/ChatbotSessionsTracker';
 import { t } from '../../lib/i18n';
 import {
   listChatKnowledge,
@@ -334,10 +336,17 @@ export function ChatBotSettings() {
         </div>
       </header>
 
-      {/* ── Section 1 — Config bot ─────────────────────────────────────── */}
-      <section
-        aria-labelledby="chat-bot-config-heading"
-        data-testid="chat-bot-section-config"
+      <Tabs defaultValue="settings" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="settings">Configuration & Base RAG</TabsTrigger>
+          <TabsTrigger value="sessions">Sessions Chatbot</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="settings" className="space-y-10">
+          {/* ── Section 1 — Config bot ─────────────────────────────────────── */}
+          <section
+            aria-labelledby="chat-bot-config-heading"
+            data-testid="chat-bot-section-config"
         className="rounded-xl border border-[var(--border-subtle)] bg-white p-5"
       >
         <header className="mb-4 flex items-center gap-2">
@@ -815,6 +824,12 @@ export function ChatBotSettings() {
           </div>
         </form>
       </Modal>
+        </TabsContent>
+
+        <TabsContent value="sessions">
+          <ChatbotSessionsTracker />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

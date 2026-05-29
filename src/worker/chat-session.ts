@@ -236,6 +236,27 @@ export async function handlePublicChatMessage(
       ).bind(cleanBody.substring(0, 120), conversationId).run();
     } catch { /* best-effort */ }
 
+    // 7) Déclencher le chatbot IA (Sprint 72)
+    try {
+      const dbSession = await env.DB.prepare(
+        `SELECT bot_handled FROM webchat_sessions WHERE id = ? LIMIT 1`
+      ).bind(sessionId).first() as { bot_handled: number } | null;
+
+      if (dbSession && dbSession.bot_handled === 1) {
+        const { processBotReply } = await import('./lib/chat-bot-bridge');
+        processBotReply(
+          env,
+          clientId,
+          sessionId,
+          cleanBody
+        ).catch((err) => {
+          console.error('[Webchat HTTP] Erreur lors du processBotReply:', err);
+        });
+      }
+    } catch (err) {
+      console.error('[Webchat HTTP] Erreur lors du check chatbot:', err);
+    }
+
     return json({
       data: { message_id: messageId, conversation_id: conversationId },
     });

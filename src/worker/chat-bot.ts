@@ -924,3 +924,92 @@ export async function handleTestBot(
     return json({ error: err instanceof Error ? err.message : String(err) }, 500);
   }
 }
+
+/**
+ * GET /api/chat-bot/sessions — Liste les sessions chatbot du tenant courant.
+ */
+export async function handleListChatbotSessions(
+  env: Env,
+  auth: ChatBotAuth
+): Promise<Response> {
+  const g = requireCapability(auth.capabilities, 'settings.manage');
+  if (g) return g;
+
+  try {
+    const clientId = await resolveClientId(env, auth);
+    if (!clientId) {
+      return json({ error: 'unauthorized' }, 401);
+    }
+
+    const { results } = await env.DB.prepare(
+      `SELECT id, session_token, is_active, confidence_avg, client_id, created_at, updated_at
+       FROM chatbot_sessions
+       WHERE client_id = ?
+       ORDER BY updated_at DESC`
+    ).bind(clientId).all();
+
+    return json({ data: results || [] });
+  } catch (err) {
+    return json({ error: err instanceof Error ? err.message : String(err) }, 500);
+  }
+}
+
+/**
+ * PUT /api/chat-bot/sessions/:id — Active ou désactive (escalade) une session chatbot.
+ */
+export async function handleToggleChatbotSession(
+  request: Request,
+  env: Env,
+  auth: ChatBotAuth,
+  id: string
+): Promise<Response> {
+  const g = requireCapability(auth.capabilities, 'settings.manage');
+  if (g) return g;
+
+  try {
+    const clientId = await resolveClientId(env, auth);
+    if (!clientId) {
+      return json({ error: 'unauthorized' }, 401);
+    }
+
+    const body = await request.json() as { is_active?: number };
+    const isActive = body.is_active === 1 ? 1 : 0;
+
+    // Charger la session chatbot
+    const chatbotSession = await env.DB.prepare(
+      `SELECT session_token FROM chatbot_sessions WHERE id = ? AND client_id = ? LIMIT 1`
+    ).bind(id, clientId).first() as { session_token: string } | null;
+
+    if (!chatbotSession) {
+      return json({ error: 'session_not_found' }, 404);
+    }
+
+    // Mettre à jour chatbot_sessions
+    await env.DB.prepare(
+      `UPDATE chatbot_sessions
+       SET is_active = ?, updated_at = datetime('now')
+       WHERE id = ? AND client_id = ?`
+    ).bind(isActive, id, clientId).run();
+
+    // Si on désactive (escalade vers humain), on bascule la session webchat
+    if (isActive === 0) {
+      await env.DB.prepare(
+        `UPDATE webchat_sessions
+         SET bot_handled = 0
+         WHERE id = ?`
+      ).bind(chatbotSession.session_token).run();
+    } else {
+      // Si on réactive le bot
+      await env.DB.prepare(
+        `UPDATE webchat_sessions
+         SET bot_handled = 1
+         WHERE id = ?`
+      ).bind(chatbotSession.session_token).run();
+    }
+
+    return json({ data: { success: true } });
+  } catch (err) {
+    return json({ error: err instanceof Error ? err.message : String(err) }, 500);
+  }
+}
+

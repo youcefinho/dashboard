@@ -2878,3 +2878,15 @@ export interface KbIndexStatus {
   chunks_count: number;
   last_indexed_at: string;
 }
+
+// ── Sprint 72 — Sessions Chatbot Autonome ───────────────────────────────────
+export interface ChatbotSession {
+  id: string;
+  session_token: string;
+  is_active: number;
+  confidence_avg: number;
+  client_id: string;
+  created_at: string;
+  updated_at: string;
+}
+

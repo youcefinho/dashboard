@@ -161,6 +161,35 @@ export class WebchatRoom {
                 '💬', `/conversations`, lead.client_id
               );
             }
+
+            // Déclencher le chatbot IA (Sprint 72)
+            const dbSession = await this.env.DB.prepare(
+              `SELECT id, bot_handled FROM webchat_sessions WHERE conversation_id = ? AND status = 'active' LIMIT 1`
+            ).bind(convId).first() as { id: string; bot_handled: number } | null;
+
+            if (dbSession && dbSession.bot_handled === 1) {
+              const { processBotReply } = await import('./lib/chat-bot-bridge');
+              processBotReply(
+                this.env,
+                lead.client_id,
+                dbSession.id,
+                msg.body,
+                (botMsg) => {
+                  const chatMsg: ChatMessage = {
+                    type: 'message',
+                    sender: 'agent',
+                    name: botMsg.name,
+                    body: botMsg.body,
+                    timestamp: new Date().toISOString(),
+                  };
+                  this.messages.push(chatMsg);
+                  this.state.storage.put('messages', this.messages);
+                  this.broadcast(chatMsg);
+                }
+              ).catch((err) => {
+                console.error('[Webchat DO] Erreur lors du processBotReply:', err);
+              });
+            }
           }
         }
       } catch (err) {

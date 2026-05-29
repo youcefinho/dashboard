@@ -3567,6 +3567,9 @@ async function routeProtected(
       if (path === '/api/chat-bot/config' && method === 'GET') { const m = await import('./worker/chat-bot'); return m.handleGetConfig(env, auth); }
       if (path === '/api/chat-bot/config' && method === 'PUT') { const m = await import('./worker/chat-bot'); return m.handleUpdateConfig(request, env, auth); }
       if (path === '/api/chat-bot/test' && method === 'POST') { const m = await import('./worker/chat-bot'); return m.handleTestBot(request, env, auth); }
+      if (path === '/api/chat-bot/sessions' && method === 'GET') { const m = await import('./worker/chat-bot'); return m.handleListChatbotSessions(env, auth); }
+      const chatbotSessionIdMatch = path.match(/^\/api\/chat-bot\/sessions\/([^/]+)$/);
+      if (chatbotSessionIdMatch && method === 'PUT') { const m = await import('./worker/chat-bot'); return m.handleToggleChatbotSession(request, env, auth, chatbotSessionIdMatch[1]!); }
 
       // Sprint 43 — Courses LMS (cap clients.manage admin, cap leads.write member-facing)
       // Étend memberships seq87 + seq107 — NE TOUCHE PAS courses / course_enrollments

@@ -2244,6 +2244,18 @@
         "index:idx_kb_embeddings_client_source"
       ],
       "risk": "low"
+    },
+    {
+      "seq": 162,
+      "file": "migration-chatbot-sessions-seq166.sql",
+      "depends_on": [
+        "migration-kb-embeddings-seq165.sql"
+      ],
+      "objects": [
+        "table:chatbot_sessions",
+        "index:idx_chatbot_sessions_client"
+      ],
+      "risk": "low"
     }
   ]
 }
