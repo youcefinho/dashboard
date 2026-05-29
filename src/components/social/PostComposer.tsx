@@ -99,7 +99,7 @@ export function PostComposer({ initial, editing = null, saving = false, onSave, 
     setGenerationError(null);
     setGeneratedImageUrl(null);
     try {
-      const res = await generateSocialImage(aiImagePrompt.trim());
+      const res = await generateSocialImage({ prompt: aiImagePrompt.trim() });
       if (res.data?.url) {
         setGeneratedImageUrl(res.data.url);
       } else {
