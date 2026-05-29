@@ -843,6 +843,12 @@ export default {
         return m.handlePublicSubmitSurvey(request, env, publicSurveySubmitMatch[1]!);
       }
 
+      // ── Sprint 78 — Lead Scoring Comportemental v2 (public track) ──
+      if (path === '/api/public/track' && method === 'POST') {
+        const { handleTrackBehavioralEvent } = await import('./worker/behavioral');
+        return await handleTrackBehavioralEvent(request, env);
+      }
+
       // ── Sprint 40 — Product Reviews PUBLIC + Recovery Landing PUBLIC ──────
       // 4 routes publiques (pré-requireAuth) :
       //   - GET  /api/products/:id/reviews        → list approved reviews (anti-bot
@@ -1697,6 +1703,13 @@ async function routeProtected(
   const leadNoteMatch = path.match(/^\/api\/leads\/([^/]+)\/notes\/([^/]+)$/);
   if (leadNoteMatch && method === 'PATCH') return handleUpdateLeadNote(request, env, auth, leadNoteMatch[1]!, leadNoteMatch[2]!);
   if (leadNoteMatch && method === 'DELETE') return handleDeleteLeadNote(env, auth, leadNoteMatch[1]!, leadNoteMatch[2]!);
+
+  // Sprint 78 — Lead Scoring Comportemental v2 (behavioral-events)
+  const leadBehavioralEventsMatch = path.match(/^\/api\/leads\/([^/]+)\/behavioral-events$/);
+  if (leadBehavioralEventsMatch && method === 'GET') {
+    const { handleGetLeadBehavioralEvents } = await import('./worker/behavioral');
+    return await handleGetLeadBehavioralEvents(request, env, auth, leadBehavioralEventsMatch[1]!);
+  }
 
   // Tags & Activity
   if (path === '/api/tags' && method === 'GET') return handleGetAllTags(env, auth);

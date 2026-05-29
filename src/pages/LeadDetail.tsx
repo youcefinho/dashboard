@@ -5,8 +5,9 @@ import { useParams, useNavigate } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, Button, Badge, Skeleton, EmptyState, Select, useToast, useConfirm, AiSparkles, usePanelStack } from '@/components/ui';
 import { t } from '@/lib/i18n';
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip } from 'recharts';
 import { Avatar } from '@/components/ui/Avatar';
-import { getLeadDetail, updateLead, addTag, removeTag, getAppointments, getTasks, updateTask, getLeadNotes, createLeadNote, deleteLeadNote, getLeadScores, getLeadCustomFields, softDeleteLead, restoreLead, getPipelines, getLeadMessages, getCallLogs, placeCall, setCallDisposition, getLeadConversionScore, routeLeadPredictively, getCustomFields, setLeadCustomFields, getWorkflows, enrollLead, getLeadAutomationHistory, type CallLog } from '@/lib/api';
+import { getLeadDetail, updateLead, addTag, removeTag, getAppointments, getTasks, updateTask, getLeadNotes, createLeadNote, deleteLeadNote, getLeadScores, getLeadCustomFields, softDeleteLead, restoreLead, getPipelines, getLeadMessages, getCallLogs, placeCall, setCallDisposition, getLeadConversionScore, routeLeadPredictively, getCustomFields, setLeadCustomFields, getWorkflows, enrollLead, getLeadAutomationHistory, type CallLog, getLeadBehavioralEvents, type BehavioralEvent } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { LeadPrivacyActions } from '@/components/leads/LeadPrivacyActions';
 import { getCachedLead, setCachedLead } from '@/lib/prefetch';
@@ -186,6 +187,7 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
   // Sprint 2
   const [leadNotes, setLeadNotes] = useState<LeadNote[]>([]);
   const [leadScores, setLeadScores] = useState<LeadScore[]>([]);
+  const [behavioralEvents, setBehavioralEvents] = useState<BehavioralEvent[]>([]);
   const [customFields, setCustomFields] = useState<CustomFieldValue[]>([]);
   const [customFieldDefs, setCustomFieldDefs] = useState<CustomFieldDef[]>([]);
   const [automationHistory, setAutomationHistory] = useState<ExecLogEntry[]>([]);
@@ -242,6 +244,7 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
     // Sprint 2
     getLeadNotes(leadId).then(r => { if (r.data) setLeadNotes(r.data); }).catch(() => {});
     getLeadScores(leadId).then(r => { if (r.data) setLeadScores(r.data); }).catch(() => {});
+    getLeadBehavioralEvents(leadId).then(r => { if (r.data) setBehavioralEvents(r.data); }).catch(() => {});
     getLeadCustomFields(leadId).then(r => { if (r.data) setCustomFields(r.data); }).catch(() => {});
     getCustomFields().then(r => { if (r.data) setCustomFieldDefs(r.data); }).catch(() => {});
     getLeadAutomationHistory(leadId).then(r => { if (r.data) setAutomationHistory(r.data); }).catch(() => {});
@@ -789,31 +792,135 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
           </Card>
           )}
 
-          {activeTab === 'scores' && (
-          <Card className="p-5">
-            <h3 className="text-sm font-semibold mb-3">{t('lead.scores.title')}</h3>
-            {leadScores.length === 0 ? (
-              <p className="text-sm text-[var(--text-muted)]">{t('lead.scores.empty')}</p>
-            ) : (
-              <div className="space-y-3">
-                {leadScores.map(s => (
-                  <div key={s.profile_id} className="p-3 rounded-[var(--radius-md)] bg-[var(--bg-subtle)]">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-medium">{s.name}</span>
-                      <span className={`text-lg font-bold ${s.score >= 70 ? 'text-[var(--success)]' : s.score >= 40 ? 'text-[var(--warning)]' : 'text-[var(--danger)]'}`}>{s.score}/100</span>
-                    </div>
-                    <div className="w-full h-2 rounded-full bg-[var(--border-subtle)] overflow-hidden">
-                      <div className={`h-full rounded-full transition-all ${s.score >= 70 ? 'bg-[var(--success)]' : s.score >= 40 ? 'bg-[var(--warning)]' : 'bg-[var(--danger)]'}`}
-                        style={{ width: `${s.score}%` }} />
-                    </div>
-                    {s.description && <p className="text-xs text-[var(--text-muted)] mt-1">{s.description}</p>}
+          {activeTab === 'scores' && (() => {
+            const chartData = [...behavioralEvents]
+              .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+              .map(event => ({
+                date: new Date(event.created_at).toLocaleDateString('fr-CA', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+                score: event.score_after,
+                delta: event.score_delta,
+                type: event.event_type,
+              }));
+
+            return (
+              <Card className="p-5">
+                <h3 className="text-sm font-semibold mb-3">{t('lead.scores.title')}</h3>
+                {leadScores.length === 0 ? (
+                  <p className="text-sm text-[var(--text-muted)]">{t('lead.scores.empty')}</p>
+                ) : (
+                  <div className="space-y-3">
+                    {leadScores.map(s => (
+                      <div key={s.profile_id} className="p-3 rounded-[var(--radius-md)] bg-[var(--bg-subtle)]">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm font-medium">{s.name}</span>
+                          <span className={`text-lg font-bold ${s.score >= 70 ? 'text-[var(--success)]' : s.score >= 40 ? 'text-[var(--warning)]' : 'text-[var(--danger)]'}`}>{s.score}/100</span>
+                        </div>
+                        <div className="w-full h-2 rounded-full bg-[var(--border-subtle)] overflow-hidden">
+                          <div className={`h-full rounded-full transition-all ${s.score >= 70 ? 'bg-[var(--success)]' : s.score >= 40 ? 'bg-[var(--warning)]' : 'bg-[var(--danger)]'}`}
+                            style={{ width: `${s.score}%` }} />
+                        </div>
+                        {s.description && <p className="text-xs text-[var(--text-muted)] mt-1">{s.description}</p>}
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            )}
-            {/* Custom Fields rendus dans le tab Détails (source unique) */}
-          </Card>
-          )}
+                )}
+
+                {/* Graphique de score comportemental v2 */}
+                <div className="mt-6 pt-6 border-t border-[var(--border-subtle)] space-y-4">
+                  <h4 className="text-sm font-semibold">{t('lead.behavioral.title')}</h4>
+                  {chartData.length === 0 ? (
+                    <p className="text-xs text-[var(--text-muted)] italic">{t('lead.behavioral.empty')}</p>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="h-64 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                            <defs>
+                              <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="var(--brand-primary, #009DDB)" stopOpacity={0.2}/>
+                                <stop offset="95%" stopColor="var(--brand-primary, #009DDB)" stopOpacity={0}/>
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-subtle)" />
+                            <XAxis
+                              dataKey="date"
+                              tick={{ fontSize: 10, fill: 'var(--text-muted)' }}
+                              axisLine={false}
+                              tickLine={false}
+                            />
+                            <YAxis
+                              domain={[0, 100]}
+                              tick={{ fontSize: 10, fill: 'var(--text-muted)' }}
+                              axisLine={false}
+                              tickLine={false}
+                              allowDecimals={false}
+                            />
+                            <RechartsTooltip
+                              contentStyle={{
+                                background: 'var(--bg-surface)',
+                                border: '1px solid var(--border-subtle)',
+                                borderRadius: 'var(--radius-md)',
+                                fontSize: 12,
+                                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
+                              }}
+                              labelClassName="font-semibold text-[var(--text-primary)]"
+                              formatter={(value: any, _name: any, props: any) => {
+                                const payload = props.payload;
+                                const deltaText = payload.delta > 0 ? `+${payload.delta}` : `${payload.delta}`;
+                                return [
+                                  `${value}/100 (${deltaText})`,
+                                  `Événement: ${payload.type}`
+                                ];
+                              }}
+                            />
+                            <Area
+                              type="monotone"
+                              dataKey="score"
+                              stroke="var(--brand-primary, #009DDB)"
+                              strokeWidth={2}
+                              fillOpacity={1}
+                              fill="url(#colorScore)"
+                            />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
+
+                      {/* Historique détaillé */}
+                      <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
+                        {[...behavioralEvents]
+                          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                          .map(event => {
+                            const isPositive = event.score_delta > 0;
+                            const dateStr = new Date(event.created_at).toLocaleString('fr-CA', {
+                              dateStyle: 'short',
+                              timeStyle: 'short',
+                            });
+                            return (
+                              <div key={event.id} className="flex justify-between items-center text-xs p-2.5 rounded-[var(--radius-md)] bg-[var(--bg-surface)] border border-[var(--border-subtle)]">
+                                <div className="space-y-0.5">
+                                  <span className="font-semibold text-[var(--text-primary)] capitalize">
+                                    {event.event_type.replace(/_/g, ' ')}
+                                  </span>
+                                  <div className="text-[var(--text-muted)]">{dateStr}</div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className={`font-mono font-bold ${isPositive ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>
+                                    {isPositive ? `+${event.score_delta}` : event.score_delta}
+                                  </span>
+                                  <span className="text-[var(--text-secondary)] font-medium">
+                                    → {event.score_after}/100
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            );
+          })()}
 
           {activeTab === 'automations' && (
           <Card className="p-5">

@@ -2303,6 +2303,19 @@
         "table:lead_routing_scores"
       ],
       "risk": "low"
+    },
+    {
+      "seq": 167,
+      "file": "migration-behavioral-events-seq173.sql",
+      "depends_on": [
+        "migration-lead-routing-seq172.sql"
+      ],
+      "objects": [
+        "table:behavioral_events",
+        "index:idx_behavioral_events_lead",
+        "index:idx_behavioral_events_created"
+      ],
+      "risk": "low"
     }
   ]
 }

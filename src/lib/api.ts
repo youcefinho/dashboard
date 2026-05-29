@@ -1604,6 +1604,32 @@ export async function recomputeLeadScore(leadId: string): Promise<ApiResponse<Le
   return apiFetch<LeadScore[]>(`/leads/${leadId}/scores/recompute`, { method: 'POST' });
 }
 
+// ── Sprint 78 : Lead Scoring Comportemental v2 (behavioral-events) ──
+
+export interface BehavioralEvent {
+  id: string;
+  event_type: string;
+  score_delta: number;
+  score_after: number;
+  created_at: string;
+}
+
+export async function getLeadBehavioralEvents(leadId: string): Promise<ApiResponse<BehavioralEvent[]>> {
+  return apiFetch<BehavioralEvent[]>(`/leads/${leadId}/behavioral-events`);
+}
+
+export async function trackBehavioralEvent(payload: {
+  lead_id?: string;
+  email?: string;
+  event_type: string;
+  score_delta?: number;
+}): Promise<ApiResponse<{ success: boolean; new_score: number }>> {
+  return apiFetch<{ success: boolean; new_score: number }>('/public/track', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
 // ── Sprint 2 : Custom Field Values ─────────────────────────
 
 export async function getLeadCustomFields(leadId: string): Promise<ApiResponse<CustomFieldValue[]>> {
