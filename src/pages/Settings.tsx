@@ -8,10 +8,11 @@ import {
   User, Bell, Shield, Palette,
   Columns, Package, Brain, Users, Key, FileText, CreditCard,
   Building, BookOpen, Smartphone, Search, Plug, Boxes, Globe, Truck, UploadCloud, PhoneCall,
-  Plus, Trash2, Check
+  Plus, Trash2, Check, DollarSign
 } from 'lucide-react';
 import { fuzzyScoreMulti } from '@/lib/fuzzy';
 import { t } from '@/lib/i18n';
+import { CommissionsSettings } from '@/components/settings/CommissionsSettings';
 // Sprint 21 — Onboarding durci : auto-complète 'profile_completed' dès que le
 // profil user a un nom + email renseignés (idempotent, best-effort, silencieux).
 import { useOnboardingItemCompletion } from '@/components/onboarding/useOnboardingItemCompletion';
@@ -70,7 +71,7 @@ import { WhitelabelSelfServiceSettings } from '@/components/settings/WhitelabelS
 import { NotificationPreferencesSelfService } from '@/components/settings/NotificationPreferencesSelfService';
 import { PushDeviceSettings } from '@/components/settings/PushDeviceSettings';
 
-type SettingsTab = 'profil' | 'notifications' | 'securite' | 'equipe' | 'roles' | 'sous_comptes' | 'branding' | 'billing' | 'audit' | 'api' | 'sources_leads' | 'pipelines' | 'custom_fields' | 'conformite' | 'raccourcis' | 'systeme' | 'packs' | 'ai_scoring' | 'modules' | 'region' | 'paiements' | 'expedition' | 'conso_conformite' | 'canaux' | 'migration_import' | 'telephonie' | 'sms_templates' | 'data_privacy' | 'role_overrides';
+type SettingsTab = 'profil' | 'notifications' | 'securite' | 'equipe' | 'roles' | 'sous_comptes' | 'branding' | 'billing' | 'commissions' | 'audit' | 'api' | 'sources_leads' | 'pipelines' | 'custom_fields' | 'conformite' | 'raccourcis' | 'systeme' | 'packs' | 'ai_scoring' | 'modules' | 'region' | 'paiements' | 'expedition' | 'conso_conformite' | 'canaux' | 'migration_import' | 'telephonie' | 'sms_templates' | 'data_privacy' | 'role_overrides';
 
 const TABS: { id: SettingsTab; icon: typeof User; label: string; group: string; adminOnly?: boolean; description: string }[] = [
   { id: 'profil', icon: User, label: 'Mon profil', group: 'COMPTE', description: 'Nom, avatar, email, mot de passe' },
@@ -90,6 +91,7 @@ const TABS: { id: SettingsTab; icon: typeof User; label: string; group: string; 
   { id: 'role_overrides', icon: Key, label: 'Permissions personnalisées', group: 'AGENCE', adminOnly: true, description: 'Outrepasser le rôle d\'un utilisateur, capacité par capacité' },
   { id: 'sous_comptes', icon: Building, label: 'Sous-comptes', group: 'AGENCE', adminOnly: true, description: 'Gérer les sous-comptes clients, branding, membres' },
   { id: 'billing', icon: CreditCard, label: 'Facturation & Usage', group: 'AGENCE', adminOnly: true, description: 'Plan, paiement, quotas, factures' },
+  { id: 'commissions', icon: DollarSign, label: 'Commissions d\'équipe', group: 'AGENCE', adminOnly: true, description: 'Suivi des commissions versées aux agents de vente' },
   { id: 'packs', icon: Package, label: 'Packs Industrie', group: 'AGENCE', adminOnly: true, description: 'Templates niche : courtiers, dentistes' },
 
   { id: 'modules', icon: Boxes, label: 'Modules', group: 'AVANCÉ', adminOnly: true, description: 'Activer CRM, Boutique e-commerce' },
@@ -200,6 +202,7 @@ export function SettingsPage() {
           <BillingPlanPanel />
         </>
       );
+      case 'commissions': return <CommissionsSettings />;
       case 'audit': return <AuditLogSettings />;
       // ── Sprint 23 — Sécurité / conformité ──
       case 'data_privacy': return <DataPrivacyPanel />;

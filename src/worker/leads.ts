@@ -415,6 +415,11 @@ export async function handlePatchLead(
         const { onLeadWon } = await import('./affiliates');
         await onLeadWon(env, leadId);
       } catch { /* best-effort : la commission affilié n'échoue jamais le patch */ }
+      
+      try {
+        const { onAgentLeadWon } = await import('./agent-commissions');
+        await onAgentLeadWon(env, leadId);
+      } catch { /* best-effort */ }
     }
   }
 

@@ -142,25 +142,50 @@ export async function resolveCapabilities(
       return new Set<string>(ALL_CAPABILITIES);
     }
 
-    // 2) capabilities du rôle générique (seed seq 80).
+    // 2) capabilities du rôle générique lues depuis role_permissions (seq 178)
+    //    ou fallback sur role_capabilities (seq 80).
     const caps = new Set<string>();
     try {
       const { results } = await env.DB.prepare(
-        'SELECT capability FROM role_capabilities WHERE role_generic = ?',
+        'SELECT capability, allowed FROM role_permissions WHERE role_name = ?',
       )
         .bind(generic)
         .all();
-      for (const r of results || []) {
-        const c = (r as { capability: string | null }).capability;
-        if (typeof c === 'string' && c.length > 0) caps.add(c);
+
+      if (results && results.length > 0) {
+        for (const r of results) {
+          const row = r as { capability: string; allowed: number };
+          if (row.allowed === 1) {
+            caps.add(row.capability);
+          }
+        }
+      } else {
+        const { results: fallbackResults } = await env.DB.prepare(
+          'SELECT capability FROM role_capabilities WHERE role_generic = ?',
+        )
+          .bind(generic)
+          .all();
+        for (const r of fallbackResults || []) {
+          const c = (r as { capability: string | null }).capability;
+          if (typeof c === 'string' && c.length > 0) caps.add(c);
+        }
       }
     } catch {
-      // Table seq 80 absente : DÉGRADE legacy (ne bride rien de l'existant).
-      return legacyCapsFromRole(role);
+      try {
+        const { results } = await env.DB.prepare(
+          'SELECT capability FROM role_capabilities WHERE role_generic = ?',
+        )
+          .bind(generic)
+          .all();
+        for (const r of results || []) {
+          const c = (r as { capability: string | null }).capability;
+          if (typeof c === 'string' && c.length > 0) caps.add(c);
+        }
+      } catch {
+        return legacyCapsFromRole(role);
+      }
     }
 
-    // Si le rôle générique n'a aucune ligne (seed non joué) → dégrade legacy
-    // plutôt que de bloquer (rétro-compat : pas de régression d'accès).
     if (caps.size === 0) return legacyCapsFromRole(role);
 
     // 3) overrides par user (granted=1 ajoute, granted=0 retire).

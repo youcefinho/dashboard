@@ -324,7 +324,7 @@ import {
   handleGetDialerCurrentLead,
 } from './worker/dialer';
 
-import { handleGetUsers, handleInviteUser, handleUpdateUserRole, handleDeleteUser, handleGetRoles, handleAcceptInvitation, handleRevokeInvitation, handleResendInvitation, handleListInvitations } from './worker/team';
+import { handleGetUsers, handleInviteUser, handleUpdateUserRole, handleDeleteUser, handleGetRoles, handleAcceptInvitation, handleRevokeInvitation, handleResendInvitation, handleListInvitations, handleUpdateRolePermission } from './worker/team';
 // ── LOT TEAM B/C — capabilities + sous-comptes (Phase A fige le dispatch) ───
 import { resolveCapabilities, handleGetMyCapabilities } from './worker/capabilities';
 import { handleUpdateClient, handleDeleteClient, handleGetClientBranding, handleUpdateClientBranding, handleGetAgencyReports, handleGetCustomDomains, handleAddCustomDomain, handleDeleteCustomDomain } from './worker/clients-admin';
@@ -1752,6 +1752,17 @@ async function routeProtected(
   if (callSummaryMatch && method === 'GET') {
     const { handleGetCallSummary } = await import('./worker/telephony');
     return handleGetCallSummary(env, auth, callSummaryMatch[1]!);
+  }
+
+  // ── Sprint 82 — Commissions d'Équipe de Vente ───────────────────────────
+  if (path === '/api/agent-commissions' && method === 'GET') {
+    const { handleGetAgentCommissions } = await import('./worker/agent-commissions');
+    return await handleGetAgentCommissions(env, auth, url);
+  }
+  const agentCommissionStatusMatch = path.match(/^\/api\/agent-commissions\/([^/]+)\/status$/);
+  if (agentCommissionStatusMatch && method === 'POST') {
+    const { handleUpdateAgentCommissionStatus } = await import('./worker/agent-commissions');
+    return await handleUpdateAgentCommissionStatus(request, env, auth, agentCommissionStatusMatch[1]!);
   }
   if (path === '/api/ivr-menus' && method === 'GET') {
     const { handleGetIvrMenus } = await import('./worker/telephony');
@@ -4358,6 +4369,7 @@ async function routeProtected(
   }
   if (userMatch && method === 'DELETE') return handleDeleteUser(request, env, auth);
   if (path === '/api/team/roles' && method === 'GET') return handleGetRoles(request, env, auth);
+  if (path === '/api/team/roles/permissions' && method === 'POST') return handleUpdateRolePermission(request, env, auth);
   // ── LOT TEAM B — capabilities de l'utilisateur courant ──────────────────
   // ── Sprint 25 — Perf : cache TTL 30s (capabilities user lecture seule).
   // TTL court car bust se fait sur PATCH /api/team/users/:id. Clé canonique :

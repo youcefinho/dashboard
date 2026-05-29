@@ -389,6 +389,17 @@ export async function getRolesWithCaps(): Promise<ApiResponse<TeamRoleWithCaps[]
   return apiFetch<TeamRoleWithCaps[]>('/team/roles');
 }
 
+export async function updateRolePermission(body: {
+  role_name: string;
+  capability: string;
+  allowed: boolean;
+}): Promise<ApiResponse<{ success: boolean }>> {
+  return apiFetch<{ success: boolean }>('/team/roles/permissions', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
 // ── LOT TEAM C — sous-comptes (CRUD) + branding white-label (§6.F) ──────────
 export interface ClientBranding {
   branding: string | null;

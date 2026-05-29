@@ -7597,4 +7597,20 @@ export const frFR: Record<string, string> = {
   'calls.ai.summary.tasks_created': 'Actions recommandées par l’IA',
   'calls.ai.summary.error': 'Impossible de générer le compte-rendu.',
   'calls.ai.summary.not_transcribed': 'L’appel doit avoir une transcription pour être résumé par l’IA.',
+
+  // ── Agent commissions (Sprint 82) ──
+  'commissions.title': "Commissions d'équipe",
+  'commissions.subtitle': 'Suivi des commissions versées aux agents de vente.',
+  'commissions.agent_name': 'Agent',
+  'commissions.lead_name': 'Lead',
+  'commissions.deal_value': 'Valeur deal',
+  'commissions.amount': 'Commission',
+  'commissions.status': 'Statut',
+  'commissions.created_at': 'Créée le',
+  'commissions.status.pending': 'En attente',
+  'commissions.status.paid': 'Payée',
+  'commissions.status.cancelled': 'Annulée',
+  'commissions.action.mark_paid': 'Marquer comme payée',
+  'commissions.action.cancel': 'Annuler la commission',
+  'commissions.empty': 'Aucune commission enregistrée pour le moment.',
 };

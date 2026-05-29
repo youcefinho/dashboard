@@ -7,12 +7,13 @@
 // i18n exclusivement via t('caps.*') (23 clés figées Phase A, §6.G) — aucune
 // clé créée, aucun catalogue touché.
 import { useState, useEffect } from 'react';
-import { Card, Tag, EmptyState, Icon } from '@/components/ui';
+import { Card, Tag, EmptyState, Icon, useToast } from '@/components/ui';
 import { ShieldCheck } from 'lucide-react';
 import { t } from '@/lib/i18n';
 import {
   getRolesWithCaps,
   getMyCapabilities,
+  updateRolePermission,
   type TeamRoleWithCaps,
 } from '@/lib/api';
 
@@ -34,10 +35,12 @@ const CAPABILITIES = [
 ] as const;
 
 export function RolesPermissionsSettings() {
+  const { success, error: toastError } = useToast();
   const [roles, setRoles] = useState<TeamRoleWithCaps[]>([]);
   const [myCaps, setMyCaps] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [updating, setUpdating] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -47,7 +50,6 @@ export function RolesPermissionsSettings() {
         getMyCapabilities(),
       ]);
       if (cancelled) return;
-      // Discrimination = absence de `data` (apiFetch GELÉ §6.A, pas de `code`).
       if (rolesRes.data) {
         setRoles(rolesRes.data);
       } else {
@@ -60,6 +62,39 @@ export function RolesPermissionsSettings() {
       cancelled = true;
     };
   }, []);
+
+  const handleTogglePermission = async (roleName: string, cap: string, currentGranted: boolean) => {
+    if (roleName === 'owner') return;
+
+    const key = `${roleName}-${cap}`;
+    setUpdating(key);
+    try {
+      const res = await updateRolePermission({
+        role_name: roleName,
+        capability: cap,
+        allowed: !currentGranted,
+      });
+      if (res.data) {
+        setRoles((prev) =>
+          prev.map((r) => {
+            if (r.id !== roleName) return r;
+            const caps = r.capabilities || [];
+            const newCaps = currentGranted
+              ? caps.filter((c) => c !== cap)
+              : [...caps, cap];
+            return { ...r, capabilities: newCaps };
+          })
+        );
+        success('Permission mise à jour avec succès.');
+      } else if (res.error) {
+        toastError(res.error);
+      }
+    } catch (e: any) {
+      toastError(e.message || 'Erreur lors de la modification de la permission.');
+    } finally {
+      setUpdating(null);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -133,19 +168,24 @@ export function RolesPermissionsSettings() {
                 </span>
                 {roles.map((r) => {
                   const granted = (r.capabilities || []).includes(cap);
+                  const isOwner = r.id === 'owner';
+                  const isUpdating = updating === `${r.id}-${cap}`;
                   return (
-                    <span
+                    <button
                       key={r.id}
                       role="cell"
-                      className={`settings-perm-cell ${granted ? 'is-on' : 'is-off'}`}
+                      disabled={isOwner || isUpdating}
+                      onClick={() => !isOwner && !isUpdating && handleTogglePermission(r.id, cap, granted)}
+                      className={`settings-perm-cell ${granted ? 'is-on' : 'is-off'} ${isOwner ? 'cursor-not-allowed' : 'cursor-pointer hover:opacity-80 transition-opacity'} ${isUpdating ? 'animate-pulse' : ''}`}
                       aria-label={
                         granted
                           ? t('caps.matrix.granted')
                           : t('caps.matrix.denied')
                       }
+                      style={{ background: 'none', border: 'none', color: 'inherit', font: 'inherit', textAlign: 'center', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     >
-                      {granted ? t('caps.matrix.granted') : t('caps.matrix.denied')}
-                    </span>
+                      {isUpdating ? '...' : (granted ? t('caps.matrix.granted') : t('caps.matrix.denied'))}
+                    </button>
                   );
                 })}
               </div>

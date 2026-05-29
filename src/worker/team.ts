@@ -587,29 +587,142 @@ export async function handleGetRoles(
     { id: 'viewer', name: 'Observateur', description: 'Lecture seule', is_system: true, capabilities: [] },
   ];
 
-  // Enrichissement best-effort : capabilities lues de role_capabilities
-  // (seq 80). Table absente / panne D1 → capabilities:[] (rétro-compat,
-  // JAMAIS de throw — endpoint déjà gardé, contrat §6.E).
+  const ownerCaps = [
+    'leads.read', 'leads.write', 'leads.delete', 'export', 'team.manage',
+    'billing.view', 'clients.manage', 'reports.view', 'workflows.manage',
+    'invoices.write', 'settings.manage', 'ai.use'
+  ];
+
   try {
     const { results } = await env.DB.prepare(
-      'SELECT role_generic, capability FROM role_capabilities',
+      'SELECT role_name, capability FROM role_permissions WHERE allowed = 1',
     ).all();
-    const byRole = new Map<string, string[]>();
-    for (const r of results || []) {
-      const row = r as { role_generic: string | null; capability: string | null };
-      if (typeof row.role_generic !== 'string' || !row.role_generic) continue;
-      if (typeof row.capability !== 'string' || !row.capability) continue;
-      const list = byRole.get(row.role_generic) || [];
-      list.push(row.capability);
-      byRole.set(row.role_generic, list);
-    }
-    for (const role of roles) {
-      role.capabilities = byRole.get(role.id) || [];
+
+    if (results && results.length > 0) {
+      const byRole = new Map<string, string[]>();
+      for (const r of results) {
+        const row = r as { role_name: string; capability: string };
+        const list = byRole.get(row.role_name) || [];
+        list.push(row.capability);
+        byRole.set(row.role_name, list);
+      }
+      for (const role of roles) {
+        if (role.id === 'owner') {
+          role.capabilities = ownerCaps;
+        } else {
+          role.capabilities = byRole.get(role.id) || [];
+        }
+      }
+    } else {
+      const { results: fallbackResults } = await env.DB.prepare(
+        'SELECT role_generic, capability FROM role_capabilities',
+      ).all();
+      const byRole = new Map<string, string[]>();
+      for (const r of fallbackResults || []) {
+        const row = r as { role_generic: string | null; capability: string | null };
+        if (typeof row.role_generic !== 'string' || !row.role_generic) continue;
+        if (typeof row.capability !== 'string' || !row.capability) continue;
+        const list = byRole.get(row.role_generic) || [];
+        list.push(row.capability);
+        byRole.set(row.role_generic, list);
+      }
+      for (const role of roles) {
+        if (role.id === 'owner') {
+          role.capabilities = ownerCaps;
+        } else {
+          role.capabilities = byRole.get(role.id) || [];
+        }
+      }
     }
   } catch {
-    // role_capabilities (seq 80) non jouée : 4 rôles sans capabilities
-    // (rétro-compat — TeamRoleWithCaps.capabilities optionnel/[]).
+    try {
+      const { results } = await env.DB.prepare(
+        'SELECT role_generic, capability FROM role_capabilities',
+      ).all();
+      const byRole = new Map<string, string[]>();
+      for (const r of results || []) {
+        const row = r as { role_generic: string | null; capability: string | null };
+        if (typeof row.role_generic !== 'string' || !row.role_generic) continue;
+        if (typeof row.capability !== 'string' || !row.capability) continue;
+        const list = byRole.get(row.role_generic) || [];
+        list.push(row.capability);
+        byRole.set(row.role_generic, list);
+      }
+      for (const role of roles) {
+        if (role.id === 'owner') {
+          role.capabilities = ownerCaps;
+        } else {
+          role.capabilities = byRole.get(role.id) || [];
+        }
+      }
+    } catch {
+      for (const role of roles) {
+        if (role.id === 'owner') {
+          role.capabilities = ownerCaps;
+        }
+      }
+    }
   }
 
   return json({ data: roles });
+}
+
+// ── POST /api/team/roles/permissions ────────────────────────────────────────
+export async function handleUpdateRolePermission(
+  request: Request,
+  env: Env,
+  auth?: TeamAuth,
+): Promise<Response> {
+  const cg = capGuard(auth as never, 'settings.manage');
+  if (cg) return cg;
+
+  const body = (await request.json().catch(() => null)) as {
+    role_name?: string;
+    capability?: string;
+    allowed?: boolean;
+  } | null;
+
+  const roleName = body?.role_name;
+  const capability = body?.capability;
+  const allowed = body?.allowed;
+
+  if (!roleName || !capability || allowed === undefined) {
+    return json({ error: 'Paramètres invalides ou manquants' }, 400);
+  }
+
+  if (roleName === 'owner') {
+    return json({ error: 'Le rôle propriétaire ne peut pas être modifié' }, 403);
+  }
+
+  if (!VALID_GENERIC_ROLES.includes(roleName as any)) {
+    return json({ error: 'Rôle invalide' }, 400);
+  }
+
+  const validCapabilities = [
+    'leads.read', 'leads.write', 'leads.delete', 'export', 'team.manage',
+    'billing.view', 'clients.manage', 'reports.view', 'workflows.manage',
+    'invoices.write', 'settings.manage', 'ai.use'
+  ];
+  if (!validCapabilities.includes(capability)) {
+    return json({ error: 'Capability invalide' }, 400);
+  }
+
+  const allowedVal = allowed ? 1 : 0;
+  const id = crypto.randomUUID();
+
+  await env.DB.prepare(
+    `INSERT INTO role_permissions (id, role_name, capability, allowed)
+     VALUES (?, ?, ?, ?)
+     ON CONFLICT(role_name, capability) DO UPDATE SET allowed = ?`
+  )
+    .bind(id, roleName, capability, allowedVal, allowedVal)
+    .run();
+
+  await audit(env, auditActor(request, auth), 'role_permission.update', 'role_permissions', roleName, {
+    role_name: roleName,
+    capability,
+    allowed: allowedVal,
+  });
+
+  return json({ data: { success: true } });
 }

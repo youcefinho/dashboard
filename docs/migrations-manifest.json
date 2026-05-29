@@ -2328,6 +2328,32 @@
         "index:idx_call_summaries_call_id"
       ],
       "risk": "low"
+    },
+    {
+      "seq": 177,
+      "file": "migration-agent-commissions-seq177.sql",
+      "depends_on": [
+        "migration-call-summaries-seq175.sql"
+      ],
+      "objects": [
+        "table:agent_commissions",
+        "index:idx_agent_commissions_client",
+        "index:idx_agent_commissions_user",
+        "index:idx_agent_commissions_lead"
+      ],
+      "risk": "low"
+    },
+    {
+      "seq": 178,
+      "file": "migration-rbac-permissions-seq178.sql",
+      "depends_on": [
+        "migration-agent-commissions-seq177.sql"
+      ],
+      "objects": [
+        "table:role_permissions",
+        "index:idx_role_permissions_role"
+      ],
+      "risk": "low"
     }
   ]
 }

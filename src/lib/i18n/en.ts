@@ -7596,4 +7596,20 @@ export const en: Record<string, string> = {
   'calls.ai.summary.tasks_created': 'AI Recommended Actions',
   'calls.ai.summary.error': 'Failed to generate call summary.',
   'calls.ai.summary.not_transcribed': 'The call must have a transcript to be summarized by AI.',
+
+  // ── Agent commissions (Sprint 82) ──
+  'commissions.title': 'Team Commissions',
+  'commissions.subtitle': 'Tracking commissions paid to sales agents.',
+  'commissions.agent_name': 'Agent',
+  'commissions.lead_name': 'Lead',
+  'commissions.deal_value': 'Deal Value',
+  'commissions.amount': 'Commission',
+  'commissions.status': 'Status',
+  'commissions.created_at': 'Created At',
+  'commissions.status.pending': 'Pending',
+  'commissions.status.paid': 'Paid',
+  'commissions.status.cancelled': 'Cancelled',
+  'commissions.action.mark_paid': 'Mark as Paid',
+  'commissions.action.cancel': 'Cancel Commission',
+  'commissions.empty': 'No commissions recorded yet.',
 };
