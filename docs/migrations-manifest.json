@@ -2316,6 +2316,18 @@
         "index:idx_behavioral_events_created"
       ],
       "risk": "low"
+    },
+    {
+      "seq": 175,
+      "file": "migration-call-summaries-seq175.sql",
+      "depends_on": [
+        "migration-behavioral-events-seq173.sql"
+      ],
+      "objects": [
+        "table:call_summaries",
+        "index:idx_call_summaries_call_id"
+      ],
+      "risk": "low"
     }
   ]
 }

@@ -9,17 +9,162 @@
 //   primitives existantes, ZÉRO CSS global.
 
 import { useState, useEffect, useCallback, Fragment } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Badge, Select, EmptyState, PageHero } from '@/components/ui';
-import { apiFetch, type CallLog } from '@/lib/api';
+import { Card, Badge, Select, EmptyState, PageHero, Button, Skeleton, AiLoadingShimmer } from '@/components/ui';
+import { apiFetch, getCallSummary, generateCallSummary, type CallLog, type CallSummary, type Task } from '@/lib/api';
 import { t } from '@/lib/i18n';
-import { PhoneIncoming, PhoneOutgoing, Phone } from 'lucide-react';
+import { PhoneIncoming, PhoneOutgoing, Phone, Sparkles, Calendar, CheckSquare, AlertCircle } from 'lucide-react';
 
 // CallLog côté journal global : le worker (handleGetCallLogs) JOINT leads → expose
 // `lead_name`. Le type FIGÉ ne le déclare pas → extension locale (lecture seule).
 type CallLogRow = CallLog & { lead_name?: string | null };
 
 const DISPOSITION_OPTIONS = ['interested', 'callback', 'voicemail', 'wrong_number', 'not_interested'] as const;
+
+interface CallSummarySectionProps {
+  callId: string;
+  hasTranscription: boolean;
+}
+
+function CallSummarySection({ callId, hasTranscription }: CallSummarySectionProps) {
+  const [summary, setSummary] = useState<CallSummary | null>(null);
+  const [aiTasks, setAiTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    async function loadSummary() {
+      if (!callId) return;
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await getCallSummary(callId);
+        if (active) {
+          if (res.data) {
+            setSummary(res.data);
+          } else {
+            setSummary(null);
+          }
+        }
+      } catch (err) {
+        if (active) {
+          setSummary(null);
+        }
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+    void loadSummary();
+    return () => {
+      active = false;
+    };
+  }, [callId]);
+
+  const handleGenerate = async () => {
+    setGenerating(true);
+    setError(null);
+    try {
+      const res = await generateCallSummary(callId);
+      if (res.data) {
+        setSummary(res.data);
+        if (res.data.tasks) {
+          setAiTasks(res.data.tasks);
+        }
+      } else if (res.error) {
+        setError(res.error || t('calls.ai.summary.error'));
+      }
+    } catch {
+      setError(t('calls.ai.summary.error'));
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  return (
+    <div className="mt-3 border-t border-[var(--border-subtle)] pt-3" data-testid="telephony-ai-summary">
+      <h4 className="text-[10px] uppercase tracking-wider text-[var(--text-muted)] mb-1 flex items-center gap-1">
+        <Sparkles size={11} className="text-[var(--primary)] animate-pulse" />
+        {t('calls.ai.summary.title')}
+      </h4>
+
+      {loading ? (
+        <div className="space-y-1" data-testid="summary-loading">
+          <Skeleton className="h-3 w-1/4" />
+          <Skeleton className="h-10 w-full" />
+        </div>
+      ) : error ? (
+        <div className="text-[10px] text-[var(--danger)] flex items-center gap-1" data-testid="summary-error">
+          <AlertCircle size={12} />
+          <span>{error}</span>
+        </div>
+      ) : summary ? (
+        <div className="space-y-2">
+          <div className="text-[10px] text-[var(--text-secondary)] prose max-w-none p-2 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-surface)] leading-relaxed">
+            <ReactMarkdown>{summary.summary}</ReactMarkdown>
+          </div>
+
+          {aiTasks.length > 0 && (
+            <div className="space-y-1" data-testid="summary-tasks">
+              <h5 className="text-[9px] uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1">
+                <CheckSquare size={9} />
+                {t('calls.ai.summary.tasks_created')}
+              </h5>
+              <ul className="space-y-1">
+                {aiTasks.map((task) => (
+                  <li
+                    key={task.id}
+                    className="p-1.5 text-[9px] rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-subtle)] flex flex-col gap-0.5"
+                  >
+                    <div className="flex items-center justify-between gap-1.5">
+                      <span className="font-medium text-[var(--text-primary)]">{task.title}</span>
+                      {task.due_date && (
+                        <span className="text-[var(--text-muted)] flex items-center gap-0.5 shrink-0">
+                          <Calendar size={8} />
+                          {task.due_date}
+                        </span>
+                      )}
+                    </div>
+                    {task.description && (
+                      <p className="text-[var(--text-secondary)]">{task.description}</p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="flex flex-col items-start gap-1">
+          {generating ? (
+            <AiLoadingShimmer text={t('calls.ai.summary.generating')} />
+          ) : (
+            <div className="flex flex-col gap-1">
+              <Button
+                variant="secondary"
+                size="sm"
+                className="h-6 text-[9px] px-2 gap-1"
+                leftIcon={<Sparkles size={9} />}
+                disabled={!hasTranscription}
+                onClick={handleGenerate}
+                data-testid="generate-summary-btn"
+              >
+                {t('calls.ai.summary.generate')}
+              </Button>
+              {!hasTranscription && (
+                <span className="text-[9px] text-[var(--danger)]">
+                  {t('calls.ai.summary.not_transcribed')}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function TelephoniePage() {
   const [calls, setCalls] = useState<CallLogRow[]>([]);
@@ -228,6 +373,7 @@ export function TelephoniePage() {
                                 <p className="text-[11px] text-[var(--text-secondary)] whitespace-pre-wrap leading-snug">{call.notes}</p>
                               </div>
                             )}
+                            <CallSummarySection callId={call.id} hasTranscription={!!call.transcription} />
                           </td>
                         </tr>
                       )}

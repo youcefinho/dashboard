@@ -1742,6 +1742,17 @@ async function routeProtected(
     const { handleSetCallDisposition } = await import('./worker/telephony');
     return handleSetCallDisposition(request, env, auth, callDispositionMatch[1]!);
   }
+  // ── Sprint 80 — Compte-Rendu Automatique d'Appels & Actions ───────────────
+  const callSummarizeMatch = path.match(/^\/api\/calls\/([^/]+)\/summarize$/);
+  if (callSummarizeMatch && method === 'POST') {
+    const { handleSummarizeCall } = await import('./worker/telephony');
+    return handleSummarizeCall(request, env, auth, callSummarizeMatch[1]!);
+  }
+  const callSummaryMatch = path.match(/^\/api\/calls\/([^/]+)\/summary$/);
+  if (callSummaryMatch && method === 'GET') {
+    const { handleGetCallSummary } = await import('./worker/telephony');
+    return handleGetCallSummary(env, auth, callSummaryMatch[1]!);
+  }
   if (path === '/api/ivr-menus' && method === 'GET') {
     const { handleGetIvrMenus } = await import('./worker/telephony');
     return handleGetIvrMenus(env, auth, url);

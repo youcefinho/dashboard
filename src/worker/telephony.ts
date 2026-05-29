@@ -36,6 +36,7 @@ import { requireCapability } from './capabilities';
 import { findOrCreateConversation } from './conversations';
 // Renforcement V2 — helpers PUR engine (validation statut/direction appel).
 import { isMissedCallStatus } from './lib/telephony-engine';
+import { isAiMockMode } from './ai';
 
 // ── Types (exportés pour réutilisation backend ; le front a ses propres types
 //    dans src/lib/api.ts — CallLog / IvrMenu) ─────────────────────────────────
@@ -854,5 +855,230 @@ export async function handleSetCallDisposition(
   } catch {
     // best-effort : colonne seq 116 absente / panne D1 → réponse propre, jamais 500 brut.
     return json({ error: 'Appel introuvable' }, 404);
+  }
+}
+
+// ── POST /api/calls/:id/summarize — generer le compte-rendu d'appel IA ──────
+export async function handleSummarizeCall(
+  _request: Request,
+  env: Env,
+  auth: TelephonyAuth,
+  id: string,
+): Promise<Response> {
+  const g = requireCapability(auth.capabilities, 'ai.use');
+  if (g) return g;
+
+  const clientId = await resolveClientId(env, auth);
+  const callLogId = sanitizeInput(id, 64);
+
+  // Charger le call_log borné par le tenant
+  let callSql = 'SELECT * FROM call_logs WHERE id = ?';
+  const binds: (string | number)[] = [callLogId];
+  if (clientId) {
+    callSql += ' AND client_id = ?';
+    binds.push(clientId);
+  }
+  const callLog = (await env.DB.prepare(callSql).bind(...binds).first()) as CallLogRow | null;
+  if (!callLog) return json({ error: 'Appel introuvable' }, 404);
+
+  const transcription = (callLog.transcription || '').trim();
+  if (!transcription) {
+    return json({ error: 'Aucune transcription disponible pour cet appel' }, 400);
+  }
+
+  let summaryText = '';
+  let tasks: Array<{ title: string; description: string; due_in_days: number }> = [];
+
+  if (isAiMockMode(env)) {
+    // Mode mock local structuré
+    await new Promise((r) => setTimeout(r, 600));
+    summaryText = `### 📞 Compte-rendu d'appel IA
+
+**Participants :** Courtier & Client (Prospect)
+**Sujet principal :** Intérêt pour l'achat d'un premier condo dans les environs de Gatineau.
+
+#### 📈 Points discutés :
+- Le client recherche un condo de 2 chambres avec stationnement.
+- Budget maximal d'environ **350 000 $**.
+- Financement pré-approuvé avec sa banque (Desjardins).
+- Souhaite planifier des visites rapidement en fin de semaine.
+
+#### 🎯 Prochaines étapes :
+- Envoyer une sélection de fiches MLS correspondant aux critères de recherche.
+- Faire le suivi avec son courtier hypothécaire pour confirmer la lettre de pré-approbation.`;
+
+    tasks = [
+      {
+        title: 'Envoyer sélection de condos MLS (Gatineau)',
+        description: 'Filtrer les propriétés actives sur Centris/MLS sous la barre des 350 000 $ avec 2 chambres et stationnement.',
+        due_in_days: 1,
+      },
+      {
+        title: 'Confirmer la lettre de pré-approbation',
+        description: 'Faire le suivi avec le client pour obtenir sa lettre de pré-approbation Desjardins.',
+        due_in_days: 3,
+      },
+    ];
+  } else {
+    try {
+      const ai = (env as any).AI;
+      if (!ai || typeof ai.run !== 'function') {
+        throw new Error('Binding Workers AI non disponible');
+      }
+
+      const systemPrompt = `Tu es un assistant IA expert en téléphonie pour un CRM immobilier au Québec.
+Analyse la transcription de l'appel suivante et génère :
+1. Un compte-rendu clair et structuré au format Markdown en français québécois naturel (ton chaleureux, professionnel, adapté au marché québécois).
+2. Une liste de tâches/actions concrètes découlant de cet appel (maximum 5 tâches).
+
+Chaque tâche doit avoir un titre concis et une description, et un délai indicatif en jours (due_in_days).
+
+Réponds UNIQUEMENT sous la forme d'un objet JSON strict avec le format suivant :
+{
+  "summary": "Le compte-rendu au format Markdown...",
+  "tasks": [
+    {
+      "title": "Titre de la tâche (max 100 caractères)",
+      "description": "Description détaillée de l'action à mener (max 500 caractères)",
+      "due_in_days": 3
+    }
+  ]
+}`;
+
+      const result = (await ai.run('@cf/anthropic/claude-3-haiku-20240307', {
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: `Transcription de l'appel :\n${transcription}` },
+        ],
+      })) as any;
+
+      let respText = '';
+      if (typeof result === 'string') {
+        respText = result;
+      } else if (result && typeof result === 'object') {
+        if (typeof result.response === 'string') respText = result.response;
+        else if (result.result && typeof result.result.response === 'string') {
+          respText = result.result.response;
+        }
+      }
+
+      const match = respText.match(/\{[\s\S]*\}/);
+      if (!match) {
+        throw new Error('Format JSON non trouvé dans la réponse de l\'IA');
+      }
+
+      const parsed = JSON.parse(match[0]) as {
+        summary?: string;
+        tasks?: Array<{ title: string; description: string; due_in_days: number }>;
+      };
+      summaryText = parsed.summary || 'Résumé indisponible.';
+      tasks = Array.isArray(parsed.tasks) ? parsed.tasks : [];
+    } catch (err) {
+      console.error('[handleSummarizeCall] AI error, falling back to mock:', err);
+      // Fallback gracieux en cas d'erreur de binding
+      summaryText = `### 📞 Compte-rendu d'appel (Généré par fallback)
+
+La transcription n'a pas pu être résumée par l'IA.
+
+**Détails de la transcription :**
+${transcription.slice(0, 500)}...`;
+
+      tasks = [];
+    }
+  }
+
+  const summaryId = crypto.randomUUID();
+  try {
+    await env.DB.prepare(
+      `INSERT INTO call_summaries (id, client_id, call_id, summary)
+       VALUES (?, ?, ?, ?)
+       ON CONFLICT(call_id) DO UPDATE SET summary = excluded.summary, created_at = CURRENT_TIMESTAMP`,
+    )
+      .bind(summaryId, callLog.client_id || null, callLogId, summaryText)
+      .run();
+  } catch (err) {
+    console.error('Failed to save call summary:', err);
+    return json({ error: 'Échec de la sauvegarde du résumé' }, 500);
+  }
+
+  const insertedTasks: any[] = [];
+  for (const t of tasks) {
+    if (!t.title) continue;
+    const taskId = crypto.randomUUID();
+    let dueDateStr: string | null = null;
+    const dueInDays = Number(t.due_in_days);
+    if (Number.isInteger(dueInDays) && dueInDays > 0) {
+      const d = new Date();
+      d.setDate(d.getDate() + dueInDays);
+      dueDateStr = d.toISOString().slice(0, 10);
+    }
+
+    try {
+      await env.DB.prepare(
+        `INSERT INTO tasks (id, title, description, due_date, priority, status, lead_id, client_id, assigned_to, created_by)
+         VALUES (?, ?, ?, ?, 'medium', 'todo', ?, ?, ?, ?)`,
+      )
+        .bind(
+          taskId,
+          sanitizeInput(t.title, 200),
+          sanitizeInput(t.description || '', 1000),
+          dueDateStr,
+          callLog.lead_id || null,
+          callLog.client_id || null,
+          auth.userId,
+          auth.userId,
+        )
+        .run();
+
+      insertedTasks.push({
+        id: taskId,
+        title: t.title,
+        description: t.description,
+        due_date: dueDateStr,
+        status: 'todo',
+        priority: 'medium',
+        lead_id: callLog.lead_id,
+        client_id: callLog.client_id,
+      });
+    } catch (err) {
+      console.error('Failed to insert task from call summary:', err);
+    }
+  }
+
+  return json({
+    data: {
+      id: summaryId,
+      call_id: callLogId,
+      summary: summaryText,
+      tasks: insertedTasks,
+    },
+  });
+}
+
+// ── GET /api/calls/:id/summary — recuperer le compte-rendu d'appel IA ────────
+export async function handleGetCallSummary(
+  env: Env,
+  auth: TelephonyAuth,
+  id: string,
+): Promise<Response> {
+  const clientId = await resolveClientId(env, auth);
+  const callLogId = sanitizeInput(id, 64);
+
+  try {
+    let sql = `SELECT cs.* FROM call_summaries cs
+               INNER JOIN call_logs cl ON cs.call_id = cl.id
+               WHERE cs.call_id = ?`;
+    const binds: (string | number)[] = [callLogId];
+    if (clientId) {
+      sql += ' AND cl.client_id = ?';
+      binds.push(clientId);
+    }
+    const row = await env.DB.prepare(sql).bind(...binds).first();
+    if (!row) {
+      return json({ error: 'Résumé introuvable' }, 404);
+    }
+    return json({ data: row });
+  } catch {
+    return json({ error: 'Résumé introuvable' }, 404);
   }
 }

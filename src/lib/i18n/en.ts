@@ -7589,4 +7589,11 @@ export const en: Record<string, string> = {
   'telephony.phoneNumbers.rulesSaved': 'Routing rules saved.',
   'telephony.phoneNumbers.purchaseSuccess': 'Phone number provisioned successfully.',
   'telephony.phoneNumbers.releaseSuccess': 'Phone number released successfully.',
+  'calls.ai.summary.title': 'AI Call Summary',
+  'calls.ai.summary.generate': 'Generate Summary',
+  'calls.ai.summary.generating': 'Generating summary...',
+  'calls.ai.summary.empty': 'No summary available for this call.',
+  'calls.ai.summary.tasks_created': 'AI Recommended Actions',
+  'calls.ai.summary.error': 'Failed to generate call summary.',
+  'calls.ai.summary.not_transcribed': 'The call must have a transcript to be summarized by AI.',
 };

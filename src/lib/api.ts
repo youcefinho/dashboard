@@ -1,7 +1,7 @@
 // ── Client API — Helpers pour appeler le worker ─────────────
 
 import type { ApiResponse, Client, Lead, LeadDetail, DashboardStats, ActivityLogEntry, Message, EmailTemplate, Workflow, WorkflowStep, WorkflowEnrollment, SequenceStats, Appointment, Task, Subtask, TaskComment, TaskTemplate, LeadNote, LeadScore, CustomFieldValue, Conversation, ConversationStatus, Pipeline, PipelineStage, CustomFieldDef, SmartList, Snippet, Product, Order, Customer, ProductVariant, ProductCategory, ProductImage, InventoryRecord, PaymentInitResult, PaymentMethod, PaymentStatus, Shipment, ShipmentStatus, ShippingZone, ShippingRate, ShippingRateResult, ConsumerPolicy, ReturnRequest, Customer360, AbandonedCart, EcommerceRevenue, EcommerceCohorts, EcommerceLtv, EcommerceTopProducts, EcommerceSalesByChannel, ProductRecoResult, CustomerChurnPrediction, AiChatThread, AiChatMessage, AiPageContext, CustomHostname, OauthConnection, SmsTemplate, WhatsAppConnection, ExecLogEntry, WorkflowTemplate, WorkflowSimulationResult, FormFieldAnalyticsRow, StorefrontProduct, PublicCart, StoreSettings, CheckoutInput, CheckoutResult, PrivateFeedback, ReputationSettings, PublicReviewPage, SocialAccount, SocialPost, SocialProvider, AiContentFormat, AiContentItem, AiBrandVoice, ConversionBaseline, ConversionPrediction, ForecastResponse, ForecastTarget, ReportTemplate, OnboardingChecklistItemKey, OnboardingChecklistResponse, CookieConsent, CookieConsentRecord, AccountDeletionRequest, MyDataExport, AuditLogEntry, AuditLogQuery, CapabilityOverride, AlertRule, AlertEvent, AlertConditionType, AlertChannel, ObservabilityHealth, RequestMetricsBucket, ReleaseGatesStatus, KbIndexStatus, ChatbotSession, WeeklyAiInsight } from './types';
-export type { Lead };
+export type { Lead, Task };
 import { Capacitor } from '@capacitor/core';
 import { MOCK_DASHBOARD_STATS, MOCK_CLIENTS, MOCK_LEADS } from './mockData';
 // ── Sprint 35 vague 35-2B — i18n des erreurs réseau critiques ──
@@ -6764,6 +6764,24 @@ export async function placeCall(leadId: string): Promise<ApiResponse<{ id: strin
   return apiFetch<{ id: string | null; status: string; mock?: boolean }>('/calls', {
     method: 'POST',
     body: JSON.stringify({ lead_id: leadId }),
+  });
+}
+
+export interface CallSummary {
+  id: string;
+  client_id: string | null;
+  call_id: string;
+  summary: string;
+  created_at: string;
+}
+
+export async function getCallSummary(callId: string): Promise<ApiResponse<CallSummary>> {
+  return apiFetch<CallSummary>(`/calls/${encodeURIComponent(callId)}/summary`);
+}
+
+export async function generateCallSummary(callId: string): Promise<ApiResponse<CallSummary & { tasks: Task[] }>> {
+  return apiFetch<CallSummary & { tasks: Task[] }>(`/calls/${encodeURIComponent(callId)}/summarize`, {
+    method: 'POST',
   });
 }
 

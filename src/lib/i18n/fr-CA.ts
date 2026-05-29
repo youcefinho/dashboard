@@ -7601,4 +7601,11 @@ export const frCA: Record<string, string> = {
   'telephony.phoneNumbers.rulesSaved': 'Règles de routage enregistrées.',
   'telephony.phoneNumbers.purchaseSuccess': 'Numéro provisionné avec succès.',
   'telephony.phoneNumbers.releaseSuccess': 'Numéro libéré avec succès.',
+  'calls.ai.summary.title': 'Compte-rendu IA',
+  'calls.ai.summary.generate': 'Générer le compte-rendu',
+  'calls.ai.summary.generating': 'Génération en cours...',
+  'calls.ai.summary.empty': 'Aucun compte-rendu disponible pour cet appel.',
+  'calls.ai.summary.tasks_created': 'Actions recommandées par l’IA',
+  'calls.ai.summary.error': 'Impossible de générer le compte-rendu.',
+  'calls.ai.summary.not_transcribed': 'L’appel doit avoir une transcription pour être résumé par l’IA.',
 };

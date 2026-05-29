@@ -7591,5 +7591,12 @@ export const es: Record<string, string> = {
   'telephony.phoneNumbers.rulesSaved': 'Reglas de enrutamiento guardadas.',
   'telephony.phoneNumbers.purchaseSuccess': 'Número de teléfono provisionado con éxito.',
   'telephony.phoneNumbers.releaseSuccess': 'Número de teléfono liberado con éxito.',
+  'calls.ai.summary.title': 'Resumen de llamada IA',
+  'calls.ai.summary.generate': 'Generar resumen',
+  'calls.ai.summary.generating': 'Generando resumen...',
+  'calls.ai.summary.empty': 'No hay resumen disponible para esta llamada.',
+  'calls.ai.summary.tasks_created': 'Acciones recomendadas por la IA',
+  'calls.ai.summary.error': 'Error al generar el resumen de la llamada.',
+  'calls.ai.summary.not_transcribed': 'La llamada debe tener una transcripción para ser resumida por la IA.',
 };
 
