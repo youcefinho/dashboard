@@ -199,6 +199,7 @@ describe('handleUpdateOrderStatus — transitions valides', () => {
   it('pending → paid : 200, commitSale appelé, paid_at posé (garde !paid_at)', async () => {
     const db = createMockD1();
     seedTenant(db, CLIENT);
+    seedVariant(db, { variantId: 'v-1', clientId: CLIENT, basePrice: 1000 });
     // SEED ORDRE EN DERNIER : seedOrderState écrit sur la même sous-chaîne
     // 'from orders where id' que d'éventuels seed précédents (1er-match).
     seedOrderState(db, { orderId: 'o-1', status: 'pending', paidAt: null });
@@ -227,8 +228,9 @@ describe('handleUpdateOrderStatus — transitions valides', () => {
   it('GARDE idempotente : pending→paid avec paid_at DÉJÀ posé → pas de re-commitSale', async () => {
     const db = createMockD1();
     seedTenant(db, CLIENT);
+    seedVariant(db, { variantId: 'v-1', clientId: CLIENT, basePrice: 1000 });
     // Logique applicative : `if (next==='paid' && !order.paid_at)` — paid_at
-    // déjà présent ⇒ le bloc commitSale est SAUTÉ (prouve la garde, pas l'idem DB).
+    // déjà présent ⇒ le bloc commitSale is SAUTÉ (prouve la garde, pas l'idem DB).
     seedOrderState(db, { orderId: 'o-1', status: 'pending', paidAt: '2026-01-01 10:00:00' });
     seedOrderItems(db, [{ variant_id: 'v-1', quantity: 2 }]);
 
@@ -246,6 +248,7 @@ describe('handleUpdateOrderStatus — transitions valides', () => {
   it('paid → cancelled : releaseStock appelé, cancelled_at posé (garde !cancelled_at)', async () => {
     const db = createMockD1();
     seedTenant(db, CLIENT);
+    seedVariant(db, { variantId: 'v-1', clientId: CLIENT, basePrice: 1000 });
     seedOrderState(db, { orderId: 'o-1', status: 'paid', cancelledAt: null });
     seedOrderItems(db, [{ variant_id: 'v-1', quantity: 1 }]);
     // releaseStock lit l'inventaire via ensureInventory (SELECT * FROM inventory)
@@ -268,6 +271,7 @@ describe('handleUpdateOrderStatus — transitions valides', () => {
   it('GARDE : cancelled avec cancelled_at DÉJÀ posé → pas de re-releaseStock', async () => {
     const db = createMockD1();
     seedTenant(db, CLIENT);
+    seedVariant(db, { variantId: 'v-1', clientId: CLIENT, basePrice: 1000 });
     seedOrderState(db, { orderId: 'o-1', status: 'paid', cancelledAt: '2026-01-01 11:00:00' });
     seedOrderItems(db, [{ variant_id: 'v-1', quantity: 1 }]);
 

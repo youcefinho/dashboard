@@ -164,7 +164,7 @@ describe('handleUpdateOrderStatus — validation intégrée', () => {
   it('statut valide → handler procède (transition métier appliquée)', async () => {
     seedTenant(db);
     // Commande en 'pending' → transition légale pending→paid.
-    db.seed('id, status, paid_at, cancelled_at from orders', [
+    db.seed('from orders where id', [
       { id: 'order-1', status: 'pending', paid_at: null, cancelled_at: null },
     ]);
     db.seed('variant_id, quantity from order_items', []);

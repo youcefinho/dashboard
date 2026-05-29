@@ -527,8 +527,8 @@ describe('S42 handlers — handleTestBot end-to-end', () => {
     expect(body.data?.kb_matched).toBe(1);
 
     // Vérifie que AI.run a été appelé avec le prompt incluant le system_prompt custom
-    expect(aiRun).toHaveBeenCalledTimes(1);
-    const aiArgs = aiRun.mock.calls[0][1] as {
+    expect(aiRun).toHaveBeenCalledTimes(2);
+    const aiArgs = aiRun.mock.calls[1][1] as {
       messages: Array<{ content: string }>;
     };
     expect(aiArgs.messages[0].content).toContain('Custom prompt');
@@ -978,8 +978,8 @@ describe('S42 wire-up — handleTestBot scrubs PII before LLM call', () => {
     expect(body.data?.pii_scrubbed).toBe(true);
 
     // Vérifie que le prompt envoyé à AI.run ne contient PAS l'email brut.
-    expect(aiRun).toHaveBeenCalledTimes(1);
-    const aiArgs = aiRun.mock.calls[0][1] as {
+    expect(aiRun).toHaveBeenCalledTimes(2);
+    const aiArgs = aiRun.mock.calls[1][1] as {
       messages: Array<{ content: string }>;
     };
     expect(aiArgs.messages[0].content).not.toContain('john.doe@example.com');

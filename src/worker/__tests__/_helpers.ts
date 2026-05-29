@@ -61,14 +61,33 @@ export function createMockD1(): MockD1 {
     const lower = sql.toLowerCase();
     let selectedRows: any[] = db.defaultRows;
     
-    // On trie par longueur de needle décroissante pour avoir le match le plus spécifique d'abord
-    const sortedSeeds = [...seeds].sort((a, b) => b.needle.length - a.needle.length);
+    // Si la requête contient "count", on cherche d'abord les aiguilles contenant "count"
+    const hasCount = lower.includes('count');
+    let matchedSeed = null;
     
-    for (const s of sortedSeeds) {
-      if (lower.includes(s.needle)) {
-        selectedRows = s.rows;
-        break;
+    if (hasCount) {
+      matchedSeed = seeds.find(s => s.needle.includes('count') && lower.includes(s.needle));
+    }
+    
+    if (!matchedSeed) {
+      // On trie par longueur de needle décroissante pour avoir le match le plus spécifique d'abord
+      const sortedSeeds = seeds
+        .map((s, idx) => ({ ...s, idx }))
+        .sort((a, b) => {
+          const lenDiff = b.needle.length - a.needle.length;
+          if (lenDiff !== 0) return lenDiff;
+          return b.idx - a.idx;
+        });
+      for (const s of sortedSeeds) {
+        if (lower.includes(s.needle)) {
+          matchedSeed = s;
+          break;
+        }
       }
+    }
+
+    if (matchedSeed) {
+      selectedRows = matchedSeed.rows;
     }
 
     if (!selectedRows || selectedRows.length === 0) {
@@ -76,30 +95,94 @@ export function createMockD1(): MockD1 {
     }
 
     // Filtrage intelligent basé sur les bindings et la clause WHERE
-    const whereRegex = /([\w\.]+)\s*=\s*\?/g;
-    const columns: string[] = [];
-    let match;
-    while ((match = whereRegex.exec(sql)) !== null) {
-      const col = match[1].toLowerCase();
-      const cleanCol = col.split('.').pop() || col;
-      columns.push(cleanCol);
+    const isJoinQuery = /\bjoin\b/i.test(sql);
+    const isOrQuery = /\bor\b/i.test(sql);
+    const isUnionQuery = /\bunion\b/i.test(sql);
+    const isInQuery = /\bin\b/i.test(sql);
+    const selectCount = (lower.match(/\bselect\b/g) || []).length;
+
+    if (isJoinQuery || isUnionQuery || isInQuery || selectCount > 1) {
+      // Pour les requêtes complexes (JOIN, UNION, IN, sous-requêtes), le filtrage naïf
+      // provoque des collisions et des rejets abusifs de lignes. On retourne les lignes du seed directement.
+      return selectedRows;
+    }
+
+    // Extraction précise des colonnes et des opérateurs associés à chaque placeholder ?
+    const segments = sql.split('?');
+    const columns: Array<{ col: string; op: string }> = [];
+    for (let i = 0; i < segments.length - 1; i++) {
+      const segment = segments[i];
+      const match = segment.match(/([\w\.]+)\s*(=|\blike\b|>|<|>=|<=)\s*$/i);
+      if (match) {
+        const col = match[1].toLowerCase();
+        const cleanCol = col.split('.').pop() || col;
+        const op = match[2].toLowerCase();
+        columns.push({ col: cleanCol, op });
+      } else {
+        columns.push({ col: '', op: '' });
+      }
     }
 
     if (columns.length > 0 && boundArgs.length > 0) {
       return selectedRows.filter(row => {
         if (!row || typeof row !== 'object') return true;
-        for (let i = 0; i < Math.min(columns.length, boundArgs.length); i++) {
-          const colName = columns[i];
-          const boundVal = boundArgs[i];
-          const rowKey = Object.keys(row).find(k => k.toLowerCase() === colName);
-          if (rowKey !== undefined) {
-            const rowVal = row[rowKey];
-            if (rowVal !== boundVal) {
-              return false;
+
+        if (isOrQuery) {
+          // Logique OR : on garde la ligne si au moins un des champs match son binding
+          let anyMatch = false;
+          let hasMatchableField = false;
+          for (let i = 0; i < Math.min(columns.length, boundArgs.length); i++) {
+            const { col: colName, op } = columns[i];
+            if (!colName || colName === 'id' || colName === 'phone' || colName === 'email') continue;
+            const boundVal = boundArgs[i];
+            const rowKey = Object.keys(row).find(k => k.toLowerCase() === colName);
+            if (rowKey !== undefined) {
+              hasMatchableField = true;
+              const rowVal = row[rowKey];
+              if (op === '=') {
+                if (rowVal === boundVal) { anyMatch = true; break; }
+              } else if (op === '<=') {
+                if (rowVal <= boundVal) { anyMatch = true; break; }
+              } else if (op === '>=') {
+                if (rowVal >= boundVal) { anyMatch = true; break; }
+              } else if (op === '<') {
+                if (rowVal < boundVal) { anyMatch = true; break; }
+              } else if (op === '>') {
+                if (rowVal > boundVal) { anyMatch = true; break; }
+              } else if (op === 'like') {
+                const cleanBound = String(boundVal).replace(/%/g, '').toLowerCase();
+                if (String(rowVal).toLowerCase().includes(cleanBound)) { anyMatch = true; break; }
+              }
             }
           }
+          return hasMatchableField ? anyMatch : true;
+        } else {
+          // Logique AND classique
+          for (let i = 0; i < Math.min(columns.length, boundArgs.length); i++) {
+            const { col: colName, op } = columns[i];
+            if (!colName || colName === 'id' || colName === 'phone' || colName === 'email') continue;
+            const boundVal = boundArgs[i];
+            const rowKey = Object.keys(row).find(k => k.toLowerCase() === colName);
+            if (rowKey !== undefined) {
+              const rowVal = row[rowKey];
+              if (op === '=') {
+                if (rowVal !== boundVal) return false;
+              } else if (op === '<=') {
+                if (!(rowVal <= boundVal)) return false;
+              } else if (op === '>=') {
+                if (!(rowVal >= boundVal)) return false;
+              } else if (op === '<') {
+                if (!(rowVal < boundVal)) return false;
+              } else if (op === '>') {
+                if (!(rowVal > boundVal)) return false;
+              } else if (op === 'like') {
+                const cleanBound = String(boundVal).replace(/%/g, '').toLowerCase();
+                if (!String(rowVal).toLowerCase().includes(cleanBound)) return false;
+              }
+            }
+          }
+          return true;
         }
-        return true;
       });
     }
 

@@ -211,11 +211,11 @@ describe('M2.B2 handleInitPayment — idempotence applicative & gardes', () => {
     seedCurrency(db, 'CAD');
     seedConfigTestMode(db, 'cod');
     seedOrder(db, { orderId: 'o-1', total: 5000 });
-    // État « déjà présent » : un paiement non-échoué pour la clé idem.
     seedPayment(db, {
       paymentId: 'pay-existing',
       orderId: 'o-1',
       status: 'pending_cod',
+      idempotencyKey: 'o-1:cod:5000',
     });
 
     const res = await handleInitPayment(initReq('cod'), ecomEnv(db) as never, AUTH, 'o-1');
