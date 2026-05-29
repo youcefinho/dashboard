@@ -343,6 +343,12 @@ export const en: Record<string, string> = {
   'inbox.translation.show': 'Show translation',
   'inbox.translation.hide': 'Show original',
   'inbox.translation.loading': 'Translating...',
+  'leads.routing.ai_btn': 'Intelligent AI Routing',
+  'leads.routing.success': 'Lead successfully routed to {{name}}',
+  'leads.routing.error': 'Error during predictive routing',
+  'leads.routing.loading': 'Calculating performance and routing...',
+  'leads.routing.category': 'Category: {{category}}',
+  'leads.routing.score_details': 'AI Score Details',
 
   // ── Calendar ────────────────────────────────────────────────────────────
   'calendar.title': 'Calendar',

@@ -232,6 +232,8 @@ import { handleGetQuickReplies, handleAddQuickReply } from './worker/quick-repli
 import { handleGetLeadScore } from './worker/lead-score';
 // Sprint 49 M2 — Predictive + bottleneck + anomalies
 import { handleGetLeadPredict } from './worker/lead-predict';
+// Sprint 77 — Routage prédictif IA
+import { handleRouteLeadPredictive } from './worker/lead-routing';
 // Sprint 13 — Scoring prédictif calibré tenant (conversion-scoring)
 import { handleGetConversionScore } from './worker/conversion-engine';
 // Sprint 14 — Forecasting (projection + objectifs + scénarios). Routes NEUVES
@@ -1664,6 +1666,9 @@ async function routeProtected(
   // Capability 'workflows.manage' DANS le handler. Corps Phase B.
   const leadAutoHistMatch = path.match(/^\/api\/leads\/([^/]+)\/automation-history$/);
   if (leadAutoHistMatch && method === 'GET') return handleGetLeadAutomationHistory(env, auth, leadAutoHistMatch[1]!);
+  const leadRoutePredictiveMatch = path.match(/^\/api\/leads\/([^/]+)\/route-predictive$/);
+  if (leadRoutePredictiveMatch && method === 'POST') return handleRouteLeadPredictive(request, env, auth, leadRoutePredictiveMatch[1]!);
+
   const leadMatch = path.match(/^\/api\/leads\/([^/]+)$/);
   if (leadMatch && method === 'GET') return handleGetLeadDetail(env, auth, leadMatch[1]!);
   if (leadMatch && method === 'PATCH') return handlePatchLead(request, env, auth, leadMatch[1]!);

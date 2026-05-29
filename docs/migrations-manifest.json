@@ -2292,6 +2292,17 @@
         "column:messages.translated_content"
       ],
       "risk": "low"
+    },
+    {
+      "seq": 166,
+      "file": "migration-lead-routing-seq172.sql",
+      "depends_on": [
+        "migration-translation-seq171.sql"
+      ],
+      "objects": [
+        "table:lead_routing_scores"
+      ],
+      "risk": "low"
     }
   ]
 }

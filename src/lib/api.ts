@@ -7399,6 +7399,44 @@ export async function getLeadConversionScore(
 }
 
 /**
+ * Route le lead de manière prédictive vers le meilleur courtier/agent.
+ * POST /api/leads/:id/route-predictive.
+ */
+export async function routeLeadPredictively(
+  leadId: string,
+): Promise<ApiResponse<{
+  success: boolean;
+  assigned_to: string;
+  agent_name: string;
+  category: string;
+  scores: Array<{
+    agent_id: string;
+    agent_name: string;
+    score: number;
+    won_count: number;
+    lost_count: number;
+    active_leads_count: number;
+  }>;
+}>> {
+  return apiFetch<{
+    success: boolean;
+    assigned_to: string;
+    agent_name: string;
+    category: string;
+    scores: Array<{
+      agent_id: string;
+      agent_name: string;
+      score: number;
+      won_count: number;
+      lost_count: number;
+      active_leads_count: number;
+    }>;
+  }>(`/leads/${encodeURIComponent(leadId)}/route-predictive`, {
+    method: 'POST',
+  });
+}
+
+/**
  * (Optionnel) Baselines de conversion agrégées du tenant (par source/status/
  * bucket). GET /api/conversion/baselines. Tenant re-borné worker-side.
  */

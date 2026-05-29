@@ -344,6 +344,12 @@ export const frCA: Record<string, string> = {
   'inbox.translation.show': 'Afficher la traduction',
   'inbox.translation.hide': "Voir l'original",
   'inbox.translation.loading': 'Traduction en cours...',
+  'leads.routing.ai_btn': 'Routage Intelligent IA',
+  'leads.routing.success': 'Lead assigné avec succès à {{name}}',
+  'leads.routing.error': 'Erreur lors du routage prédictif',
+  'leads.routing.loading': 'Calcul des performances et routage...',
+  'leads.routing.category': 'Catégorie : {{category}}',
+  'leads.routing.score_details': 'Détails des scores IA',
 
   // ── Calendar ────────────────────────────────────────────────────────────
   'calendar.title': 'Calendrier',

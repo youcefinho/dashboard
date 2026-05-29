@@ -6,7 +6,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, Button, Badge, Skeleton, EmptyState, Select, useToast, useConfirm, AiSparkles, usePanelStack } from '@/components/ui';
 import { t } from '@/lib/i18n';
 import { Avatar } from '@/components/ui/Avatar';
-import { getLeadDetail, updateLead, addTag, removeTag, getAppointments, getTasks, updateTask, getLeadNotes, createLeadNote, deleteLeadNote, getLeadScores, getLeadCustomFields, softDeleteLead, restoreLead, getPipelines, getLeadMessages, getCallLogs, placeCall, setCallDisposition, getLeadConversionScore, getCustomFields, setLeadCustomFields, getWorkflows, enrollLead, getLeadAutomationHistory, type CallLog } from '@/lib/api';
+import { getLeadDetail, updateLead, addTag, removeTag, getAppointments, getTasks, updateTask, getLeadNotes, createLeadNote, deleteLeadNote, getLeadScores, getLeadCustomFields, softDeleteLead, restoreLead, getPipelines, getLeadMessages, getCallLogs, placeCall, setCallDisposition, getLeadConversionScore, routeLeadPredictively, getCustomFields, setLeadCustomFields, getWorkflows, enrollLead, getLeadAutomationHistory, type CallLog } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { LeadPrivacyActions } from '@/components/leads/LeadPrivacyActions';
 import { getCachedLead, setCachedLead } from '@/lib/prefetch';
@@ -199,6 +199,25 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
   const [isCalling, setIsCalling] = useState(false);
   // Sprint 13 — score de conversion CALIBRÉ tenant (best-effort, optionnel).
   const [conversion, setConversion] = useState<ConversionPrediction | null>(null);
+  const [routingResult, setRoutingResult] = useState<any | null>(null);
+  const [isRouting, setIsRouting] = useState(false);
+
+  const handleRouteLead = async () => {
+    setIsRouting(true);
+    try {
+      const res = await routeLeadPredictively(leadId);
+      if (res.error) {
+        toastError(res.error || t('leads.routing.error'));
+      } else if (res.data) {
+        success(t('leads.routing.success', { name: res.data.agent_name }));
+        setRoutingResult(res.data);
+        void loadLead();
+      }
+    } catch {
+      toastError(t('leads.routing.error'));
+    }
+    setIsRouting(false);
+  };
 
   const loadLead = useCallback(async () => {
     // Si on a déjà un cache frais, on continue à afficher pendant le refresh background
@@ -875,6 +894,83 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
                 </button>
               ))}
             </div>
+          </Card>
+
+          {/* Routage Prédictif IA (Laplace Assignation) */}
+          <Card className="p-4 relative overflow-hidden" style={{ border: routingResult ? '1px solid rgba(0, 157, 219, 0.3)' : undefined }}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">
+                {t('leads.routing.ai_btn')}
+              </h3>
+              <Badge color="var(--brand-primary)">IA</Badge>
+            </div>
+            
+            {lead.assigned_to && (
+              <div className="mb-3 p-2 bg-[var(--bg-subtle)] rounded-[var(--radius-sm)] border border-[var(--border-subtle)]">
+                <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider mb-0.5">Responsable assigné</p>
+                <div className="flex items-center gap-2">
+                  <Avatar name={routingResult?.agent_name || "Agent"} size="sm" />
+                  <span className="text-xs font-semibold text-[var(--text-primary)]">
+                    {routingResult?.agent_name || "Agent assigné"}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <Button
+              size="sm"
+              variant="primary"
+              className="w-full justify-center text-xs font-medium"
+              disabled={isRouting}
+              onClick={() => void handleRouteLead()}
+            >
+              {isRouting ? (
+                <>
+                  <span className="animate-spin mr-1.5">⏳</span>
+                  {t('leads.routing.loading')}
+                </>
+              ) : (
+                <>
+                  <span className="mr-1.5">🤖</span>
+                  {t('leads.routing.ai_btn')}
+                </>
+              )}
+            </Button>
+
+            {routingResult && (
+              <div className="mt-4 pt-3 border-t border-[var(--border-subtle)] space-y-2">
+                <div className="flex justify-between items-center text-[10px] text-[var(--text-muted)] font-medium">
+                  <span>{t('leads.routing.category', { category: routingResult.category })}</span>
+                </div>
+                <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                  <p className="text-[10px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
+                    {t('leads.routing.score_details')} :
+                  </p>
+                  {routingResult.scores.map((s: any) => {
+                    const isWinner = s.agent_id === routingResult.assigned_to;
+                    return (
+                      <div 
+                        key={s.agent_id} 
+                        className={`flex items-center justify-between p-1.5 rounded-[var(--radius-sm)] text-xs transition-all ${
+                          isWinner ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 font-medium' : 'text-[var(--text-secondary)]'
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5 truncate">
+                          {isWinner && <span className="text-emerald-500">🏆</span>}
+                          <span className="truncate">{s.agent_name}</span>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <span className="font-semibold">{(s.score * 100).toFixed(1)}%</span>
+                          <span className="text-[9px] text-[var(--text-muted)] ml-1">
+                            ({s.won_count}W/{s.lost_count}L)
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </Card>
 
           {/* Opportunité / Deal */}
