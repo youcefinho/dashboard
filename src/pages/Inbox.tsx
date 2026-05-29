@@ -1100,6 +1100,7 @@ export function InboxPage() {
                 snippets={snippets}
                 templates={templates}
                 leadId={activeConv.lead_id}
+                conversationId={activeConv.id}
                 lead={activeConv.lead_id ? {
                   name: activeConv.lead_name || '',
                   email: activeConv.lead_email || '',

@@ -1073,3 +1073,219 @@ N'inclus QUE les champs détectés. Si rien de clair : {"filters":{},"explanatio
   return json({ data: { filters, explanation: explanation || `Recherche : « ${query} »` } });
 }
 
+/**
+ * Fallback local déterministe pour générer 3 suggestions types de réponses québécoises
+ * basées sur le sentiment ou l'intention du dernier message inbound.
+ */
+function localSuggestRepliesFallback(
+  lastMessageText: string,
+  intent: string | null,
+  sentiment: string | null,
+  leadName: string | null
+): string[] {
+  const namePhrase = leadName ? ` ${leadName}` : '';
+  const text = lastMessageText.toLowerCase();
+
+  // Détection d'intentions si non passée
+  let resolvedIntent = intent;
+  if (!resolvedIntent) {
+    if (/\b(prix|tarif|combien|budget|devis|coûte|cout)\b/.test(text)) {
+      resolvedIntent = 'pricing';
+    } else if (/\b(rendez-vous|appel|rencontre|disponib|rencontrer|call|visite|rdv)\b/.test(text)) {
+      resolvedIntent = 'appointment';
+    } else if (/\b(stop|désabonner|desabonner|quitter|unsubscribe)\b/.test(text)) {
+      resolvedIntent = 'opt_out';
+    }
+  }
+
+  // 1. Apaisement si sentiment fâché/colère
+  if (sentiment === 'Fâché' || sentiment === 'Colère' || /\b(pas content|mauvais|nul|inacceptable|colere|fache|insatisfait)\b/.test(text)) {
+    return [
+      `Bonjour${namePhrase}, je suis sincèrement désolé pour cette situation. Je propose qu'on s'appelle brièvement pour clarifier les choses de vive voix. Quel moment vous conviendrait?`,
+      `Je comprends tout à fait votre frustration${namePhrase}. Laissez-moi faire les vérifications nécessaires dès maintenant et je reviens vers vous avec une solution concrète.`,
+      `Toutes nos excuses pour ces inconvénients. Je transmets immédiatement votre dossier à notre responsable pour qu'il puisse régler cela au plus vite.`
+    ];
+  }
+
+  // 2. Si désabonnement / opt-out
+  if (resolvedIntent === 'opt_out' || resolvedIntent === 'unsubscribe' || resolvedIntent === 'Désabonnement') {
+    return [
+      `C'est bien noté. Vous avez été désabonné de nos communications. Bonne continuation.`,
+      `Bonjour, votre demande a été prise en compte. Vous ne recevrez plus de messages de notre part.`,
+      `C'est fait, nous avons retiré vos coordonnées de nos listes de contacts. Bonne journée.`
+    ];
+  }
+
+  // 3. Intention de Prix / Tarifs
+  if (resolvedIntent === 'pricing' || resolvedIntent === 'price_objection' || resolvedIntent === 'Prix trop cher') {
+    return [
+      `Bonjour${namePhrase}! Notre rencontre stratégique est 100% gratuite et sans engagement. Nous pourrons évaluer ensemble vos besoins afin de vous proposer un plan adapté à votre budget.`,
+      `Nos tarifs sont très compétitifs et s'adaptent à vos objectifs. Seriez-vous disponible pour un court appel de 15 minutes afin que je puisse vous donner une estimation juste?`,
+      `Je serais ravi de vous envoyer notre grille de services par courriel. Pouvez-vous me confirmer votre adresse courriel préférée?`
+    ];
+  }
+
+  // 4. Intention de Prendre RDV / Disponibilités
+  if (resolvedIntent === 'appointment' || resolvedIntent === 'meeting' || resolvedIntent === 'Prendre RDV') {
+    return [
+      `Avec plaisir${namePhrase}! Vous pouvez choisir le moment qui vous convient le mieux directement dans mon calendrier ici : [Lien Calendly].`,
+      `Bonjour! Je serais ravi de vous rencontrer pour notre rencontre stratégique gratuite. Seriez-vous disponible ce jeudi à 14h ou ce vendredi à 10h?`,
+      `C'est noté! Pour notre appel de 15 minutes, quel numéro de téléphone devrais-je privilégier pour vous joindre?`
+    ];
+  }
+
+  // 5. Par défaut (salutations ou relance générale)
+  return [
+    `Bonjour${namePhrase}! J'espère que vous allez bien. Comment puis-je vous aider dans votre projet aujourd'hui?`,
+    `Merci pour votre intérêt! Je vous propose qu'on s'appelle brièvement (15 minutes) pour faire le tour de vos questions. Seriez-vous disponible cette semaine?`,
+    `Bonjour! Je voulais simplement faire un suivi pour savoir si vous aviez toujours de l'intérêt pour notre accompagnement. Au plaisir!`
+  ];
+}
+
+/**
+ * POST /api/ai/suggest-replies
+ * Body : { conversation_id }
+ * Retour : { data: { suggestions: string[] } }
+ */
+export async function handleAiSuggestReplies(request: Request, env: Env): Promise<Response> {
+  let body: { conversation_id?: string; conversationId?: string };
+  try {
+    body = await request.json() as typeof body;
+  } catch {
+    return json({ error: 'JSON invalide' }, 400);
+  }
+  
+  const conversationId = body.conversation_id || body.conversationId;
+  if (!conversationId) return json({ error: 'conversation_id requis' }, 400);
+
+  // 1. Charger conversation + lead associé
+  const conv = await env.DB.prepare(
+    `SELECT c.lead_id, l.name as lead_name, l.email as lead_email, l.status as lead_status, 
+            l.source as lead_source, l.message as lead_message, l.notes as lead_notes, l.client_id
+     FROM conversations c
+     LEFT JOIN leads l ON c.lead_id = l.id
+     WHERE c.id = ?`
+  ).bind(conversationId).first() as {
+    lead_id: string | null;
+    lead_name: string | null;
+    lead_email: string | null;
+    lead_status: string | null;
+    lead_source: string | null;
+    lead_message: string | null;
+    lead_notes: string | null;
+    client_id: string | null;
+  } | null;
+
+  if (!conv) return json({ error: 'Conversation introuvable' }, 404);
+
+  // 2. Charger les 10 derniers messages
+  const { results: messages } = await env.DB.prepare(
+    `SELECT direction, channel, body, created_at, sender_name, sentiment, detected_intent
+     FROM messages
+     WHERE conversation_id = ?
+     ORDER BY created_at DESC
+     LIMIT 10`
+  ).bind(conversationId).all() as {
+    results: Array<{
+      direction: string;
+      channel: string;
+      body: string;
+      created_at: string;
+      sender_name: string | null;
+      sentiment: string | null;
+      detected_intent: string | null;
+    }>;
+  };
+
+  // Trouver le dernier message entrant pour l'analyse locale / sentiment
+  const lastInbound = (messages || []).find(m => m.direction === 'inbound');
+  const lastInboundText = lastInbound?.body || conv.lead_message || '';
+  const lastInboundIntent = lastInbound?.detected_intent || null;
+  const lastInboundSentiment = lastInbound?.sentiment || null;
+
+  // 3. Charger le brand voice du client
+  let brandVoice = 'Professionnel, chaleureux et québécois naturel.';
+  if (conv.client_id) {
+    const client = await env.DB.prepare(
+      'SELECT brand_voice FROM clients WHERE id = ?'
+    ).bind(conv.client_id).first() as { brand_voice?: string } | null;
+    if (client?.brand_voice) {
+      brandVoice = client.brand_voice;
+    }
+  }
+
+  // 4. Si mock activé, renvoyer immédiatement les suggestions locales
+  if (isAiMockMode(env)) {
+    const suggestions = localSuggestRepliesFallback(
+      lastInboundText,
+      lastInboundIntent,
+      lastInboundSentiment,
+      conv.lead_name
+    );
+    return json({ data: { suggestions } });
+  }
+
+  // 5. Sinon, appeler Claude Haiku
+  const baseSystem = `Tu es un copilote commercial IA pour un courtier immobilier ou une PME au Québec. \
+Ton du client : ${brandVoice}. \
+Utilise un français québécois naturel (pas parisien), chaleureux et professionnel. \
+Évite le tutoiement sauf si le profil du client ou l'historique l'indique clairement. \
+En te basant sur le profil du lead et l'historique récent de la conversation, génère EXACTEMENT 3 suggestions de réponses courtes (max 40 mots chacune). \
+Les suggestions doivent être concrètes et adaptées aux derniers échanges. Elles doivent correspondre aux 3 intentions suivantes : \
+1. Option A (Rendez-vous) : Proposer ou fixer un rendez-vous (ex: rencontre stratégique gratuite, appel de 15 minutes, partage de calendrier Calendly). \
+2. Option B (Information / Prix) : Répondre aux questions posées (prix, détails sur un service) ou donner des informations utiles. \
+3. Option C (Générale / Relance) : Une réponse générale, courtoise ou une relance amicale pour inciter le lead à répondre. \
+\
+Tu dois renvoyer UNIQUEMENT un tableau JSON de chaînes de caractères (sans markdown, sans en-tête ni enrobage) contenant exactement 3 éléments. \
+Exemple de format attendu : \
+[ \
+  "Suggestion A", \
+  "Suggestion B", \
+  "Suggestion C" \
+]`;
+
+  const leadInfo = {
+    name: conv.lead_name,
+    email: conv.lead_email,
+    status: conv.lead_status,
+    source: conv.lead_source,
+    message_original: conv.lead_message,
+    notes: conv.lead_notes
+  };
+
+  const chronologicalMessages = [...(messages || [])].reverse();
+  const transcript = chronologicalMessages.map(m => {
+    const who = m.direction === 'outbound' ? 'Nous' : (m.sender_name || 'Client');
+    return `${who}: ${m.body}${m.sentiment ? ` (Sentiment: ${m.sentiment})` : ''}${m.detected_intent ? ` (Intention: ${m.detected_intent})` : ''}`;
+  }).join('\n');
+
+  const userPrompt = `Profil du Lead : ${JSON.stringify(leadInfo)}\n\nHistorique récent de la conversation :\n${transcript || '(Aucun message encore)'}`;
+
+  try {
+    const result = await callLLM(env, baseSystem, userPrompt);
+    
+    // Tentative de parsing
+    let suggestions: string[] = [];
+    const jsonMatch = result.match(/\[[\s\S]*\]/);
+    if (jsonMatch) {
+      suggestions = JSON.parse(jsonMatch[0]) as string[];
+    }
+
+    if (Array.isArray(suggestions) && suggestions.length === 3) {
+      return json({ data: { suggestions: suggestions.map(s => s.trim()) } });
+    }
+  } catch (err) {
+    console.error('Erreur suggestions AI:', err);
+  }
+
+  // Fallback local si LLM ou parsing échoue
+  const suggestions = localSuggestRepliesFallback(
+    lastInboundText,
+    lastInboundIntent,
+    lastInboundSentiment,
+    conv.lead_name
+  );
+  return json({ data: { suggestions } });
+}
+
+

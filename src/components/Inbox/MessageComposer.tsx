@@ -36,6 +36,7 @@ interface Props {
   snippets?: Snippet[];
   templates?: EmailTemplate[];
   leadId?: string;
+  conversationId?: string;
   /** Sprint 30 vague 30-2A — contexte lead pour résolution `{{var}}` runtime */
   lead?: Pick<Lead, 'name' | 'email' | 'phone' | 'deal_value' | 'client_name' | 'score'> | null;
   /** Sprint 30 vague 30-2A — nom étape pipeline pour `{{stage}}` */
@@ -68,6 +69,7 @@ export function MessageComposer({
   snippets = [],
   templates = [],
   leadId,
+  conversationId,
   lead = null,
   stageName = null,
   lastInboundMessage = null,
@@ -90,6 +92,9 @@ export function MessageComposer({
   const [draftsLoading, setDraftsLoading] = useState(false);
   // Sprint 33 vague 33-2B — quick replies persistées par lead (max 3, FIFO)
   const [quickReplies, setQuickReplies] = useState<string[]>([]);
+  // Sprint 74 — Copilote Commercial : Suggestions de Réponses IA
+  const [suggestedReplies, setSuggestedReplies] = useState<string[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const draftPopoverRef = useRef<HTMLDivElement>(null);
   const draftTriggerRef = useRef<HTMLButtonElement>(null);
@@ -139,6 +144,45 @@ export function MessageComposer({
     }
     setQuickReplies(getQuickReplies(leadId));
   }, [leadId]);
+
+  // Sprint 74 — Copilote Commercial : Suggestions de Réponses IA
+  useEffect(() => {
+    setSuggestedReplies([]);
+    if (!conversationId) return;
+
+    setLoadingSuggestions(true);
+    const controller = new AbortController();
+
+    fetch('/api/ai/suggest-replies', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ conversation_id: conversationId }),
+      signal: controller.signal,
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error('Erreur API');
+        return res.json() as Promise<{ data: { suggestions: string[] } }>;
+      })
+      .then((res) => {
+        if (res.data?.suggestions) {
+          setSuggestedReplies(res.data.suggestions);
+        }
+      })
+      .catch((err) => {
+        if (err.name !== 'AbortError') {
+          console.error('Erreur suggestions:', err);
+        }
+      })
+      .finally(() => {
+        setLoadingSuggestions(false);
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, [conversationId]);
 
   // Sprint 44 M3.1 — Autofocus le textarea quand un reply mode s'active
   // (l'utilisateur a swipe sur un message → on attend qu'il puisse taper direct)
@@ -897,6 +941,48 @@ export function MessageComposer({
               <span className="quick-reply-chip-text">{text}</span>
             </button>
           ))}
+        </div>
+      )}
+
+      {/* Sprint 74 — Copilote Commercial : Suggestions de Réponses IA */}
+      {(loadingSuggestions || suggestedReplies.length > 0) && (
+        <div className="flex flex-col gap-1 mb-2 px-1">
+          <div className="flex items-center gap-1.5 text-[10px] font-semibold text-[var(--primary)] uppercase tracking-wider">
+            <Sparkles size={10} className={loadingSuggestions ? "animate-pulse" : ""} />
+            <span>Copilote IA : Suggestions</span>
+          </div>
+          <div className="flex flex-wrap gap-1.5 overflow-x-auto pb-1 max-w-full">
+            {loadingSuggestions ? (
+              <>
+                <div className="h-[28px] w-32 rounded-full bg-slate-100 dark:bg-slate-800 animate-pulse border border-slate-200/50 dark:border-slate-700/50" />
+                <div className="h-[28px] w-48 rounded-full bg-slate-100 dark:bg-slate-800 animate-pulse border border-slate-200/50 dark:border-slate-700/50" />
+                <div className="h-[28px] w-24 rounded-full bg-slate-100 dark:bg-slate-800 animate-pulse border border-slate-200/50 dark:border-slate-700/50" />
+              </>
+            ) : (
+              suggestedReplies.map((reply, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => {
+                    setComposerText(reply);
+                    vibrate('light');
+                    play('toggle');
+                    requestAnimationFrame(() => {
+                      const ta = inputRef.current;
+                      if (ta) {
+                        ta.focus();
+                        ta.setSelectionRange(reply.length, reply.length);
+                      }
+                    });
+                  }}
+                  className="px-3 py-1 text-xs rounded-full border border-[var(--primary-subtle)] bg-[var(--primary-subtle)] text-[var(--primary)] hover:bg-[var(--primary-hover)] hover:text-white transition-all cursor-pointer truncate max-w-[280px]"
+                  title={reply}
+                >
+                  {reply}
+                </button>
+              ))
+            )}
+          </div>
         </div>
       )}
 

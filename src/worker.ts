@@ -225,7 +225,7 @@ import {
   handleUpdateCommissionStatus,
 } from './worker/affiliates';
 import { handleGetTriggerLinks, handleCreateTriggerLink, handleDeleteTriggerLink, handleTriggerLinkClick, handleGetTriggerLinkStats } from './worker/trigger-links';
-import { handleAiGenerate, handleAiSuggestWorkflow, handleAiSummarizeConversation, handleAiSuggestNextAction, handleAiSummarizeLeads, handleAiDrafts, handleAiClassifyConversation, handleAiClassifyLead, handleAiNlQuery, handleAiComposeSuggest, handleAiProofread } from './worker/ai';
+import { handleAiGenerate, handleAiSuggestWorkflow, handleAiSummarizeConversation, handleAiSuggestNextAction, handleAiSummarizeLeads, handleAiDrafts, handleAiClassifyConversation, handleAiClassifyLead, handleAiNlQuery, handleAiComposeSuggest, handleAiProofread, handleAiSuggestReplies } from './worker/ai';
 // Sprint 43 M3 — Reactions / QuickReplies / LeadScore backend
 import { handleGetReactions, handleAddReaction, handleRemoveReaction } from './worker/reactions';
 import { handleGetQuickReplies, handleAddQuickReply } from './worker/quick-replies';
@@ -2675,6 +2675,8 @@ async function routeProtected(
   if (path === '/api/ai/summarize-leads' && method === 'POST') return handleAiSummarizeLeads(request, env);
   // Sprint 43 M3.3 — AI Drafts (3 tones Claude Haiku 4.5)
   if (path === '/api/ai/drafts' && method === 'POST') return handleAiDrafts(request, env);
+  // Sprint 74 — Copilote Commercial : Suggestions de Réponses IA
+  if (path === '/api/ai/suggest-replies' && method === 'POST') return handleAiSuggestReplies(request, env);
   // Sprint 49 M1 — Smart compose : ghost-text suggest + proofread FR québécois
   if (path === '/api/ai/compose-suggest' && method === 'POST') return handleAiComposeSuggest(request, env);
   if (path === '/api/ai/proofread' && method === 'POST') return handleAiProofread(request, env);
