@@ -40,10 +40,9 @@ type VariantColors = {
 
 const VARIANTS: Record<NonNullable<SwitchProps['variant']>, VariantColors> = {
   brand: {
-    trackOn:
-      'linear-gradient(135deg, #00B5F5 0%, #009DDB 55%, #0086C0 100%)',
-    glow: 'rgba(0,157,219,0.45)',
-    ring: 'rgba(0,157,219,0.30)',
+    trackOn: 'var(--primary)',
+    glow: 'rgba(99,91,255,0.45)',
+    ring: 'rgba(99,91,255,0.30)',
   },
   success: {
     trackOn:

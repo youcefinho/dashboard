@@ -41,7 +41,7 @@ export function MobileBottomNav() {
             {isActive && (
               <span aria-hidden className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[3px] rounded-b-full"
                 style={{
-                  background: 'linear-gradient(90deg, #009DDB 0%, #D96E27 100%)',
+                  background: 'var(--primary)',
                   boxShadow: '0 2px 8px rgba(0,157,219,0.6), 0 0 12px rgba(217,110,39,0.4)',
                 }} />
             )}

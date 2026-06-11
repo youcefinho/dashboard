@@ -192,7 +192,7 @@ function ConversationPreviewCard({
                 <span
                   className="inline-flex items-center justify-center min-w-[18px] h-[16px] px-1.5 text-[9px] font-bold text-white rounded-full"
                   style={{
-                    background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
+                    background: 'linear-gradient(135deg, #635BFF 0%, #8B5CF6 100%)',
                     boxShadow: '0 2px 6px rgba(0,157,219,0.4)',
                   }}
                 >

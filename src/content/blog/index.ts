@@ -51,7 +51,7 @@ export const BLOG_AUTHORS: Record<string, BlogAuthor> = {
 export const BLOG_TAGS: Record<BlogTag, { label: string; color: string }> = {
   'conseils-crm':   { label: 'Conseils CRM',   color: '#635BFF' },
   'etudes-de-cas':  { label: 'Études de cas',  color: '#1AAB59' },
-  'produit':        { label: 'Produit',         color: '#009DDB' },
+  'produit':        { label: 'Produit',         color: '#635BFF' },
   'loi-25':         { label: 'Loi 25',          color: '#CD3D64' },
   'mobile':         { label: 'Mobile',          color: '#C7912C' },
   'tech':           { label: 'Tech',            color: '#697386' },
@@ -89,7 +89,7 @@ export const BLOG_POSTS: BlogPost[] = [
     author: BLOG_AUTHORS.team!,
     tag: 'produit',
     readingTime: 6,
-    coverColor: '#009DDB',
+    coverColor: '#635BFF',
   },
 ];
 

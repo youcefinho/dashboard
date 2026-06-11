@@ -200,7 +200,7 @@ const MagicLinkVerifyPage = lazy(() => import('@/pages/MagicLinkVerify').then(m 
 function PageLoader() {
   return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: 'var(--bg-canvas, #f8f9fa)' }}>
-      <div style={{ width: 36, height: 36, border: '3px solid rgba(0,157,219,0.2)', borderTopColor: 'var(--primary, #009DDB)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+      <div style={{ width: 36, height: 36, border: '3px solid rgba(0,157,219,0.2)', borderTopColor: 'var(--primary, #635BFF)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
     </div>
   );
 }

@@ -31,13 +31,13 @@ function resolveColors(color: SparklineProps['color']): ColorStops {
   switch (color) {
     case 'brand':
     case undefined:
-      return { primary: '#009DDB', secondary: '#D96E27' };
+      return { primary: 'var(--primary)', secondary: '#8B5CF6' };
     case 'success':
-      return { primary: '#37CA37', secondary: '#009DDB' };
+      return { primary: '#37CA37', secondary: '#635BFF' };
     case 'warning':
-      return { primary: '#FF9A00', secondary: '#D96E27' };
+      return { primary: '#FF9A00', secondary: '#C7912C' };
     case 'danger':
-      return { primary: '#E93D3D', secondary: '#D96E27' };
+      return { primary: '#E93D3D', secondary: '#CD3D64' };
     default:
       return { primary: color, secondary: color };
   }

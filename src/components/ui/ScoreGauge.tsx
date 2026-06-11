@@ -12,7 +12,7 @@ interface ScoreGaugeProps {
 }
 
 function getColors(score: number): { primary: string; secondary: string; label: string } {
-  if (score >= 70) return { primary: '#37CA37', secondary: '#009DDB', label: '🔥 Chaud' };
+  if (score >= 70) return { primary: '#37CA37', secondary: 'var(--primary)', label: '🔥 Chaud' };
   if (score >= 40) return { primary: '#FF9A00', secondary: '#D96E27', label: '🟡 Tiède' };
   return { primary: '#188BF6', secondary: '#155EEF', label: '🔵 Froid' };
 }

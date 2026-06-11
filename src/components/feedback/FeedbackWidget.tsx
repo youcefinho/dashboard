@@ -63,7 +63,7 @@ export function FeedbackWidget() {
               <span
                 className="w-8 h-8 rounded-lg flex items-center justify-center"
                 style={{
-                  background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
+                  background: 'var(--primary)',
                   boxShadow: '0 4px 12px rgba(0,157,219,0.40)',
                 }}
               >
@@ -117,7 +117,7 @@ export function FeedbackWidget() {
                           style={
                             active
                               ? {
-                                  background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
+                                  background: 'var(--primary)',
                                   color: 'white',
                                   borderColor: 'transparent',
                                   boxShadow: '0 4px 12px -2px rgba(0,157,219,0.45)',
@@ -153,7 +153,7 @@ export function FeedbackWidget() {
                   disabled={isSubmitting || rating === 0}
                   className="w-full py-2.5 text-white font-semibold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:translate-y-[-1px] active:translate-y-0"
                   style={{
-                    background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
+                    background: 'var(--primary)',
                     boxShadow: '0 4px 14px -2px rgba(0,157,219,0.45)',
                   }}
                 >
@@ -168,7 +168,7 @@ export function FeedbackWidget() {
           onClick={() => setIsOpen(true)}
           className="w-12 h-12 text-white rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition-transform"
           style={{
-            background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
+            background: 'var(--primary)',
             boxShadow: '0 6px 20px -2px rgba(0,157,219,0.50), 0 0 0 4px rgba(0,157,219,0.10)',
           }}
           aria-label={t('feedback.fw_fab_aria')}

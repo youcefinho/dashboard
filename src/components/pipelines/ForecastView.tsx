@@ -251,7 +251,7 @@ export function ForecastView({ pipelineId }: { pipelineId: string }) {
                 <defs>
                   <linearGradient id="forecast-bar-grad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#00B5F5" stopOpacity={0.95} />
-                    <stop offset="55%" stopColor="#009DDB" stopOpacity={0.85} />
+                    <stop offset="55%" stopColor="#635BFF" stopOpacity={0.85} />
                     <stop offset="100%" stopColor="#D96E27" stopOpacity={0.55} />
                   </linearGradient>
                 </defs>
@@ -293,7 +293,7 @@ export function ForecastView({ pipelineId }: { pipelineId: string }) {
                 <defs>
                   <linearGradient id="forecast-group-grad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#00B5F5" stopOpacity={0.95} />
-                    <stop offset="100%" stopColor="#009DDB" stopOpacity={0.7} />
+                    <stop offset="100%" stopColor="#635BFF" stopOpacity={0.7} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />

@@ -521,7 +521,7 @@ export function TaskPanel({ id, stackLevel }: TaskPanelProps) {
                     className="h-full rounded-full transition-all duration-500"
                     style={{
                       width: `${(subtaskDone / subtaskTotal) * 100}%`,
-                      background: 'linear-gradient(90deg, #009DDB 0%, #D96E27 100%)',
+                      background: 'linear-gradient(90deg, #635BFF 0%, #8B5CF6 100%)',
                       boxShadow: '0 0 8px rgba(0,157,219,0.5)',
                     }}
                   />
@@ -552,7 +552,7 @@ export function TaskPanel({ id, stackLevel }: TaskPanelProps) {
                         s.is_done === 1
                           ? {
                               background:
-                                'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
+                                'linear-gradient(135deg, #635BFF 0%, #8B5CF6 100%)',
                               border: '1px solid rgba(0,157,219,0.55)',
                               color: '#FFFFFF',
                               boxShadow:

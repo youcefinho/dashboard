@@ -16,7 +16,7 @@ function bucketStyle(bucket: 'detractor' | 'passive' | 'promoter', isActive: boo
   if (isActive) {
     // Active = gradient brand peu importe le bucket (signature)
     return {
-      background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
+      background: 'var(--primary)',
       color: 'white',
       borderColor: 'transparent',
       boxShadow: '0 6px 18px -2px rgba(0,157,219,0.50), 0 0 0 4px rgba(0,157,219,0.18)',

@@ -41,7 +41,7 @@ function SortableBlock({ block, isSelected, onSelect, onDelete }: {
 }
 
 // ── Sidebar : propriétés du block sélectionné ────────────────
-const BRAND_PRESETS = ['#009DDB', '#0086C0', '#D96E27', '#FF9A00', '#37CA37', '#E93D3D', '#1a1a2e', '#374151', '#9ca3af', '#FFFFFF'];
+const BRAND_PRESETS = ['#635BFF', '#5851E5', '#D96E27', '#FF9A00', '#37CA37', '#E93D3D', '#1a1a2e', '#374151', '#9ca3af', '#FFFFFF'];
 
 function BlockProperties({ block, onChange }: { block: EmailBlock | null; onChange: (updated: EmailBlock) => void }) {
   if (!block) return <div className="block-props-empty">{t('eb.select_block')}</div>;
@@ -104,7 +104,7 @@ function BlockProperties({ block, onChange }: { block: EmailBlock | null; onChan
           <label className="prop-label">URL</label>
           <Input value={(block.config.url as string) || '#'} onChange={e => updateConfig('url', e.target.value)} aria-label="URL" />
           <label className="prop-label">{t('email_builder.prop.bg_color')}</label>
-          <ColorSwatch size="sm" value={(block.config.backgroundColor as string) || '#009DDB'} onChange={v => updateConfig('backgroundColor', v)} presets={BRAND_PRESETS} />
+          <ColorSwatch size="sm" value={(block.config.backgroundColor as string) || '#635BFF'} onChange={v => updateConfig('backgroundColor', v)} presets={BRAND_PRESETS} />
           <label className="prop-label">{t('email_builder.prop.text_color')}</label>
           <ColorSwatch size="sm" value={(block.config.color as string) || '#FFFFFF'} onChange={v => updateConfig('color', v)} presets={BRAND_PRESETS} />
         </>

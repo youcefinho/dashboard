@@ -45,7 +45,7 @@ const DefaultFallback = React.createElement(
       width: 40,
       height: 40,
       border: '3px solid rgba(0,157,219,0.15)',
-      borderTopColor: '#009DDB',
+      borderTopColor: '#635BFF',
       borderRadius: '50%',
       animation: 'spin 0.8s linear infinite',
     },

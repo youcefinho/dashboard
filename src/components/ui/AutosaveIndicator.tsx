@@ -111,7 +111,7 @@ export function AutosaveIndicator({
           background:
             'linear-gradient(135deg, rgba(0,157,219,0.10) 0%, rgba(11,181,233,0.06) 100%)',
           border: '1px solid rgba(0,157,219,0.30)',
-          color: 'var(--primary, #009DDB)',
+          color: 'var(--primary, #635BFF)',
         }}
         aria-live="polite"
       >

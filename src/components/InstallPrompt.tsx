@@ -65,7 +65,7 @@ export function InstallPrompt() {
       <div
         className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-lg shrink-0"
         style={{
-          background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
+          background: 'linear-gradient(135deg, #635BFF 0%, #8B5CF6 100%)',
           boxShadow: '0 4px 12px rgba(0,157,219,0.40)',
         }}
       >

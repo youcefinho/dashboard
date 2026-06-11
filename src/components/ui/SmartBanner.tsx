@@ -35,7 +35,7 @@ function resolveVariant(variant: SmartBannerVariant) {
       return {
         gradient: 'linear-gradient(135deg, rgba(55,202,55,0.10) 0%, rgba(0,157,219,0.05) 100%)',
         border: 'rgba(55,202,55,0.30)',
-        iconBg: 'linear-gradient(135deg, #37CA37 0%, #009DDB 100%)',
+        iconBg: 'linear-gradient(135deg, #10B981 0%, #635BFF 100%)',
         iconGlow: '0 0 12px rgba(55,202,55,0.5)',
         orbColor: 'rgba(55,202,55,0.18)',
         accent: '#1f8f1f',
@@ -53,7 +53,7 @@ function resolveVariant(variant: SmartBannerVariant) {
       return {
         gradient: 'linear-gradient(135deg, rgba(139,92,246,0.10) 0%, rgba(0,157,219,0.05) 100%)',
         border: 'rgba(139,92,246,0.32)',
-        iconBg: 'linear-gradient(135deg, #8B5CF6 0%, #009DDB 100%)',
+        iconBg: 'linear-gradient(135deg, #8B5CF6 0%, #635BFF 100%)',
         iconGlow: '0 0 14px rgba(139,92,246,0.55)',
         orbColor: 'rgba(139,92,246,0.20)',
         accent: '#7C3AED',
@@ -63,7 +63,7 @@ function resolveVariant(variant: SmartBannerVariant) {
       return {
         gradient: 'linear-gradient(135deg, rgba(0,157,219,0.10) 0%, rgba(217,110,39,0.05) 100%)',
         border: 'rgba(0,157,219,0.32)',
-        iconBg: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
+        iconBg: 'linear-gradient(135deg, #635BFF 0%, #8B5CF6 100%)',
         iconGlow: '0 0 12px rgba(0,157,219,0.5)',
         orbColor: 'rgba(0,157,219,0.18)',
         accent: 'var(--primary)',

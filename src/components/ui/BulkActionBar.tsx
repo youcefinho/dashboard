@@ -107,7 +107,7 @@ export function BulkActionBar({
         <span
           className="text-[13px] font-extrabold tabular-nums"
           style={{
-            background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
+            background: 'var(--primary)',
             WebkitBackgroundClip: 'text',
             backgroundClip: 'text',
             WebkitTextFillColor: 'transparent',

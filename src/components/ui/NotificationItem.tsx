@@ -58,7 +58,7 @@ const TYPE_VISUALS: Record<NotificationItemType, TypeVisual> = {
   lead_assigned: {
     icon: UserCheck,
     bg: 'var(--info-soft, rgba(0,157,219,0.10))',
-    fg: 'var(--info, #009DDB)',
+    fg: 'var(--info, #635BFF)',
     label: 'Lead assigné',
   },
   task_due: {
@@ -70,7 +70,7 @@ const TYPE_VISUALS: Record<NotificationItemType, TypeVisual> = {
   message: {
     icon: MessageSquare,
     bg: 'var(--info-soft, rgba(0,157,219,0.10))',
-    fg: 'var(--info, #009DDB)',
+    fg: 'var(--info, #635BFF)',
     label: 'Message reçu',
   },
   mention: {

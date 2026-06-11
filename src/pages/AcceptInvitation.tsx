@@ -129,7 +129,7 @@ export function AcceptInvitationPage() {
         <div className="text-center mb-8">
           <div className="relative w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-5"
             style={{
-              background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
+              background: 'linear-gradient(135deg, #635BFF 0%, #8B5CF6 100%)',
               boxShadow: '0 8px 32px rgba(0,157,219,0.45), 0 0 40px rgba(217,110,39,0.3)',
               animation: 'hot-lead-pulse 3s ease-in-out infinite',
             }}>

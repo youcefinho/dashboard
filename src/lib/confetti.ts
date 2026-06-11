@@ -19,8 +19,8 @@ interface BurstOptions {
   gravity?: number;
 }
 
-const COLORS = ['#009DDB', '#D96E27', '#37CA37', '#FF9A00', '#188BF6'];
-const BRAND_COLORS = ['#009DDB', '#D96E27']; // Subset pour subtle
+const COLORS = ['#635BFF', '#8B5CF6', '#37CA37', '#FF9A00', '#A78BFA'];
+const BRAND_COLORS = ['#635BFF', '#8B5CF6']; // Subset pour subtle
 
 function runBurst(
   options: BurstOptions & { palette: string[]; sizeMin: number; sizeMax: number; velocityMin: number; velocityMax: number }

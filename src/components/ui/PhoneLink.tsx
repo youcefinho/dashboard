@@ -60,7 +60,7 @@ export function PhoneLink({
             className="inline-flex items-center justify-center w-4 h-4 rounded-full transition-all"
             style={{
               background: isHovered
-                ? 'linear-gradient(135deg,#009DDB,#D96E27)'
+                ? 'var(--primary)'
                 : 'rgba(0,157,219,0.12)',
               boxShadow: isHovered ? '0 0 10px rgba(217,110,39,0.5)' : 'none',
             }}
@@ -114,7 +114,7 @@ export function PhoneLink({
         <span
           className="relative inline-flex items-center justify-center w-4 h-4 rounded-full shrink-0"
           style={{
-            background: 'linear-gradient(135deg,#009DDB,#D96E27)',
+            background: 'var(--primary)',
             boxShadow: '0 0 8px rgba(217,110,39,0.5)',
           }}
         >

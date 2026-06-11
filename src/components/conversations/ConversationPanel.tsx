@@ -213,7 +213,7 @@ export function ConversationPanel({ leadId, leadName, leadEmail, leadPhone }: Co
                   style={
                     isActive
                       ? {
-                          background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
+                          background: 'linear-gradient(135deg, #635BFF 0%, #8B5CF6 100%)',
                           color: 'white',
                           borderColor: 'transparent',
                           boxShadow: '0 4px 12px -2px rgba(0,157,219,0.45)',
