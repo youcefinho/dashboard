@@ -17,7 +17,7 @@ export function DashboardStatsGrid({ stats, isLoading }: DashboardStatsGridProps
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="stat-card">
             <div className="skeleton-shimmer h-24 w-full rounded-lg" />
@@ -28,14 +28,15 @@ export function DashboardStatsGrid({ stats, isLoading }: DashboardStatsGridProps
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
       <StatCard
         label={t('dashboard.stat.contacts')}
         value={stats?.total_leads ?? 0}
         icon={<Users size={20} />}
-        iconBg="var(--brand-tint)"
-        iconColor="var(--primary)"
-        sparkColor="#009DDB"
+        iconBg="rgba(99, 91, 255, 0.10)"
+        iconColor="#635BFF"
+        accentColor="#635BFF"
+        sparkColor="#635BFF"
         sparkData={sparkPts}
         className="stagger-1"
       />
@@ -43,9 +44,10 @@ export function DashboardStatsGrid({ stats, isLoading }: DashboardStatsGridProps
         label={t('dashboard.stat.pipeline_value')}
         value={`${((stats?.total_deal_value ?? 0) / 1000).toFixed(1)}K $`}
         icon={<DollarSign size={20} />}
-        iconBg="var(--success-soft)"
-        iconColor="var(--success)"
-        sparkColor="#37CA37"
+        iconBg="rgba(16, 185, 129, 0.10)"
+        iconColor="#10B981"
+        accentColor="#10B981"
+        sparkColor="#10B981"
         sparkData={sparkPts.slice(-7)}
         className="stagger-2"
       />
@@ -53,18 +55,20 @@ export function DashboardStatsGrid({ stats, isLoading }: DashboardStatsGridProps
         label={t('dashboard.stat.conversion')}
         value={`${stats?.conversion_rate ?? 0}%`}
         icon={<Target size={20} />}
-        iconBg="var(--accent-orange-soft)"
-        iconColor="var(--accent-orange)"
-        sparkColor="#D96E27"
+        iconBg="rgba(245, 158, 11, 0.10)"
+        iconColor="#F59E0B"
+        accentColor="#F59E0B"
+        sparkColor="#F59E0B"
         className="stagger-3"
       />
       <StatCard
         label={t('dashboard.stat.revenue')}
         value={`${((stats?.revenue_value ?? 0) / 1000).toFixed(1)}K $`}
         icon={<Zap size={20} />}
-        iconBg="var(--info-soft)"
-        iconColor="var(--info)"
-        sparkColor="#188BF6"
+        iconBg="rgba(59, 130, 246, 0.10)"
+        iconColor="#3B82F6"
+        accentColor="#3B82F6"
+        sparkColor="#3B82F6"
         className="stagger-4"
       />
     </div>

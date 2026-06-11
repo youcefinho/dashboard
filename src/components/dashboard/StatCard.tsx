@@ -17,6 +17,8 @@ interface StatCardProps {
   iconBg: string;
   /** Couleur de l'icône */
   iconColor: string;
+  /** Couleur d'accent pour le border-top */
+  accentColor?: string;
   /** Texte delta (ex: "+12%") */
   delta?: string;
   /** Direction du delta (true = positif) */
@@ -35,6 +37,7 @@ export function StatCard({
   icon,
   iconBg,
   iconColor,
+  accentColor,
   delta,
   deltaUp,
   sparkColor,
@@ -60,7 +63,10 @@ export function StatCard({
   const gradientId = `spark-${label.replace(/\s+/g, '-').toLowerCase()}`;
 
   return (
-    <div className={`stat-card animate-fade-in-up ${className}`}>
+    <div
+      className={`stat-card animate-fade-in-up ${className}`}
+      style={accentColor ? { borderTop: `3px solid ${accentColor}` } : undefined}
+    >
       {/* En-tête : icône chip + label */}
       <div className="flex items-center gap-2.5 mb-3">
         <div

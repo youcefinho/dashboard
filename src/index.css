@@ -14744,7 +14744,7 @@ body.pdf-mode-invoice .credit-note-table th {
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
-  padding: var(--space-5, 20px);
+  padding: var(--space-6, 24px);
   box-shadow: var(--shadow-sm);
   transition: box-shadow 0.22s ease, transform 0.22s ease, border-color 0.22s ease;
   position: relative;
@@ -14764,9 +14764,9 @@ body.pdf-mode-invoice .credit-note-table th {
 }
 
 .stat-icon-chip {
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-md);
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-lg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -14783,11 +14783,11 @@ body.pdf-mode-invoice .credit-note-table th {
 }
 
 .stat-label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 
 .stat-delta {
@@ -14979,7 +14979,7 @@ body.pdf-mode-invoice .credit-note-table th {
 .page-grid-2-1 {
   display: grid;
   grid-template-columns: 1fr;
-  gap: var(--space-4, 16px);
+  gap: var(--space-6, 24px);
 }
 @media (min-width: 1024px) {
   .page-grid-2-1 {

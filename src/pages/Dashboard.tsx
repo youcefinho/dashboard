@@ -215,7 +215,7 @@ export function DashboardPage() {
         );
       case 'chart':
         return (
-          <div key={w.id} className="page-grid-2-1 mb-6">
+          <div key={w.id} className="page-grid-2-1 mb-8">
             <DashboardChart
               isLoading={isLoading}
               leadsData={stats?.leads_by_day || []}
