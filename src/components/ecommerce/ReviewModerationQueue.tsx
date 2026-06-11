@@ -268,7 +268,7 @@ export function ReviewModerationQueue() {
               setStatusFilter(e.target.value as StatusFilter)
             }
             aria-label={t('reviews.req.status') || 'Status'}
-            className="h-8 px-2 text-xs rounded-md border border-[var(--border-subtle)] bg-white text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:border-[var(--primary)] transition-colors"
+            className="h-8 px-2 text-xs rounded-md border border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:border-[var(--primary)] transition-colors"
           >
             <option value="all">{t('reviews.filter.all')}</option>
             <option value="pending">{statusLabel('pending')}</option>
@@ -283,7 +283,7 @@ export function ReviewModerationQueue() {
           {Array.from({ length: 3 }).map((_, i) => (
             <div
               key={i}
-              className="p-4 rounded-xl border border-[var(--border-subtle)] bg-white"
+              className="p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)]"
             >
               <div className="flex items-start gap-4">
                 <Skeleton className="h-10 w-10 rounded-md shrink-0" />
@@ -319,7 +319,7 @@ export function ReviewModerationQueue() {
               <li
                 key={review.id}
                 data-testid={`review-row-${review.id}`}
-                className="p-4 rounded-xl border border-[var(--border-subtle)] bg-white flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
+                className="p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
               >
                 <div className="flex items-start gap-3 flex-1 min-w-0">
                   <ProductThumb photos={review.photos} />

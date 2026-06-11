@@ -147,7 +147,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
               
               <div className="aspect-video bg-[var(--bg-subtle)] rounded-xl border border-[var(--border-subtle)] flex items-center justify-center mb-6 relative overflow-hidden group">
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white">
+                  <div className="w-12 h-12 bg-[var(--bg-surface)]/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white">
                     <svg className="w-6 h-6 ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
                   </div>
                 </div>
@@ -222,7 +222,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
                 <div>
                   <label className="block text-sm font-medium text-[var(--text-secondary)] mb-3">{t('onboarding.wiz_logo')}</label>
                   <div className="border-2 border-dashed border-[var(--border-default)] rounded-xl p-6 text-center hover:border-[var(--primary)] hover:bg-[var(--brand-tint)] transition-colors cursor-pointer group">
-                    <div className="w-12 h-12 bg-[var(--bg-muted)] text-[var(--text-muted)] rounded-full flex items-center justify-center mx-auto mb-3 group-hover:bg-white group-hover:text-[var(--primary)] transition-colors">
+                    <div className="w-12 h-12 bg-[var(--bg-muted)] text-[var(--text-muted)] rounded-full flex items-center justify-center mx-auto mb-3 group-hover:bg-[var(--bg-surface)] group-hover:text-[var(--primary)] transition-colors">
                       <Icon as={Upload} size="lg" />
                     </div>
                     <p className="text-sm font-medium text-[var(--text-primary)] mb-1">{t('onboarding.wiz_upload_click')}</p>
@@ -252,7 +252,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
                     <h3 className="font-bold text-[var(--primary)] text-lg mb-1">{t('onboarding.wiz_pack_name')}</h3>
                     <p className="text-sm text-[var(--primary)]/80">{t('onboarding.wiz_pack_sub')}</p>
                   </div>
-                  <div className="px-2.5 py-1 bg-white/50 rounded-full text-xs font-semibold text-[var(--primary)]">{t('onboarding.wiz_pack_recommended')}</div>
+                  <div className="px-2.5 py-1 bg-[var(--bg-surface)]/50 rounded-full text-xs font-semibold text-[var(--primary)]">{t('onboarding.wiz_pack_recommended')}</div>
                 </div>
                 <ul className="space-y-2 text-sm text-[var(--primary)]/90">
                   <li className="flex items-center gap-2"><Icon as={Check} size="md" /> {t('onboarding.wiz_pack_f1')}</li>
@@ -262,7 +262,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
                 </ul>
               </div>
 
-              <button onClick={() => toast.success(t('onboarding.wiz_pack_installed'))} className="w-full py-3 bg-white border border-[var(--border-default)] hover:border-[var(--primary)] hover:text-[var(--primary)] text-[var(--text-primary)] font-medium rounded-[var(--radius-sm)] transition-all flex justify-center items-center gap-2 shadow-[var(--shadow-brand-xs)] hover:shadow-[var(--shadow-brand-md)] hover:-translate-y-0.5">
+              <button onClick={() => toast.success(t('onboarding.wiz_pack_installed'))} className="w-full py-3 bg-[var(--bg-surface)] border border-[var(--border-default)] hover:border-[var(--primary)] hover:text-[var(--primary)] text-[var(--text-primary)] font-medium rounded-[var(--radius-sm)] transition-all flex justify-center items-center gap-2 shadow-[var(--shadow-brand-xs)] hover:shadow-[var(--shadow-brand-md)] hover:-translate-y-0.5">
                 <Icon as={Settings} size={18} />
                 {t('onboarding.wiz_pack_install_btn')}
               </button>

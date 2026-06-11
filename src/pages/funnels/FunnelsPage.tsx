@@ -98,7 +98,7 @@ export function FunnelsPage() {
 
         {/* ── Onglet Analytique ───────────────────────────────────────────── */}
         <TabsContent value="analytics" className="space-y-6 pt-6">
-          <div className="rounded-xl border border-[var(--border-subtle)] bg-white p-4">
+          <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4">
             {loadingFunnels ? (
               <Skeleton className="h-10 w-full max-w-md rounded-md" />
             ) : funnels.length === 0 ? (

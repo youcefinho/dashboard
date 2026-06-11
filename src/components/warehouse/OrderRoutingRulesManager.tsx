@@ -293,7 +293,7 @@ export function OrderRoutingRulesManager() {
       {loading ? (
         <div className="space-y-3" role="status" aria-busy="true">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="p-4 rounded-xl border border-[var(--border-subtle)] bg-white">
+            <div key={i} className="p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)]">
               <div className="flex-1 space-y-2 min-w-0">
                 <Skeleton className="h-4 w-48" />
                 <Skeleton className="h-3 w-64" />
@@ -340,7 +340,7 @@ export function OrderRoutingRulesManager() {
                 <li
                   key={rule.id}
                   data-testid={`routing-rule-${rule.id}`}
-                  className="p-4 rounded-xl border border-[var(--border-subtle)] bg-white flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
+                  className="p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
                 >
                   <div className="flex-1 space-y-1.5 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -351,7 +351,7 @@ export function OrderRoutingRulesManager() {
                         {t('priority.title') || 'Priorité'} : {rule.priority}
                       </span>
                       {!isActive && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[var(--bg-subtle)] text-[var(--text-primary)] border border-[var(--border)]">
                           Inactif
                         </span>
                       )}
@@ -411,7 +411,7 @@ export function OrderRoutingRulesManager() {
                       <button
                         onClick={() => handleIncrementPriority(rule, 10)}
                         disabled={isBusy}
-                        className="p-1.5 bg-white hover:bg-slate-50 active:bg-slate-100 text-slate-600 border-r border-[var(--border-subtle)] disabled:opacity-50"
+                        className="p-1.5 bg-[var(--bg-surface)] hover:bg-slate-50 active:bg-slate-100 text-slate-600 border-r border-[var(--border-subtle)] disabled:opacity-50"
                         title="Augmenter la priorité (+10)"
                       >
                         <Icon as={ArrowUp} size="sm" />
@@ -419,7 +419,7 @@ export function OrderRoutingRulesManager() {
                       <button
                         onClick={() => handleIncrementPriority(rule, -10)}
                         disabled={isBusy || (rule.priority || 0) <= 0}
-                        className="p-1.5 bg-white hover:bg-slate-50 active:bg-slate-100 text-slate-600 disabled:opacity-50"
+                        className="p-1.5 bg-[var(--bg-surface)] hover:bg-slate-50 active:bg-slate-100 text-slate-600 disabled:opacity-50"
                         title="Diminuer la priorité (-10)"
                       >
                         <Icon as={ArrowDown} size="sm" />
@@ -494,7 +494,7 @@ export function OrderRoutingRulesManager() {
               <select
                 value={form.action_warehouse_id}
                 onChange={(e) => setForm((f) => ({ ...f, action_warehouse_id: e.target.value }))}
-                className="w-full h-10 px-3 rounded-lg border border-[var(--border-subtle)] bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full h-10 px-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                 required
               >
                 <option value="" disabled>
@@ -548,7 +548,7 @@ export function OrderRoutingRulesManager() {
                               e.target.value as OrderRoutingCondition['field'],
                             )
                           }
-                          className="w-full h-8 px-2 rounded-md border border-[var(--border-subtle)] bg-white text-xs"
+                          className="w-full h-8 px-2 rounded-md border border-[var(--border-subtle)] bg-[var(--bg-surface)] text-xs"
                         >
                           <option value="shipping_country">Pays</option>
                           <option value="shipping_country_subdiv">Province / État</option>
@@ -566,7 +566,7 @@ export function OrderRoutingRulesManager() {
                               e.target.value as OrderRoutingCondition['operator'],
                             )
                           }
-                          className="w-full h-8 px-2 rounded-md border border-[var(--border-subtle)] bg-white text-xs"
+                          className="w-full h-8 px-2 rounded-md border border-[var(--border-subtle)] bg-[var(--bg-surface)] text-xs"
                         >
                           <option value="equals">=</option>
                           <option value="not_equals">≠</option>
@@ -581,7 +581,7 @@ export function OrderRoutingRulesManager() {
                           value={cond.value}
                           onChange={(e) => updateCondition(idx, 'value', e.target.value)}
                           placeholder="Ex: CA, QC, G1A..."
-                          className="w-full h-8 px-2 rounded-md border border-[var(--border-subtle)] bg-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500"
+                          className="w-full h-8 px-2 rounded-md border border-[var(--border-subtle)] bg-[var(--bg-surface)] text-xs focus:outline-none focus:ring-1 focus:ring-purple-500"
                           required
                         />
                       </div>

@@ -272,7 +272,7 @@ export function StepEditor({ funnelId, onOpenVariants }: StepEditorProps) {
           {Array.from({ length: 3 }).map((_, i) => (
             <div
               key={i}
-              className="p-3 rounded-lg border border-[var(--border-subtle)] bg-white"
+              className="p-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)]"
               style={{ animationDelay: `${i * 40}ms` }}
             >
               <div className="flex items-center justify-between gap-3">
@@ -332,7 +332,7 @@ export function StepEditor({ funnelId, onOpenVariants }: StepEditorProps) {
               <li
                 key={step.id}
                 data-testid={`step-row-${step.id}`}
-                className="p-3 rounded-lg border border-[var(--border-subtle)] bg-white flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
+                className="p-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="flex-1 min-w-0 flex items-center gap-3">
                   <span

@@ -24,6 +24,7 @@ import { Coins, Receipt } from 'lucide-react';
 import { AppLayout } from '../../components/layout/AppLayout';
 import { PageHero } from '../../components/ui/PageHero';
 import { Icon } from '../../components/ui/Icon';
+import { Select } from '../../components/ui/Select';
 import {
   Tabs,
   TabsList,
@@ -161,13 +162,12 @@ export function CurrencyMultiSettingsPage() {
             >
               {t('shop.tax.regions.rates')}
             </label>
-            <select
+            <Select
               id="tax-region-rules-picker"
               data-testid="region-rules-picker"
               aria-label={t('shop.tax.regions.rates')}
               value={selectedRegionId ?? ''}
               onChange={handleSelectRegion}
-              className="flex-1 rounded-md border border-[var(--border-subtle)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
             >
               <option value="">{t('shop.tax.regions.title')}…</option>
               {regions.map((region) => (
@@ -175,7 +175,7 @@ export function CurrencyMultiSettingsPage() {
                   {region.name} ({region.code})
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
 
           <TaxRegionsManager />

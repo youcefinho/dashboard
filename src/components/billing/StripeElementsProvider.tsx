@@ -42,7 +42,7 @@ export function StripeElementsProvider({ clientSecret, children }: Props) {
       <div
         data-component="StripeElementsProvider"
         data-state="loading"
-        className="text-sm text-gray-500"
+        className="text-sm text-[var(--text-muted)]"
       >
         {t('billing.real.stripe.loading')}
       </div>
@@ -54,7 +54,7 @@ export function StripeElementsProvider({ clientSecret, children }: Props) {
       <div
         data-component="StripeElementsProvider"
         data-state="unconfigured"
-        className="text-sm text-gray-500"
+        className="text-sm text-[var(--text-muted)]"
       >
         {t('billing.real.stripe.unconfigured')}
       </div>

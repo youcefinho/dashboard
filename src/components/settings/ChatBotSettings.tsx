@@ -347,7 +347,7 @@ export function ChatBotSettings() {
           <section
             aria-labelledby="chat-bot-config-heading"
             data-testid="chat-bot-section-config"
-        className="rounded-xl border border-[var(--border-subtle)] bg-white p-5"
+        className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5"
       >
         <header className="mb-4 flex items-center gap-2">
           <Icon as={MessageSquare} size="sm" className="text-[var(--text-muted)]" />
@@ -537,7 +537,7 @@ export function ChatBotSettings() {
             <p>{t('chat_bot.knowledge.empty')}</p>
           </div>
         ) : (
-          <div className="rounded-xl border border-[var(--border-subtle)] bg-white overflow-hidden">
+          <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] overflow-hidden">
             <table
               className="w-full text-sm"
               aria-label={t('chat_bot.knowledge.title')}
@@ -614,7 +614,7 @@ export function ChatBotSettings() {
       <section
         aria-labelledby="chat-bot-test-heading"
         data-testid="chat-bot-section-test"
-        className="rounded-xl border border-[var(--border-subtle)] bg-white p-5"
+        className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5"
       >
         <header className="mb-4 flex items-center gap-2">
           <Icon as={PlayCircle} size="sm" className="text-[var(--text-muted)]" />
@@ -705,7 +705,7 @@ export function ChatBotSettings() {
               </div>
             </header>
             <div
-              className="rounded-md border border-[var(--border-subtle)] bg-white px-3 py-2 text-sm text-[var(--text-primary)] whitespace-pre-wrap"
+              className="rounded-md border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-2 text-sm text-[var(--text-primary)] whitespace-pre-wrap"
               data-testid="chat-bot-test-response"
             >
               {testResult.response ?? (

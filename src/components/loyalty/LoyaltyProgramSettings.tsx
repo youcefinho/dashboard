@@ -501,7 +501,7 @@ export function LoyaltyProgramSettings({
       {/* Section : is_active toggle (edit mode only — create = always active) */}
       {mode === 'edit' ? (
         <section
-          className="flex items-center justify-between gap-4 p-4 rounded-xl border border-[var(--border-subtle)] bg-white"
+          className="flex items-center justify-between gap-4 p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)]"
           data-testid="loyalty-active-section"
         >
           <div className="min-w-0">

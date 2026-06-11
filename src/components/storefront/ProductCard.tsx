@@ -24,14 +24,14 @@ export function ProductCard({
   const cur = product.currency || currency;
   return (
     <div
-      className="flex flex-col rounded-xl border border-[var(--border)] bg-white overflow-hidden transition-shadow hover:shadow-md"
+      className="flex flex-col rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] overflow-hidden transition-shadow hover:shadow-md"
       data-product-id={product.id}
     >
       <button
         type="button"
         onClick={onView}
         className="block w-full text-left"
-        style={{ aspectRatio: '4 / 3', background: '#f6f8fa' }}
+        style={{ aspectRatio: '4 / 3', background: 'var(--bg-subtle, #f6f8fa)' }}
         aria-label={t('store.view_product')}
       >
         {product.image ? (
@@ -48,7 +48,7 @@ export function ProductCard({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#9ca3af',
+              color: 'var(--text-muted, #9ca3af)',
               fontSize: 12,
             }}
           >
@@ -65,7 +65,7 @@ export function ProductCard({
         >
           {product.name}
         </button>
-        <p className="mt-1 text-sm" style={{ color: '#6b7280' }}>
+        <p className="mt-1 text-sm" style={{ color: 'var(--text-muted, #6b7280)' }}>
           {fmtMoney(product.price_cents, cur)}
         </p>
 
@@ -81,7 +81,7 @@ export function ProductCard({
           ) : (
             <span
               className="block w-full rounded-lg border border-[var(--border)] px-3 py-2 text-center text-sm"
-              style={{ color: '#9ca3af' }}
+              style={{ color: 'var(--text-muted, #9ca3af)' }}
             >
               {t('store.out_of_stock')}
             </span>

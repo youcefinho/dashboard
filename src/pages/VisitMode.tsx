@@ -174,7 +174,7 @@ export function VisitModePage() {
   if (isLoading) {
     return (
       <div
-        className="min-h-screen bg-gray-950 flex items-center justify-center"
+        className="min-h-screen bg-[var(--gray-900)] flex items-center justify-center"
         role="status"
         aria-busy="true"
         aria-live="polite"
@@ -188,7 +188,7 @@ export function VisitModePage() {
 
   if (loadError) {
     return (
-      <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center gap-4 p-6" role="alert">
+      <div className="min-h-screen bg-[var(--gray-900)] flex flex-col items-center justify-center gap-4 p-6" role="alert">
         <p className="text-white text-lg">{loadError}</p>
         <div className="flex gap-3">
           <button
@@ -207,7 +207,7 @@ export function VisitModePage() {
 
   if (!lead) {
     return (
-      <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center gap-4 p-6">
+      <div className="min-h-screen bg-[var(--gray-900)] flex flex-col items-center justify-center gap-4 p-6">
         <p className="text-white text-lg">{t('visit.not_found')}</p>
         <button onClick={() => void navigate({ to: '/leads' })} className="text-indigo-400 underline">
           {t('visit.back_to_leads')}
@@ -217,20 +217,20 @@ export function VisitModePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white flex flex-col max-w-md mx-auto">
+    <div className="min-h-screen bg-[var(--gray-900)] text-white flex flex-col max-w-md mx-auto">
       {/* Header */}
-      <div className="sticky top-0 z-20 bg-gray-900/95 backdrop-blur border-b border-gray-800 px-4 py-3">
+      <div className="sticky top-0 z-20 bg-[var(--gray-900)]/95 backdrop-blur border-b border-[var(--border-strong)] px-4 py-3">
         <div className="flex items-center gap-3">
           <button
             onClick={() => void navigate({ to: '/leads' })}
-            className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 active:scale-95 transition-all"
+            className="p-2 rounded-lg text-[var(--text-muted)] hover:text-white hover:bg-[var(--gray-800)] active:scale-95 transition-all"
             aria-label={t('visit.back_to_leads')}
           >
             <Icon as={ChevronLeft} size={22} />
           </button>
           <div className="flex-1 min-w-0">
             <h1 className="font-bold text-lg truncate">{lead.name}</h1>
-            <p className="text-xs text-gray-400 truncate">{lead.client_name || t('visit.page.title')}</p>
+            <p className="text-xs text-[var(--text-muted)] truncate">{lead.client_name || t('visit.page.title')}</p>
           </div>
           <div
             className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold"
@@ -255,16 +255,16 @@ export function VisitModePage() {
           />
         </div>
         {/* Infos contact */}
-        <div className="px-4 py-4 border-b border-gray-800">
+        <div className="px-4 py-4 border-b border-[var(--border-strong)]">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-14 h-14 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-xl font-bold shrink-0">
               {lead.name[0]?.toUpperCase()}
             </div>
             <div className="min-w-0">
               <p className="font-semibold text-base">{lead.name}</p>
-              {lead.email && <p className="text-sm text-gray-400 truncate">{lead.email}</p>}
+              {lead.email && <p className="text-sm text-[var(--text-muted)] truncate">{lead.email}</p>}
               {lead.address && (
-                <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                <p className="text-xs text-[var(--text-muted)] flex items-center gap-1 mt-0.5">
                   <Icon as={MapPin} size={10} /> {lead.address}
                 </p>
               )}
@@ -282,15 +282,15 @@ export function VisitModePage() {
           )}
 
           {/* Timestamp */}
-          <p className="text-xs text-gray-500 flex items-center gap-1">
+          <p className="text-xs text-[var(--text-muted)] flex items-center gap-1">
             <Icon as={Clock} size={10} />
             {t('visit.created_on', { date: formatDate(lead.created_at, getLocale(), { day: 'numeric', month: 'short', year: 'numeric' }) })}
           </p>
         </div>
 
         {/* Quick Actions */}
-        <div className="px-4 py-4 border-b border-gray-800">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">{t('visit.actions.section')}</p>
+        <div className="px-4 py-4 border-b border-[var(--border-strong)]">
+          <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">{t('visit.actions.section')}</p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3" role="group" aria-label={t('visit.actions.section')}>
             {lead.phone && (
               <a href={`tel:${lead.phone}`}
@@ -330,7 +330,7 @@ export function VisitModePage() {
 
         {/* Note rapide */}
         {showNoteInput && (
-          <div className="px-4 py-4 border-b border-gray-800 bg-gray-900/50">
+          <div className="px-4 py-4 border-b border-[var(--border-strong)] bg-[var(--gray-900)]/50">
             <Textarea
               value={note}
               onChange={e => setNote(e.target.value)}
@@ -341,7 +341,7 @@ export function VisitModePage() {
               showCounter
               resize="none"
               aria-label={t('visit.note.placeholder')}
-              className="!bg-gray-800 !border-gray-700 !text-white placeholder:!text-gray-500"
+              className="!bg-[var(--gray-800)] !border-[var(--border-strong)] !text-white placeholder:!text-[var(--text-muted)]"
             />
             {noteError && (
               <p role="alert" aria-live="assertive" className="mt-2 text-xs text-red-400">
@@ -350,7 +350,7 @@ export function VisitModePage() {
             )}
             <div className="flex gap-2 mt-2">
               <button onClick={() => { setShowNoteInput(false); setNote(''); setNoteError(null); }}
-                className="flex-1 py-2 rounded-lg text-sm text-gray-400 bg-gray-800 active:scale-95">
+                className="flex-1 py-2 rounded-lg text-sm text-[var(--text-muted)] bg-[var(--gray-800)] active:scale-95">
                 {t('visit.note.cancel')}
               </button>
               <button onClick={() => void saveNote()} disabled={!note.trim() || isSavingNote}
@@ -364,9 +364,9 @@ export function VisitModePage() {
         )}
 
         {/* Checklist visite */}
-        <div className="px-4 py-4 border-b border-gray-800">
+        <div className="px-4 py-4 border-b border-[var(--border-strong)]">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+            <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">
               {t('visit.checklist.title')}
             </p>
             <span className="text-xs text-indigo-400 font-semibold" aria-label={t('visit.checklist.progress_aria', { done: completedCount, total: checklist.length })}>
@@ -374,7 +374,7 @@ export function VisitModePage() {
             </span>
           </div>
           {/* Barre de progression */}
-          <div className="h-1.5 rounded-full bg-gray-800 overflow-hidden mb-4">
+          <div className="h-1.5 rounded-full bg-[var(--gray-800)] overflow-hidden mb-4">
             <div className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-500"
               style={{ width: `${progress}%` }} />
           </div>
@@ -391,7 +391,7 @@ export function VisitModePage() {
                 className={`list-item-enter w-full flex items-center gap-3 p-3 rounded-xl border transition-all active:scale-[0.98] text-left min-h-[52px] ${
                   item.done
                     ? 'border-[rgba(0,157,219,0.40)] bg-[rgba(0,157,219,0.10)]'
-                    : 'border-gray-700 bg-gray-800/50 hover:border-gray-600'
+                    : 'border-[var(--border-strong)] bg-[var(--gray-800)]/50 hover:border-gray-600'
                 }`}
                 style={{ animationDelay: `${Math.min(idx, 20) * 30}ms` }}
               >
@@ -424,9 +424,9 @@ export function VisitModePage() {
         </div>
 
         {/* Photos */}
-        <div className="px-4 py-4 border-b border-gray-800">
+        <div className="px-4 py-4 border-b border-[var(--border-strong)]">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('visit.photos.title')}</p>
+            <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t('visit.photos.title')}</p>
             <button onClick={() => void handlePhotoCapture()}
               aria-label={t('visit.photos.add_aria')}
               className="flex items-center gap-1.5 text-xs text-indigo-400 font-medium active:scale-95">
@@ -446,7 +446,7 @@ export function VisitModePage() {
           {photos.length === 0 ? (
             <button onClick={() => void handlePhotoCapture()}
               aria-label={t('visit.photos.empty')}
-              className="w-full border-2 border-dashed border-gray-700 rounded-xl py-8 flex flex-col items-center gap-2 text-gray-500 active:scale-98">
+              className="w-full border-2 border-dashed border-[var(--border-strong)] rounded-xl py-8 flex flex-col items-center gap-2 text-[var(--text-muted)] active:scale-98">
               <Camera size={28} />
               <span className="text-sm">{t('visit.photos.empty')}</span>
             </button>
@@ -463,7 +463,7 @@ export function VisitModePage() {
               ))}
               <button onClick={() => fileInputRef.current?.click()}
                 aria-label={t('visit.photos.add_aria')}
-                className="aspect-square border-2 border-dashed border-gray-700 rounded-lg flex items-center justify-center text-gray-500 active:scale-95 hover:border-cyan-400 transition-colors">
+                className="aspect-square border-2 border-dashed border-[var(--border-strong)] rounded-lg flex items-center justify-center text-[var(--text-muted)] active:scale-95 hover:border-cyan-400 transition-colors">
                 <Camera size={20} />
               </button>
             </div>
@@ -472,7 +472,7 @@ export function VisitModePage() {
       </div>
 
       {/* Sticky Bottom Bar — segmented-control mobile XL touch */}
-      <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-gray-900/95 backdrop-blur border-t border-gray-800 px-3 py-3 z-20">
+      <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-[var(--gray-900)]/95 backdrop-blur border-t border-[var(--border-strong)] px-3 py-3 z-20">
         {/* Status segmented-control horizontal scroll (touch XL ≥44px) */}
         <div className="flex gap-1.5 overflow-x-auto -mx-1 px-1 pb-2 mb-2 no-scrollbar" role="group" aria-label={t('visit.status.section_aria')}>
           {Object.entries(STATUS_KEYS).map(([k, labelKey]) => {
@@ -483,7 +483,7 @@ export function VisitModePage() {
                 key={k}
                 onClick={() => void updateStatus(k)}
                 className={`shrink-0 min-h-[44px] px-4 rounded-xl text-sm font-semibold transition-all whitespace-nowrap active:scale-[0.96] ${
-                  isActive ? 'text-white' : 'text-gray-300 bg-gray-800 border border-gray-700 hover:border-gray-600'
+                  isActive ? 'text-white' : 'text-[var(--text-muted)] bg-[var(--gray-800)] border border-[var(--border-strong)] hover:border-gray-600'
                 }`}
                 style={
                   isActive
@@ -505,7 +505,7 @@ export function VisitModePage() {
           {/* Progress mini */}
           <div className="flex-1 flex items-center gap-2">
             <div
-              className="flex-1 h-1.5 rounded-full bg-gray-800 overflow-hidden"
+              className="flex-1 h-1.5 rounded-full bg-[var(--gray-800)] overflow-hidden"
               role="progressbar"
               aria-valuenow={progress}
               aria-valuemin={0}
@@ -515,7 +515,7 @@ export function VisitModePage() {
               <div className="h-full rounded-full transition-all"
                 style={{ width: `${progress}%`, background: 'linear-gradient(90deg, #009DDB, #D96E27)' }} />
             </div>
-            <span className="text-[10px] text-gray-500 tabular-nums w-9 text-right">{progress}%</span>
+            <span className="text-[10px] text-[var(--text-muted)] tabular-nums w-9 text-right">{progress}%</span>
           </div>
           <button
             onClick={() => void handleFinish()}

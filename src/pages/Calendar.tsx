@@ -16,7 +16,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Tag, Skeleton, useToast, SlidePanel, Switch, Icon, EmptyStateIllustration, EmptyState, PageHero } from '@/components/ui';
+import { Card, Button, Tag, Skeleton, useToast, SlidePanel, Switch, Icon, EmptyStateIllustration, EmptyState, PageHero, Select } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { getAppointments, createAppointment, updateAppointment, rescheduleAppointment, getCalendars, getClients, sendAppointmentReminderNow, type Calendar as CalType } from '@/lib/api';
@@ -1065,16 +1065,16 @@ export function CalendarPage() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-medium mb-1 block">{t('calendar.field.client')} <span className="text-[var(--danger)]">*</span></label>
-              <select className="w-full px-3 py-2 rounded-lg border text-sm" value={formClientId} onChange={e => setFormClientId(e.target.value)}>
+              <Select value={formClientId} onChange={e => setFormClientId(e.target.value)} size="md">
                 <option value="">{t('calendar.field.client_ph')}</option>
                 {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
+              </Select>
             </div>
             <div>
               <label className="text-xs font-medium mb-1 block">{t('calendar.field.calendar')}</label>
-              <select className="w-full px-3 py-2 rounded-lg border text-sm" value={formCalendarId} onChange={e => setFormCalendarId(e.target.value)}>
+              <Select value={formCalendarId} onChange={e => setFormCalendarId(e.target.value)} size="md">
                 {calendars.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
+              </Select>
             </div>
           </div>
 
@@ -1092,9 +1092,9 @@ export function CalendarPage() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-medium mb-1 block">{t('calendar.field.type')}</label>
-              <select className="w-full px-3 py-2 rounded-lg border text-sm" value={formType} onChange={e => setFormType(e.target.value as AppointmentType)}>
+              <Select value={formType} onChange={e => setFormType(e.target.value as AppointmentType)} size="md">
                 {APPOINTMENT_TYPES.map(at => <option key={at} value={at}>{APPOINTMENT_TYPE_LABELS[at]}</option>)}
-              </select>
+              </Select>
             </div>
             <div><label className="text-xs font-medium mb-1 block">{t('calendar.field.location')}</label><Input value={formLocation} onChange={e => setFormLocation(e.target.value)} /></div>
           </div>
@@ -1102,12 +1102,12 @@ export function CalendarPage() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-medium mb-1 block">{t('calendar.field.recurrence')}</label>
-              <select className="w-full px-3 py-2 rounded-lg border text-sm" value={formRecurring} onChange={e => setFormRecurring(e.target.value)}>
+              <Select value={formRecurring} onChange={e => setFormRecurring(e.target.value)} size="md">
                 <option value="none">{t('calendar.recurrence.none')}</option>
                 <option value="daily">{t('calendar.recurrence.daily')}</option>
                 <option value="weekly">{t('calendar.recurrence.weekly')}</option>
                 <option value="monthly">{t('calendar.recurrence.monthly')}</option>
-              </select>
+              </Select>
             </div>
             <div>
               <label className="text-xs font-medium mb-1 block">{t('calendar.field.reminder')}</label>

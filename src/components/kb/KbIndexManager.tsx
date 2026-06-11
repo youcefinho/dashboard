@@ -121,7 +121,7 @@ export function KbIndexManager() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <div>
           <h2 className="t-h2" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Database size={20} className="text-[var(--brand-primary)]" />
+            <Database size={20} className="text-[var(--primary)]" />
             Base Vectorielle RAG
           </h2>
           <p className="t-caption">

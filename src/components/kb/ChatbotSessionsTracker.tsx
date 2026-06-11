@@ -90,7 +90,7 @@ export function ChatbotSessionsTracker() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <div>
           <h2 className="t-h2" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Bot size={20} className="text-[var(--brand-primary)]" />
+            <Bot size={20} className="text-[var(--primary)]" />
             Supervision du Chatbot
           </h2>
           <p className="t-caption">

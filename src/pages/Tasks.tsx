@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { t } from '@/lib/i18n';
-import { Card, Button, Badge, EmptyState, Skeleton, PageHero, useConfirm } from '@/components/ui';
+import { Card, Button, Badge, EmptyState, Skeleton, PageHero, useConfirm, Select } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { 
@@ -182,27 +182,20 @@ export function TasksPage() {
         actions={<Button variant="premium" leftIcon={<Plus size={14} />} onClick={() => setShowAddModal(true)}>{t('tasks.action.new')}</Button>}
       />
 
-      {/* KPIs Sprint 23 — mini hero cards */}
-      <div className="flex flex-wrap items-stretch gap-2 mb-5">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
         {[
-          { icon: ListTodo, v: tasks.length, l: t('tasks.kpi.total'), c: '#009DDB', from: '#FFFFFF', to: '#F0FAFE', accent: '#009DDB', dark: '#0086C0' },
-          { icon: AlertTriangle, v: overdueTasks.length, l: t('tasks.kpi.overdue'), c: '#E93D3D', from: '#FFFFFF', to: '#FEF7F7', accent: '#E93D3D', dark: '#c92424' },
-          { icon: CalendarDays, v: todayTasks.length, l: t('tasks.kpi.today'), c: '#FF9A00', from: '#FFFFFF', to: '#FFFBF5', accent: '#FF9A00', dark: '#D96E27' },
-          { icon: CheckCircle2, v: doneTasks.length, l: t('tasks.kpi.done'), c: '#37CA37', from: '#FFFFFF', to: '#F5FBF5', accent: '#37CA37', dark: '#2ba62b' },
-        ].map(s => (
-          <div key={s.l} className="relative overflow-hidden flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl transition-all hover:scale-[1.02] cursor-default"
-            style={{
-              background: `linear-gradient(135deg, ${s.from} 0%, ${s.to} 100%)`,
-              border: `1px solid ${s.accent}40`,
-              boxShadow: `0 1px 2px ${s.accent}10, 0 6px 16px -8px ${s.accent}40`,
-            }}>
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-              style={{ background: `linear-gradient(135deg, ${s.accent} 0%, ${s.dark} 100%)`, boxShadow: `0 2px 8px ${s.accent}60` }}>
-              <s.icon size={16} className="text-white" />
+          { icon: ListTodo, v: tasks.length, l: t('tasks.kpi.total'), bg: 'var(--primary-soft)', color: 'var(--primary)' },
+          { icon: AlertTriangle, v: overdueTasks.length, l: t('tasks.kpi.overdue'), bg: 'var(--danger-soft)', color: 'var(--danger)' },
+          { icon: CalendarDays, v: todayTasks.length, l: t('tasks.kpi.today'), bg: 'var(--warning-soft)', color: 'var(--warning)' },
+          { icon: CheckCircle2, v: doneTasks.length, l: t('tasks.kpi.done'), bg: 'var(--success-soft)', color: 'var(--success)' },
+        ].map((s, i) => (
+          <div key={s.l} className={`stat-card animate-fade-in-up stagger-${i + 1} flex items-center gap-3`}>
+            <div className="stat-icon-chip" style={{ background: s.bg }}>
+              <s.icon size={18} style={{ color: s.color }} />
             </div>
             <div>
-              <p className="text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">{s.l}</p>
-              <p className="text-lg font-bold tabular-nums leading-tight" style={{ color: s.c }}>{s.v}</p>
+              <p className="stat-label">{s.l}</p>
+              <p className="stat-value text-xl" style={{ color: s.color }}>{s.v}</p>
             </div>
           </div>
         ))}
@@ -211,23 +204,25 @@ export function TasksPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          {(['all', 'todo', 'in_progress', 'done'] as const).map(f => (
-            <button key={f} onClick={() => setFilter(f)} className={`px-3 py-1.5 text-[11px] rounded-lg font-medium transition-all ${filter === f ? 'bg-[var(--brand-primary)] text-white shadow-sm' : 'bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-[var(--text-muted)] hover:border-[var(--brand-primary)]'}`}>
-              {f === 'all' ? t('tasks.filter.all') : TASK_STATUS_LABELS[f]}
-            </button>
-          ))}
+          <div className="segmented-premium">
+            {(['all', 'todo', 'in_progress', 'done'] as const).map(f => (
+              <button key={f} onClick={() => setFilter(f)} className={`segmented-premium-item ${filter === f ? 'active' : ''}`} aria-selected={filter === f}>
+                {f === 'all' ? t('tasks.filter.all') : TASK_STATUS_LABELS[f]}
+              </button>
+            ))}
+          </div>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-lg p-0.5">
+          <div className="segmented-premium">
             {(['due_date', 'priority', 'status'] as const).map(s => (
-              <button key={s} onClick={() => setSortBy(s)} className={`px-2 py-1 text-[10px] rounded-md font-medium transition-all ${sortBy === s ? 'bg-[var(--brand-tint)] text-[var(--brand-primary)]' : 'text-[var(--text-muted)]'}`}>
+              <button key={s} onClick={() => setSortBy(s)} className={`segmented-premium-item ${sortBy === s ? 'active' : ''}`} aria-selected={sortBy === s}>
                 {s === 'due_date' ? t('tasks.sort.date') : s === 'priority' ? t('tasks.sort.priority') : t('tasks.sort.status')}
               </button>
             ))}
           </div>
           <div className="flex items-center bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-lg p-0.5">
-            <button onClick={() => setViewMode('list')} aria-label={t('tasks.view.list')} aria-pressed={viewMode === 'list'} className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-[var(--brand-primary)] text-white' : 'text-[var(--text-muted)]'}`}><LayoutList size={14} aria-hidden /></button>
-            <button onClick={() => setViewMode('kanban')} aria-label={t('tasks.view.kanban')} aria-pressed={viewMode === 'kanban'} className={`p-1.5 rounded-md transition-all ${viewMode === 'kanban' ? 'bg-[var(--brand-primary)] text-white' : 'text-[var(--text-muted)]'}`}><Kanban size={14} aria-hidden /></button>
+            <button onClick={() => setViewMode('list')} aria-label={t('tasks.view.list')} aria-pressed={viewMode === 'list'} className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-[var(--primary)] text-white' : 'text-[var(--text-muted)]'}`}><LayoutList size={14} aria-hidden /></button>
+            <button onClick={() => setViewMode('kanban')} aria-label={t('tasks.view.kanban')} aria-pressed={viewMode === 'kanban'} className={`p-1.5 rounded-md transition-all ${viewMode === 'kanban' ? 'bg-[var(--primary)] text-white' : 'text-[var(--text-muted)]'}`}><Kanban size={14} aria-hidden /></button>
           </div>
           <Button size="sm" leftIcon={<Plus size={14} />} onClick={() => setShowAddModal(true)}>{t('tasks.action.add_short')}</Button>
         </div>
@@ -255,10 +250,10 @@ export function TasksPage() {
         viewMode === 'kanban' ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4" aria-busy="true" aria-live="polite">
             {[0, 1, 2].map(i => (
-              <div key={i} className="bg-[var(--bg-surface)] rounded-[var(--radius-lg)] p-3 space-y-2">
-                <Skeleton className="h-4 w-24 mb-2" />
-                <Skeleton className="h-16 w-full" />
-                <Skeleton className="h-16 w-full" />
+              <div key={i} className="surface-card p-3 space-y-2">
+                <div className="skeleton-shimmer h-4 w-24 mb-2" />
+                <div className="skeleton-shimmer h-16 w-full" />
+                <div className="skeleton-shimmer h-16 w-full" />
               </div>
             ))}
           </div>
@@ -270,7 +265,7 @@ export function TasksPage() {
       ) : viewMode === 'kanban' ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {(['todo', 'in_progress', 'done'] as const).map(status => (
-            <div key={status} className="bg-[var(--bg-surface)] rounded-[var(--radius-lg)] p-3">
+            <div key={status} className="surface-card p-3 animate-fade-in-up">
               <div className="flex items-center gap-2 mb-3 px-1">
                 <span className="text-sm">{TASK_STATUS_ICONS[status]}</span>
                 <h3 className="text-xs font-bold uppercase tracking-wider">{TASK_STATUS_LABELS[status]}</h3>
@@ -292,7 +287,7 @@ export function TasksPage() {
                     rightThreshold={60}
                   >
                     <div {...longPressProps}>
-                      <Card className={`p-3 cursor-pointer hover:border-[var(--brand-primary)] transition-colors ${task.status === 'done' ? 'opacity-50' : ''} relative z-10`} onClick={() => openDetail(task)}>
+                      <Card className={`p-3 cursor-pointer hover:border-[var(--primary)] transition-colors ${task.status === 'done' ? 'opacity-50' : ''} relative z-10`} onClick={() => openDetail(task)}>
                         <div className="flex items-start gap-2 mb-1">
                           <button onClick={(e) => { e.stopPropagation(); toggleStatus(task); }} className="mt-0.5 text-sm shrink-0">{TASK_STATUS_ICONS[task.status]}</button>
                           <p className={`text-xs font-medium ${task.status === 'done' ? 'line-through text-[var(--text-muted)]' : ''}`}>{task.title}</p>
@@ -336,7 +331,7 @@ export function TasksPage() {
                 rightThreshold={110}
               >
                 <div {...longPressProps}>
-                  <Card className={`p-4 flex items-start gap-3 cursor-pointer hover:border-[var(--brand-primary)] transition-all ${task.status === 'done' ? 'opacity-50' : ''} relative z-10`} onClick={() => openDetail(task)}>
+                  <Card className={`p-4 flex items-start gap-3 cursor-pointer hover:border-[var(--primary)] transition-all ${task.status === 'done' ? 'opacity-50' : ''} relative z-10`} onClick={() => openDetail(task)}>
                     <button onClick={(e) => { e.stopPropagation(); toggleStatus(task); }} className="mt-0.5 text-lg shrink-0" title={TASK_STATUS_LABELS[task.status]}>{TASK_STATUS_ICONS[task.status]}</button>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-0.5">
@@ -366,10 +361,10 @@ export function TasksPage() {
           {templates.length > 0 && (
             <div className="bg-[var(--bg-subtle)] p-3 rounded-lg flex items-center justify-between">
               <div className="text-xs font-medium text-[var(--text-secondary)]"><Copy size={14} className="inline mr-1" /> {t('tasks.modal.templates')}</div>
-              <select className="px-2 py-1 text-xs border rounded bg-white" onChange={e => { if(e.target.value) handleApplyTemplate(e.target.value); }}>
+              <Select size="sm" onChange={e => { if(e.target.value) handleApplyTemplate(e.target.value); }}>
                 <option value="">{t('tasks.modal.apply_template')}</option>
                 {templates.map(tpl => <option key={tpl.id} value={tpl.id}>{tpl.name}</option>)}
-              </select>
+              </Select>
             </div>
           )}
           
@@ -384,9 +379,9 @@ export function TasksPage() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-medium mb-1 block">{t('tasks.modal.priority_label')}</label>
-              <select value={newPriority} onChange={e => setNewPriority(e.target.value as TaskPriority)} className="w-full px-3 py-2 rounded-lg border text-sm">
+              <Select value={newPriority} onChange={e => setNewPriority(e.target.value as TaskPriority)}>
                 <option value="high">{t('tasks.modal.priority_high')}</option><option value="medium">{t('tasks.modal.priority_medium')}</option><option value="low">{t('tasks.modal.priority_low')}</option>
-              </select>
+              </Select>
             </div>
             <div>
               <label className="text-xs font-medium mb-1 block">{t('tasks.modal.due_label')}</label>
@@ -396,9 +391,9 @@ export function TasksPage() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-medium mb-1 block">{t('tasks.modal.recurrence_label')}</label>
-              <select value={newRecurring} onChange={e => setNewRecurring(e.target.value)} className="w-full px-3 py-2 rounded-lg border text-sm">
+              <Select value={newRecurring} onChange={e => setNewRecurring(e.target.value)}>
                 <option value="none">{t('tasks.modal.recurrence_none')}</option><option value="daily">{t('tasks.modal.recurrence_daily')}</option><option value="weekly">{t('tasks.modal.recurrence_weekly')}</option><option value="monthly">{t('tasks.modal.recurrence_monthly')}</option>
-              </select>
+              </Select>
             </div>
             <div>
               <label className="text-xs font-medium mb-1 block">{t('tasks.modal.reminder_label')}</label>
@@ -432,7 +427,7 @@ export function TasksPage() {
               <div className="space-y-1 mb-2">
                 {subtasks.map(st => (
                   <div key={st.id} className="flex items-center gap-2 group p-1 hover:bg-[var(--bg-subtle)] rounded">
-                    <button onClick={() => handleToggleSubtask(st)} className="text-[var(--text-secondary)] hover:text-[var(--brand-primary)]">
+                    <button onClick={() => handleToggleSubtask(st)} className="text-[var(--text-secondary)] hover:text-[var(--primary)]">
                       {st.is_done ? <CheckCircle2 size={16} className="text-[var(--success)]" /> : <div className="w-4 h-4 rounded-full border-2 border-[var(--text-muted)]"></div>}
                     </button>
                     <span className={`text-sm flex-1 ${st.is_done ? 'line-through text-[var(--text-muted)]' : ''}`}>{st.title}</span>

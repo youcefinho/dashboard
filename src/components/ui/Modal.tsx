@@ -62,7 +62,7 @@ export function Modal({
   const suppressOutside = modal || !closeOnOverlay;
 
   const contentStyle: CSSProperties = {
-    background: '#FFFFFF',
+    background: 'var(--bg-surface)',
     borderRadius: isBottom
       ? 'var(--radius-xl) var(--radius-xl) 0 0'
       : 'var(--radius-xl)',

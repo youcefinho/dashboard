@@ -193,7 +193,7 @@ export function DropshipPartnersTab() {
       </div>
 
       {partners.length === 0 ? (
-        <div className="flex flex-col items-center justify-center p-12 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-center">
+        <div className="flex flex-col items-center justify-center p-12 bg-[var(--bg-surface)] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-center">
           <Building2 size={48} className="text-slate-400 mb-4 animate-pulse" />
           <p className="text-slate-500 dark:text-slate-400 font-medium">
             {t('warehouse.partners.empty')}
@@ -208,7 +208,7 @@ export function DropshipPartnersTab() {
             return (
               <div
                 key={partner.id}
-                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+                className="bg-[var(--bg-surface)] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
               >
                 <div className="space-y-4">
                   <div className="flex justify-between items-start">
@@ -271,7 +271,7 @@ export function DropshipPartnersTab() {
                         <select
                           value={selectedSupplierId}
                           onChange={(e) => setSelectedSupplierId(e.target.value)}
-                          className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-2.5 py-1 text-xs dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          className="flex-1 bg-[var(--bg-surface)] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-2.5 py-1 text-xs dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                         >
                           {availableSuppliers.map(s => (
                             <option key={s.id} value={s.id}>{s.name}</option>
@@ -330,7 +330,7 @@ export function DropshipPartnersTab() {
       {/* MODALE DE CRÉATION / MODIFICATION */}
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-md overflow-hidden shadow-xl animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-[var(--bg-surface)] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-md overflow-hidden shadow-xl animate-in fade-in zoom-in-95 duration-150">
             <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-950/20">
               <h3 className="font-bold uppercase tracking-wider text-slate-800 dark:text-slate-100">
                 {editingPartner ? 'Modifier le partenaire' : 'Créer un partenaire'}

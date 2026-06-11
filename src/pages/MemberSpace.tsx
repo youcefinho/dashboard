@@ -418,7 +418,7 @@ export function MemberSpacePage() {
   // ── Écran auth (pas de token membre) ─────────────────────────────────────
   if (!memberToken) {
     return (
-      <div className="min-h-screen bg-white p-4 flex justify-center items-start">
+      <div className="min-h-screen bg-[var(--bg-surface)] p-4 flex justify-center items-start">
         <div className="w-full max-w-sm p-6" data-member-slug={slug}>
           <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>
             {t('member.title')}
@@ -525,7 +525,7 @@ export function MemberSpacePage() {
   // ── Vue leçon ouverte (texte ou vidéo gated) ─────────────────────────────
   if (lesson) {
     return (
-      <div className="min-h-screen bg-white p-4 flex justify-center items-start">
+      <div className="min-h-screen bg-[var(--bg-surface)] p-4 flex justify-center items-start">
         <div className="w-full max-w-2xl p-6">
           <button
             type="button"
@@ -610,7 +610,7 @@ export function MemberSpacePage() {
 
   // ── Liste des cours (token membre valide) ────────────────────────────────
   return (
-    <div className="min-h-screen bg-white p-4 flex justify-center items-start">
+    <div className="min-h-screen bg-[var(--bg-surface)] p-4 flex justify-center items-start">
       <div className="w-full max-w-2xl p-6">
         <div className="flex items-center justify-between mb-6">
           <div>

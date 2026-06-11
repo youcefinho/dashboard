@@ -30,6 +30,7 @@ import {
   type PublicBookingMeta,
 } from '@/lib/api';
 import { t } from '@/lib/i18n';
+import { Select } from '@/components/ui';
 
 // Date du jour (local visiteur) au format YYYY-MM-DD pour l'input <input type="date">.
 function todayInput(): string {
@@ -253,7 +254,7 @@ export function PublicBookingPage() {
           : t('booking.public.confirmed');
     return (
       <div
-        className="min-h-screen flex items-center justify-center p-6 text-center bg-white"
+        className="min-h-screen flex items-center justify-center p-6 text-center bg-[var(--bg-surface)]"
         role="status"
         aria-live="polite"
         data-testid="bk-done"
@@ -295,7 +296,7 @@ export function PublicBookingPage() {
 
   return (
     <div
-      className="min-h-screen bg-white p-4 flex justify-center items-start"
+      className="min-h-screen bg-[var(--bg-surface)] p-4 flex justify-center items-start"
       data-testid="bk-page"
     >
       <div className="w-full max-w-lg p-6">
@@ -365,9 +366,8 @@ export function PublicBookingPage() {
                 <label className={labelClasses} htmlFor="bk-event-type">
                   {t('booking.public.pick_type')}
                 </label>
-                <select
+                <Select
                   id="bk-event-type"
-                  className={inputClasses}
                   value={selectedEventType}
                   onChange={(e) => setSelectedEventType(e.target.value)}
                 >
@@ -379,7 +379,7 @@ export function PublicBookingPage() {
                         : ''}
                     </option>
                   ))}
-                </select>
+                </Select>
                 {(() => {
                   const sel = eventTypes.find(
                     (et) => et.id === selectedEventType,

@@ -354,7 +354,7 @@ export function AffiliatesManager() {
           {Array.from({ length: 3 }).map((_, i) => (
             <div
               key={i}
-              className="p-4 rounded-xl border border-[var(--border-subtle)] bg-white"
+              className="p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)]"
               style={{ animationDelay: `${i * 40}ms` }}
             >
               <div className="flex items-start justify-between gap-4">
@@ -403,7 +403,7 @@ export function AffiliatesManager() {
               <li
                 key={aff.id}
                 data-testid={`affiliate-row-${aff.id}`}
-                className="p-4 rounded-xl border border-[var(--border-subtle)] bg-white flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
+                className="p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
               >
                 <div className="flex-1 min-w-0 space-y-1.5">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -648,7 +648,7 @@ export function AffiliatesManager() {
             {Array.from({ length: 4 }).map((_, i) => (
               <div
                 key={i}
-                className="p-4 rounded-xl border border-[var(--border-subtle)] bg-white"
+                className="p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)]"
               >
                 <Skeleton className="h-3 w-20 mb-2" />
                 <Skeleton className="h-6 w-24" />
@@ -697,7 +697,7 @@ export function AffiliatesManager() {
 
 function KpiCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="p-4 rounded-xl border border-[var(--border-subtle)] bg-white">
+    <div className="p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)]">
       <div className="text-xs uppercase tracking-wide text-[var(--text-muted)] mb-1">
         {label}
       </div>

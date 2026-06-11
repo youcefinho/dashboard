@@ -111,7 +111,7 @@ export function ChatWidgetPreview(props: ChatWidgetPreviewProps): JSX.Element {
 
       {src && widget && (
         <div
-          className="overflow-hidden rounded-2xl border border-[var(--border)] shadow-[var(--shadow-md,0_8px_24px_rgba(15,23,42,0.10))] bg-white"
+          className="overflow-hidden rounded-2xl border border-[var(--border)] shadow-[var(--shadow-md,0_8px_24px_rgba(15,23,42,0.10))] bg-[var(--bg-surface)]"
           style={{ width: IFRAME_WIDTH, height: IFRAME_HEIGHT }}
         >
           <iframe

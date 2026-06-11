@@ -294,3 +294,20 @@ export async function isLeadDnd(env: Env, leadId: string, channel: DndChannel): 
   }
 }
 
+// ── Sprint 92 — Chiffrement PII at rest ─────────────────────
+// Cache per-request de la CryptoKey importée (évite N imports par requête).
+let _cachedCryptoKey: CryptoKey | null = null;
+let _cachedCryptoKeyHex: string | null = null;
+
+export async function getCryptoKey(env: Env): Promise<CryptoKey | null> {
+  if (!env.ENCRYPTION_KEY) return null;
+  if (_cachedCryptoKey && _cachedCryptoKeyHex === env.ENCRYPTION_KEY) return _cachedCryptoKey;
+  const { importAesKeyHex } = await import('./lib/crypto-engine');
+  _cachedCryptoKey = await importAesKeyHex(env.ENCRYPTION_KEY);
+  _cachedCryptoKeyHex = env.ENCRYPTION_KEY;
+  return _cachedCryptoKey;
+}
+
+export function getEncryptionKeyHex(env: Env): string | null {
+  return env.ENCRYPTION_KEY || null;
+}

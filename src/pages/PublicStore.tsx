@@ -206,7 +206,7 @@ export function PublicStorePage() {
   // ── Boutique introuvable / indisponible (calque écran d'erreur public). ─────
   if (!loading && (loadError || !store)) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6 text-center bg-white">
+      <div className="min-h-screen flex items-center justify-center p-6 text-center bg-[var(--bg-surface)]">
         <div style={{ maxWidth: 420 }}>
           <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>
             {t('store.not_found')}
@@ -218,9 +218,9 @@ export function PublicStorePage() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-[var(--bg-surface)]">
       {/* En-tête sobre + mini-panier */}
-      <header className="sticky top-0 z-10 border-b border-[var(--border)] bg-white">
+      <header className="sticky top-0 z-10 border-b border-[var(--border)] bg-[var(--bg-surface)]">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
           <button
             type="button"

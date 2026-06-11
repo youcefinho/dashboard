@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { Button } from '@/components/ui';
 import { Input } from '@/components/ui/Input';
+import { Icon } from '@/components/ui';
 import { forgotPassword } from '@/lib/api';
 import { t } from '@/lib/i18n';
+import { Mail, CheckCircle } from 'lucide-react';
 
 export function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -36,40 +38,27 @@ export function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-center items-center p-4 relative overflow-hidden"
-      style={{ background: 'linear-gradient(135deg, #FFFFFF 0%, #FAFBFC 35%, #F0FAFE 70%, #FFE9D6 100%)' }}>
-      {/* Orbs dramatiques (cohérence avec Login) */}
-      <div className="hero-stat-orb absolute w-[500px] h-[500px] rounded-full -top-48 -right-48 pointer-events-none"
-        style={{ background: 'radial-gradient(circle, rgba(0,157,219,0.28) 0%, transparent 70%)', filter: 'blur(60px)' }} />
-      <div className="hero-stat-orb absolute w-[400px] h-[400px] rounded-full -bottom-32 -left-32 pointer-events-none"
-        style={{ background: 'radial-gradient(circle, rgba(217,110,39,0.25) 0%, transparent 70%)', filter: 'blur(60px)', animationDelay: '3s' }} />
+    <div className="min-h-screen flex items-center justify-center p-4 bg-[var(--bg-canvas)]">
 
-      <div className="w-full max-w-md relative z-10">
+      <div className="w-full max-w-[380px] animate-fade-in">
+        {/* Logo — compact 40×40, gradient brand conservé (signature Intralys) */}
         <div className="text-center mb-8">
-          <div className="relative w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
-            style={{
-              background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
-              boxShadow: '0 8px 32px rgba(0,157,219,0.45)',
-              animation: 'hot-lead-pulse 3s ease-in-out infinite',
-            }}>
-            <span className="text-white font-bold text-2xl">I</span>
+          <div
+            className="w-10 h-10 rounded-[var(--radius-lg)] flex items-center justify-center mx-auto mb-4 text-white font-bold text-lg shadow-[var(--shadow-sm)]"
+            style={{ background: 'var(--brand-gradient)' }}
+          >
+            I
           </div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            <span className="text-gradient-brand">{t('auth.forgot.title')}</span>
+          <h1 className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">
+            {t('auth.forgot.title')}
           </h1>
-          <p className="text-sm text-[var(--text-secondary)] mt-2">
+          <p className="text-sm text-[var(--text-muted)] mt-1">
             {t('auth.forgot.desc')}
           </p>
         </div>
 
-        <div className="p-6 md:p-7 rounded-2xl"
-          style={{
-            background: 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.85) 100%)',
-            backdropFilter: 'blur(16px) saturate(160%)',
-            WebkitBackdropFilter: 'blur(16px) saturate(160%)',
-            border: '1px solid rgba(255,255,255,0.6)',
-            boxShadow: '0 1px 2px rgba(15,23,42,0.04), 0 24px 64px -12px rgba(0,157,219,0.18)',
-          }}>
+        {/* Card Stripe-clean : bg-surface + border + shadow-lg */}
+        <div className="p-6 rounded-[var(--radius-xl)] bg-[var(--bg-surface)] border border-[var(--border)] shadow-[var(--shadow-lg)]">
           {success ? (
             <div
               className="text-center py-4"
@@ -78,15 +67,15 @@ export function ForgotPasswordPage() {
               aria-atomic="true"
               aria-label={t('auth.forgot.aria.success')}
             >
-              <div className="w-12 h-12 rounded-full bg-[var(--success-subtle)] text-[var(--success)] flex items-center justify-center mx-auto mb-4" aria-hidden="true">
-                ✓
+              <div className="w-12 h-12 rounded-full bg-[var(--success-soft)] text-[var(--success)] flex items-center justify-center mx-auto mb-4" aria-hidden="true">
+                <Icon as={CheckCircle} size={24} />
               </div>
               <h3 className="text-lg font-medium text-[var(--text-primary)] mb-2">{t('auth.forgot.success_title')}</h3>
               <p className="text-sm text-[var(--text-secondary)] mb-6">
                 {t('auth.forgot.success_desc')}
               </p>
               <Link to="/login" className="block w-full">
-                <Button className="w-full">{t('auth.forgot.back')}</Button>
+                <Button variant="primary" className="w-full">{t('auth.forgot.back')}</Button>
               </Link>
             </div>
           ) : (
@@ -98,7 +87,7 @@ export function ForgotPasswordPage() {
             >
               {error && (
                 <div
-                  className="p-3 text-sm text-[var(--danger)] bg-[var(--danger-subtle)] border border-[var(--danger-border)] rounded-lg"
+                  className="p-3 rounded-[var(--radius-md)] bg-[var(--danger-soft)] border border-[color-mix(in_oklch,var(--danger)_30%,transparent)] text-sm text-[var(--danger-text)] animate-fade-in"
                   role="alert"
                   aria-live="assertive"
                   aria-atomic="true"
@@ -108,32 +97,34 @@ export function ForgotPasswordPage() {
                 </div>
               )}
               
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">
-                  {t('auth.forgot.email')}
-                </label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="jean@exemple.com"
-                  autoComplete="email"
-                  required
-                />
-              </div>
+              <Input
+                id="forgot-email"
+                type="email"
+                label={t('auth.forgot.email')}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="jean@exemple.com"
+                autoComplete="email"
+                required
+                leftSlot={<Icon as={Mail} size="sm" />}
+              />
 
-              <Button type="submit" variant="premium" className="w-full mt-2" disabled={loading}>
+              <Button type="submit" variant="primary" className="w-full" size="lg" isLoading={loading}>
                 {loading ? t('auth.forgot.submitting') : t('auth.forgot.submit')}
               </Button>
             </form>
           )}
         </div>
 
-        <p className="text-center text-sm text-[var(--text-muted)] mt-8">
-          <Link to="/login" className="text-[var(--primary)] hover:underline font-medium">
+        {/* Lien retour */}
+        <div className="mt-6 text-center text-sm">
+          <Link to="/login" className="font-medium text-[var(--text-muted)] hover:text-[var(--text-link)] hover:underline">
             {t('auth.forgot.back')}
           </Link>
+        </div>
+
+        <p className="text-center text-xs text-[var(--text-muted)] mt-3">
+          {t('login.copyright', { year: new Date().getFullYear() })}
         </p>
       </div>
     </div>

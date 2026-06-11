@@ -93,7 +93,7 @@ export function ReviewsList({ productId }: ReviewsListProps) {
 
   return (
     <section
-      className="rounded-xl border border-[var(--border)] bg-white p-4"
+      className="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-4"
       aria-label={t('products.reviews.title')}
       data-testid="reviews-list"
     >
@@ -102,7 +102,7 @@ export function ReviewsList({ productId }: ReviewsListProps) {
           {t('products.reviews.title')}
         </h2>
         <div className="flex flex-wrap items-center gap-2">
-          <label id={sortLabelId} className="text-xs" style={{ color: '#6b7280' }}>
+          <label id={sortLabelId} className="text-xs" style={{ color: 'var(--text-muted, #6b7280)' }}>
             {t('products.reviews.rating')}:
           </label>
           <select
@@ -112,7 +112,7 @@ export function ReviewsList({ productId }: ReviewsListProps) {
             onChange={(e) =>
               setRatingFilter(Number(e.target.value) as RatingFilter)
             }
-            className="rounded-md border border-[var(--border)] bg-white px-2 py-1 text-sm"
+            className="rounded-md border border-[var(--border)] bg-[var(--bg-surface)] px-2 py-1 text-sm"
           >
             <option value={0}>{t('products.reviews.title')}</option>
             <option value={5}>5★</option>
@@ -121,7 +121,7 @@ export function ReviewsList({ productId }: ReviewsListProps) {
             <option value={2}>2★</option>
             <option value={1}>1★</option>
           </select>
-          <label className="flex items-center gap-1 text-xs" style={{ color: '#6b7280' }}>
+          <label className="flex items-center gap-1 text-xs" style={{ color: 'var(--text-muted, #6b7280)' }}>
             <input
               type="checkbox"
               data-testid="reviews-filter-verified"
@@ -138,7 +138,7 @@ export function ReviewsList({ productId }: ReviewsListProps) {
             data-testid="reviews-sort"
             value={sort}
             onChange={(e) => setSort(e.target.value as SortKey)}
-            className="rounded-md border border-[var(--border)] bg-white px-2 py-1 text-sm"
+            className="rounded-md border border-[var(--border)] bg-[var(--bg-surface)] px-2 py-1 text-sm"
           >
             <option value="recent">recent</option>
             <option value="helpful">helpful</option>
@@ -148,15 +148,15 @@ export function ReviewsList({ productId }: ReviewsListProps) {
       </header>
 
       {loading ? (
-        <p className="text-sm" style={{ color: '#6b7280' }} data-testid="reviews-loading">
+        <p className="text-sm" style={{ color: 'var(--text-muted, #6b7280)' }} data-testid="reviews-loading">
           …
         </p>
       ) : error ? (
-        <p className="text-sm" style={{ color: '#b91c1c' }} data-testid="reviews-error">
+        <p className="text-sm" style={{ color: 'var(--danger, #b91c1c)' }} data-testid="reviews-error">
           {error}
         </p>
       ) : sorted.length === 0 ? (
-        <p className="text-sm" style={{ color: '#6b7280' }} data-testid="reviews-empty">
+        <p className="text-sm" style={{ color: 'var(--text-muted, #6b7280)' }} data-testid="reviews-empty">
           {t('products.reviews.empty')}
         </p>
       ) : (
@@ -164,7 +164,7 @@ export function ReviewsList({ productId }: ReviewsListProps) {
           {sorted.map((r) => (
             <li
               key={r.id}
-              className="rounded-lg border border-[var(--border)] bg-white p-3"
+              className="rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] p-3"
               data-testid="review-card"
               data-review-id={r.id}
             >
@@ -173,7 +173,7 @@ export function ReviewsList({ productId }: ReviewsListProps) {
                 {r.verified_buyer ? (
                   <span
                     className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
-                    style={{ background: '#ecfdf5', color: '#047857' }}
+                    style={{ background: 'var(--success-bg, #ecfdf5)', color: 'var(--success, #047857)' }}
                     data-testid="review-verified-badge"
                   >
                     {t('products.reviews.verified')}
@@ -182,7 +182,7 @@ export function ReviewsList({ productId }: ReviewsListProps) {
                 <time
                   dateTime={r.created_at}
                   className="ml-auto text-xs"
-                  style={{ color: '#9ca3af' }}
+                  style={{ color: 'var(--text-muted, #9ca3af)' }}
                 >
                   {new Date(r.created_at).toLocaleDateString('fr-CA')}
                 </time>
@@ -193,7 +193,7 @@ export function ReviewsList({ productId }: ReviewsListProps) {
                   {r.title}
                 </p>
               ) : null}
-              <p className="mt-1 whitespace-pre-line text-sm" style={{ color: '#374151' }}>
+              <p className="mt-1 whitespace-pre-line text-sm" style={{ color: 'var(--text-secondary, #374151)' }}>
                 {r.body}
               </p>
 
@@ -206,7 +206,7 @@ export function ReviewsList({ productId }: ReviewsListProps) {
                       onClick={() => setLightbox(url)}
                       className="overflow-hidden rounded-md border border-[var(--border)]"
                       aria-label={t('products.reviews.title')}
-                      style={{ width: 64, height: 64, padding: 0, background: '#f6f8fa' }}
+                      style={{ width: 64, height: 64, padding: 0, background: 'var(--bg-subtle, #f6f8fa)' }}
                     >
                       <img
                         src={url}
@@ -281,7 +281,7 @@ function Stars({ value }: { value: number }) {
       style={{ color: '#f59e0b', letterSpacing: 1 }}
     >
       {'★'.repeat(clamped)}
-      <span style={{ color: '#e5e7eb' }}>{'★'.repeat(5 - clamped)}</span>
+      <span style={{ color: 'var(--border, #e5e7eb)' }}>{'★'.repeat(5 - clamped)}</span>
     </span>
   );
 }

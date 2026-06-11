@@ -249,7 +249,7 @@ export function InventoryTransfersList() {
         />
       ) : (
         <div
-          className="overflow-x-auto rounded-xl border border-[var(--border-subtle)] bg-white"
+          className="overflow-x-auto rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)]"
           data-testid="transfers-table-wrap"
         >
           <table className="w-full text-sm" aria-label={t('transfers.title')}>

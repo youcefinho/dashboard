@@ -5,6 +5,87 @@ Toutes les évolutions notables d'Intralys CRM.
 Format basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 versionnage proche de [SemVer](https://semver.org/lang/fr/).
 
+## [Vague 10 COMPLETE] Sprints 91-100 — Robustesse, Compliance & Mobile Native
+
+> 10 sprints code-complete. **124 nouveaux tests** ajoutés (5497→5621). Build + tests OK.
+
+### Sprint 100 (seq195) — Audit de Sécurité Global & SOC2
+- Module `security-audit-engine.ts` : audit CSP (score + findings), audit dépendances (packages risqués), audit surface API (couverture auth + rate-limit).
+- Matrice SOC2 Type II (10 contrôles CC6/CC7/CC8/A1 documentés avec evidence code).
+- Score global pondéré (CSP 30% + deps 30% + API 40%) → note A-F.
+- Rapport de sécurité complet JSON structuré.
+- 16 tests unitaires.
+
+### Sprint 99 (seq194) — Tests de Régression Visuelle E2E
+- Module `visual-test-helpers.ts` : registre 8 routes (login, dashboard, leads, pipeline, tasks, calendar, inbox, settings).
+- 3 viewports standardisés (desktop 1280×720, tablet 768×1024, mobile 375×667).
+- Construction d'URLs de test, snapshot naming, masquage de contenu dynamique, seuils de tolérance.
+- 10 tests unitaires.
+
+### Sprint 98 (seq193) — Notifications Push Enrichies (Rich Push)
+- Module `push-notification-engine.ts` : payloads FCM v1 et APNS structurés.
+- 8 catégories de notifications avec actions rapides (Appeler, Répondre, Confirmer, etc.).
+- Validation tokens FCM/APNS, quiet hours overnight, badge count (cap 99).
+- 16 tests unitaires.
+
+### Sprint 97 (seq192) — Mode Hors-Ligne Mobile (SQLite Local)
+- Module `offline-sync-engine.ts` : manifeste de sync bidirectionnel (upload/download/conflits).
+- Détection de conflits (timestamps + content hash) et résolution (last_write_wins, local_priority, remote_priority).
+- Payload batch compact, validation de réponse de sync.
+- 15 tests unitaires.
+
+### Sprint 96 (seq191) — Versioning Strict d'API Publique
+- Module `api-versioning-engine.ts` : parsing path versionné (`/api/v1/`, `/api/v2/`).
+- Headers RFC 8594 (Deprecation, Sunset, X-API-Migration).
+- Transformation bidirectionnelle camelCase↔snake_case (13 champs mappés).
+- Registre de 4 breaking changes documentés.
+- 15 tests unitaires.
+
+### Sprint 95 (seq190) — Division de Code & Chunks Optimisés
+- Module `lazy-routes.ts` : factory `lazyPage()` (React.lazy + Suspense intégré).
+- Préchargement intentionnel `preloadPage()` avec cache anti-doublon.
+- Catalogue de 8 pages lazy (Settings, Reports, Warehouse, Calendar, Inbox, EmailBuilder, WorkflowBuilder, FormBuilder).
+- 8 tests unitaires.
+
+### Sprint 94 (seq189) — Cache Edge & Optimisation CDN
+- Module `edge-cache-engine.ts` : 6 profils de cache (public_form, widget, api, asset, site_page, storefront).
+- Clé canonique déterministe (params triés), headers Cache-Control + Vary + ETag.
+- ETag SHA-256 tronqué, détection staleness, purge ciblée par clientId × resourceType.
+- 15 tests unitaires.
+
+### Sprint 93 (seq188) — Purge RGPD & Loi 25 Automatisée
+- Module `privacy-purge-engine.ts` : validation de règles (inactive_days, action whitelist).
+- Identification des leads inactifs avec protection des statuts métier (won/customer/vip).
+- Anonymisation Loi 25 (`[SUPPRIMÉ]`) préservant l'intégrité statistique.
+- Rapport d'audit traçable (Art 23), limites de rétention par juridiction (QC/CA/EU).
+- 15 tests unitaires.
+
+### Sprint 92 (seq187) — Chiffrement des Données Personnelles
+- Module `field-encryption-engine.ts` : wrapper AES-GCM 256 haut-niveau.
+- Chiffrement/déchiffrement de champs PII individuels (email, phone, notes, message).
+- Migration progressive (préfixe `enc:` pour distinguer champs chiffrés/non-chiffrés).
+- Batch `encryptLeadPii`/`decryptLeadPii` + rotation de clés.
+- 14 tests unitaires.
+
+## [Sprint 91] Rate-Limiting Distribué — Cloudflare KV (seq186)
+
+### Ajouté
+- Module `src/worker/lib/rate-limit-kv.ts` : fixed-window counter via Cloudflare KV.
+  - 3 tiers : `public` (60 req/min/IP), `authenticated` (120 req/min/user), `api` (300 req/min/key).
+  - Idiome FAIL-OPEN garanti : KV absent ou en panne → requête toujours autorisée.
+  - Headers standard `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`, `Retry-After`.
+  - Réponse 429 JSON structurée (`error`, `code: RATE_LIMITED`, `retry_after_seconds`).
+- Middleware global dans `src/worker.ts` :
+  - Tier `public` (IP) appliqué AVANT le routage sur toutes les routes `/api/*`.
+  - Tier `authenticated` (userId) appliqué APRÈS `requireAuth` pour un quota nominal plus élevé.
+  - Exemptions : `OPTIONS` (CORS preflight), routes non-API (SPA assets).
+- 14 tests unitaires (`rate-limit-kv.test.ts`) : fail-open ×3, compteur, quota, headers, réponse 429, config tiers.
+
+### Notes techniques
+- Le rate-limiter D1 existant (`rate-limit.ts`) reste en place pour rétro-compatibilité des handlers spécifiques.
+- Commentaire de redirection ajouté dans `rate-limit.ts` pour orienter les nouveaux développements vers le module KV.
+- Frontend : intercepteur 429 et clé i18n `api.rate_limit` déjà en place (aucune modification nécessaire).
+
 ## [SESSION RENFORCEMENT 2026-05-26] Depth pass massif LOT 4-5
 
 > Session entière dédiée au renforcement/solidification (depth > breadth). Aucun nouveau sprint ajouté — chaque module existant audité + renforcé.

@@ -254,6 +254,205 @@
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
+   DARK MODE — Sprint 106
+   Sélecteur : [data-theme="dark"] (géré par useTheme.ts + localStorage).
+   Philosophie Stripe : dark slate/navy, pas un simple invert.
+   Tous les tokens sont overridés → les composants qui utilisent var(--xxx)
+   héritent automatiquement sans toucher aux TSX.
+   ────────────────────────────────────────────────────────────────────── */
+
+[data-theme="dark"] {
+  /* ── Palette neutre dark ────────────────────────────────────────── */
+  --gray-50:  #0F1117;
+  --gray-100: #161923;
+  --gray-200: #1E2231;
+  --gray-300: #2A3042;
+  --gray-400: #4A5168;
+  --gray-500: #6B7280;
+  --gray-600: #9CA3AF;
+  --gray-700: #D1D5DB;
+  --gray-800: #E5E7EB;
+  --gray-900: #F3F4F6;
+
+  /* ── Primary ────────────────────────────────────────────────────── */
+  --primary:       #7C75FF;
+  --primary-hover: #6E67F0;
+  --primary-soft:  rgba(124, 117, 255, 0.12);
+  --primary-ring:  rgba(124, 117, 255, 0.25);
+
+  /* ── Surfaces ───────────────────────────────────────────────────── */
+  --bg-canvas:  #0B0D14;
+  --bg-surface: #12141D;
+  --bg-subtle:  #161923;
+  --bg-hover:   #1A1E2B;
+  --bg-muted:   #1E2231;
+
+  /* ── Text ────────────────────────────────────────────────────────── */
+  --text-primary:   #F3F4F6;
+  --text-secondary: #9CA3AF;
+  --text-muted:     #6B7280;
+  --text-link:      #A5B4FC;
+  --text-inverse:   #1A1F36;
+
+  /* ── Borders ────────────────────────────────────────────────────── */
+  --border:        rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.16);
+
+  /* ── Status ─────────────────────────────────────────────────────── */
+  --success:      #34D399;  --success-soft: rgba(52, 211, 153, 0.12);
+  --warning:      #FBBF24;  --warning-soft: rgba(251, 191, 36, 0.12);
+  --danger:       #F87171;  --danger-soft:  rgba(248, 113, 113, 0.12);
+  --info:         var(--primary);
+  --info-soft:    var(--primary-soft);
+
+  /* Status text variants (AA on dark surfaces) */
+  --success-text: #6EE7B7;
+  --warning-text: #FCD34D;
+  --danger-text:  #FCA5A5;
+  --info-text:    #A5B4FC;
+
+  /* ── Shadows (plus profondes sur fond sombre) ───────────────────── */
+  --shadow-xs:
+    0 0 0 1px rgba(0, 0, 0, .20),
+    0 1px 1px 0 rgba(0, 0, 0, .15);
+  --shadow-sm:
+    0 0 0 1px rgba(0, 0, 0, .25),
+    0 2px 5px 0 rgba(0, 0, 0, .20),
+    0 1px 1.5px 0 rgba(0, 0, 0, .15);
+  --shadow-md:
+    0 7px 14px 0 rgba(0, 0, 0, .25),
+    0 3px 6px 0 rgba(0, 0, 0, .15);
+  --shadow-lg:
+    0 15px 35px 0 rgba(0, 0, 0, .30),
+    0 5px 15px 0 rgba(0, 0, 0, .15);
+  --shadow-overlay:
+    0 50px 100px -20px rgba(0, 0, 0, .50),
+    0 30px 60px -30px rgba(0, 0, 0, .40);
+  --shadow-popover: var(--shadow-md);
+  --shadow-glow: 0 0 0 3px rgba(124, 117, 255, 0.15);
+  --shadow-card:        var(--shadow-xs);
+  --shadow-card-hover:  var(--shadow-sm);
+
+  /* ── Focus ring ─────────────────────────────────────────────────── */
+  --ring: var(--primary-ring);
+
+  /* ── Inverse (surfaces claires dans dark) ────────────────────────── */
+  --bg-inverse:       #F3F4F6;
+  --bg-inverse-2:     #E5E7EB;
+  --text-inverse-mut: #6B7280;
+
+  /* ── Surfaces multi-level ───────────────────────────────────────── */
+  --surface-0: var(--bg-canvas);
+  --surface-1: var(--bg-surface);
+  --surface-2: var(--bg-subtle);
+  --surface-3: var(--bg-muted);
+
+  /* ── Shadow brand aliases ───────────────────────────────────────── */
+  --shadow-brand-xs:  var(--shadow-xs);
+  --shadow-brand-sm:  var(--shadow-sm);
+  --shadow-brand-md:  var(--shadow-md);
+  --shadow-brand-lg:  var(--shadow-md);
+  --shadow-brand-xl:  var(--shadow-lg);
+  --shadow-brand-2xl: var(--shadow-overlay);
+
+  /* ── Color- prefixed legacy ─────────────────────────────────────── */
+  --color-bg-primary:    var(--bg-canvas);
+  --color-bg-secondary:  var(--bg-surface);
+  --color-bg-tertiary:   var(--bg-subtle);
+  --color-bg-card:       var(--bg-surface);
+  --color-bg-hover:      var(--bg-hover);
+  --color-bg-input:      var(--bg-subtle);
+  --color-bg-sidebar:    #0B0D14;
+  --color-border:        var(--border);
+  --color-border-subtle: var(--border);
+  --color-text-primary:  var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted:    var(--text-muted);
+  --color-accent:        var(--primary);
+  --color-accent-hover:  var(--primary-hover);
+  --color-accent-soft:   var(--primary-soft);
+  --color-accent-ring:   var(--ring);
+  --color-info:          var(--info);
+  --color-success:       var(--success);
+  --color-warning:       var(--warning);
+  --color-danger:        var(--danger);
+  --color-muted:         var(--text-muted);
+
+  /* ── Brand aliases ──────────────────────────────────────────────── */
+  --brand-hover:  var(--primary-hover);
+  --brand-soft:   var(--primary-soft);
+  --brand-tint:   rgba(124, 117, 255, 0.10);
+  --brand-strong: var(--primary-hover);
+
+  /* ── Gradients dark ─────────────────────────────────────────────── */
+  --gradient-shimmer: linear-gradient(45deg, transparent 30%, rgba(124, 117, 255, 0.06) 50%, transparent 70%);
+
+  /* ── Scrollbar styling ──────────────────────────────────────────── */
+  color-scheme: dark;
+}
+
+/* ── Dark mode component-level overrides ────────────────────────────────
+   Cibler les rares cas où #fff / white est dans le CSS (pas les TSX).
+   Les composants UI kit utilisant var(--xxx) n'ont PAS besoin d'override. */
+
+[data-theme="dark"] input,
+[data-theme="dark"] textarea,
+[data-theme="dark"] select {
+  background-color: var(--bg-subtle);
+  color: var(--text-primary);
+  border-color: var(--border);
+}
+
+[data-theme="dark"] ::placeholder {
+  color: var(--text-muted);
+}
+
+/* Scrollbar dark */
+[data-theme="dark"] ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+[data-theme="dark"] ::-webkit-scrollbar-track {
+  background: var(--bg-canvas);
+}
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: var(--gray-300);
+  border-radius: 4px;
+}
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: var(--gray-400);
+}
+
+/* ── Dark mode : glass effect ────────────────────────────────────── */
+[data-theme="dark"] .glass {
+  background: rgba(18, 20, 29, 0.85);
+}
+
+/* ── Dark mode : recharts tooltip ────────────────────────────────── */
+[data-theme="dark"] .recharts-default-tooltip {
+  background-color: var(--bg-surface) !important;
+  border-color: var(--border) !important;
+}
+
+/* ── Dark mode : table header subtle bg ──────────────────────────── */
+[data-theme="dark"] thead tr {
+  background-color: var(--bg-subtle);
+}
+
+/* Transition fluide lors du changement de thème */
+[data-transitioning],
+[data-transitioning] *,
+[data-transitioning] *::before,
+[data-transitioning] *::after {
+  transition: background-color 300ms ease,
+              color 300ms ease,
+              border-color 300ms ease,
+              box-shadow 300ms ease,
+              fill 300ms ease,
+              stroke 300ms ease !important;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
    RESET + BASE
    ────────────────────────────────────────────────────────────────────── */
 
@@ -14462,3 +14661,463 @@ body.pdf-mode-invoice .credit-note-table th {
 
 /* ── Fin Sprint 29 ──────────────────────────────────────── */
 /* === Fin Sprint E === */
+
+/* ── Giga Sprint Design — Phase 1 — Classes utilitaires premium ─────────── */
+
+/* ── 1. Surfaces standardisées ─────────────────────────────────────────── */
+
+.surface-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+.surface-card:hover {
+  box-shadow: var(--shadow-md);
+}
+.surface-card-interactive {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.22s ease, transform 0.22s ease, border-color 0.22s ease;
+  cursor: pointer;
+}
+.surface-card-interactive:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+  border-color: var(--border-strong);
+}
+.surface-card-interactive:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
+}
+.surface-section {
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+}
+.surface-inset {
+  background: var(--bg-canvas);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+/* ── 2. Animations d'entrée premium ───────────────────────────────────── */
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeInScale {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.animate-fade-in-scale {
+  animation: fadeInScale 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.animate-count-up {
+  animation: countUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Stagger delays — utiliser avec .animate-fade-in-up */
+.stagger-1 { animation-delay: 0.05s; }
+.stagger-2 { animation-delay: 0.10s; }
+.stagger-3 { animation-delay: 0.15s; }
+.stagger-4 { animation-delay: 0.20s; }
+.stagger-5 { animation-delay: 0.25s; }
+.stagger-6 { animation-delay: 0.30s; }
+.stagger-7 { animation-delay: 0.35s; }
+.stagger-8 { animation-delay: 0.40s; }
+
+/* ── 3. KPI / Stat classes ─────────────────────────────────────────────── */
+
+.stat-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-5, 20px);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.22s ease, transform 0.22s ease, border-color 0.22s ease;
+  position: relative;
+  overflow: hidden;
+}
+.stat-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, transparent 60%, rgba(99, 91, 255, 0.02));
+  pointer-events: none;
+}
+.stat-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+  border-color: var(--border-strong);
+}
+
+.stat-icon-chip {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.stat-value {
+  font-size: 28px;
+  line-height: 1;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.stat-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.stat-delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.stat-delta-up {
+  background: var(--success-soft);
+  color: var(--success);
+}
+.stat-delta-down {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+/* ── 4. Hover / Interaction effects ────────────────────────────────────── */
+
+.hover-lift {
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s ease;
+}
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.hover-glow {
+  transition: box-shadow 0.25s ease;
+}
+.hover-glow:hover {
+  box-shadow: 0 0 0 3px var(--primary-ring);
+}
+
+.press-scale {
+  transition: transform 0.1s ease;
+}
+.press-scale:active {
+  transform: scale(0.97);
+}
+
+/* Row hover premium — reveal actions */
+.row-hover-reveal {
+  transition: background-color 0.15s ease;
+}
+.row-hover-reveal:hover {
+  background-color: var(--bg-subtle);
+}
+.row-hover-reveal .reveal-on-hover {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.row-hover-reveal:hover .reveal-on-hover {
+  opacity: 1;
+}
+
+/* ── 5. Skeleton shimmer amélioré ──────────────────────────────────────── */
+
+@keyframes skeletonShimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--bg-subtle) 0%,
+    var(--bg-hover) 40%,
+    var(--bg-subtle) 80%
+  );
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.8s ease-in-out infinite;
+  border-radius: var(--radius-md);
+}
+
+/* ── 6. Typography consolidée ──────────────────────────────────────────── */
+
+.text-page-title {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+
+.text-section-title {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.005em;
+  color: var(--text-primary);
+}
+
+.text-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.text-subtitle {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.text-meta-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.text-value-mono {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+/* ── 7. Section headers améliorés ──────────────────────────────────────── */
+
+.page-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-4, 16px);
+  padding-bottom: var(--space-3, 12px);
+  border-bottom: 1px solid var(--border);
+}
+
+.section-divider {
+  width: 100%;
+  height: 1px;
+  background: var(--border);
+  margin: var(--space-6, 24px) 0;
+}
+
+/* ── 8. Status dots & badges premium ───────────────────────────────────── */
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.status-dot-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* ── 9. Avatar amélioré ────────────────────────────────────────────────── */
+
+.avatar-gradient {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-weight: 700;
+  color: white;
+  flex-shrink: 0;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.avatar-gradient:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 0 3px rgba(255,255,255,0.6), 0 0 0 5px var(--primary-ring);
+}
+.avatar-sm { width: 32px; height: 32px; font-size: 11px; }
+.avatar-md { width: 40px; height: 40px; font-size: 13px; }
+.avatar-lg { width: 48px; height: 48px; font-size: 15px; }
+
+/* ── 10. Page layout helpers ───────────────────────────────────────────── */
+
+.page-grid-2-1 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4, 16px);
+}
+@media (min-width: 1024px) {
+  .page-grid-2-1 {
+    grid-template-columns: 2fr 1fr;
+  }
+}
+
+.page-content-spacing > * + * {
+  margin-top: var(--space-6, 24px);
+}
+
+/* ── 11. Empty state premium ───────────────────────────────────────────── */
+
+.empty-state-premium {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-12, 48px) var(--space-6, 24px);
+  text-align: center;
+  animation: fadeInScale 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.empty-state-premium-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-lg);
+  background: var(--bg-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--space-4, 16px);
+  color: var(--text-muted);
+}
+.empty-state-premium-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--space-2, 8px);
+}
+.empty-state-premium-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  max-width: 320px;
+  line-height: 1.5;
+}
+
+/* ── 12. Chart container premium ───────────────────────────────────────── */
+
+.chart-container {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-5, 20px);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.22s ease;
+}
+.chart-container:hover {
+  box-shadow: var(--shadow-md);
+}
+.chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-5, 20px);
+}
+.chart-legend {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3, 12px);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.chart-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── 13. Segmented control premium ─────────────────────────────────────── */
+
+.segmented-premium {
+  display: inline-flex;
+  padding: 2px;
+  border-radius: var(--radius-md);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  gap: 1px;
+}
+.segmented-premium-item {
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: calc(var(--radius-md) - 2px);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.18s ease;
+  border: none;
+  background: transparent;
+}
+.segmented-premium-item[aria-selected="true"],
+.segmented-premium-item.active {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-weight: 600;
+  box-shadow: var(--shadow-xs);
+}
+
+/* ── 14. Table header premium ──────────────────────────────────────────── */
+
+.table-header-cell {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  padding: 10px 16px;
+  background: var(--bg-subtle);
+  text-align: left;
+  white-space: nowrap;
+}
+
+/* ── prefers-reduced-motion respect ────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in-up,
+  .animate-fade-in-scale,
+  .animate-count-up,
+  .hover-lift,
+  .hover-glow,
+  .press-scale,
+  .stat-card,
+  .surface-card-interactive,
+  .avatar-gradient {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+/* ── Fin Giga Sprint Design Phase 1 ─────────────────────────────────── */

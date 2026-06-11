@@ -22,8 +22,8 @@ export function CheckoutStepper({
             <span
               className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold"
               style={{
-                background: done || active ? 'var(--primary)' : '#e5e7eb',
-                color: done || active ? '#fff' : '#6b7280',
+                background: done || active ? 'var(--primary)' : 'var(--bg-subtle, #e5e7eb)',
+                color: done || active ? '#fff' : 'var(--text-muted, #6b7280)',
               }}
             >
               {done ? '✓' : i + 1}
@@ -31,7 +31,7 @@ export function CheckoutStepper({
             <span
               className="truncate text-xs"
               style={{
-                color: active ? 'var(--text-primary)' : '#9ca3af',
+                color: active ? 'var(--text-primary)' : 'var(--text-muted, #9ca3af)',
                 fontWeight: active ? 600 : 400,
               }}
             >
@@ -40,7 +40,7 @@ export function CheckoutStepper({
             {i < steps.length - 1 && (
               <span
                 className="hidden sm:block flex-1"
-                style={{ height: 1, background: '#e5e7eb' }}
+                style={{ height: 1, background: 'var(--border, #e5e7eb)' }}
               />
             )}
           </li>

@@ -330,7 +330,7 @@ export function CustomDomainsManager() {
               <article
                 key={domain.id}
                 data-testid={`custom-domains-card-${domain.id}`}
-                className="rounded-xl border border-[var(--border-subtle)] bg-white p-5 flex flex-col gap-4"
+                className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 flex flex-col gap-4"
               >
                 {/* Domain + status row */}
                 <header className="flex items-start justify-between gap-3">

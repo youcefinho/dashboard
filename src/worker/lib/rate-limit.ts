@@ -3,6 +3,11 @@
 // Idiome FAIL-OPEN (calque audit() helpers.ts:70-86) : si la table est
 // absente (migration non jouée) ou si D1 panne, retourne { allowed: true }
 // SANS bloquer. Manager-B remplit la logique réelle Phase B.
+//
+// ⚠️ Sprint 91 (seq186) — Pour les NOUVEAUX usages, préférer le module
+// distribué KV : src/worker/lib/rate-limit-kv.ts (middleware global,
+// fixed-window counter, fail-open garanti). Ce module D1 reste en place
+// pour rétro-compatibilité (handlers existants qui l'appellent déjà).
 
 import type { Env } from '../types';
 import type { RateLimitResult } from '../../lib/types';

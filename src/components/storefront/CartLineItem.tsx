@@ -33,7 +33,7 @@ export function CartLineItem({
     >
       <div className="flex-1 min-w-0">
         <p className="truncate text-sm font-medium text-[var(--text-primary)]">{item.name}</p>
-        <p className="text-xs" style={{ color: '#6b7280' }}>
+        <p className="text-xs" style={{ color: 'var(--text-muted, #6b7280)' }}>
           {fmtMoney(item.price_cents, currency)}
         </p>
       </div>
@@ -70,7 +70,7 @@ export function CartLineItem({
         disabled={disabled}
         onClick={onRemove}
         className="text-xs disabled:opacity-50"
-        style={{ color: '#dc2626' }}
+        style={{ color: 'var(--danger, #dc2626)' }}
         aria-label={t('store.cart')}
       >
         ✕

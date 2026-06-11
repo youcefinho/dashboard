@@ -165,7 +165,7 @@ export function DashboardLayoutManager({ currentWidgets, onApplyLayout }: Props)
     >
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold flex items-center gap-2">
-          <LayoutGrid size={14} className="text-[var(--brand-primary)]" />
+          <LayoutGrid size={14} className="text-[var(--primary)]" />
           {t('dashboards.title')}
         </h3>
         {(isLoading || busy) && (
@@ -213,7 +213,7 @@ export function DashboardLayoutManager({ currentWidgets, onApplyLayout }: Props)
             onClick={() => { setCreating(true); setNewName(''); }}
             disabled={busy}
             className="h-8 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition hover:bg-[var(--brand-tint)] disabled:opacity-50"
-            style={{ border: '1px solid var(--border-default)', color: 'var(--brand-primary)' }}
+            style={{ border: '1px solid var(--border-default)', color: 'var(--primary)' }}
           >
             <Plus size={14} /> {t('dashboards.create_first')}
           </button>
@@ -281,7 +281,7 @@ export function DashboardLayoutManager({ currentWidgets, onApplyLayout }: Props)
               onClick={() => { setCreating(true); setNewName(''); setRenamingId(''); setConfirmDeleteId(''); }}
               disabled={busy || creating}
               className="h-8 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition hover:bg-[var(--brand-tint)] disabled:opacity-50 ml-auto"
-              style={{ border: '1px solid var(--border-default)', color: 'var(--brand-primary)' }}
+              style={{ border: '1px solid var(--border-default)', color: 'var(--primary)' }}
             >
               <Plus size={14} /> {t('dashboards.new')}
             </button>
@@ -301,14 +301,14 @@ export function DashboardLayoutManager({ currentWidgets, onApplyLayout }: Props)
                 aria-label={t('dashboards.rename')}
                 autoFocus
                 className="h-8 px-2 rounded-lg text-xs flex-1"
-                style={{ background: 'var(--bg-surface)', border: '1px solid var(--brand-primary)', color: 'var(--text-primary)' }}
+                style={{ background: 'var(--bg-surface)', border: '1px solid var(--primary)', color: 'var(--text-primary)' }}
               />
               <button
                 type="button"
                 onClick={() => void handleRename(activeLayout.id)}
                 disabled={busy || !renameName.trim()}
                 className="h-8 w-8 rounded-lg flex items-center justify-center cursor-pointer transition hover:bg-[var(--brand-tint)] disabled:opacity-50"
-                style={{ border: '1px solid var(--border-default)', color: 'var(--brand-primary)' }}
+                style={{ border: '1px solid var(--border-default)', color: 'var(--primary)' }}
                 aria-label={t('dashboards.confirm')}
               >
                 <Check size={14} />
@@ -374,14 +374,14 @@ export function DashboardLayoutManager({ currentWidgets, onApplyLayout }: Props)
             aria-label={t('dashboards.name_placeholder')}
             autoFocus
             className="h-8 px-2 rounded-lg text-xs flex-1"
-            style={{ background: 'var(--bg-surface)', border: '1px solid var(--brand-primary)', color: 'var(--text-primary)' }}
+            style={{ background: 'var(--bg-surface)', border: '1px solid var(--primary)', color: 'var(--text-primary)' }}
           />
           <button
             type="button"
             onClick={() => void handleCreate()}
             disabled={busy || !newName.trim()}
             className="h-8 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer text-white transition disabled:opacity-50"
-            style={{ background: 'var(--brand-primary)' }}
+            style={{ background: 'var(--primary)' }}
           >
             <Check size={14} /> {t('dashboards.save')}
           </button>

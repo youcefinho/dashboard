@@ -13,7 +13,7 @@ import {
   useToast,
   Icon,
 } from '@/components/ui';
-import { Shield, Ban, Download, Mail, Smartphone, FileCheck } from 'lucide-react';
+import { Shield, Ban, Download, Mail, Smartphone, FileCheck, Trash2, Clock, AlertTriangle, Play, Eye } from 'lucide-react';
 import { ConsentManager } from '@/components/compliance/ConsentManager';
 
 interface Unsubscribe {
@@ -271,6 +271,283 @@ export function ComplianceSettings() {
 
       {/* Loi 25 — gestion du consentement (journal lead + statut cookies) */}
       <ConsentManager />
+
+      {/* Sprint 93 — Purge RGPD & Loi 25 automatisée */}
+      <PurgeSection />
     </div>
+  );
+}
+
+// ── Sprint 93 — Section Purge RGPD & Loi 25 ──────────────────────────────────────
+
+interface PurgeRule {
+  id: string;
+  client_id: string;
+  inactive_days: number;
+  action: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface PurgePreviewLead {
+  lead_id: string;
+  status: string;
+  inactive_days: number;
+  action: string;
+}
+
+function PurgeSection() {
+  const { success, error: toastError } = useToast();
+  const [rules, setRules] = useState<PurgeRule[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [previewCount, setPreviewCount] = useState<number | null>(null);
+  const [isRunning, setIsRunning] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  // Formulaire ajout
+  const [newDays, setNewDays] = useState('365');
+  const [newAction, setNewAction] = useState('anonymize');
+  const [newClientId, setNewClientId] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
+
+  const loadRules = async () => {
+    setIsLoading(true);
+    try {
+      const res = await apiFetch<PurgeRule[]>('/compliance/purge/rules');
+      setRules(res.data || []);
+    } catch {
+      // Table pas encore créée — on affiche vide
+      setRules([]);
+    }
+    setIsLoading(false);
+  };
+
+  useEffect(() => { void loadRules(); }, []);
+
+  const handleCreate = async () => {
+    if (!newClientId.trim()) {
+      toastError('ID client requis');
+      return;
+    }
+    setIsCreating(true);
+    try {
+      await apiFetch('/compliance/purge/rules', {
+        method: 'POST',
+        body: JSON.stringify({
+          client_id: newClientId.trim(),
+          inactive_days: parseInt(newDays) || 365,
+          action: newAction,
+        }),
+      });
+      success('Règle de purge créée');
+      setNewClientId('');
+      setNewDays('365');
+      void loadRules();
+    } catch (err: unknown) {
+      toastError((err as Error)?.message || 'Erreur création règle');
+    }
+    setIsCreating(false);
+  };
+
+  const handleDelete = async (ruleId: string) => {
+    try {
+      await apiFetch(`/compliance/purge/rules/${ruleId}`, { method: 'DELETE' });
+      success('Règle supprimée');
+      void loadRules();
+    } catch (err: unknown) {
+      toastError((err as Error)?.message || 'Erreur suppression');
+    }
+  };
+
+  const handlePreview = async () => {
+    try {
+      const clientParam = newClientId.trim() ? `?client_id=${encodeURIComponent(newClientId.trim())}` : '';
+      const res = await apiFetch<{ total: number }>(`/compliance/purge/preview${clientParam}`);
+      setPreviewCount(res.data?.total ?? 0);
+      success(`${res.data?.total ?? 0} lead(s) éligible(s) à la purge`);
+    } catch (err: unknown) {
+      toastError((err as Error)?.message || 'Erreur prévisualisation');
+    }
+  };
+
+  const handleRun = async () => {
+    setIsRunning(true);
+    setShowConfirm(false);
+    try {
+      const res = await apiFetch<{ report: { total_processed: number } }>('/compliance/purge/run', {
+        method: 'POST',
+        body: JSON.stringify({ client_id: newClientId.trim() || undefined }),
+      });
+      const total = res.data?.report?.total_processed ?? 0;
+      success(`Purge exécutée — ${total} lead(s) traité(s)`);
+      setPreviewCount(null);
+      void loadRules();
+    } catch (err: unknown) {
+      toastError((err as Error)?.message || 'Erreur exécution purge');
+    }
+    setIsRunning(false);
+  };
+
+  return (
+    <Card className="settings-card p-0 overflow-hidden">
+      <header className="settings-section-header settings-section-header--inset">
+        <div>
+          <h3 className="t-h3 flex items-center gap-2">
+            <Icon as={Trash2} size="md" className="text-[var(--danger)]" />
+            Purge automatique (Loi 25 / RGPD)
+          </h3>
+          <p className="t-caption text-[var(--gray-500)]">
+            Suppression ou anonymisation automatique des leads inactifs selon la politique de rétention.
+          </p>
+        </div>
+      </header>
+
+      <div className="p-5 space-y-5">
+        {/* Formulaire ajout */}
+        <div className="flex flex-wrap items-end gap-3 p-4 rounded-lg bg-[var(--bg-subtle)] border border-[var(--border)]">
+          <div className="flex-1 min-w-[140px]">
+            <label className="t-caption block mb-1">ID Client</label>
+            <input
+              type="text"
+              value={newClientId}
+              onChange={(e) => setNewClientId(e.target.value)}
+              placeholder="client-uuid"
+              className="w-full px-3 py-2 text-sm rounded-md border border-[var(--border)] bg-[var(--bg-surface)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-ring)]"
+            />
+          </div>
+          <div className="w-[100px]">
+            <label className="t-caption block mb-1">Jours</label>
+            <input
+              type="number"
+              value={newDays}
+              onChange={(e) => setNewDays(e.target.value)}
+              min={30}
+              max={1825}
+              className="w-full px-3 py-2 text-sm rounded-md border border-[var(--border)] bg-[var(--bg-surface)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-ring)]"
+            />
+          </div>
+          <div className="w-[140px]">
+            <label className="t-caption block mb-1">Action</label>
+            <select
+              value={newAction}
+              onChange={(e) => setNewAction(e.target.value)}
+              className="w-full px-3 py-2 text-sm rounded-md border border-[var(--border)] bg-[var(--bg-surface)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-ring)]"
+            >
+              <option value="anonymize">Anonymiser</option>
+              <option value="delete">Supprimer</option>
+            </select>
+          </div>
+          <Button
+            size="sm"
+            onClick={handleCreate}
+            disabled={isCreating || !newClientId.trim()}
+            isLoading={isCreating}
+          >
+            Ajouter
+          </Button>
+        </div>
+
+        {/* Liste des règles */}
+        {isLoading ? (
+          <div className="text-center text-sm text-[var(--text-muted)] py-6">Chargement…</div>
+        ) : rules.length === 0 ? (
+          <EmptyState
+            variant="compact"
+            icon={<Clock size={28} />}
+            title="Aucune règle de purge"
+            description="Ajoutez une règle pour définir la politique de rétention des données."
+          />
+        ) : (
+          <div className="space-y-2">
+            {rules.map((rule, idx) => (
+              <div
+                key={rule.id}
+                className="row-premium list-item-enter flex items-center gap-3 p-3 rounded-xl"
+                style={{ animationDelay: `${idx * 40}ms`, animationFillMode: 'both' }}
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-[var(--text-primary)] truncate">
+                    {rule.client_id}
+                  </p>
+                  <p className="text-[11px] text-[var(--text-muted)]">
+                    {rule.inactive_days} jours d'inactivité
+                  </p>
+                </div>
+                <Tag variant={rule.action === 'delete' ? 'danger' : 'warning'} dot>
+                  {rule.action === 'anonymize' ? 'Anonymiser' : 'Supprimer'}
+                </Tag>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleDelete(rule.id)}
+                  aria-label="Supprimer la règle"
+                  className="text-[var(--danger)] hover:bg-[var(--danger-soft)]"
+                >
+                  <Icon as={Trash2} size="sm" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Actions */}
+        <div className="flex items-center gap-3 pt-2 border-t border-[var(--border)]">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handlePreview}
+            leftIcon={<Icon as={Eye} size="sm" />}
+          >
+            Prévisualiser
+          </Button>
+          {previewCount !== null && (
+            <span className="text-sm text-[var(--text-secondary)]">
+              {previewCount} lead(s) éligible(s)
+            </span>
+          )}
+          <div className="flex-1" />
+          <Button
+            variant="danger"
+            size="sm"
+            onClick={() => setShowConfirm(true)}
+            disabled={isRunning || rules.length === 0}
+            isLoading={isRunning}
+            leftIcon={<Icon as={AlertTriangle} size="sm" />}
+          >
+            Exécuter la purge
+          </Button>
+        </div>
+
+        {/* Modale de confirmation */}
+        {showConfirm && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+            onClick={() => setShowConfirm(false)}
+          >
+            <div
+              className="bg-[var(--bg-surface)] rounded-xl shadow-lg p-6 max-w-md mx-4 animate-fade-in"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h4 className="t-h3 text-[var(--danger)] flex items-center gap-2 mb-3">
+                <AlertTriangle size={20} />
+                Confirmer la purge
+              </h4>
+              <p className="text-sm text-[var(--text-secondary)] mb-4">
+                Cette action va anonymiser ou supprimer définitivement les leads inactifs
+                selon les règles configurées. Cette opération est <strong>irréversible</strong>.
+              </p>
+              <div className="flex items-center gap-3 justify-end">
+                <Button variant="secondary" size="sm" onClick={() => setShowConfirm(false)}>
+                  Annuler
+                </Button>
+                <Button variant="danger" size="sm" onClick={handleRun}>
+                  Confirmer la purge
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </Card>
   );
 }

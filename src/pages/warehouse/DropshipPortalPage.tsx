@@ -92,7 +92,7 @@ export default function DropshipPortalPage() {
               Bienvenue sur votre portail d’expédition. Suivez vos commandes en attente et validez les livraisons avec vos numéros de suivi.
             </p>
           </div>
-          <div className="flex items-center gap-4 bg-white/10 px-4 py-3 rounded-2xl backdrop-blur-md border border-white/10">
+          <div className="flex items-center gap-4 bg-[var(--bg-surface)]/10 px-4 py-3 rounded-2xl backdrop-blur-md border border-white/10">
             <Package size={24} className="text-indigo-300 animate-bounce" />
             <div>
               <div className="text-xs uppercase tracking-widest text-indigo-200 font-bold">Commandes à expédier</div>
@@ -102,14 +102,14 @@ export default function DropshipPortalPage() {
         </div>
 
         {/* Barre d'outils et de navigation */}
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-[var(--bg-surface)] dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
           {/* Onglets */}
           <div className="flex bg-slate-100 dark:bg-slate-950 p-1 rounded-xl w-full sm:w-auto">
             <button
               onClick={() => setActiveTab('pending')}
               className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold uppercase tracking-wider transition-all cursor-pointer ${
                 activeTab === 'pending'
-                  ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-white shadow-xs'
+                  ? 'bg-[var(--bg-surface)] dark:bg-slate-900 text-indigo-600 dark:text-white shadow-xs'
                   : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
               }`}
             >
@@ -120,7 +120,7 @@ export default function DropshipPortalPage() {
               onClick={() => setActiveTab('shipped')}
               className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold uppercase tracking-wider transition-all cursor-pointer ${
                 activeTab === 'shipped'
-                  ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-white shadow-xs'
+                  ? 'bg-[var(--bg-surface)] dark:bg-slate-900 text-indigo-600 dark:text-white shadow-xs'
                   : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
               }`}
             >
@@ -144,7 +144,7 @@ export default function DropshipPortalPage() {
 
         {/* Liste des commandes */}
         {filteredOrders.length === 0 ? (
-          <div className="flex flex-col items-center justify-center p-16 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl text-center shadow-xs">
+          <div className="flex flex-col items-center justify-center p-16 bg-[var(--bg-surface)] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl text-center shadow-xs">
             <Truck size={48} className="text-slate-300 dark:text-slate-700 mb-4" />
             <p className="text-slate-500 dark:text-slate-400 font-medium">
               {t('warehouse.portal.no_orders') || 'Aucune commande trouvée.'}
@@ -155,7 +155,7 @@ export default function DropshipPortalPage() {
             {filteredOrders.map((order) => (
               <div
                 key={order.id}
-                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xs hover:shadow-md transition-all space-y-6"
+                className="bg-[var(--bg-surface)] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xs hover:shadow-md transition-all space-y-6"
               >
                 
                 {/* Header commande */}
@@ -289,7 +289,7 @@ export default function DropshipPortalPage() {
         {/* MODALE D'EXPÉDITION */}
         {shippingOrder && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-md overflow-hidden shadow-xl animate-in fade-in zoom-in-95 duration-150">
+            <div className="bg-[var(--bg-surface)] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-md overflow-hidden shadow-xl animate-in fade-in zoom-in-95 duration-150">
               <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-950/20">
                 <h3 className="font-bold uppercase tracking-wider text-slate-800 dark:text-slate-100 flex items-center gap-2">
                   <Truck size={18} className="text-indigo-600" />

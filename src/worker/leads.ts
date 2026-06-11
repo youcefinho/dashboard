@@ -1,6 +1,6 @@
 // ── Module Leads — Intralys CRM ─────────────────────────────
 import type { Env } from './types';
-import { sanitizeInput, json, audit, corsHeaders, createNotification } from './helpers';
+import { sanitizeInput, json, audit, corsHeaders, createNotification, getEncryptionKeyHex } from './helpers';
 import { applyLeadMapping } from './lead-mapping';
 import { normalizeLeadLocale, SUPPORTED_LEAD_LOCALES } from './i18n-server';
 import { resolveDedup, mergeIntoLead, type DedupStrategy } from './lead-dedup';
@@ -17,6 +17,10 @@ import {
   isValidStatus,
   LEAD_ERROR_CODES,
 } from './lib/leads-engine';
+// ── Sprint 92 — Chiffrement PII at rest (AES-GCM 256) ───────────────────────
+// Import dynamique conditionnel : si ENCRYPTION_KEY absent → skip transparent.
+import { encryptField, decryptLeadPii } from './lib/field-encryption-engine';
+import { computeLeadSearchHashes } from './lib/crypto-search';
 
 // ── LOT TEAM B-bis — garde de capability CONDITIONNELLE (mode-agence-only) ───
 // N'enforce QUE si l'auth porte un contexte agence (tenant.agencyId != null)
@@ -239,6 +243,16 @@ export async function handleGetLeads(env: Env, auth: { role: string; clientId?: 
     items.pop();
     const lastItem = items[items.length - 1];
     if (lastItem) nextCursor = lastItem.created_at as string;
+  }
+
+  // ── Sprint 92 — Déchiffrement PII at rest (transparent si pas chiffré) ────
+  const keyHex = getEncryptionKeyHex(env);
+  if (keyHex) {
+    for (let i = 0; i < items.length; i++) {
+      try {
+        items[i] = await decryptLeadPii(items[i]!, keyHex) as Record<string, unknown>;
+      } catch { /* fail-safe : champ non chiffré retourné tel quel */ }
+    }
   }
 
   return json({ data: items, next_cursor: nextCursor });
@@ -652,10 +666,44 @@ export async function handleCreateLead(
   // Garde compatibilité schéma : la colonne `score` existe (default 0 dans la
   // migration historique). On l'écrit explicitement maintenant.
   const initialScore = computeInitialScore({ email, phone, source });
-  await env.DB.prepare(
-    `INSERT INTO leads (id, client_id, name, email, phone, type, source, message, status, pipeline_id, stage_id, score)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'new', 'pipeline-default', 'stage-new', ?)`
-  ).bind(id, clientId, name, email, phone, type, source, message, initialScore).run();
+
+  // ── Sprint 92 — Chiffrement PII at rest (dual-write) ──────────────────────
+  // On écrit les champs en clair ET les colonnes _enc/_hash. Migration
+  // progressive : le clair reste pour la rétro-compat jusqu'à Sprint 93.
+  const keyHex = getEncryptionKeyHex(env);
+  let emailEnc: string | null = null;
+  let phoneEnc: string | null = null;
+  let notesEnc: string | null = null;
+  let emailHash: string | null = null;
+  let phoneHash: string | null = null;
+  if (keyHex) {
+    try {
+      emailEnc = email ? await encryptField(email, keyHex) : null;
+      phoneEnc = phone ? await encryptField(phone, keyHex) : null;
+      notesEnc = message ? await encryptField(message, keyHex) : null;
+      const hashes = await computeLeadSearchHashes({ email, phone }, keyHex);
+      emailHash = hashes.email_hash;
+      phoneHash = hashes.phone_hash;
+    } catch { /* fail-safe : si chiffrement échoue, on continue sans _enc */ }
+  }
+
+  // ── INSERT avec colonnes chiffrées (fallback gracieux si colonnes absentes) ──
+  try {
+    await env.DB.prepare(
+      `INSERT INTO leads (id, client_id, name, email, phone, type, source, message, status, pipeline_id, stage_id, score, email_enc, phone_enc, notes_enc, email_hash, phone_hash)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'new', 'pipeline-default', 'stage-new', ?, ?, ?, ?, ?, ?)`
+    ).bind(id, clientId, name, email, phone, type, source, message, initialScore, emailEnc, phoneEnc, notesEnc, emailHash, phoneHash).run();
+  } catch (e) {
+    // Fallback : colonnes _enc absentes (migration seq187 pas encore jouée)
+    if (String(e).includes('no such column') || String(e).includes('has no column')) {
+      await env.DB.prepare(
+        `INSERT INTO leads (id, client_id, name, email, phone, type, source, message, status, pipeline_id, stage_id, score)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'new', 'pipeline-default', 'stage-new', ?)`
+      ).bind(id, clientId, name, email, phone, type, source, message, initialScore).run();
+    } else {
+      throw e;
+    }
+  }
 
   await audit(env, auth.userId, 'lead.create', 'lead', id, { client_id: clientId, name, email, source });
 
@@ -714,7 +762,15 @@ export async function handleGetLeadDetail(env: Env, auth: { role: string }, lead
     return json({ error: 'Lead non trouvé' }, 404);
   }
 
-  const lead = leadRows[0] as Record<string, unknown>;
+  let lead = leadRows[0] as Record<string, unknown>;
+
+  // ── Sprint 92 — Déchiffrement PII at rest (transparent si pas chiffré) ────
+  const keyHex = getEncryptionKeyHex(env);
+  if (keyHex) {
+    try {
+      lead = await decryptLeadPii(lead, keyHex) as Record<string, unknown>;
+    } catch { /* fail-safe */ }
+  }
 
   const { results: tagRows } = await env.DB.prepare(
     'SELECT tag FROM lead_tags WHERE lead_id = ? ORDER BY created_at DESC'

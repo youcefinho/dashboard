@@ -194,7 +194,7 @@ export function ReviewSubmitForm({ productId, onSubmitted }: ReviewSubmitFormPro
   return (
     <form
       onSubmit={onSubmit}
-      className="rounded-xl border border-[var(--border)] bg-white p-4"
+      className="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-4"
       aria-label={t('products.reviews.submit')}
       data-testid="review-submit-form"
       noValidate
@@ -205,7 +205,7 @@ export function ReviewSubmitForm({ productId, onSubmitted }: ReviewSubmitFormPro
 
       {/* Rating — 5 boutons étoiles */}
       <div className="mt-3">
-        <span id={ratingLabelId} className="block text-xs" style={{ color: '#6b7280' }}>
+        <span id={ratingLabelId} className="block text-xs" style={{ color: 'var(--text-muted, #6b7280)' }}>
           {t('products.reviews.rating')} <span aria-hidden="true">*</span>
         </span>
         <div
@@ -227,7 +227,7 @@ export function ReviewSubmitForm({ productId, onSubmitted }: ReviewSubmitFormPro
                 onClick={() => setRating(n)}
                 className="text-2xl leading-none"
                 style={{
-                  color: active ? '#f59e0b' : '#d1d5db',
+                  color: active ? '#f59e0b' : 'var(--border, #d1d5db)',
                   background: 'transparent',
                   padding: 0,
                   border: 'none',
@@ -242,7 +242,7 @@ export function ReviewSubmitForm({ productId, onSubmitted }: ReviewSubmitFormPro
       </div>
 
       {/* Title */}
-      <label className="mt-3 block text-xs" style={{ color: '#6b7280' }}>
+      <label className="mt-3 block text-xs" style={{ color: 'var(--text-muted, #6b7280)' }}>
         {t('products.reviews.title')}
         <input
           type="text"
@@ -250,12 +250,12 @@ export function ReviewSubmitForm({ productId, onSubmitted }: ReviewSubmitFormPro
           onChange={(e) => setTitle(e.target.value)}
           maxLength={120}
           data-testid="review-title"
-          className="mt-1 block w-full rounded-md border border-[var(--border)] bg-white px-2 py-1 text-sm"
+          className="mt-1 block w-full rounded-md border border-[var(--border)] bg-[var(--bg-surface)] px-2 py-1 text-sm"
         />
       </label>
 
       {/* Body */}
-      <label className="mt-3 block text-xs" style={{ color: '#6b7280' }}>
+      <label className="mt-3 block text-xs" style={{ color: 'var(--text-muted, #6b7280)' }}>
         {t('products.reviews.body')} <span aria-hidden="true">*</span>
         <textarea
           value={body}
@@ -265,16 +265,16 @@ export function ReviewSubmitForm({ productId, onSubmitted }: ReviewSubmitFormPro
           maxLength={BODY_MAX}
           required
           data-testid="review-body"
-          className="mt-1 block w-full rounded-md border border-[var(--border)] bg-white px-2 py-1 text-sm"
+          className="mt-1 block w-full rounded-md border border-[var(--border)] bg-[var(--bg-surface)] px-2 py-1 text-sm"
         />
-        <span className="mt-1 block text-[10px]" style={{ color: '#9ca3af' }}>
+        <span className="mt-1 block text-[10px]" style={{ color: 'var(--text-muted, #9ca3af)' }}>
           {body.length}/{BODY_MAX}
         </span>
       </label>
 
       {/* Email + Name */}
       <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <label className="block text-xs" style={{ color: '#6b7280' }}>
+        <label className="block text-xs" style={{ color: 'var(--text-muted, #6b7280)' }}>
           email <span aria-hidden="true">*</span>
           <input
             type="email"
@@ -283,10 +283,10 @@ export function ReviewSubmitForm({ productId, onSubmitted }: ReviewSubmitFormPro
             required
             autoComplete="email"
             data-testid="review-email"
-            className="mt-1 block w-full rounded-md border border-[var(--border)] bg-white px-2 py-1 text-sm"
+            className="mt-1 block w-full rounded-md border border-[var(--border)] bg-[var(--bg-surface)] px-2 py-1 text-sm"
           />
         </label>
-        <label className="block text-xs" style={{ color: '#6b7280' }}>
+        <label className="block text-xs" style={{ color: 'var(--text-muted, #6b7280)' }}>
           name
           <input
             type="text"
@@ -294,14 +294,14 @@ export function ReviewSubmitForm({ productId, onSubmitted }: ReviewSubmitFormPro
             onChange={(e) => setName(e.target.value)}
             autoComplete="name"
             data-testid="review-name"
-            className="mt-1 block w-full rounded-md border border-[var(--border)] bg-white px-2 py-1 text-sm"
+            className="mt-1 block w-full rounded-md border border-[var(--border)] bg-[var(--bg-surface)] px-2 py-1 text-sm"
           />
         </label>
       </div>
 
       {/* Photos */}
       <div className="mt-3">
-        <label className="block text-xs" style={{ color: '#6b7280' }}>
+        <label className="block text-xs" style={{ color: 'var(--text-muted, #6b7280)' }}>
           photos ({photos.length}/{MAX_PHOTOS})
           <input
             ref={fileInputRef}
@@ -374,7 +374,7 @@ export function ReviewSubmitForm({ productId, onSubmitted }: ReviewSubmitFormPro
         <p
           role="alert"
           className="mt-3 text-xs"
-          style={{ color: '#b91c1c' }}
+          style={{ color: 'var(--danger, #b91c1c)' }}
           data-testid="review-error"
         >
           {error}

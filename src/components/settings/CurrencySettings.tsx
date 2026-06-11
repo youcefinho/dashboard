@@ -232,7 +232,7 @@ export function CurrencySettings() {
         ) : currencies.length === 0 ? (
           <p className="text-sm text-[var(--text-muted)]">—</p>
         ) : (
-          <div className="rounded-xl border border-[var(--border-subtle)] bg-white overflow-hidden">
+          <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] overflow-hidden">
             <table
               className="w-full text-sm"
               aria-label={t('shop.currency.list')}
@@ -293,7 +293,7 @@ export function CurrencySettings() {
             {t('shop.currency.stale')}
           </div>
         ) : (
-          <div className="rounded-xl border border-[var(--border-subtle)] bg-white overflow-hidden">
+          <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] overflow-hidden">
             <table
               className="w-full text-sm"
               aria-label={t('shop.currency.title')}
@@ -371,7 +371,7 @@ export function CurrencySettings() {
         </h3>
         <form
           onSubmit={(e) => void handleSubmitOverride(e)}
-          className="rounded-xl border border-[var(--border-subtle)] bg-white p-4 grid grid-cols-1 sm:grid-cols-4 gap-3 items-end"
+          className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 grid grid-cols-1 sm:grid-cols-4 gap-3 items-end"
           data-testid="currency-manual-form"
         >
           <Select

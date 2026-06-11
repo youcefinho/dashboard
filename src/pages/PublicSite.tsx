@@ -222,7 +222,7 @@ export function PublicSitePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
+      <div className="min-h-screen flex items-center justify-center bg-[var(--bg-surface)]">
         <div
           style={{
             width: 36,
@@ -252,7 +252,7 @@ export function PublicSitePage() {
 
   if (done) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6 text-center bg-white">
+      <div className="min-h-screen flex items-center justify-center p-6 text-center bg-[var(--bg-surface)]">
         <div style={{ maxWidth: 480 }}>
           <div
             style={{
@@ -284,7 +284,7 @@ export function PublicSitePage() {
   const navItems = nav.filter((n) => n.label && (n.page_slug || n.url));
 
   return (
-    <div style={{ minHeight: '100vh', background: '#fff' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg-surface)' }}>
       {navItems.length > 0 && (
         <nav
           style={{
@@ -293,7 +293,7 @@ export function PublicSitePage() {
             gap: 20,
             padding: '14px 24px',
             borderBottom: '1px solid #e5e7eb',
-            background: '#fff',
+            background: 'var(--bg-surface)',
             position: 'sticky',
             top: 0,
             zIndex: 10,
@@ -351,7 +351,7 @@ export function PublicSitePage() {
           animation: 'fadeIn 0.2s ease-out',
         }}>
           <div style={{
-            backgroundColor: '#ffffff',
+            backgroundColor: 'var(--bg-surface)',
             borderRadius: 16,
             boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
             width: '100%',
@@ -420,7 +420,7 @@ export function PublicSitePage() {
                         fontSize: 14,
                         outline: 'none',
                         color: '#111827',
-                        backgroundColor: '#ffffff',
+                        backgroundColor: 'var(--bg-surface)',
                       }}
                     />
                   </div>
@@ -439,7 +439,7 @@ export function PublicSitePage() {
                         fontSize: 14,
                         outline: 'none',
                         color: '#111827',
-                        backgroundColor: '#ffffff',
+                        backgroundColor: 'var(--bg-surface)',
                       }}
                     />
                   </div>
@@ -457,7 +457,7 @@ export function PublicSitePage() {
                         fontSize: 14,
                         outline: 'none',
                         color: '#111827',
-                        backgroundColor: '#ffffff',
+                        backgroundColor: 'var(--bg-surface)',
                       }}
                     />
                   </div>

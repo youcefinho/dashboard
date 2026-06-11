@@ -221,7 +221,7 @@ export function ChatBotKnowledgeEditor() {
           {Array.from({ length: 3 }).map((_, i) => (
             <div
               key={i}
-              className="p-4 rounded-xl border border-[var(--border-subtle)] bg-white"
+              className="p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)]"
               style={{ animationDelay: `${i * 40}ms` }}
             >
               <div className="flex items-start justify-between gap-4">
@@ -262,7 +262,7 @@ export function ChatBotKnowledgeEditor() {
               <li
                 key={entry.id}
                 data-testid={`chat-bot-knowledge-row-${entry.id}`}
-                className="p-4 rounded-xl border border-[var(--border-subtle)] bg-white flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
+                className="p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
               >
                 <div className="flex-1 min-w-0 space-y-1.5">
                   <div className="flex items-center gap-2 flex-wrap">

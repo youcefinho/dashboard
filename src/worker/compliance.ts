@@ -1,6 +1,6 @@
 // ── Module Compliance (CASL + Loi 25 + AMF) — Intralys CRM ─
 import type { Env } from './types';
-import { sanitizeHtml, json, audit, corsHeaders } from './helpers';
+import { sanitizeHtml, json, audit, corsHeaders, getEncryptionKeyHex } from './helpers';
 // Sprint MULTILANG-B Phase B (Manager-B) : résolveur i18n PUR worker (sortant).
 // On NE traduit QUE les libellés SYSTÈME (footer CASL/désabonnement), pas le
 // contenu marketing libre. tLead est pur (locale passée explicitement) — voir
@@ -12,6 +12,8 @@ import { tLead, normalizeLeadLocale, DEFAULT_LEAD_LOCALE } from './i18n-server';
 // `purpose` historique pour rester byte-identique (l'engine ajoute sinon
 // " / RGPD Art 15" par défaut).
 import { buildDataExport } from './lib/compliance-engine';
+// Sprint 92 — Déchiffrement PII pour export Loi 25 (droit d'accès)
+import { decryptLeadPii, decryptField, isEncrypted } from './lib/field-encryption-engine';
 
 // ── Helpers CASL ────────────────────────────────────────────
 
@@ -207,7 +209,7 @@ export async function handleExportPii(
 ): Promise<Response> {
   if (auth.role !== 'admin') return json({ error: 'Admin uniquement' }, 403);
 
-  const lead = await env.DB.prepare('SELECT * FROM leads WHERE id = ?').bind(leadId).first();
+  let lead = await env.DB.prepare('SELECT * FROM leads WHERE id = ?').bind(leadId).first() as Record<string, unknown> | null;
   if (!lead) return json({ error: 'Lead non trouvé' }, 404);
 
   const { results: messages } = await env.DB.prepare(
@@ -222,11 +224,29 @@ export async function handleExportPii(
     'SELECT * FROM activity_log WHERE lead_id = ? ORDER BY created_at DESC'
   ).bind(leadId).all();
 
+  // ── Sprint 92 — Déchiffrement PII pour export Loi 25 (droit d'accès) ────
+  // L'export DOIT retourner les données en clair (obligation légale Loi 25).
+  const keyHex = getEncryptionKeyHex(env);
+  if (keyHex) {
+    try {
+      lead = await decryptLeadPii(lead, keyHex) as Record<string, unknown>;
+    } catch { /* fail-safe */ }
+    // Déchiffrer les body des messages
+    const msgs = (messages || []) as Array<Record<string, unknown>>;
+    for (const msg of msgs) {
+      try {
+        if (typeof msg.body === 'string' && isEncrypted(msg.body)) {
+          msg.body = await decryptField(msg.body, keyHex);
+        }
+      } catch { /* fail-safe */ }
+    }
+  }
+
   await audit(env, auth.userId, 'lead.export_pii', 'lead', leadId);
 
   return json({
     data: buildDataExport({
-      lead: lead as Record<string, unknown> | null,
+      lead,
       messages: messages || [],
       consents: consents || [],
       activities: activities || [],

@@ -145,7 +145,7 @@ export function PublicFunnelPage() {
   if (loading) {
     return (
       <div
-        className="min-h-screen flex items-center justify-center bg-white"
+        className="min-h-screen flex items-center justify-center bg-[var(--bg-surface)]"
         role="status"
         aria-busy="true"
         aria-label={t('state.loading')}
@@ -186,7 +186,7 @@ export function PublicFunnelPage() {
   if (done) {
     return (
       <div
-        className="min-h-screen flex items-center justify-center p-6 text-center bg-white"
+        className="min-h-screen flex items-center justify-center p-6 text-center bg-[var(--bg-surface)]"
         role="status"
         aria-live="polite"
         data-testid="funnel-done"

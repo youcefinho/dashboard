@@ -253,7 +253,7 @@ export function StoreConfigSettings() {
         ) : (
           <form
             onSubmit={(e) => void handleSaveStore(e)}
-            className="rounded-xl border border-[var(--border-subtle)] bg-white p-4 space-y-4"
+            className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 space-y-4"
             data-testid="storecfg-store-form"
           >
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -333,7 +333,7 @@ export function StoreConfigSettings() {
         ) : (
           <form
             onSubmit={(e) => void handleSaveBiz(e)}
-            className="rounded-xl border border-[var(--border-subtle)] bg-white p-4 space-y-4"
+            className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 space-y-4"
             data-testid="storecfg-biz-form"
           >
             <Select
@@ -417,7 +417,7 @@ export function StoreConfigSettings() {
           </p>
         ) : (
           <div
-            className="rounded-xl border border-[var(--border-subtle)] bg-white p-4 space-y-4"
+            className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 space-y-4"
             data-testid="storecfg-pay-card"
           >
             {payment.read_only && (

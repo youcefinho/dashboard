@@ -203,7 +203,7 @@ export function KBAdminPage() {
             onClick={() => setActiveTab('articles')}
             style={{
               padding: '8px 4px',
-              borderBottom: activeTab === 'articles' ? '2px solid var(--brand-primary)' : '2px solid transparent',
+              borderBottom: activeTab === 'articles' ? '2px solid var(--primary)' : '2px solid transparent',
               color: activeTab === 'articles' ? 'var(--text)' : 'var(--text-muted)',
               background: 'none',
               borderLeft: 'none',
@@ -220,7 +220,7 @@ export function KBAdminPage() {
             onClick={() => setActiveTab('rag')}
             style={{
               padding: '8px 4px',
-              borderBottom: activeTab === 'rag' ? '2px solid var(--brand-primary)' : '2px solid transparent',
+              borderBottom: activeTab === 'rag' ? '2px solid var(--primary)' : '2px solid transparent',
               color: activeTab === 'rag' ? 'var(--text)' : 'var(--text-muted)',
               background: 'none',
               borderLeft: 'none',

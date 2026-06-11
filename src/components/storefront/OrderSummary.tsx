@@ -32,7 +32,7 @@ export function OrderSummary({
       : subtotalCents + (shippingCents || 0) + (taxCents || 0);
 
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-white p-4 text-sm">
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-4 text-sm">
       <Row label={t('checkout.subtotal')} value={fmtMoney(subtotalCents, currency)} />
       {typeof taxCents === 'number' && (
         <Row label={t('checkout.taxes')} value={fmtMoney(taxCents, currency)} />
@@ -54,7 +54,7 @@ export function OrderSummary({
 function Row({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
   return (
     <div className="flex items-center justify-between py-1">
-      <span style={{ color: strong ? 'var(--text-primary)' : '#6b7280', fontWeight: strong ? 700 : 400 }}>
+      <span style={{ color: strong ? 'var(--text-primary)' : 'var(--text-muted, #6b7280)', fontWeight: strong ? 700 : 400 }}>
         {label}
       </span>
       <span className="tabular-nums" style={{ fontWeight: strong ? 700 : 500 }}>

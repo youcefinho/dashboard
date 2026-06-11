@@ -387,7 +387,7 @@ export function ThreadsList() {
           {Array.from({ length: 3 }).map((_, i) => (
             <div
               key={i}
-              className="p-4 rounded-xl border border-[var(--border-subtle)] bg-white"
+              className="p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)]"
               style={{ animationDelay: `${i * 40}ms` }}
             >
               <div className="flex items-start justify-between gap-4">
@@ -428,7 +428,7 @@ export function ThreadsList() {
               <li
                 key={th.id}
                 data-testid={`thread-row-${th.id}`}
-                className="p-4 rounded-xl border border-[var(--border-subtle)] bg-white flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4"
+                className="p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4"
               >
                 {/* Vote column (vertical pill) */}
                 <div className="flex sm:flex-col items-center gap-1 shrink-0">

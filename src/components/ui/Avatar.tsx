@@ -128,7 +128,7 @@ export const Avatar = forwardRef<HTMLElement, AvatarProps>(function Avatar(
     ...(ringBorder ? { border: ringBorder } : {}),
     // Bordered (AvatarGroup) — separator ring blanc 2px
     ...(bordered && !ringBorder
-      ? { boxShadow: '0 0 0 2px #FFFFFF' }
+      ? { boxShadow: '0 0 0 2px var(--bg-surface)' }
       : {}),
     // Style inline parent (viewTransitionName, etc.)
     ...(styleProp ?? {}),
@@ -191,7 +191,7 @@ export const Avatar = forwardRef<HTMLElement, AvatarProps>(function Avatar(
     if (!interactive) return;
     // Restore bordered shadow if applicable
     if (bordered && !ringBorder) {
-      (e.currentTarget as HTMLElement).style.boxShadow = '0 0 0 2px #FFFFFF';
+      (e.currentTarget as HTMLElement).style.boxShadow = '0 0 0 2px var(--bg-surface)';
     } else {
       (e.currentTarget as HTMLElement).style.boxShadow = '';
     }
@@ -250,7 +250,7 @@ function StatusDot({ status, size }: StatusDotProps) {
 
   const dotStyle: CSSProperties = {
     background: visual.bg,
-    border: '2px solid #FFFFFF',
+    border: '2px solid var(--bg-surface)',
     animation: visual.pulse ? 'pulse-dot 1.4s ease-in-out infinite' : undefined,
   };
 

@@ -94,10 +94,9 @@ export function BottomSheet({
         <DialogPrimitive.Overlay
           className="fixed inset-0 z-50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
           style={{
-            background:
-              'radial-gradient(circle at 50% 80%, rgba(0,157,219,0.14) 0%, rgba(15,23,42,0.45) 55%, rgba(15,23,42,0.55) 100%)',
-            backdropFilter: 'blur(10px) saturate(140%)',
-            WebkitBackdropFilter: 'blur(10px) saturate(140%)',
+            background: 'var(--overlay)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
           }}
         />
         <DialogPrimitive.Content
@@ -115,26 +114,16 @@ export function BottomSheet({
             className
           )}
           style={{
-            background: 'linear-gradient(180deg, #FFFFFF 0%, #FAFBFC 100%)',
-            border: '1px solid rgba(0,157,219,0.18)',
+            background: 'linear-gradient(180deg, var(--bg-surface) 0%, var(--bg-subtle) 100%)',
+            border: '1px solid var(--border)',
             borderBottom: 'none',
-            boxShadow:
-              '0 -8px 32px -4px rgba(0,157,219,0.25), 0 -16px 64px -16px rgba(15,23,42,0.30), 0 0 0 1px rgba(255,255,255,0.50) inset',
+            boxShadow: 'var(--shadow-overlay), 0 0 0 1px var(--border) inset',
             paddingBottom: 'env(safe-area-inset-bottom)',
             transform: dragOffset > 0 ? `translateY(${dragOffset}px)` : undefined,
             transition: dragOffset > 0 ? 'none' : 'transform 220ms cubic-bezier(0.32,0.72,0,1)',
           }}
         >
-          {/* Orb décoratif top subtle */}
-          <div
-            aria-hidden
-            className="absolute -top-12 left-1/2 -translate-x-1/2 w-72 h-32 rounded-full pointer-events-none opacity-40"
-            style={{
-              background:
-                'radial-gradient(ellipse at center, rgba(0,157,219,0.20) 0%, rgba(217,110,39,0.10) 50%, transparent 80%)',
-              filter: 'blur(32px)',
-            }}
-          />
+
 
           {/* Handle drag — touch-action pan-y UNIQUEMENT ici (n'affecte pas scroll interne) */}
           {showHandle && (
@@ -147,7 +136,7 @@ export function BottomSheet({
               className="relative shrink-0 flex items-center justify-center pt-2 pb-1 cursor-grab active:cursor-grabbing"
               style={{ touchAction: 'pan-y' }}
             >
-              <div className="w-9 h-1 rounded-full bg-gray-300" />
+              <div className="w-9 h-1 rounded-full bg-[var(--gray-300)]" />
             </div>
           )}
 
@@ -159,11 +148,8 @@ export function BottomSheet({
                 showHandle ? 'pt-2 pb-3' : 'pt-4 pb-3'
               )}
               style={{
-                borderBottom: '1px solid rgba(0,157,219,0.12)',
-                background:
-                  'linear-gradient(180deg, rgba(255,255,255,0.70) 0%, rgba(248,251,253,0.55) 100%)',
-                backdropFilter: 'blur(12px) saturate(160%)',
-                WebkitBackdropFilter: 'blur(12px) saturate(160%)',
+                borderBottom: '1px solid var(--border)',
+                background: 'var(--bg-surface)',
               }}
             >
               <div className="min-w-0 flex-1">

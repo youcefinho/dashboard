@@ -92,7 +92,7 @@ function KpiCard({ icon, label, value, trend, testId }: KpiCardProps) {
   return (
     <div
       data-testid={testId}
-      className="p-4 rounded-xl border border-[var(--border-subtle)] bg-white shadow-[var(--shadow-xs)]"
+      className="p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-[var(--shadow-xs)]"
     >
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs font-medium uppercase tracking-wide text-[var(--text-muted)]">
@@ -198,7 +198,7 @@ export function MrrDashboard({ periodDays = 30 }: MrrDashboardProps = {}) {
           {Array.from({ length: 4 }).map((_, i) => (
             <div
               key={i}
-              className="p-4 rounded-xl border border-[var(--border-subtle)] bg-white"
+              className="p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)]"
             >
               <Skeleton className="h-3 w-24 mb-3" />
               <Skeleton className="h-7 w-32" />
@@ -256,7 +256,7 @@ export function MrrDashboard({ periodDays = 30 }: MrrDashboardProps = {}) {
           {hasData ? (
             <section
               aria-labelledby="mrr-snapshots-heading"
-              className="p-5 rounded-xl border border-[var(--border-subtle)] bg-white space-y-3"
+              className="p-5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] space-y-3"
             >
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <h3

@@ -217,7 +217,7 @@ export function ReferralsTable() {
           {Array.from({ length: 4 }).map((_, i) => (
             <div
               key={i}
-              className="p-3 rounded-lg border border-[var(--border-subtle)] bg-white flex items-center gap-3"
+              className="p-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] flex items-center gap-3"
               style={{ animationDelay: `${i * 30}ms` }}
             >
               <Skeleton className="h-4 w-32" />
@@ -253,7 +253,7 @@ export function ReferralsTable() {
         />
       ) : (
         <div
-          className="overflow-x-auto rounded-xl border border-[var(--border-subtle)] bg-white"
+          className="overflow-x-auto rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)]"
           data-testid="referrals-list"
         >
           <table
@@ -315,7 +315,7 @@ export function ReferralsTable() {
                       {ref.order_id ? (
                         <a
                           href={`/orders/${ref.order_id}`}
-                          className="inline-flex items-center gap-1 font-mono text-xs text-[var(--brand-primary,#635bff)] hover:underline"
+                          className="inline-flex items-center gap-1 font-mono text-xs text-[var(--primary)] hover:underline"
                           aria-label={`${ref.order_id}`}
                         >
                           {ref.order_id.slice(0, 12)}

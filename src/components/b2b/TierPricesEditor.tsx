@@ -341,7 +341,7 @@ export function TierPricesEditor({ variantId }: TierPricesEditorProps = {}) {
         />
       ) : (
         <div
-          className="overflow-x-auto rounded-xl border border-[var(--border-subtle)] bg-white"
+          className="overflow-x-auto rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)]"
           data-testid="tier-prices-table-wrap"
         >
           <table
@@ -521,7 +521,7 @@ export function TierPricesEditor({ variantId }: TierPricesEditorProps = {}) {
 
         {resolverResult ? (
           <div
-            className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-white border border-[var(--border-subtle)] rounded-md p-3"
+            className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-md p-3"
             data-testid="resolver-result"
           >
             <div>

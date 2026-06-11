@@ -229,7 +229,7 @@ export function VoiceCallsDashboard() {
 
       {/* Filtres */}
       <div
-        className="flex flex-col sm:flex-row sm:items-end gap-4 p-4 rounded-xl border border-[var(--border-subtle)] bg-white"
+        className="flex flex-col sm:flex-row sm:items-end gap-4 p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)]"
         data-testid="voice-calls-filters"
       >
         <div className="flex items-center gap-3">
@@ -263,7 +263,7 @@ export function VoiceCallsDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,360px)_1fr] gap-4">
         {/* ── Colonne gauche : liste ─────────────────────────────────── */}
         <section
-          className="rounded-xl border border-[var(--border-subtle)] bg-white overflow-hidden"
+          className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] overflow-hidden"
           aria-label={labelAriaList}
         >
           {loading ? (
@@ -314,7 +314,7 @@ export function VoiceCallsDashboard() {
                         'focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] ' +
                         (isSelected
                           ? 'bg-[var(--primary-soft)]'
-                          : 'bg-white hover:bg-[var(--bg-muted)]')
+                          : 'bg-[var(--bg-surface)] hover:bg-[var(--bg-muted)]')
                       }
                     >
                       <div className="flex items-center justify-between gap-2 min-w-0">
@@ -363,7 +363,7 @@ export function VoiceCallsDashboard() {
 
         {/* ── Colonne droite : détail ─────────────────────────────────── */}
         <section
-          className="rounded-xl border border-[var(--border-subtle)] bg-white p-5 min-h-[320px]"
+          className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 min-h-[320px]"
           aria-label={t('voice_agent.calls.transcript')}
           data-testid="voice-call-detail"
         >

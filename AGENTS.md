@@ -210,20 +210,19 @@ Commit format : `feat(reset/polish): Sprint {N} — {résumé}`
 
 ## 12. Reprise immédiate
 
-**Plan GIGA validé 2026-05-15 — trilogie 41-43 étendue 10 sprints 41-50** (`sprint41_50_giga_plan.md` mémoire).
+**Projet en phase industrielle** — 91+ sprints livrés, ~240j dev cumulés.
 
-Sprint 41 **DONE** (2026-05-15). Prochain step : **Sprint 42** (Settings + 7 pages secondaires + PipelineSettings Wizard).
+Lis ces fichiers dans cet ordre :
+1. `AGENTS.md` (ce fichier) — règles permanentes + design system
+2. `HANDOFF-PROMPT.md` — état complet post-cleanup juin 2026
+3. `ROADMAP.md` — historique sprints condensé + prochaines vagues
 
-Si user dit "**go**" / "**vasy**" / "**on continue**" / "**lance sprint 42**" :
-- Démarrer Sprint 42 M1.1 direct, mode **FULL 18 entités** (3 Managers × 4 atomic)
-- Pattern Phase A parallèle + Phase B séquentielle si M3 dépend de M1+M2
-
-Si user dit "**SLIM**" / "**ralentis**" → fallback SLIM 6 (M × 2 atomic).
-Si user dit "**reset**" → NE PAS recommencer (Sprint 38 RESET déjà fait).
+Si user dit "**go**" / "**vasy**" / "**on continue**" → consulter ROADMAP.md vagues 6-10 et proposer le prochain sprint.
 Si user dit "**pause**" / "**j'attends**" → ne rien lancer.
 
-Avant action : check `ROADMAP.md` + mémoire `sprint41_status.md` + `sprint42_brief.md` (lessons learned Sprint 41).
+Migrations SQL dans `migrations/`. Docs archivés dans `docs/archive/`.
 
 ---
 
-**Dernière maj** : 2026-05-15 — après Sprint 41 (41 sprints cumulés, ~239.7j dev). Stripe paradigm depuis Sprint 38. 9 pages cœur Stripe-clean (+ Inbox + Calendar Sprint 41).
+**Dernière maj** : 2026-06-11 — nettoyage dossier (177 SQL → `migrations/`, 163 docs → `docs/archive/`, ROADMAP condensé 47KB→5KB, HANDOFF réécrit). Stripe paradigm depuis Sprint 38. 9 pages cœur Stripe-clean.
+

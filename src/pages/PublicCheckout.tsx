@@ -268,14 +268,14 @@ export function PublicCheckoutPage() {
   // ── Écran de confirmation (calque écran de succès PublicBooking). ──────────
   if (order) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6 bg-white">
+      <div className="min-h-screen flex items-center justify-center p-6 bg-[var(--bg-surface)]">
         <div style={{ maxWidth: 480, width: '100%' }} className="text-center">
           <div
             style={{
               width: 64,
               height: 64,
-              background: '#ecfdf5',
-              color: '#10b981',
+              background: 'var(--success-bg, #ecfdf5)',
+              color: 'var(--success, #10b981)',
               borderRadius: '50%',
               display: 'flex',
               alignItems: 'center',
@@ -289,7 +289,7 @@ export function PublicCheckoutPage() {
           <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>
             {t('checkout.confirmation')}
           </h1>
-          <p style={{ color: '#6b7280' }}>
+          <p style={{ color: 'var(--text-muted, #6b7280)' }}>
             {t('checkout.order_number')} : <strong>{order.order_number}</strong>
           </p>
 
@@ -297,7 +297,7 @@ export function PublicCheckoutPage() {
             <div className="mt-5 rounded-xl border border-[var(--border)] p-4 text-left text-sm">
               {order.items.map((it, i) => (
                 <div key={i} className="flex justify-between py-1">
-                  <span style={{ color: '#374151' }}>
+                  <span style={{ color: 'var(--text-primary, #374151)' }}>
                     {it.name} × {it.qty}
                   </span>
                   <span className="tabular-nums">{fmtMoney(it.price_cents * it.qty, currency)}</span>
@@ -316,7 +316,7 @@ export function PublicCheckoutPage() {
           >
             {t('store.continue_shopping')}
           </Link>
-          <p className="pt-6" style={{ fontSize: 10, color: '#6b7280' }}>
+          <p className="pt-6" style={{ fontSize: 10, color: 'var(--text-muted, #6b7280)' }}>
             Propulsé par <strong>Intralys</strong>
           </p>
         </div>
@@ -325,7 +325,7 @@ export function PublicCheckoutPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-[var(--bg-surface)]">
       <header className="border-b border-[var(--border)]">
         <div className="mx-auto max-w-3xl px-4 py-3">
           <Link to={`/store/${slug}`} className="text-sm" style={{ color: 'var(--primary)' }}>
@@ -345,7 +345,7 @@ export function PublicCheckoutPage() {
         ) : !cartHasItems ? (
           // Panier vide (calque store.cart_empty).
           <div className="py-10 text-center">
-            <p className="text-sm" style={{ color: '#6b7280' }}>
+            <p className="text-sm" style={{ color: 'var(--text-muted, #6b7280)' }}>
               {t('store.cart_empty')}
             </p>
             <Link
@@ -360,7 +360,7 @@ export function PublicCheckoutPage() {
             {/* Colonne principale : contenu de l'étape */}
             <div>
               {error && (
-                <p className="mb-4 text-sm" style={{ color: '#dc2626' }}>
+                <p className="mb-4 text-sm" style={{ color: 'var(--danger, #dc2626)' }}>
                   {error}
                 </p>
               )}
@@ -449,7 +449,7 @@ export function PublicCheckoutPage() {
                   ) : quote ? (
                     <div className="rounded-xl border border-[var(--border)] p-4 text-sm">
                       <div className="flex justify-between">
-                        <span style={{ color: '#374151' }}>
+                        <span style={{ color: 'var(--text-primary, #374151)' }}>
                           {quote.shipping_name || t('checkout.shipping')}
                         </span>
                         <span className="tabular-nums font-semibold">
@@ -458,7 +458,7 @@ export function PublicCheckoutPage() {
                       </div>
                     </div>
                   ) : (
-                    <p className="text-sm" style={{ color: '#6b7280' }}>
+                    <p className="text-sm" style={{ color: 'var(--text-muted, #6b7280)' }}>
                       {t('checkout.shipping_fees')}
                     </p>
                   )}
@@ -542,7 +542,7 @@ export function PublicCheckoutPage() {
                       formulaire carte (PCI/RGPD — §6.I-4/5). */}
                   <div
                     className="rounded-xl border p-4 text-sm"
-                    style={{ background: '#fffbeb', borderColor: '#fde68a', color: '#92400e' }}
+                    style={{ background: 'var(--warning-bg, #fffbeb)', borderColor: 'var(--warning, #fde68a)', color: 'var(--warning-text, #92400e)' }}
                   >
                     {t('checkout.payment_mock')}
                   </div>
@@ -584,7 +584,7 @@ export function PublicCheckoutPage() {
           </div>
         )}
 
-        <footer className="py-8 text-center" style={{ fontSize: 10, color: '#6b7280' }}>
+        <footer className="py-8 text-center" style={{ fontSize: 10, color: 'var(--text-muted, #6b7280)' }}>
           Propulsé par <strong>Intralys</strong>
         </footer>
       </main>

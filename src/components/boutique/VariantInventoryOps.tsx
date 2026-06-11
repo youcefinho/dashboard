@@ -288,7 +288,7 @@ export function VariantInventoryOps({
             {variants.map((v) => (
               <li
                 key={v.id}
-                className="rounded-xl border border-[var(--border-subtle)] bg-white"
+                className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)]"
               >
                 {editingId === v.id ? (
                   <div className="p-3">
@@ -604,7 +604,7 @@ function InventorySection({ variantId, currency: _currency, onChanged }: Invento
         <div className="space-y-4">
           {/* Résumé global courant */}
           {record && (
-            <dl className="grid grid-cols-3 gap-x-4 gap-y-1 text-[12px] bg-white p-3 rounded-xl border border-[var(--border-subtle)]">
+            <dl className="grid grid-cols-3 gap-x-4 gap-y-1 text-[12px] bg-[var(--bg-surface)] p-3 rounded-xl border border-[var(--border-subtle)]">
               <div>
                 <dt className="text-[var(--text-muted)]">{t('variants.inventory.onHand')} (Total)</dt>
                 <dd className="font-semibold text-sm t-mono-num text-[var(--text-primary)]">
@@ -647,7 +647,7 @@ function InventorySection({ variantId, currency: _currency, onChanged }: Invento
                   Aucun entrepôt ou point de vente configuré.
                 </p>
               ) : (
-                <div className="border border-[var(--border-subtle)] rounded-xl overflow-hidden bg-white">
+                <div className="border border-[var(--border-subtle)] rounded-xl overflow-hidden bg-[var(--bg-surface)]">
                   <table className="min-w-full divide-y divide-[var(--border-subtle)] text-[12px]">
                     <thead className="bg-[var(--gray-50)] text-[var(--text-muted)] font-medium">
                       <tr>
@@ -684,7 +684,7 @@ function InventorySection({ variantId, currency: _currency, onChanged }: Invento
                                 min="0"
                                 value={qtyStr}
                                 onChange={(e) => setLocalQuantities({ ...localQuantities, [w.id]: e.target.value })}
-                                className="w-24 text-right px-2 py-1 border border-[var(--border-subtle)] rounded bg-white text-[12px] font-mono focus:outline-none focus:border-[var(--primary)]"
+                                className="w-24 text-right px-2 py-1 border border-[var(--border-subtle)] rounded bg-[var(--bg-surface)] text-[12px] font-mono focus:outline-none focus:border-[var(--primary)]"
                                 data-testid={`variants-inv-qty-${w.id}`}
                               />
                             </td>

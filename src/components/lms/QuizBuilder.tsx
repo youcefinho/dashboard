@@ -354,7 +354,7 @@ export function QuizBuilder({ lessonId }: QuizBuilderProps) {
                     aria-pressed={isSelected}
                     aria-label={quiz.title ?? t('lms.quizzes.title')}
                     className={[
-                      'w-full text-left p-3 rounded-xl border bg-white transition-colors',
+                      'w-full text-left p-3 rounded-xl border bg-[var(--bg-surface)] transition-colors',
                       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-1',
                       isSelected
                         ? 'border-[var(--primary)] ring-1 ring-[var(--primary)]/30'
@@ -458,7 +458,7 @@ export function QuizBuilder({ lessonId }: QuizBuilderProps) {
                   <li
                     key={q.id}
                     data-testid={`question-row-${q.id}`}
-                    className="p-3 rounded-xl border border-[var(--border-subtle)] bg-white"
+                    className="p-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)]"
                   >
                     <div className="flex items-start gap-3">
                       <span
@@ -492,7 +492,7 @@ export function QuizBuilder({ lessonId }: QuizBuilderProps) {
                                     'inline-flex items-center px-2 py-0.5 rounded-full text-xs border',
                                     isCorrect
                                       ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                      : 'bg-white text-[var(--text-secondary)] border-[var(--border-subtle)]',
+                                      : 'bg-[var(--bg-surface)] text-[var(--text-secondary)] border-[var(--border-subtle)]',
                                   ].join(' ')}
                                 >
                                   {opt}
@@ -527,7 +527,7 @@ export function QuizBuilder({ lessonId }: QuizBuilderProps) {
             if (e.target === e.currentTarget) setQuizModalOpen(false);
           }}
         >
-          <div className="w-full max-w-md bg-white rounded-xl border border-[var(--border-subtle)] shadow-lg p-5">
+          <div className="w-full max-w-md bg-[var(--bg-surface)] rounded-xl border border-[var(--border-subtle)] shadow-lg p-5">
             <h4 className="t-h3 mb-4">{t('lms.quizzes.title')}</h4>
             <form onSubmit={handleSubmitQuiz} className="space-y-4">
               <div>
@@ -626,7 +626,7 @@ export function QuizBuilder({ lessonId }: QuizBuilderProps) {
             if (e.target === e.currentTarget) setQuestionModalOpen(false);
           }}
         >
-          <div className="w-full max-w-lg bg-white rounded-xl border border-[var(--border-subtle)] shadow-lg p-5 max-h-[90vh] overflow-y-auto">
+          <div className="w-full max-w-lg bg-[var(--bg-surface)] rounded-xl border border-[var(--border-subtle)] shadow-lg p-5 max-h-[90vh] overflow-y-auto">
             <h4 className="t-h3 mb-4">{t('lms.questions.title')}</h4>
             <form onSubmit={handleSubmitQuestion} className="space-y-4">
               <div>

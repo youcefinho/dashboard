@@ -462,7 +462,7 @@ export function PhoneNumbersSettings() {
                           <select
                             value={rule.condition_type}
                             onChange={(e) => handleUpdateRule(idx, 'condition_type', e.target.value as any)}
-                            className="w-full px-3 py-1.5 text-xs bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none"
+                            className="w-full px-3 py-1.5 text-xs bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-[var(--text-primary)] focus:border-[var(--primary)] focus:outline-none"
                           >
                             <option value="all">{t('telephony.phoneNumbers.ruleConditionAll')}</option>
                             <option value="area_code">{t('telephony.phoneNumbers.ruleConditionAreaCode')}</option>
@@ -493,7 +493,7 @@ export function PhoneNumbersSettings() {
                           <select
                             value={rule.target_type}
                             onChange={(e) => handleUpdateRule(idx, 'target_type', e.target.value as any)}
-                            className="w-full px-3 py-1.5 text-xs bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none"
+                            className="w-full px-3 py-1.5 text-xs bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-[var(--text-primary)] focus:border-[var(--primary)] focus:outline-none"
                           >
                             <option value="forward">{t('telephony.phoneNumbers.ruleTargetForward')}</option>
                             <option value="user">{t('telephony.phoneNumbers.ruleTargetUser')}</option>
@@ -509,7 +509,7 @@ export function PhoneNumbersSettings() {
                             <select
                               value={rule.target_id}
                               onChange={(e) => handleUpdateRule(idx, 'target_id', e.target.value)}
-                              className="w-full px-3 py-1.5 text-xs bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none"
+                              className="w-full px-3 py-1.5 text-xs bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-[var(--text-primary)] focus:border-[var(--primary)] focus:outline-none"
                             >
                               <option value="">Sélectionner un agent</option>
                               {users.map((u) => (
@@ -520,7 +520,7 @@ export function PhoneNumbersSettings() {
                             <select
                               value={rule.target_id}
                               onChange={(e) => handleUpdateRule(idx, 'target_id', e.target.value)}
-                              className="w-full px-3 py-1.5 text-xs bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none"
+                              className="w-full px-3 py-1.5 text-xs bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-[var(--text-primary)] focus:border-[var(--primary)] focus:outline-none"
                             >
                               <option value="">Sélectionner un menu IVR</option>
                               {ivrMenus.map((m) => (

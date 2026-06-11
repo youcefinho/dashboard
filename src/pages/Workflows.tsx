@@ -262,7 +262,7 @@ export function WorkflowsPage() {
                         aria-label={wf.is_active ? t('a11y.workflow_deactivate') : t('a11y.workflow_activate')}
                         aria-pressed={!!wf.is_active}
                         className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer shrink-0 ml-3 ${wf.is_active ? 'bg-[var(--success)]' : 'bg-[var(--bg-muted)]'}`}>
-                        <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform shadow-sm ${wf.is_active ? 'translate-x-[18px]' : 'translate-x-[3px]'}`} />
+                        <span className={`inline-block h-3.5 w-3.5 rounded-full bg-[var(--bg-surface)] transition-transform shadow-sm ${wf.is_active ? 'translate-x-[18px]' : 'translate-x-[3px]'}`} />
                       </button>
                     </div>
 
@@ -367,7 +367,7 @@ export function WorkflowsPage() {
                                 className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer ${wf.is_active ? 'bg-[var(--success)]' : 'bg-[var(--bg-muted)]'}`}
                                 aria-label={wf.is_active ? t('a11y.workflow_deactivate') : t('a11y.workflow_activate')}
                                 aria-pressed={!!wf.is_active}>
-                                <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform shadow-sm ${wf.is_active ? 'translate-x-[18px]' : 'translate-x-[3px]'}`} />
+                                <span className={`inline-block h-3.5 w-3.5 rounded-full bg-[var(--bg-surface)] transition-transform shadow-sm ${wf.is_active ? 'translate-x-[18px]' : 'translate-x-[3px]'}`} />
                               </button>
                             </td>
                             <td className="text-right">

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Badge, Skeleton, EmptyState, PageHero, LoadMore, SmartBanner } from '@/components/ui';
+import { Card, Button, Badge, Skeleton, EmptyState, PageHero, LoadMore, SmartBanner, Select } from '@/components/ui';
 import { t } from '@/lib/i18n';
 import { LeadLink } from '@/components/panels/LeadLink';
 import { Modal } from '@/components/ui/Modal';
@@ -109,7 +109,7 @@ function LeadsMapView({ leads }: { leads: Lead[] }) {
     // Fallback : grille SVG mock avec punaises
     const scoreColor = (s: number) => s >= 70 ? '#10b981' : s >= 40 ? '#f59e0b' : '#ef4444';
     return (
-      <div className="relative bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-lg)] overflow-hidden" style={{ height: 520 }}>
+      <div className="relative surface-card overflow-hidden" style={{ height: 520 }}>
         {/* Fond carte stylisée mock */}
         <svg width="100%" height="100%" viewBox="0 0 800 520" className="opacity-30">
           <rect width="800" height="520" fill="#1e293b" />
@@ -141,7 +141,7 @@ function LeadsMapView({ leads }: { leads: Lead[] }) {
           })}
         </div>
         {/* Légende */}
-        <div className="absolute bottom-4 left-4 flex items-center gap-3 bg-gray-900/80 backdrop-blur px-3 py-2 rounded-lg text-xs">
+        <div className="absolute bottom-4 left-4 flex items-center gap-3 bg-[var(--gray-900)]/80 backdrop-blur px-3 py-2 rounded-lg text-xs animate-fade-in-up stagger-2">
           <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-green-500" /> Score ≥70</span>
           <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-yellow-500" /> 40-69</span>
           <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-red-500" /> &lt;40</span>
@@ -149,12 +149,12 @@ function LeadsMapView({ leads }: { leads: Lead[] }) {
         </div>
         {/* Popup */}
         {selectedPin && (
-          <div className="absolute top-4 right-4 bg-[var(--bg-canvas)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] p-3 shadow-lg max-w-48 z-10">
+          <div className="absolute top-4 right-4 surface-card p-3 max-w-48 z-10 animate-fade-in-up">
             <p className="font-semibold text-sm text-[var(--text-primary)]">{selectedPin.name}</p>
             <p className="text-xs text-[var(--text-muted)]">{selectedPin.email}</p>
             <p className="text-xs mt-1" style={{ color: scoreColor(selectedPin.score) }}>Score : {selectedPin.score}</p>
             <LeadLink leadId={selectedPin.id}
-              className="flex items-center gap-1 text-xs text-[var(--brand-primary)] mt-1.5 hover:underline">
+              className="flex items-center gap-1 text-xs text-[var(--primary)] mt-1.5 hover:underline">
               <ExternalLink size={10} /> Voir le profil
             </LeadLink>
           </div>
@@ -167,11 +167,11 @@ function LeadsMapView({ leads }: { leads: Lead[] }) {
     <div className="relative rounded-[var(--radius-lg)] overflow-hidden" style={{ height: 520 }}>
       <div ref={mapContainer} style={{ width: '100%', height: '100%' }} />
       {selectedPin && (
-        <div className="absolute top-4 right-4 bg-[var(--bg-canvas)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] p-3 shadow-lg max-w-48 z-10">
+        <div className="absolute top-4 right-4 surface-card p-3 max-w-48 z-10 animate-fade-in-up">
           <p className="font-semibold text-sm text-[var(--text-primary)]">{selectedPin.name}</p>
           <p className="text-xs text-[var(--text-muted)]">{selectedPin.email}</p>
           <LeadLink leadId={selectedPin.id}
-            className="flex items-center gap-1 text-xs text-[var(--brand-primary)] mt-1.5 hover:underline">
+            className="flex items-center gap-1 text-xs text-[var(--primary)] mt-1.5 hover:underline">
             <ExternalLink size={10} /> Voir le profil
           </LeadLink>
         </div>
@@ -496,7 +496,7 @@ export function LeadsPage() {
 
   const SortIcon = ({ col }: { col: typeof sortBy }) => {
     if (sortBy !== col) return <ArrowUpDown size={12} className="text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition-opacity" />;
-    return sortDir === 'asc' ? <ChevronUp size={12} className="text-[var(--brand-primary)]" /> : <ChevronDown size={12} className="text-[var(--brand-primary)]" />;
+    return sortDir === 'asc' ? <ChevronUp size={12} className="text-[var(--primary)]" /> : <ChevronDown size={12} className="text-[var(--primary)]" />;
   };
 
   const hasFilters = !!(search || statusFilter || sourceFilter || clientFilter || langFilter);
@@ -527,18 +527,19 @@ export function LeadsPage() {
         />
       )}
       {/* Quick stats pills */}
-      <div className="flex flex-wrap items-center gap-3 mb-5">
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-xs font-medium text-[var(--text-secondary)]">
-          <Users size={14} className="text-[var(--brand-primary)]" />
-          {leads.length} leads
+      {/* Pilules KPI rapides */}
+      <div className="flex flex-wrap items-center gap-3 mb-5 animate-fade-in-up stagger-1">
+        <div className="stat-card flex items-center gap-2 !px-3 !py-1.5 !rounded-lg text-xs font-medium hover-lift">
+          <Users size={14} className="text-[var(--primary)]" />
+          <span className="stat-label !text-xs !normal-case !tracking-normal">{leads.length} leads</span>
         </div>
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-xs font-medium text-[var(--text-secondary)]">
+        <div className="stat-card flex items-center gap-2 !px-3 !py-1.5 !rounded-lg text-xs font-medium hover-lift">
           <UserPlus size={14} className="text-[var(--info)]" />
-          {newCount} {t('leads.page.kpi_new').toLowerCase()}
+          <span className="stat-label !text-xs !normal-case !tracking-normal">{newCount} {t('leads.page.kpi_new').toLowerCase()}</span>
         </div>
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-xs font-medium text-[var(--text-secondary)]">
+        <div className="stat-card flex items-center gap-2 !px-3 !py-1.5 !rounded-lg text-xs font-medium hover-lift">
           <Zap size={14} className="text-[var(--success)]" />
-          {wonCount} {t('leads.page.kpi_won').toLowerCase()}
+          <span className="stat-label !text-xs !normal-case !tracking-normal">{wonCount} {t('leads.page.kpi_won').toLowerCase()}</span>
         </div>
 
         {/* Sprint 13 — filtre « leads chauds » (proba calibrée ≥ seuil). Affiché
@@ -548,30 +549,31 @@ export function LeadsPage() {
             onClick={() => setHotOnly(v => !v)}
             aria-pressed={hotOnly}
             title={t('conversion.hot_leads')}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all ${
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all press-scale ${
               hotOnly
-                ? 'bg-[var(--brand-primary)] text-white border border-[var(--brand-primary)]'
-                : 'bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:border-[var(--brand-primary)]'
+                ? 'bg-[var(--primary)] text-white border border-[var(--primary)]'
+                : 'surface-card !shadow-none text-[var(--text-secondary)] hover:border-[var(--primary)]'
             }`}>
             <Flame size={14} className={hotOnly ? 'text-white' : 'text-[var(--accent-orange)]'} />
             {t('conversion.hot_leads')}
           </button>
         )}
 
-        <div className="flex items-center gap-1 ml-auto">
+        {/* Segmented control vue */}
+        <div className="segmented-premium ml-auto">
           <button onClick={() => setViewMode('table')}
-            aria-label={t('leads.page.view_table')} aria-pressed={viewMode === 'table'}
-            className={`p-1.5 rounded-[var(--radius-xs)] cursor-pointer transition-all ${viewMode === 'table' ? 'bg-[var(--brand-primary)] text-white' : 'text-[var(--text-muted)] hover:bg-[var(--bg-subtle)]'}`}>
+            aria-label={t('leads.page.view_table')} aria-selected={viewMode === 'table'}
+            className={`segmented-premium-item press-scale ${viewMode === 'table' ? 'active' : ''}`}>
             <LayoutList size={16} />
           </button>
           <button onClick={() => setViewMode('cards')}
-            aria-label={t('leads.page.view_cards')} aria-pressed={viewMode === 'cards'}
-            className={`p-1.5 rounded-[var(--radius-xs)] cursor-pointer transition-all ${viewMode === 'cards' ? 'bg-[var(--brand-primary)] text-white' : 'text-[var(--text-muted)] hover:bg-[var(--bg-subtle)]'}`}>
+            aria-label={t('leads.page.view_cards')} aria-selected={viewMode === 'cards'}
+            className={`segmented-premium-item press-scale ${viewMode === 'cards' ? 'active' : ''}`}>
             <LayoutGrid size={16} />
           </button>
           <button onClick={() => setViewMode('map')}
-            aria-pressed={viewMode === 'map'}
-            className={`p-1.5 rounded-[var(--radius-xs)] cursor-pointer transition-all ${viewMode === 'map' ? 'bg-[var(--brand-primary)] text-white' : 'text-[var(--text-muted)] hover:bg-[var(--bg-subtle)]'}`}
+            aria-selected={viewMode === 'map'}
+            className={`segmented-premium-item press-scale ${viewMode === 'map' ? 'active' : ''}`}
             title={t('leads.page.view_map_title')} aria-label={t('leads.page.view_map_title')}>
             <Map size={16} />
           </button>
@@ -579,37 +581,32 @@ export function LeadsPage() {
       </div>
 
       {/* Toolbar filtres */}
-      <Card className="p-4 mb-4">
+      <Card className="p-4 mb-4 animate-fade-in-up stagger-2">
         <div className="flex flex-wrap gap-3">
           <div className="flex-1 min-w-48">
             <Input placeholder={t('leads.search.placeholder')} id="search-all-leads"
               value={search} onChange={(e) => setSearch(e.target.value)} leftIcon={<Search size={16} />} />
           </div>
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
-            className="h-[38px] px-3 text-sm bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg text-[var(--text-primary)] hover:border-[var(--border-strong)] focus:border-[var(--brand-primary)] focus:ring-[3px] focus:ring-[var(--ring)] focus:outline-none">
+          <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} size="md">
             <option value="">{t('leads.filter.all_statuses')}</option>
             {LEAD_STATUSES.map(s => (<option key={s} value={s}>{STATUS_LABELS[s]}</option>))}
-          </select>
-          <select value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value)}
-            className="h-[38px] px-3 text-sm bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg text-[var(--text-primary)] hover:border-[var(--border-strong)] focus:border-[var(--brand-primary)] focus:ring-[3px] focus:ring-[var(--ring)] focus:outline-none">
+          </Select>
+          <Select value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value)} size="md">
             <option value="">{t('leads.filter.all_sources')}</option>
             {Object.entries(SOURCE_LABELS).map(([k, v]) => (<option key={k} value={k}>{v}</option>))}
-          </select>
-          <select value={clientFilter} onChange={(e) => setClientFilter(e.target.value)}
-            className="h-[38px] px-3 text-sm bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg text-[var(--text-primary)] hover:border-[var(--border-strong)] focus:border-[var(--brand-primary)] focus:ring-[3px] focus:ring-[var(--ring)] focus:outline-none">
+          </Select>
+          <Select value={clientFilter} onChange={(e) => setClientFilter(e.target.value)} size="md">
             <option value="">{t('leads.filter.all_clients')}</option>
             {clients.map(c => (<option key={c.id} value={c.id}>{c.name}</option>))}
-          </select>
+          </Select>
           {/* Sprint MULTILANG-B — filtre langue préférée (additif) */}
-          <select value={langFilter} onChange={(e) => setLangFilter(e.target.value)}
-            title={t('leads.language.label')}
-            className="h-[38px] px-3 text-sm bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg text-[var(--text-primary)] hover:border-[var(--border-strong)] focus:border-[var(--brand-primary)] focus:ring-[3px] focus:ring-[var(--ring)] focus:outline-none">
+          <Select value={langFilter} onChange={(e) => setLangFilter(e.target.value)} size="md">
             <option value="">{t('leads.language.default')}</option>
             <option value="fr-CA">Français (QC)</option>
             <option value="fr-FR">Français (FR)</option>
             <option value="en">English</option>
             <option value="es">Español</option>
-          </select>
+          </Select>
           {hasFilters && (
             <>
               <Button variant="ghost" size="sm" leftIcon={<X size={14} />}
@@ -644,9 +641,9 @@ export function LeadsPage() {
         {/* Smart Lists chips */}
         {smartLists.length > 0 && (
           <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-[var(--border-subtle)]">
-            <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider self-center">{t('leads.page.smart_lists_label')}</span>
+            <span className="text-meta-label self-center">{t('leads.page.smart_lists_label')}</span>
             {smartLists.map(sl => (
-              <span key={sl.id} className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-[var(--bg-subtle)] text-[var(--text-secondary)] cursor-pointer hover:bg-[var(--brand-primary)] hover:text-white transition-colors">
+              <span key={sl.id} className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-[var(--bg-subtle)] text-[var(--text-secondary)] cursor-pointer hover:bg-[var(--primary)] hover:text-white transition-colors">
                 <button onClick={() => loadSmartList(sl)} className="cursor-pointer">{sl.name}</button>
                 <button onClick={() => deleteSmartList(sl.id)} className="opacity-50 hover:opacity-100 cursor-pointer" aria-label={t('action.delete')}><X size={10} /></button>
               </span>
@@ -657,7 +654,7 @@ export function LeadsPage() {
 
       {/* Contenu */}
       {isLoading ? (
-        <Card aria-busy="true" aria-live="polite"><Skeleton className="h-96 w-full" /></Card>
+        <Card aria-busy="true" aria-live="polite"><div className="skeleton-shimmer h-96 w-full" /></Card>
       ) : leads.length === 0 ? (
         hasFilters ? (
           <EmptyState icon={<Users size={48} />} title={t('leads.empty.search_title')}
@@ -681,7 +678,7 @@ export function LeadsPage() {
         <LeadsMapView leads={sortedLeads} />
       ) : viewMode === 'cards' ? (
         /* ── Vue Cartes ── */
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 animate-fade-in-up stagger-3">
           {sortedLeads.map(lead => {
             const scoreColor = lead.score >= 70 ? 'var(--success)' : lead.score >= 40 ? 'var(--warning)' : 'var(--danger)';
             const longPressProps = useLongPress(() => openNotes(lead), undefined, { delay: 600 });
@@ -703,7 +700,7 @@ export function LeadsPage() {
               >
                 <div {...longPressProps}>
                   <LeadLink leadId={lead.id}
-                    className={`block relative z-10 p-4 ${lead.score >= 70 ? 'card-premium-hot' : 'card-premium'}`}>
+                    className={`block relative z-10 p-4 hover-lift press-scale ${lead.score >= 70 ? 'card-premium-hot' : 'surface-card-interactive'}`}>
                 {lead.score >= 70 && (
                   <span className="badge-hot">HOT {lead.score}</span>
                 )}
@@ -711,15 +708,15 @@ export function LeadsPage() {
                   <div className="flex items-center gap-2">
                     <Avatar name={lead.name} size="sm" />
                     <div>
-                      <p className="text-[13px] font-semibold text-[var(--text-primary)]">{lead.name}</p>
-                      <p className="text-[10px] text-[var(--text-muted)]">{getClientName(lead)}</p>
+                      <p className="text-card-title">{lead.name}</p>
+                      <p className="text-meta-label">{getClientName(lead)}</p>
                     </div>
                   </div>
-                  <Badge color={lead.type === 'inbound' ? 'var(--brand-primary)' : 'var(--warning)'}>{lead.type === 'inbound' ? t('lead.type.inbound') : t('lead.type.customer')}</Badge>
+                  <Badge color={lead.type === 'inbound' ? 'var(--primary)' : 'var(--warning)'}>{lead.type === 'inbound' ? t('lead.type.inbound') : t('lead.type.customer')}</Badge>
                 </div>
                 <div className="flex items-center gap-2 mb-2">
                   <Badge color={STATUS_COLORS[lead.status]}>{STATUS_LABELS[lead.status]}</Badge>
-                  {lead.deal_value > 0 && <span className="text-[10px] font-semibold text-[var(--brand-primary)]">{lead.deal_value.toLocaleString('fr-CA')} $</span>}
+                  {lead.deal_value > 0 && <span className="text-meta-label text-[var(--primary)]">{lead.deal_value.toLocaleString('fr-CA')} $</span>}
                 </div>
                 <div className="flex items-center gap-2 mb-2">
                   <div className="flex-1 h-1.5 rounded-full bg-[var(--bg-muted)] overflow-hidden">
@@ -740,7 +737,7 @@ export function LeadsPage() {
                     </span>
                   )}
                 </div>
-                <div className="flex items-center justify-between text-[10px] text-[var(--text-muted)]">
+                <div className="flex items-center justify-between text-meta-label">
                   <span>{lead.email}</span>
                   <span>{timeAgo(lead.created_at)}</span>
                 </div>
@@ -756,22 +753,21 @@ export function LeadsPage() {
           })}
         </div>
       ) : (
-        <Card className="overflow-hidden p-0">
+        <Card className="overflow-hidden p-0 animate-fade-in-up stagger-3">
           {/* Bulk bar */}
           {selectedIds.size > 0 && (
-            <div className="px-4 py-2.5 bg-[var(--brand-tint)] border-b border-[var(--brand-primary)]/20 flex items-center gap-3 animate-slide-down">
-              <span className="text-xs font-semibold text-[var(--brand-primary)]">{selectedIds.size} sélectionné(s)</span>
-              <select onChange={(e) => { if (e.target.value) void bulkChangeStatus(e.target.value as LeadStatus); e.target.value = ''; }}
-                className="text-xs px-2 py-1 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-xs)] cursor-pointer">
+            <div className="px-4 py-2.5 bg-[var(--brand-tint)] border-b border-[var(--primary)]/20 flex items-center gap-3 animate-slide-down">
+              <span className="text-xs font-semibold text-[var(--primary)]">{selectedIds.size} sélectionné(s)</span>
+              <Select size="sm" onChange={(e) => { if (e.target.value) void bulkChangeStatus(e.target.value as LeadStatus); e.target.value = ''; }}>
                 <option value="">{t('leads.page.bulk_change_status')}</option>
                 {LEAD_STATUSES.map(s => (<option key={s} value={s}>{STATUS_LABELS[s]}</option>))}
-              </select>
+              </Select>
               <Button variant="ghost" size="sm" onClick={bulkTrash} className="text-[var(--danger)] hover:bg-[var(--danger)]/10 hover:text-[var(--danger)]" leftIcon={<Trash2 size={14} />}>
                 {t('action.delete')}
               </Button>
               <button onClick={() => void handleBatchSummarize()} disabled={isBatchSummarizing}
                 className="inline-flex items-center gap-1.5 px-3 h-8 text-xs font-semibold text-white rounded-[var(--radius-xs)] transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
-                style={{ background: 'linear-gradient(135deg, var(--brand-primary), var(--accent-orange))' }}
+                style={{ background: 'linear-gradient(135deg, var(--primary), var(--accent-orange))' }}
                 title={t('leads.page.bulk_summarize_title')} aria-label={t('leads.page.bulk_summarize_aria')}>
                 {isBatchSummarizing ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
                 Résumer ({selectedIds.size})
@@ -780,26 +776,26 @@ export function LeadsPage() {
             </div>
           )}
           <div className="overflow-x-auto">
-            <table className="w-full text-sm density-table">
+            <table className="w-full text-sm density-table" role="grid">
               <thead>
-                <tr className="border-b border-[var(--border-subtle)] bg-[var(--bg-subtle)]">
-                  <th className="px-4 py-3 w-10">
-                    <input type="checkbox" checked={selectedIds.size === leads.length && leads.length > 0} onChange={toggleSelectAll} className="rounded cursor-pointer accent-[var(--brand-primary)]" />
+                <tr className="border-b border-[var(--border-subtle)]">
+                  <th className="table-header-cell w-10">
+                    <input type="checkbox" checked={selectedIds.size === leads.length && leads.length > 0} onChange={toggleSelectAll} className="rounded cursor-pointer accent-[var(--primary)]" />
                   </th>
-                  <th onClick={() => toggleSort('name')} className="group text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider cursor-pointer hover:text-[var(--brand-primary)] select-none">
+                  <th onClick={() => toggleSort('name')} className="group table-header-cell cursor-pointer hover:text-[var(--primary)] select-none">
                     <span className="inline-flex items-center gap-1">{t('leads.table.name')} <SortIcon col="name" /></span>
                   </th>
-                  <th className="text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t('leads.table.client')}</th>
-                  <th className="text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t('leads.table.contact')}</th>
-                  <th className="text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t('leads.table.type')}</th>
-                  <th className="text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t('leads.table.status')}</th>
-                  <th onClick={() => toggleSort('score')} className="group text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider cursor-pointer hover:text-[var(--brand-primary)] select-none">
+                  <th className="table-header-cell">{t('leads.table.client')}</th>
+                  <th className="table-header-cell">{t('leads.table.contact')}</th>
+                  <th className="table-header-cell">{t('leads.table.type')}</th>
+                  <th className="table-header-cell">{t('leads.table.status')}</th>
+                  <th onClick={() => toggleSort('score')} className="group table-header-cell cursor-pointer hover:text-[var(--primary)] select-none">
                     <span className="inline-flex items-center gap-1">{t('leads.table.score')} <SortIcon col="score" /></span>
                   </th>
-                  <th onClick={() => toggleSort('created_at')} className="group text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider cursor-pointer hover:text-[var(--brand-primary)] select-none">
+                  <th onClick={() => toggleSort('created_at')} className="group table-header-cell cursor-pointer hover:text-[var(--primary)] select-none">
                     <span className="inline-flex items-center gap-1">{t('leads.table.date')} <SortIcon col="created_at" /></span>
                   </th>
-                  <th className="text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider w-16"></th>
+                  <th className="table-header-cell w-16"></th>
                 </tr>
               </thead>
               <tbody>
@@ -809,9 +805,9 @@ export function LeadsPage() {
                   const proba = convProba[lead.id];
                   return (
                     <tr key={lead.id}
-                      className={`border-b border-[var(--border-subtle)] transition-all relative ${
+                      className={`border-b border-[var(--border-subtle)] row-hover-reveal relative ${
                         selectedIds.has(lead.id) ? 'bg-[var(--brand-tint)]' :
-                        isHot ? 'hover:bg-[oklch(0.97_0.04_220/0.4)]' : 'hover:bg-[var(--bg-subtle)]'
+                        isHot ? 'hover:bg-[oklch(0.97_0.04_220/0.4)]' : ''
                       }`}
                       style={{
                         animationDelay: `${Math.min(index, 20) * 20}ms`,
@@ -821,14 +817,14 @@ export function LeadsPage() {
                         boxShadow: isHot ? 'inset 3px 0 0 0 rgba(0,157,219,0.6)' : undefined,
                       }}>
                       <td className="px-4 py-3">
-                        <input type="checkbox" checked={selectedIds.has(lead.id)} onChange={() => toggleSelect(lead.id)} className="rounded cursor-pointer accent-[var(--brand-primary)]" />
+                        <input type="checkbox" checked={selectedIds.has(lead.id)} onChange={() => toggleSelect(lead.id)} className="rounded cursor-pointer accent-[var(--primary)]" />
                       </td>
                       <td className="px-4 py-3">
-                        <LeadLink leadId={lead.id} className="flex items-center gap-2.5 hover:text-[var(--brand-primary)] transition-colors">
+                        <LeadLink leadId={lead.id} className="flex items-center gap-2.5 hover:text-[var(--primary)] transition-colors">
                           <Avatar name={lead.name} size="xs" />
                           <div>
                             <div className="flex items-center gap-1.5">
-                              <p className="font-semibold text-[var(--text-primary)] text-[13px]">{lead.name}</p>
+                              <p className="text-card-title">{lead.name}</p>
                               {isHot && (
                                 <span className="inline-flex items-center px-1.5 h-[16px] rounded-full text-[9px] font-bold text-white tracking-wider"
                                   style={{ background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)', boxShadow: '0 0 8px rgba(217,110,39,0.4)' }}>
@@ -841,28 +837,27 @@ export function LeadsPage() {
                         </LeadLink>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="text-xs px-2 py-1 rounded-[var(--radius-xs)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] font-medium">{getClientName(lead)}</span>
+                        <span className="status-badge" style={{ background: 'var(--bg-subtle)', color: 'var(--text-secondary)' }}>{getClientName(lead)}</span>
                       </td>
                       <td className="px-4 py-3">
-                        <p className="text-[13px] text-[var(--text-secondary)]">{lead.email}</p>
+                        <p className="text-subtitle">{lead.email}</p>
                         {lead.phone && <p className="text-[11px] text-[var(--text-muted)]">{lead.phone}</p>}
                       </td>
                       <td className="px-4 py-3">
-                        <Badge color={lead.type === 'inbound' ? 'var(--brand-primary)' : 'var(--warning)'}>{lead.type === 'inbound' ? t('lead.type.inbound') : t('lead.type.customer')}</Badge>
+                        <Badge color={lead.type === 'inbound' ? 'var(--primary)' : 'var(--warning)'}>{lead.type === 'inbound' ? t('lead.type.inbound') : t('lead.type.customer')}</Badge>
                       </td>
                       <td className="px-4 py-3">
-                        <select value={lead.status} onChange={(e) => void handleStatusChange(lead.id, e.target.value as LeadStatus)}
-                          className="text-xs px-2 py-1 bg-transparent border border-[var(--border-subtle)] rounded-[var(--radius-xs)] focus:outline-none cursor-pointer hover:border-[var(--border-strong)]"
-                          style={{ color: STATUS_COLORS[lead.status] }}>
+                        <Select size="sm" value={lead.status} onChange={(e) => void handleStatusChange(lead.id, e.target.value as LeadStatus)}
+                          className="!bg-transparent" style={{ color: STATUS_COLORS[lead.status] }}>
                           {LEAD_STATUSES.map(s => (<option key={s} value={s}>{STATUS_LABELS[s]}</option>))}
-                        </select>
+                        </Select>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5">
                           <div className="w-16 h-1.5 rounded-full bg-[var(--bg-muted)] overflow-hidden">
                             <div className="h-full rounded-full transition-all" style={{ width: `${lead.score}%`, background: scoreColor }} />
                           </div>
-                          <span className="text-[10px] font-semibold w-5 text-right" style={{ color: scoreColor }}>{lead.score}</span>
+                          <span className="text-meta-label w-5 text-right" style={{ color: scoreColor }}>{lead.score}</span>
                         </div>
                         {/* Sprint 13 — badge proba de conversion calibrée (best-effort) */}
                         {proba !== undefined && (
@@ -878,9 +873,9 @@ export function LeadsPage() {
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-[11px] text-[var(--text-muted)] whitespace-nowrap">{timeAgo(lead.created_at)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap"><span className="text-meta-label">{timeAgo(lead.created_at)}</span></td>
                       <td className="px-4 py-3">
-                        <button onClick={() => openNotes(lead)} className="p-1.5 rounded-[var(--radius-xs)] text-[var(--text-muted)] hover:bg-[var(--bg-subtle)] hover:text-[var(--brand-primary)] transition-colors cursor-pointer" title={t('leads.page.expand_notes')} aria-label={t('leads.page.expand_notes')}>
+                        <button onClick={() => openNotes(lead)} className="p-1.5 rounded-[var(--radius-xs)] text-[var(--text-muted)] hover:bg-[var(--bg-subtle)] hover:text-[var(--primary)] transition-colors cursor-pointer reveal-on-hover" title={t('leads.page.expand_notes')} aria-label={t('leads.page.expand_notes')}>
                           {lead.notes ? <StickyNote size={14} /> : <MoreHorizontal size={14} />}
                         </button>
                       </td>
@@ -908,24 +903,23 @@ export function LeadsPage() {
       <Modal open={createOpen} onOpenChange={closeCreate} title={t('leads.modal.title')}>
         <div className="space-y-3">
           {createError && (
-            <div className="text-xs text-[var(--danger)] px-3 py-2 rounded-[var(--radius-sm)] bg-[var(--danger)]/10 border border-[var(--danger)]/20">
+            <div className="text-xs text-[var(--danger)] px-3 py-2 rounded-[var(--radius-sm)] bg-[var(--danger)]/10 border border-[var(--danger)]/20 animate-fade-in-up">
               {createError}
             </div>
           )}
           <div>
-            <label htmlFor="new-lead-client" className="text-sm font-medium text-[var(--text-secondary)] block mb-1.5">
+            <label htmlFor="new-lead-client" className="text-section-title block mb-1.5">
               {t('leads.modal.client')} <span className="text-[var(--danger)]">*</span>
             </label>
-            <select id="new-lead-client" value={createForm.client_id}
-              onChange={(e) => setCreateForm(f => ({ ...f, client_id: e.target.value }))}
-              className="w-full h-[38px] px-3 text-sm bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-sm)] text-[var(--text-primary)] hover:border-[var(--border-strong)] focus:border-[var(--brand-primary)] focus:ring-[3px] focus:ring-[var(--ring)] focus:outline-none">
+            <Select id="new-lead-client" value={createForm.client_id}
+              onChange={(e) => setCreateForm(f => ({ ...f, client_id: e.target.value }))}>
               <option value="">{t('leads.page.create_client_placeholder')}</option>
               {clients.map(c => (<option key={c.id} value={c.id}>{c.name}</option>))}
-            </select>
+            </Select>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label htmlFor="new-lead-name" className="text-sm font-medium text-[var(--text-secondary)] block mb-1.5">
+              <label htmlFor="new-lead-name" className="text-section-title block mb-1.5">
                 {t('leads.modal.name')} <span className="text-[var(--danger)]">*</span>
               </label>
               <Input id="new-lead-name" value={createForm.name}
@@ -933,7 +927,7 @@ export function LeadsPage() {
                 placeholder="Jean Tremblay" />
             </div>
             <div>
-              <label htmlFor="new-lead-email" className="text-sm font-medium text-[var(--text-secondary)] block mb-1.5">
+              <label htmlFor="new-lead-email" className="text-section-title block mb-1.5">
                 {t('leads.modal.email')} <span className="text-[var(--danger)]">*</span>
               </label>
               <Input id="new-lead-email" type="email" value={createForm.email}
@@ -943,36 +937,34 @@ export function LeadsPage() {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label htmlFor="new-lead-phone" className="text-sm font-medium text-[var(--text-secondary)] block mb-1.5">{t('leads.modal.phone')}</label>
+              <label htmlFor="new-lead-phone" className="text-section-title block mb-1.5">{t('leads.modal.phone')}</label>
               <Input id="new-lead-phone" value={createForm.phone}
                 onChange={(e) => setCreateForm(f => ({ ...f, phone: e.target.value }))}
                 placeholder="514-555-1234" />
             </div>
             <div>
-              <label htmlFor="new-lead-source" className="text-sm font-medium text-[var(--text-secondary)] block mb-1.5">{t('leads.new.source_label')}</label>
-              <select id="new-lead-source" value={createForm.source}
-                onChange={(e) => setCreateForm(f => ({ ...f, source: e.target.value }))}
-                className="w-full h-[38px] px-3 text-sm bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-sm)] text-[var(--text-primary)] hover:border-[var(--border-strong)] focus:border-[var(--brand-primary)] focus:ring-[3px] focus:ring-[var(--ring)] focus:outline-none">
+              <label htmlFor="new-lead-source" className="text-section-title block mb-1.5">{t('leads.new.source_label')}</label>
+              <Select id="new-lead-source" value={createForm.source}
+                onChange={(e) => setCreateForm(f => ({ ...f, source: e.target.value }))}>
                 <option value="manual">{t('leads.new.source_manual')}</option>
                 {Object.entries(SOURCE_LABELS).map(([k, v]) => (<option key={k} value={k}>{v}</option>))}
-              </select>
+              </Select>
             </div>
           </div>
           <div>
-            <label htmlFor="new-lead-type" className="text-sm font-medium text-[var(--text-secondary)] block mb-1.5">{t('leads.new.type_label')}</label>
-            <select id="new-lead-type" value={createForm.type}
-              onChange={(e) => setCreateForm(f => ({ ...f, type: e.target.value as 'inbound' | 'customer' }))}
-              className="w-full h-[38px] px-3 text-sm bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-sm)] text-[var(--text-primary)] hover:border-[var(--border-strong)] focus:border-[var(--brand-primary)] focus:ring-[3px] focus:ring-[var(--ring)] focus:outline-none">
+            <label htmlFor="new-lead-type" className="text-section-title block mb-1.5">{t('leads.new.type_label')}</label>
+            <Select id="new-lead-type" value={createForm.type}
+              onChange={(e) => setCreateForm(f => ({ ...f, type: e.target.value as 'inbound' | 'customer' }))}>
               <option value="inbound">Entrant (prospect)</option>
               <option value="customer">{t('leads.new.type_customer')}</option>
-            </select>
+            </Select>
           </div>
           <div>
-            <label htmlFor="new-lead-message" className="text-sm font-medium text-[var(--text-secondary)] block mb-1.5">{t('leads.new.note_label')}</label>
+            <label htmlFor="new-lead-message" className="text-section-title block mb-1.5">{t('leads.new.note_label')}</label>
             <textarea id="new-lead-message" value={createForm.message}
               onChange={(e) => setCreateForm(f => ({ ...f, message: e.target.value }))}
               rows={3} placeholder="Contexte du lead, source détaillée, prochaines étapes..."
-              className="w-full px-3 py-2.5 text-sm bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-default)] rounded-[var(--radius-sm)] placeholder:text-[var(--text-muted)] focus:border-[var(--brand-primary)] focus:ring-[3px] focus:ring-[var(--ring)] focus:outline-none resize-none" />
+              className="w-full px-3 py-2.5 text-sm bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-default)] rounded-[var(--radius-sm)] placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-[3px] focus:ring-[var(--ring)] focus:outline-none resize-none" />
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="ghost" onClick={closeCreate} disabled={createSubmitting}>{t('leads.modal.cancel')}</Button>
@@ -987,23 +979,23 @@ export function LeadsPage() {
       <Modal open={!!batchSummary} onOpenChange={() => setBatchSummary(null)} title="Résumé AI des leads sélectionnés" size="lg">
         {batchSummary && (
           <div className="space-y-4">
-            <div className="p-3 rounded-[var(--radius-md)] bg-gradient-to-br from-[var(--brand-primary)]/5 to-[var(--accent-orange)]/5 border border-[var(--brand-primary)]/20">
+            <div className="p-3 surface-inset animate-fade-in-up">
               <div className="flex items-start gap-2">
-                <Sparkles size={14} className="text-[var(--brand-primary)] mt-0.5 shrink-0" />
+                <Sparkles size={14} className="text-[var(--primary)] mt-0.5 shrink-0" />
                 <p className="text-sm text-[var(--text-primary)] leading-relaxed">{batchSummary.overview}</p>
               </div>
             </div>
             <div className="max-h-96 overflow-y-auto rounded-[var(--radius-md)] border border-[var(--border-subtle)]">
               <table className="w-full text-sm">
                 <thead className="sticky top-0">
-                  <tr className="bg-[var(--bg-subtle)] border-b border-[var(--border-subtle)]">
-                    <th className="text-left px-3 py-2 text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t('leads.detail.batch_col_lead')}</th>
-                    <th className="text-left px-3 py-2 text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t('leads.page.batch_col_summary')}</th>
+                  <tr className="border-b border-[var(--border-subtle)]">
+                    <th className="table-header-cell">{t('leads.detail.batch_col_lead')}</th>
+                    <th className="table-header-cell">{t('leads.page.batch_col_summary')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {batchSummary.per_lead.map(item => (
-                    <tr key={item.lead_id} className="border-b border-[var(--border-subtle)] last:border-b-0 hover:bg-[var(--bg-subtle)] transition-colors">
+                    <tr key={item.lead_id} className="border-b border-[var(--border-subtle)] last:border-b-0 row-hover-reveal">
                       <td className="px-3 py-2 text-xs font-medium text-[var(--text-primary)] whitespace-nowrap">{item.name}</td>
                       <td className="px-3 py-2 text-xs text-[var(--text-secondary)]">{item.summary}</td>
                     </tr>
@@ -1012,7 +1004,7 @@ export function LeadsPage() {
               </table>
             </div>
             <div className="flex items-center justify-between">
-              <p className="text-[10px] text-[var(--text-muted)]">{t('leads.page.batch_generated_by')}</p>
+              <p className="text-meta-label">{t('leads.page.batch_generated_by')}</p>
               <Button variant="secondary" leftIcon={<Download size={14} />} onClick={() => {
                 if (!batchSummary) return;
                 const csv = ['Nom,Résumé AI', ...batchSummary.per_lead.map(l => `"${l.name.replace(/"/g, '""')}","${l.summary.replace(/"/g, '""')}"`)].join('\n');
@@ -1034,7 +1026,7 @@ export function LeadsPage() {
             <div className="grid grid-cols-2 gap-2 text-sm">
               <div><span className="text-[var(--text-muted)]">{t('leads.page.notes_email')}</span><span className="text-[var(--text-primary)]">{selectedLead.email}</span></div>
               <div><span className="text-[var(--text-muted)]">{t('leads.page.notes_phone')}</span><span className="text-[var(--text-primary)]">{selectedLead.phone || '—'}</span></div>
-              <div><span className="text-[var(--text-muted)]">{t('leads.page.notes_type')}</span><Badge color={selectedLead.type === 'inbound' ? 'var(--brand-primary)' : 'var(--warning)'}>{selectedLead.type === 'inbound' ? t('leads.page.type_inbound') : t('leads.page.type_customer')}</Badge></div>
+              <div><span className="text-[var(--text-muted)]">{t('leads.page.notes_type')}</span><Badge color={selectedLead.type === 'inbound' ? 'var(--primary)' : 'var(--warning)'}>{selectedLead.type === 'inbound' ? t('leads.page.type_inbound') : t('leads.page.type_customer')}</Badge></div>
               <div><span className="text-[var(--text-muted)]">{t('leads.page.notes_status')}</span><Badge color={STATUS_COLORS[selectedLead.status]}>{STATUS_LABELS[selectedLead.status]}</Badge></div>
             </div>
             {selectedLead.message && (
@@ -1044,9 +1036,9 @@ export function LeadsPage() {
               </div>
             )}
             <div>
-              <label htmlFor="lead-notes" className="text-sm font-medium text-[var(--text-secondary)] block mb-1.5">{t('leads.detail.notes_label')}</label>
+              <label htmlFor="lead-notes" className="text-section-title block mb-1.5">{t('leads.detail.notes_label')}</label>
               <textarea id="lead-notes" value={editNotes} onChange={(e) => setEditNotes(e.target.value)} rows={4} placeholder="Ajouter des notes sur ce lead..."
-                className="w-full px-3 py-2.5 text-sm bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-default)] rounded-[var(--radius-sm)] placeholder:text-[var(--text-muted)] focus:border-[var(--brand-primary)] focus:ring-[3px] focus:ring-[var(--ring)] focus:outline-none resize-none" />
+                className="w-full px-3 py-2.5 text-sm bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-default)] rounded-[var(--radius-sm)] placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-[3px] focus:ring-[var(--ring)] focus:outline-none resize-none" />
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="ghost" onClick={() => setSelectedLead(null)}>{t('action.cancel')}</Button>
@@ -1059,25 +1051,24 @@ export function LeadsPage() {
       {/* Modal Import CSV */}
       <Modal open={importModalOpen} onOpenChange={setImportModalOpen} title="Importer des leads depuis un fichier CSV">
         <div className="space-y-4">
-          <p className="text-xs text-[var(--text-muted)]">
+          <p className="text-subtitle">
             Sélectionnez le sous-compte (client) de destination pour importer vos prospects. 
             Les colonnes du CSV seront mappées automatiquement par le système.
           </p>
           <div>
-            <label htmlFor="import-csv-client" className="text-sm font-medium text-[var(--text-secondary)] block mb-1.5">
+            <label htmlFor="import-csv-client" className="text-section-title block mb-1.5">
               Sous-compte destinataire <span className="text-[var(--danger)]">*</span>
             </label>
-            <select
+            <Select
               id="import-csv-client"
               value={importClientId}
               onChange={(e) => setImportClientId(e.target.value)}
-              className="w-full h-[38px] px-3 text-sm bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none"
             >
               <option value="">Sélectionner un sous-compte...</option>
               {clients.map(c => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
-            </select>
+            </Select>
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="ghost" onClick={() => setImportModalOpen(false)}>Annuler</Button>

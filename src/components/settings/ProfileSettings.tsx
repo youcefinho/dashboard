@@ -2,7 +2,7 @@
 // ── Sprint 24 vague 6A — autosave debounced (1.2s) + cmd+S force save
 // ── Sprint 48 M2.4 — Language switcher wired (4 langues + auto-detect)
 import { useMemo, useState } from 'react';
-import { Card, Button, Input, Tag, Avatar, Textarea, Skeleton, useToast, AutosaveIndicator } from '@/components/ui';
+import { Card, Button, Input, Tag, Avatar, Textarea, Skeleton, useToast, AutosaveIndicator, Select } from '@/components/ui';
 import { updateProfile } from '@/lib/api';
 import { useAutosave } from '@/hooks/useAutosave';
 import { getLocale, setLocale, availableLocaleOptions, t, type Locale } from '@/lib/i18n';
@@ -145,7 +145,7 @@ export function ProfileSettings({ user, isAdmin }: { user: any; isAdmin: boolean
         </div>
         <div className="settings-form-row">
           <label className="settings-label">Langue</label>
-          <select
+          <Select
             className="settings-select"
             value={currentLocale}
             onChange={handleLocaleChange}
@@ -156,14 +156,14 @@ export function ProfileSettings({ user, isAdmin }: { user: any; isAdmin: boolean
                 {opt.native}
               </option>
             ))}
-          </select>
+          </Select>
           <p className="settings-helper">
             Le changement de langue rafraîchit la page pour appliquer la traduction partout.
           </p>
         </div>
         <div className="settings-form-row settings-form-row--full">
           <label className="settings-label">Fuseau horaire</label>
-          <select
+          <Select
             className="settings-select"
             value={currentTimezone}
             onChange={handleTimezoneChange}
@@ -174,7 +174,7 @@ export function ProfileSettings({ user, isAdmin }: { user: any; isAdmin: boolean
                 {tz.replace(/_/g, ' ')}
               </option>
             ))}
-          </select>
+          </Select>
           <p className="settings-helper">
             Dates et heures sont affichées dans ce fuseau. Détecté : {detectedTz.replace(/_/g, ' ')}.
           </p>

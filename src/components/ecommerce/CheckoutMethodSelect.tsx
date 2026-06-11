@@ -139,7 +139,7 @@ export function CheckoutMethodSelect({
               {selected && (
                 <span
                   className="h-1.5 w-1.5 rounded-full"
-                  style={{ background: '#fff' }}
+                  style={{ background: 'var(--bg-surface)' }}
                 />
               )}
             </span>

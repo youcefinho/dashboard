@@ -1,7 +1,7 @@
 // ── Module Messages — Intralys CRM ──────────────────────────
 import { Resend } from 'resend';
 import type { Env } from './types';
-import { sanitizeInput, json, audit, sendSms, createNotification, isLeadDnd } from './helpers';
+import { sanitizeInput, json, audit, sendSms, createNotification, isLeadDnd, getEncryptionKeyHex } from './helpers';
 import { findOrCreateConversation } from './conversations';
 import { analyzeSentimentAndIntent } from './lib/sentiment-intent-engine';
 import { isUnsubscribed, generateCaslFooter, generateAmfDisclaimer, generateUnsubscribeToken } from './compliance';
@@ -13,6 +13,8 @@ import {
 import { detectStopKeyword } from './twilio-verify';
 import { tLead } from './i18n-server';
 import type { DndChannel } from './helpers';
+// ── Sprint 92 — Chiffrement PII at rest (AES-GCM 256) ───────────────────────
+import { encryptField, decryptField, isEncrypted } from './lib/field-encryption-engine';
 
 export function wrapEmailWithTracking(html: string, messageId: string, domain: string): string {
   const trackedHtml = html.replace(/href=["'](https?:\/\/[^"']+)["']/g, (match, url) => {
@@ -42,7 +44,20 @@ export async function handleGetLeadMessages(
      LIMIT 100`
   ).bind(leadId).all();
 
-  return json({ data: results || [] });
+  // ── Sprint 92 — Déchiffrement body message at rest ─────────────────────
+  const keyHex = getEncryptionKeyHex(env);
+  const items = (results || []) as Array<Record<string, unknown>>;
+  if (keyHex) {
+    for (const msg of items) {
+      try {
+        if (typeof msg.body === 'string' && isEncrypted(msg.body)) {
+          msg.body = await decryptField(msg.body, keyHex);
+        }
+      } catch { /* fail-safe */ }
+    }
+  }
+
+  return json({ data: items });
 }
 
 export async function handleSendMessage(
@@ -173,15 +188,40 @@ export async function handleSendMessage(
   // Trouver ou créer la conversation
   const convId = await findOrCreateConversation(env, leadId, lead.client_id as string, channel);
 
-  // Enregistrer le message en DB
-  await env.DB.prepare(
-    `INSERT INTO messages (id, lead_id, client_id, conversation_id, direction, channel, subject, body, status, sent_by, external_id)
-     VALUES (?, ?, ?, ?, 'outbound', ?, ?, ?, ?, ?, ?)`
-  ).bind(
-    messageId, leadId, lead.client_id as string, convId,
-    channel, subject, messageBody, status,
-    auth.userId, externalId
-  ).run();
+  // ── Sprint 92 — Chiffrement body message at rest (dual-write) ────────────
+  const keyHex = getEncryptionKeyHex(env);
+  let bodyEnc: string | null = null;
+  if (keyHex && messageBody) {
+    try {
+      bodyEnc = await encryptField(messageBody, keyHex);
+    } catch { /* fail-safe */ }
+  }
+
+  // Enregistrer le message en DB (avec body_enc si disponible)
+  try {
+    await env.DB.prepare(
+      `INSERT INTO messages (id, lead_id, client_id, conversation_id, direction, channel, subject, body, body_enc, status, sent_by, external_id)
+       VALUES (?, ?, ?, ?, 'outbound', ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(
+      messageId, leadId, lead.client_id as string, convId,
+      channel, subject, messageBody, bodyEnc, status,
+      auth.userId, externalId
+    ).run();
+  } catch (e) {
+    // Fallback : colonne body_enc absente (migration seq187 pas encore jouée)
+    if (String(e).includes('no such column') || String(e).includes('has no column')) {
+      await env.DB.prepare(
+        `INSERT INTO messages (id, lead_id, client_id, conversation_id, direction, channel, subject, body, status, sent_by, external_id)
+         VALUES (?, ?, ?, ?, 'outbound', ?, ?, ?, ?, ?, ?)`
+      ).bind(
+        messageId, leadId, lead.client_id as string, convId,
+        channel, subject, messageBody, status,
+        auth.userId, externalId
+      ).run();
+    } else {
+      throw e;
+    }
+  }
 
   // Mettre à jour la conversation
   await env.DB.prepare(
@@ -236,7 +276,20 @@ export async function handleGetInboxMessages(
   const stmt = env.DB.prepare(query);
   const { results } = params.length > 0 ? await stmt.bind(...params).all() : await stmt.all();
 
-  return json({ data: results || [] });
+  // ── Sprint 92 — Déchiffrement body message at rest ─────────────────────
+  const inboxKeyHex = getEncryptionKeyHex(env);
+  const inboxItems = (results || []) as Array<Record<string, unknown>>;
+  if (inboxKeyHex) {
+    for (const msg of inboxItems) {
+      try {
+        if (typeof msg.body === 'string' && isEncrypted(msg.body)) {
+          msg.body = await decryptField(msg.body, inboxKeyHex);
+        }
+      } catch { /* fail-safe */ }
+    }
+  }
+
+  return json({ data: inboxItems });
 }
 
 export async function handleSendSms(

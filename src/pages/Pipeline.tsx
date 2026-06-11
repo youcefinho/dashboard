@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, type DragEvent } from 'react';
 import { Link } from '@tanstack/react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { t } from '@/lib/i18n';
-import { Badge, Skeleton, Card, Button, EmptyState, PageHero } from '@/components/ui';
+import { Badge, Button, EmptyState, PageHero, Select } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { Avatar } from '@/components/ui/Avatar';
 import { getPipeline, getPipelines, updateLead, getLeadConversionScore } from '@/lib/api';
@@ -216,7 +216,7 @@ export function PipelinePage() {
         <div className="relative">
           <button 
             onClick={() => setIsPipelinesDropdownOpen(!isPipelinesDropdownOpen)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-sm font-semibold text-[var(--text-primary)] hover:border-[var(--brand-primary)] transition-colors cursor-pointer"
+            className="surface-card flex items-center gap-2 px-4 py-2 text-sm font-semibold text-[var(--text-primary)] hover:border-[var(--primary)] cursor-pointer press-scale"
           >
             {activePipeline?.name || t('pipeline.loading')} <ChevronDown size={14} className="text-[var(--text-muted)]" />
           </button>
@@ -224,7 +224,7 @@ export function PipelinePage() {
           {isPipelinesDropdownOpen && pipelines.length > 0 && (
             <>
               <div className="fixed inset-0 z-10" onClick={() => setIsPipelinesDropdownOpen(false)} />
-              <div className="absolute top-full left-0 mt-1 w-56 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl shadow-lg z-20 py-1 overflow-hidden">
+              <div className="absolute top-full left-0 mt-1 w-56 surface-card z-20 py-1 overflow-hidden animate-fade-in-up" style={{ boxShadow: 'var(--shadow-overlay)' }}>
                 {pipelines.map(p => (
                   <button
                     key={p.id}
@@ -236,7 +236,7 @@ export function PipelinePage() {
                     className="w-full text-left px-4 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] flex items-center justify-between"
                   >
                     {p.name}
-                    {p.id === activePipelineId && <Check size={14} className="text-[var(--brand-primary)]" />}
+                    {p.id === activePipelineId && <Check size={14} className="text-[var(--primary)]" />}
                   </button>
                 ))}
               </div>
@@ -247,57 +247,39 @@ export function PipelinePage() {
         {/* KPIs inline — Sprint 23 : mini hero cards */}
         <div className="flex items-stretch gap-2 ml-2">
           {/* KPI Valeur */}
-          <div className="relative overflow-hidden flex items-center gap-2 px-3 py-2 rounded-xl transition-all hover:scale-[1.02] cursor-default"
-            style={{
-              background: 'linear-gradient(135deg, #FFFFFF 0%, #F0FAFE 100%)',
-              border: '1px solid rgba(0,157,219,0.25)',
-              boxShadow: '0 1px 2px rgba(0,157,219,0.06), 0 6px 16px -8px rgba(0,157,219,0.25)',
-            }}>
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-              style={{ background: 'linear-gradient(135deg, #009DDB 0%, #0086C0 100%)', boxShadow: '0 2px 8px rgba(0,157,219,0.4)' }}>
+          <div className="stat-card flex items-center gap-2 px-3 py-2 hover-lift cursor-default animate-fade-in-up stagger-1">
+            <div className="stat-icon-chip" style={{ background: 'linear-gradient(135deg, #009DDB 0%, #0086C0 100%)' }}>
               <DollarSign size={15} className="text-white" />
             </div>
             <div>
-              <p className="text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">{t('pipeline.kpi.value')}</p>
-              <p className="text-sm font-bold tabular-nums leading-tight" style={{ color: 'var(--brand-primary)' }}>
+              <p className="text-meta-label">{t('pipeline.kpi.value')}</p>
+              <p className="text-sm font-bold tabular-nums leading-tight text-[var(--primary)]">
                 {totalValue.toLocaleString('fr-CA')} <span className="text-[10px] text-[var(--text-muted)]">$</span>
               </p>
             </div>
           </div>
 
           {/* KPI Prévision */}
-          <div className="relative overflow-hidden flex items-center gap-2 px-3 py-2 rounded-xl transition-all hover:scale-[1.02] cursor-default"
-            style={{
-              background: 'linear-gradient(135deg, #FFFFFF 0%, #F5FBF5 100%)',
-              border: '1px solid rgba(55,202,55,0.25)',
-              boxShadow: '0 1px 2px rgba(55,202,55,0.06), 0 6px 16px -8px rgba(55,202,55,0.25)',
-            }}>
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-              style={{ background: 'linear-gradient(135deg, #37CA37 0%, #2ba62b 100%)', boxShadow: '0 2px 8px rgba(55,202,55,0.4)' }}>
+          <div className="stat-card flex items-center gap-2 px-3 py-2 hover-lift cursor-default animate-fade-in-up stagger-2">
+            <div className="stat-icon-chip" style={{ background: 'linear-gradient(135deg, #37CA37 0%, #2ba62b 100%)' }}>
               <TrendingUp size={15} className="text-white" />
             </div>
             <div>
-              <p className="text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">{t('pipeline.kpi.forecast')}</p>
-              <p className="text-sm font-bold tabular-nums leading-tight" style={{ color: 'var(--success)' }}>
+              <p className="text-meta-label">{t('pipeline.kpi.forecast')}</p>
+              <p className="text-sm font-bold tabular-nums leading-tight text-[var(--success)]">
                 {weightedForecast.toLocaleString('fr-CA')} <span className="text-[10px] text-[var(--text-muted)]">$</span>
               </p>
             </div>
           </div>
 
           {/* KPI Dormants */}
-          <div className="relative overflow-hidden flex items-center gap-2 px-3 py-2 rounded-xl transition-all hover:scale-[1.02] cursor-default"
-            style={{
-              background: 'linear-gradient(135deg, #FFFFFF 0%, #FFFBF5 100%)',
-              border: '1px solid rgba(255,154,0,0.25)',
-              boxShadow: '0 1px 2px rgba(255,154,0,0.06), 0 6px 16px -8px rgba(255,154,0,0.25)',
-            }}>
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-              style={{ background: 'linear-gradient(135deg, #FF9A00 0%, #D96E27 100%)', boxShadow: '0 2px 8px rgba(255,154,0,0.4)' }}>
+          <div className="stat-card flex items-center gap-2 px-3 py-2 hover-lift cursor-default animate-fade-in-up stagger-3">
+            <div className="stat-icon-chip" style={{ background: 'linear-gradient(135deg, #FF9A00 0%, #D96E27 100%)' }}>
               <AlertTriangle size={15} className="text-white" />
             </div>
             <div>
-              <p className="text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">{t('pipeline.kpi.dormant')}</p>
-              <p className="text-sm font-bold tabular-nums leading-tight" style={{ color: 'var(--warning)' }}>
+              <p className="text-meta-label">{t('pipeline.kpi.dormant')}</p>
+              <p className="text-sm font-bold tabular-nums leading-tight text-[var(--warning)]">
                 {dormantCount}
               </p>
             </div>
@@ -313,26 +295,26 @@ export function PipelinePage() {
           <button onClick={() => setHotOnly(v => !v)}
             aria-pressed={hotOnly}
             title={t('conversion.hot_leads')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all ${hotOnly ? 'bg-[var(--brand-primary)] text-white border border-[var(--brand-primary)]' : 'bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:border-[var(--brand-primary)]'}`}>
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer press-scale transition-all ${hotOnly ? 'bg-[var(--primary)] text-white border border-[var(--primary)]' : 'surface-card text-[var(--text-secondary)] hover:border-[var(--primary)]'}`}>
             <Flame size={13} className={hotOnly ? 'text-white' : 'text-[var(--accent-orange)]'} /> {t('conversion.hot_leads')}
           </button>
         )}
 
         {/* Filtres */}
         <button onClick={() => setShowFilters(!showFilters)}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all ${showFilters ? 'bg-[var(--brand-primary)] text-white' : 'bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:border-[var(--brand-primary)]'}`}>
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer press-scale transition-all ${showFilters ? 'bg-[var(--primary)] text-white' : 'surface-card text-[var(--text-secondary)] hover:border-[var(--primary)]'}`}>
           <Filter size={13} /> {t('pipeline.filter.label')}
-          {activeFilters.length > 0 && <span className="ml-1 w-4 h-4 rounded-full bg-white/20 text-[10px] flex items-center justify-center">{activeFilters.length}</span>}
+          {activeFilters.length > 0 && <span className="ml-1 w-4 h-4 rounded-full bg-[var(--bg-surface)]/20 text-[10px] flex items-center justify-center">{activeFilters.length}</span>}
         </button>
 
         {/* Vue switcher */}
-        <div className="flex items-center bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-lg p-0.5">
+        <div className="segmented-premium">
           {([['kanban', Kanban], ['list', LayoutList], ['forecast', BarChart3]] as const).map(([mode, Icon]) => {
             const viewLabel = mode === 'kanban' ? t('pipeline.page.view_kanban') : mode === 'list' ? t('pipeline.page.view_list') : t('pipeline.page.view_forecast');
             return (
             <button key={mode} onClick={() => setViewMode(mode as ViewMode)}
               aria-label={viewLabel} aria-pressed={viewMode === mode} title={viewLabel}
-              className={`p-1.5 rounded-md cursor-pointer transition-all ${viewMode === mode ? 'bg-[var(--brand-primary)] text-white shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>
+              className={`segmented-premium-item flex items-center justify-center p-1.5 ${viewMode === mode ? 'active' : ''}`}>
               <Icon size={15} />
             </button>
           );})}
@@ -343,8 +325,8 @@ export function PipelinePage() {
       {activeFilters.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-4">
           {activeFilters.map(f => (
-            <span key={f} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[var(--brand-tint)] text-[var(--brand-primary)] text-xs font-medium">
-              {f} <button onClick={() => removeFilter(f)} className="cursor-pointer hover:text-[var(--danger)]"><X size={12} /></button>
+            <span key={f} className="status-badge bg-[var(--primary-soft)] text-[var(--primary)]">
+              {f} <button onClick={() => removeFilter(f)} className="cursor-pointer hover:text-[var(--danger)] press-scale"><X size={12} /></button>
             </span>
           ))}
           <button onClick={() => setActiveFilters([])} className="text-xs text-[var(--text-muted)] hover:text-[var(--danger)] cursor-pointer">{t('pipeline.filter.clear')}</button>
@@ -355,7 +337,11 @@ export function PipelinePage() {
       {isLoading ? (
         <div className="grid grid-cols-2 lg:grid-cols-6 gap-3" aria-busy="true" aria-live="polite">
           {[1,2,3,4,5,6].map(s => (
-            <div key={s} className="space-y-3"><Skeleton className="h-10 w-full" /><Skeleton className="h-28 w-full" /><Skeleton className="h-28 w-full" /></div>
+            <div key={s} className="space-y-3 animate-fade-in-up" style={{ animationDelay: `${s * 0.05}s` }}>
+              <div className="skeleton-shimmer h-10 w-full" />
+              <div className="skeleton-shimmer h-28 w-full" />
+              <div className="skeleton-shimmer h-28 w-full" />
+            </div>
           ))}
         </div>
       ) : leads.length === 0 && activeFilters.length === 0 ? (
@@ -375,69 +361,45 @@ export function PipelinePage() {
 
             return (
               <div key={stage.id}
-                className="pipeline-column relative flex flex-col rounded-2xl overflow-hidden transition-all duration-300 shrink-0 w-[85vw] sm:w-72 snap-center sm:snap-start"
+                className={`pipeline-column surface-card relative flex flex-col overflow-hidden shrink-0 w-[85vw] sm:w-72 snap-center sm:snap-start animate-fade-in-up stagger-${Math.min(stages.indexOf(stage) + 1, 8)} ${isOver ? 'ring-2' : ''}`}
                 style={{
-                  // Sprint 23 — gradient DRAMATIQUE 20% → 3% (au lieu de 8% → 2%)
                   ['--stage-color' as string]: stage.color,
-                  background: `linear-gradient(180deg, ${hexToRgba(stage.color, isOver ? 0.32 : 0.20)} 0%, ${hexToRgba(stage.color, 0.08)} 35%, ${hexToRgba(stage.color, 0.03)} 100%)`,
-                  border: `1px solid ${hexToRgba(stage.color, isOver ? 0.55 : 0.25)}`,
+                  borderColor: hexToRgba(stage.color, isOver ? 0.55 : 0.25),
+                  borderTopColor: stage.color,
+                  borderTopWidth: '3px',
                   boxShadow: isOver
-                    ? `0 0 0 3px ${hexToRgba(stage.color, 0.2)}, 0 12px 32px -8px ${hexToRgba(stage.color, 0.55)}`
-                    : `0 4px 24px -8px ${hexToRgba(stage.color, 0.4)}`,
+                    ? `0 0 0 3px ${hexToRgba(stage.color, 0.2)}, var(--shadow-md)`
+                    : 'var(--shadow-sm)',
                 }}
                 onDragOver={e => handleDragOver(e, stage.id)}
                 onDragLeave={handleDragLeave}
                 onDrop={e => void handleDrop(e, stage.id)}>
 
-                {/* Trait shimmer animé en haut */}
-                <div className="absolute top-0 left-0 right-0 h-[3px] overflow-hidden pointer-events-none"
-                  style={{ background: hexToRgba(stage.color, 0.3) }}>
-                  <div className="stage-shimmer h-full w-1/3"
-                    style={{
-                      background: `linear-gradient(90deg, transparent, ${stage.color}, transparent)`,
-                      boxShadow: `0 0 12px ${stage.color}`,
-                    }} />
-                </div>
+                {/* Indicateur de couleur stage — subtil Stripe */}
 
-                {/* Header glassmorphism sticky */}
-                <div className="sticky top-0 z-10 px-4 py-3"
-                  style={{
-                    background: 'rgba(255, 255, 255, 0.55)',
-                    backdropFilter: 'blur(12px) saturate(160%)',
-                    WebkitBackdropFilter: 'blur(12px) saturate(160%)',
-                    borderBottom: `1px solid ${hexToRgba(stage.color, 0.18)}`,
-                  }}>
+                {/* Header sticky Stripe-clean */}
+                <div className="sticky top-0 z-10 px-4 py-3 surface-section">
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className={`w-2 h-2 rounded-full shrink-0 ${stage.probability <= 25 ? 'status-new-dot' : ''}`}
-                        style={{ background: stage.color, boxShadow: `0 0 10px ${stage.color}`, color: stage.color }} />
-                      <h3 className="text-[11px] font-bold uppercase tracking-[0.15em] truncate"
-                        style={{ color: stage.color }}>{stage.name}</h3>
+                      <span className="status-dot shrink-0" style={{ background: stage.color }} />
+                      <h3 className="text-meta-label truncate" style={{ color: stage.color }}>{stage.name}</h3>
                     </div>
-                    <span className="text-xs font-mono font-bold tabular-nums px-2 py-0.5 rounded-md shrink-0"
-                      style={{ background: 'rgba(255,255,255,0.7)', color: stage.color, border: `1px solid ${hexToRgba(stage.color, 0.2)}` }}>
+                    <span className="status-badge text-value-mono text-xs" style={{ background: hexToRgba(stage.color, 0.1), color: stage.color }}>
                       {colLeads.length}
                     </span>
                   </div>
                   <div className="flex items-center justify-between gap-2">
                     {colValue > 0 ? (
-                      <p className="text-[12px] font-bold tabular-nums text-[var(--text-primary)]">
+                      <p className="text-[12px] text-value-mono text-[var(--text-primary)]">
                         {colValue.toLocaleString('fr-CA')} <span className="text-[var(--text-muted)] font-normal">$</span>
                       </p>
                     ) : (
-                      <span className="text-[10px] text-[var(--text-muted)]">—</span>
+                      <span className="text-subtitle">—</span>
                     )}
-                    <span className="text-[10px] font-bold tabular-nums uppercase tracking-wider"
-                      style={{ color: hexToRgba(stage.color, 0.85) }}>{prob}%</span>
+                    <span className="text-meta-label tabular-nums" style={{ color: stage.color }}>{prob}%</span>
                   </div>
-                  <div className="h-1 mt-2 rounded-full overflow-hidden"
-                    style={{ background: hexToRgba(stage.color, 0.12) }}>
-                    <div className="h-full rounded-full transition-all duration-700"
-                      style={{
-                        width: `${prob}%`,
-                        background: `linear-gradient(90deg, ${stage.color}, ${hexToRgba(stage.color, 0.7)})`,
-                        boxShadow: prob > 30 ? `0 0 8px ${stage.color}` : undefined,
-                      }} />
+                  <div className="h-1 mt-2 rounded-full overflow-hidden bg-[var(--bg-subtle)]">
+                    <div className="h-full rounded-full transition-all duration-700" style={{ width: `${prob}%`, background: stage.color }} />
                   </div>
                 </div>
 
@@ -466,30 +428,18 @@ export function PipelinePage() {
                     return (
                       <div key={lead.id} draggable
                         onDragStart={e => handleDragStart(e, lead.id)}
-                        className={`group relative rounded-xl p-4 cursor-grab active:cursor-grabbing transition-all duration-300 ${
-                          isHot ? 'hot-lead-card' : 'hover:-translate-y-0.5 hover:scale-[1.01]'
+                        className={`group relative surface-card-interactive p-4 cursor-grab active:cursor-grabbing hover-lift ${
+                          isHot ? 'hot-lead-card' : ''
                         } ${draggedId === lead.id ? 'opacity-40 scale-95 rotate-1' : ''}`}
                         style={{
-                          // Pattern 1 dramatique pour hot leads
-                          background: isHot
-                            ? 'linear-gradient(135deg, #FFFFFF 0%, #F0FAFE 60%, #E0F4FB 100%)'
-                            : '#FFFFFF',
-                          border: isHot
-                            ? '1.5px solid rgba(0, 157, 219, 0.55)'
-                            : '1px solid var(--border-subtle)',
-                          boxShadow: isHot
-                            ? undefined  // géré par .hot-lead-card animation
-                            : '0 1px 2px rgba(15,23,42,0.04), 0 4px 12px -4px rgba(15,23,42,0.06)',
                           borderLeft: isDormant ? '3px solid var(--warning)' : undefined,
+                          borderColor: isHot ? 'rgba(0, 157, 219, 0.55)' : undefined,
                         }}>
 
                         {/* Badge HOT en absolute top-right pour hot leads */}
                         {isHot && (
-                          <div className="absolute -top-2 -right-2 px-2 py-0.5 rounded-full text-[10px] font-bold text-white tracking-wider shrink-0 z-10"
-                            style={{
-                              background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
-                              boxShadow: '0 4px 12px rgba(217, 110, 39, 0.45)',
-                            }}>
+                          <div className="absolute -top-2 -right-2 status-badge text-[10px] text-white tracking-wider shrink-0 z-10"
+                            style={{ background: 'var(--brand-gradient)', boxShadow: '0 4px 12px rgba(217, 110, 39, 0.45)' }}>
                             HOT {lead.score}
                           </div>
                         )}
@@ -498,7 +448,7 @@ export function PipelinePage() {
                         <div className="flex items-start gap-2 mb-2 relative">
                           <Avatar name={lead.name} size="xs" ring={isHot ? 'hot' : 'none'} />
                           <div className="flex-1 min-w-0">
-                            <Link to={`/leads/${lead.id}`} className="text-[13px] font-semibold text-[var(--text-primary)] hover:text-[var(--brand-primary)] transition-colors truncate block leading-tight">
+                            <Link to={`/leads/${lead.id}`} className="text-[13px] font-semibold text-[var(--text-primary)] hover:text-[var(--primary)] transition-colors truncate block leading-tight">
                               {lead.name}
                             </Link>
                             {lead.client_name && <p className="text-[10px] text-[var(--text-muted)] truncate mt-0.5">{lead.client_name}</p>}
@@ -512,7 +462,7 @@ export function PipelinePage() {
                               {lead.score}
                             </span>
                           )}
-                          <button className="opacity-0 group-hover:opacity-100 p-1 -m-1 rounded-md hover:bg-[var(--bg-subtle)] transition-all cursor-pointer text-[var(--text-muted)] shrink-0" aria-label={t('pipeline.page.card_actions_aria')} title={t('pipeline.page.card_actions_title')}>
+                          <button className="reveal-on-hover p-1 -m-1 rounded-md hover:bg-[var(--bg-subtle)] transition-all cursor-pointer text-[var(--text-muted)] shrink-0 press-scale" aria-label={t('pipeline.page.card_actions_aria')} title={t('pipeline.page.card_actions_title')}>
                             <MoreHorizontal size={14} />
                           </button>
                         </div>
@@ -520,7 +470,7 @@ export function PipelinePage() {
                         {/* Row 2 : Type pill + Deal value (uniquement si > 0) */}
                         {(hasDeal || lead.type === 'customer') && (
                           <div className="flex items-center justify-between mb-2">
-                            <Badge color={lead.type === 'inbound' ? 'var(--brand-primary)' : 'var(--warning)'}>{TYPE_LABELS[lead.type]}</Badge>
+                            <Badge color={lead.type === 'inbound' ? 'var(--primary)' : 'var(--warning)'}>{TYPE_LABELS[lead.type]}</Badge>
                             {hasDeal && (
                               <span className="text-[12px] font-bold tabular-nums"
                                 style={isHot ? {
@@ -528,7 +478,7 @@ export function PipelinePage() {
                                   WebkitBackgroundClip: 'text',
                                   WebkitTextFillColor: 'transparent',
                                   backgroundClip: 'text',
-                                } : { color: 'var(--brand-primary)' }}>
+                                } : { color: 'var(--primary)' }}>
                                 {lead.deal_value.toLocaleString('fr-CA')} $
                               </span>
                             )}
@@ -536,8 +486,7 @@ export function PipelinePage() {
                         )}
 
                         {/* Row 3 : Days + Source (compact footer) */}
-                        <div className="flex items-center justify-between text-[10px] mt-2 pt-2"
-                          style={{ borderTop: `1px solid ${isHot ? 'rgba(0,157,219,0.15)' : 'rgba(0,0,0,0.05)'}` }}>
+                        <div className="flex items-center justify-between text-[10px] mt-2 pt-2 border-t border-[var(--border)]">
                           <span className="flex items-center gap-1 font-semibold tabular-nums" style={{ color: daysColor(days) }}>
                             <Clock size={10} />
                             {days}j
@@ -576,19 +525,19 @@ export function PipelinePage() {
         </div>
       ) : viewMode === 'list' ? (
         /* ── Vue Liste ── */
-        <Card className="overflow-hidden p-0">
+        <div className="surface-card overflow-hidden animate-fade-in-up">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-[var(--border-subtle)] bg-[var(--bg-subtle)]">
-                  <th className="text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t('pipeline.list.contact')}</th>
-                  <th className="text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t('pipeline.list.client')}</th>
-                  <th className="text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t('pipeline.list.stage')}</th>
-                  <th className="text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t('pipeline.list.type')}</th>
-                  <th className="text-right px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t('pipeline.list.value')}</th>
-                  <th className="text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t('pipeline.list.score')}</th>
-                  <th className="text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t('pipeline.list.days')}</th>
-                  <th className="text-left px-4 py-3 text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t('pipeline.list.source')}</th>
+                <tr className="border-b border-[var(--border)]">
+                  <th className="table-header-cell">{t('pipeline.list.contact')}</th>
+                  <th className="table-header-cell">{t('pipeline.list.client')}</th>
+                  <th className="table-header-cell">{t('pipeline.list.stage')}</th>
+                  <th className="table-header-cell">{t('pipeline.list.type')}</th>
+                  <th className="table-header-cell text-right">{t('pipeline.list.value')}</th>
+                  <th className="table-header-cell">{t('pipeline.list.score')}</th>
+                  <th className="table-header-cell">{t('pipeline.list.days')}</th>
+                  <th className="table-header-cell">{t('pipeline.list.source')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -596,19 +545,19 @@ export function PipelinePage() {
                   const days = getDaysInStage(lead);
                   const stage = stages.find(s => s.id === (lead.stage_id || stages[0]?.id));
                   return (
-                    <tr key={lead.id} className="border-b border-[var(--border-subtle)] hover:bg-[var(--bg-subtle)] transition-colors">
+                    <tr key={lead.id} className="border-b border-[var(--border)] row-hover-reveal">
                       <td className="px-4 py-3">
-                        <Link to={`/leads/${lead.id}`} className="flex items-center gap-2 hover:text-[var(--brand-primary)]">
+                        <Link to={`/leads/${lead.id}`} className="flex items-center gap-2 hover:text-[var(--primary)]">
                           <Avatar name={lead.name} size="xs" />
                           <span className="font-medium text-[13px]">{lead.name}</span>
                         </Link>
                       </td>
-                      <td className="px-4 py-3 text-xs text-[var(--text-secondary)]">{lead.client_name || '—'}</td>
+                      <td className="px-4 py-3 text-subtitle">{lead.client_name || '—'}</td>
                       <td className="px-4 py-3">
                         {stage && <Badge color={stage.color}>{stage.name}</Badge>}
                       </td>
-                      <td className="px-4 py-3"><Badge color={lead.type === 'inbound' ? 'var(--brand-primary)' : 'var(--warning)'}>{lead.type === 'inbound' ? t('pipeline.list.type_inbound') : t('pipeline.list.type_customer')}</Badge></td>
-                      <td className="px-4 py-3 text-right text-xs font-semibold text-[var(--brand-primary)]">{lead.deal_value > 0 ? `${lead.deal_value.toLocaleString('fr-CA')} $` : '—'}</td>
+                      <td className="px-4 py-3"><Badge color={lead.type === 'inbound' ? 'var(--primary)' : 'var(--warning)'}>{lead.type === 'inbound' ? t('pipeline.list.type_inbound') : t('pipeline.list.type_customer')}</Badge></td>
+                      <td className="px-4 py-3 text-right text-xs font-semibold text-[var(--primary)]">{lead.deal_value > 0 ? `${lead.deal_value.toLocaleString('fr-CA')} $` : '—'}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5">
                           <div className="w-12 h-1.5 rounded-full bg-[var(--bg-muted)] overflow-hidden">
@@ -636,14 +585,14 @@ export function PipelinePage() {
                       <td className="px-4 py-3">
                         <span className="text-xs font-medium" style={{ color: daysColor(days) }}>{days}j</span>
                       </td>
-                      <td className="px-4 py-3 text-xs text-[var(--text-muted)]">{SOURCE_LABELS[lead.source] || lead.source}</td>
+                      <td className="px-4 py-3 text-meta-label">{SOURCE_LABELS[lead.source] || lead.source}</td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
           </div>
-        </Card>
+        </div>
       ) : (
         /* ── Vue Forecast ── */
         <ForecastView pipelineId={activePipelineId!} />
@@ -654,16 +603,15 @@ export function PipelinePage() {
         <div className="space-y-4">
           <div>
             <label className="text-sm font-medium text-[var(--text-secondary)] block mb-1.5">{t('pipeline.lost.reason_label')}</label>
-            <select value={lostReason} onChange={e => setLostReason(e.target.value)}
-              className="w-full h-[38px] px-3 text-sm bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:ring-[3px] focus:ring-[var(--ring)] focus:outline-none">
+            <Select value={lostReason} onChange={e => setLostReason(e.target.value)}>
               <option value="">{t('pipeline.lost.reason_placeholder')}</option>
               {LOST_REASON_KEYS.map(k => { const label = t(k); return <option key={k} value={label}>{label}</option>; })}
-            </select>
+            </Select>
           </div>
           <div>
             <label className="text-sm font-medium text-[var(--text-secondary)] block mb-1.5">{t('pipeline.lost.details_label')}</label>
             <textarea value={lostDetails} onChange={e => setLostDetails(e.target.value)} rows={3} placeholder={t('pipeline.lost.details_placeholder')}
-              className="w-full px-3 py-2.5 text-sm bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-default)] rounded-lg placeholder:text-[var(--text-muted)] focus:border-[var(--brand-primary)] focus:ring-[3px] focus:ring-[var(--ring)] focus:outline-none resize-none" />
+              className="w-full px-3 py-2.5 text-sm bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-default)] rounded-lg placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-[3px] focus:ring-[var(--ring)] focus:outline-none resize-none" />
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="ghost" onClick={() => setLostModal({ leadId: '', show: false })}>{t('pipeline.lost.cancel')}</Button>

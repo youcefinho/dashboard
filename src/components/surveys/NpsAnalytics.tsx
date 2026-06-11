@@ -184,7 +184,7 @@ export function NpsAnalytics({ surveyId, periodDays = 30 }: NpsAnalyticsProps) {
 
       {/* ── Score hero card ───────────────────────────────────────────────── */}
       <div
-        className="p-6 rounded-2xl border border-[var(--border-subtle)] bg-white"
+        className="p-6 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)]"
         data-testid="nps-score-card"
       >
         <div className="flex items-center gap-6 flex-wrap">
@@ -333,7 +333,7 @@ function KpiCard({
 }: KpiCardProps) {
   return (
     <div
-      className="p-4 rounded-xl border border-[var(--border-subtle)] bg-white"
+      className="p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)]"
       data-testid={testId}
     >
       <div className="flex items-center gap-2">

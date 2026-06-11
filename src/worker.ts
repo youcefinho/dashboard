@@ -246,6 +246,12 @@ import {
 } from './worker/forecast-engine';
 import { handleGetPipelineBottlenecks, handleGetActivityAnomalies } from './worker/pipeline-insights';
 import { handlePublicUnsubscribe, handleGetUnsubscribes, handleLogConsent, handleGetConsent, handleForgetLead, handleExportPii } from './worker/compliance';
+// Sprint 93 — Purge RGPD & Loi 25 automatisée
+import {
+  handleGetPurgeRules, handleCreatePurgeRule, handleUpdatePurgeRule,
+  handleDeletePurgeRule, handlePreviewPurge, handleRunPurge,
+  handleScheduledPurge,
+} from './worker/privacy-purge';
 import { handleGetSubAccounts, handleCreateSubAccount, handleUpdateSubAccount, handleCreateSnapshot, handleApplySnapshot, handleGetWhitelabel, handleUpdateWhitelabel, handleWidgetScript } from './worker/sub-accounts';
 import { handleListAccountSnapshots, handleCreateAccountSnapshot, handleApplyAccountSnapshot, handleDeleteAccountSnapshot } from './worker/account-snapshots';
 // gcal.ts et gbp.ts déplacés en _v2-backlog/ (Sprint Consolidation)
@@ -383,8 +389,22 @@ export default {
     setRequestId(requestId);
     const __startMs = Date.now();
     const url = new URL(request.url);
-    const path = url.pathname;
+    let path = url.pathname;
     const method = request.method;
+
+    // ── Sprint 96 — API Versioning : rewrite /v1/api/* → /api/* ────────
+    let __apiVersionCtx: import('./worker/api-versioning').ApiVersionContext | null = null;
+    try {
+      const { parseVersionPrefix, handleUnsupportedVersion } = await import('./worker/api-versioning');
+      const unsupported = handleUnsupportedVersion(path);
+      if (unsupported) return unsupported;
+      __apiVersionCtx = parseVersionPrefix(path);
+      if (__apiVersionCtx) {
+        path = __apiVersionCtx.rewrittenPath;
+      }
+    } catch {
+      // Fail-open : si le module est absent, on continue sans versioning
+    }
 
     // ── Sprint 47 M2.4 — SSR meta snapshot pour crawlers (Google/Twitter/FB/LinkedIn)
     // Non destructif : ne s'active QUE si UA = crawler ET path = route marketing
@@ -408,6 +428,38 @@ export default {
 
     // CORS preflight
     if (method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders() });
+
+    // ── Sprint 91 (seq186) — Middleware global rate-limiting KV ────────────
+    // Fixed-window counter via Cloudflare KV (env.RATE_LIMITER). Tier 'public'
+    // (60 req/min/IP) pour toutes les routes /api/*. Le tier 'authenticated'
+    // (120 req/min/user) est appliqué plus bas, APRÈS requireAuth, en
+    // ré-évaluant avec l'identifiant utilisateur.
+    //
+    // Exemptions :
+    //   - OPTIONS → traité au-dessus (preflight CORS, jamais rate-limité).
+    //   - Routes non /api/* → assets SPA, pas d'API à protéger.
+    //   - /api/openapi.json, /docs/api → documentation, faible risque.
+    //
+    // Idiome FAIL-OPEN : si env.RATE_LIMITER est absent (binding KV non
+    // configuré) ou si KV panne, checkRateLimitKV retourne { allowed: true }
+    // → le middleware est transparent et ne bloque JAMAIS en cas de panne.
+    //
+    // Headers X-RateLimit-* injectés sur TOUTES les réponses (même autorisées)
+    // via un wrapper qui clone la Response finale. Le rate-limit result est
+    // stocké dans __rlResult pour injection au point de sortie.
+    let __rlResult: import('./worker/lib/rate-limit-kv').RateLimitKVResult | null = null;
+    if (path.startsWith('/api/')) {
+      try {
+        const { checkRateLimitKV, rateLimitedResponse } = await import('./worker/lib/rate-limit-kv');
+        const clientIp = request.headers.get('CF-Connecting-IP') || 'unknown';
+        __rlResult = await checkRateLimitKV(env.RATE_LIMITER, clientIp, 'public');
+        if (!__rlResult.allowed) {
+          return rateLimitedResponse(__rlResult);
+        }
+      } catch {
+        // Fail-open : erreur import/runtime → on laisse passer sans bloquer.
+      }
+    }
 
     // ── Routes publiques (pas d'auth) ─────────────────────
     try {
@@ -1406,6 +1458,26 @@ export default {
     const auth = await requireAuth(request, env);
     if (auth instanceof Response) return auth;
 
+    // ── Sprint 91 (seq186) — Re-check rate-limit tier 'authenticated' ─────
+    // L'utilisateur est authentifié : on applique un quota plus élevé
+    // (120 req/min) indexé sur le userId (et non plus l'IP). Ce 2e check
+    // NE REMPLACE PAS le check public (qui a déjà filtré les abus anon),
+    // il AJOUTE un quota nominal pour les utilisateurs légitimes.
+    // Fail-open garanti (calque du middleware global ligne ~411).
+    if (__rlResult && path.startsWith('/api/')) {
+      try {
+        const { checkRateLimitKV, rateLimitedResponse } = await import('./worker/lib/rate-limit-kv');
+        const authRl = await checkRateLimitKV(env.RATE_LIMITER, auth.userId, 'authenticated');
+        if (!authRl.allowed) {
+          return rateLimitedResponse(authRl);
+        }
+        // On met à jour __rlResult avec le tier authentifié (headers plus précis)
+        __rlResult = authRl;
+      } catch {
+        // Fail-open
+      }
+    }
+
     // ── LOT 1 SaaS M1 — enrichissement tenant (additif, best-effort) ──────
     // resolveTenantContext NE THROW JAMAIS : en cas de panne D1 / migration 78
     // non jouée, on retombe sur le legacy strict (clientId null) ⇒ `auth`
@@ -1451,12 +1523,35 @@ export default {
     }
 
     try {
+      // ── Sprint 94 — Cache Edge : check HIT avant dispatch ──────────────
+      const { tryCacheMiddleware, maybeCacheAndReturn } = await import('./worker/edge-cache');
+      const cachedResponse = await tryCacheMiddleware(request, url, authCtx);
+      if (cachedResponse) {
+        ctx.waitUntil(
+          recordRequestMetric(env, {
+            method,
+            rawPath: path,
+            status: cachedResponse.status,
+            tenantId: (authCtx as { clientId?: string }).clientId ?? null,
+            latencyMs: Date.now() - __startMs,
+          }).catch(() => { /* never throws */ }),
+        );
+        return cachedResponse;
+      }
+
       // ── Sprint 24 — Observabilité : capture la réponse pour enregistrer la
       // métrique requête agrégée (route × status × tenant × latence) via
       // ctx.waitUntil (best-effort, ne bloque jamais la réponse client).
       // recordRequestMetric est NEVER-THROW (try/catch interne) — le .catch
       // ici est une ceinture-bretelles défensive.
-      const finalResponse = await routeProtected(request, env, ctx, url, path, method, authCtx);
+      const rawResponse = await routeProtected(request, env, ctx, url, path, method, authCtx);
+      // Sprint 94 — Cache Edge : stocker en cache si éligible (arrière-plan)
+      let finalResponse = await maybeCacheAndReturn(rawResponse, url, authCtx, ctx);
+      // Sprint 96 — API Versioning : transformer la réponse selon la version
+      if (__apiVersionCtx) {
+        const { transformResponse } = await import('./worker/api-versioning');
+        finalResponse = await transformResponse(finalResponse, __apiVersionCtx);
+      }
       ctx.waitUntil(
         recordRequestMetric(env, {
           method,
@@ -1608,6 +1703,14 @@ export default {
       import('./worker/currencies')
         .then((m) => m.syncExchangeRates(env))
         .catch(() => {})
+    );
+    // ── Sprint 93 — Purge RGPD & Loi 25 automatisée (cron hebdomadaire) ─────
+    // BEST-EFFORT (calque pattern E7). Échec isolé ⇒ ne casse PAS le cron.
+    ctx.waitUntil(
+      import('./worker/privacy-purge')
+        .then((m) => m.handleScheduledPurge(env))
+        .then(() => undefined)
+        .catch(() => undefined),
     );
   },
 
@@ -1901,6 +2004,33 @@ async function routeProtected(
   if (path === '/api/unsubscribes' && method === 'GET') return handleGetUnsubscribes(env, auth, url);
   if (path === '/api/consent' && method === 'GET') return handleGetConsent(env, auth, url);
   if (path === '/api/consent' && method === 'POST') return handleLogConsent(request, env, auth);
+
+  // ── Sprint 93 — Purge RGPD & Loi 25 automatisée ─────────────────────────
+  if (path === '/api/compliance/purge/rules' && method === 'GET') return handleGetPurgeRules(env, auth, url);
+  if (path === '/api/compliance/purge/rules' && method === 'POST') return handleCreatePurgeRule(request, env, auth);
+  const purgeRuleMatch = path.match(/^\/api\/compliance\/purge\/rules\/([^/]+)$/);
+  if (purgeRuleMatch && method === 'PATCH') return handleUpdatePurgeRule(request, env, auth, purgeRuleMatch[1]!);
+  if (purgeRuleMatch && method === 'DELETE') return handleDeletePurgeRule(env, auth, purgeRuleMatch[1]!);
+  if (path === '/api/compliance/purge/preview' && method === 'GET') return handlePreviewPurge(env, auth, url);
+  if (path === '/api/compliance/purge/run' && method === 'POST') return handleRunPurge(request, env, auth);
+
+  // ── Sprint 98 — Rich Push Notifications ─────────────────────────────────
+  if (path === '/api/push/subscribe' && method === 'POST') {
+    const { handlePushSubscribe } = await import('./worker/push-notifications');
+    return handlePushSubscribe(request, env, auth);
+  }
+  if (path === '/api/push/unsubscribe' && method === 'DELETE') {
+    const { handlePushUnsubscribe } = await import('./worker/push-notifications');
+    return handlePushUnsubscribe(request, env, auth);
+  }
+  if (path === '/api/push/subscriptions' && method === 'GET') {
+    const { handleGetPushSubscriptions } = await import('./worker/push-notifications');
+    return handleGetPushSubscriptions(env, auth);
+  }
+  if (path === '/api/push/test' && method === 'POST') {
+    const { handlePushTest } = await import('./worker/push-notifications');
+    return handlePushTest(env, auth);
+  }
 
   // Sprint 51 M2 — Sources de leads (connecteur entrant)
   if (path === '/api/lead-sources' && method === 'GET') {
@@ -4526,6 +4656,11 @@ async function routeProtected(
   if (path === '/api/onboarding/checklist/skip' && method === 'POST') return handleSkipChecklistItem(request, env, auth);
   if (path === '/api/onboarding/checklist/reset' && method === 'POST') return handleResetChecklist(request, env, auth);
   if (path === '/api/admin/demo-reset' && method === 'POST') return handleDemoReset(request, env, auth);
+  // ── Sprint 100 — Security Audit endpoint ────────────────────────────────
+  if (path === '/api/admin/security-audit' && method === 'GET') {
+    const { handleSecurityAudit } = await import('./worker/security-audit');
+    return handleSecurityAudit(env, auth);
+  }
   // Sprint 46 M2 — Admin analytics endpoints (admin/owner only)
   if (path === '/api/admin/overview' && method === 'GET') return handleAdminOverview(request, env, auth);
   if (path === '/api/admin/activity-heatmap' && method === 'GET') return handleAdminActivityHeatmap(request, env, auth);

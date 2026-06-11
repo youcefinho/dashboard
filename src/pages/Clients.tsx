@@ -84,7 +84,7 @@ export function ClientsPage() {
       {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
         <Card className="p-3 text-center">
-          <p className="text-2xl font-bold text-[var(--brand-primary)]">{clients.length}</p>
+          <p className="text-2xl font-bold text-[var(--primary)]">{clients.length}</p>
           <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider">{t('clients.kpi.sub_accounts')}</p>
         </Card>
         <Card className="p-3 text-center">
@@ -158,7 +158,7 @@ export function ClientsPage() {
               >
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[var(--brand-primary)] to-[var(--info)] flex items-center justify-center text-base font-bold text-white shadow-md">
+                    <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[var(--primary)] to-[var(--info)] flex items-center justify-center text-base font-bold text-white shadow-md">
                       {client.name.charAt(0).toUpperCase()}
                     </div>
                     <div>
@@ -190,7 +190,7 @@ export function ClientsPage() {
                     <p className="text-[10px] text-[var(--text-muted)]">{t('clients.card.conv')}</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-lg font-bold text-[var(--brand-primary)]">{(m?.pipelineValue || 0).toLocaleString('fr-CA')} $</p>
+                    <p className="text-lg font-bold text-[var(--primary)]">{(m?.pipelineValue || 0).toLocaleString('fr-CA')} $</p>
                     <p className="text-[10px] text-[var(--text-muted)]">{t('clients.card.pipeline')}</p>
                   </div>
                 </div>
@@ -199,7 +199,7 @@ export function ClientsPage() {
                 {m && m.total > 0 && (
                   <div className="mt-2">
                     <div className="h-1.5 rounded-full bg-[var(--bg-subtle)] overflow-hidden">
-                      <div className="h-full rounded-full bg-gradient-to-r from-[var(--brand-primary)] to-[var(--success)] transition-all" style={{ width: `${Math.max(m.convRate, 5)}%` }} />
+                      <div className="h-full rounded-full bg-gradient-to-r from-[var(--primary)] to-[var(--success)] transition-all" style={{ width: `${Math.max(m.convRate, 5)}%` }} />
                     </div>
                   </div>
                 )}
@@ -208,7 +208,7 @@ export function ClientsPage() {
                 {(client.email || client.site_url) && (
                   <div className="flex items-center gap-3 mt-2.5 text-[10px] text-[var(--text-muted)]">
                     {client.email && <span className="truncate">📧 {client.email}</span>}
-                    {client.site_url && <a href={client.site_url} target="_blank" rel="noreferrer" className="hover:text-[var(--brand-primary)] transition-colors" onClick={e => e.stopPropagation()}>🌐 {t('clients.card.site')}</a>}
+                    {client.site_url && <a href={client.site_url} target="_blank" rel="noreferrer" className="hover:text-[var(--primary)] transition-colors" onClick={e => e.stopPropagation()}>🌐 {t('clients.card.site')}</a>}
                   </div>
                 )}
               </Card>

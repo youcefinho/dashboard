@@ -1,7 +1,7 @@
 // Sprint 31 vague 31-2A — Table premium (frozen first col + expand row inline)
 import { useState, useEffect, useRef, Fragment } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Skeleton, EmptyState, useToast, PageHero, KpiStrip, Icon, type KpiItem, Tag } from '@/components/ui';
+import { Card, Button, Skeleton, EmptyState, useToast, PageHero, KpiStrip, Icon, type KpiItem, Tag, Select } from '@/components/ui';
 // Sprint 44 M3.3 — Pull-to-refresh
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { PullToRefreshIndicator } from '@/components/ui/PullToRefreshIndicator';
@@ -26,7 +26,7 @@ export function DocumentsPage() {
   const { success, error: toastError, warning } = useToast();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [templates, setTemplates] = useState<DocumentTemplate[]>([]);
-  const [leads, setLeads] = useState<any[]>([]);
+  const [leads, setLeads] = useState<{ id: string; name: string; email: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState('');
@@ -102,7 +102,7 @@ export function DocumentsPage() {
     }
     setIsGeneratingOaciq(true);
     try {
-      const res = await apiFetch<any>('/documents/generate-oaciq', {
+      const res = await apiFetch<{ id: string }>('/documents/generate-oaciq', {
         method: 'POST',
         body: JSON.stringify({ lead_id: selectedLead })
       });
@@ -217,26 +217,24 @@ export function DocumentsPage() {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium mb-1">{t('documents.form.template')}</label>
-              <select 
+              <Select 
                 value={selectedTemplate} 
                 onChange={e => setSelectedTemplate(e.target.value)}
-                className="w-full p-2 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-md)] text-sm"
               >
                 <option value="">{t('documents.form.template_placeholder')}</option>
                 {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-              </select>
+              </Select>
             </div>
             
             <div>
               <label className="block text-sm font-medium mb-1">{t('documents.form.lead')}</label>
-              <select 
+              <Select 
                 value={selectedLead} 
                 onChange={e => setSelectedLead(e.target.value)}
-                className="w-full p-2 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-md)] text-sm"
               >
                 <option value="">{t('documents.form.lead_placeholder')}</option>
                 {leads.map(l => <option key={l.id} value={l.id}>{l.name} ({l.email})</option>)}
-              </select>
+              </Select>
             </div>
 
             <div>
@@ -250,7 +248,7 @@ export function DocumentsPage() {
 
             <div className="flex flex-col gap-3 pt-2 border-t border-[var(--border-subtle)] mt-2">
               <div className="flex gap-2 justify-between items-center">
-                <Button variant="secondary" onClick={() => handleGenerateOaciq()} disabled={!selectedLead || isGeneratingOaciq} className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border-indigo-200" aria-busy={isGeneratingOaciq}>
+                <Button variant="secondary" onClick={() => handleGenerateOaciq()} disabled={!selectedLead || isGeneratingOaciq} className="bg-[var(--primary-soft)] text-[var(--primary)] hover:bg-[color-mix(in_srgb,var(--primary)_12%,transparent)] border-[color-mix(in_srgb,var(--primary)_20%,transparent)]" aria-busy={isGeneratingOaciq}>
                   <Icon as={FileSignature} size="md" className="mr-2" />
                   {isGeneratingOaciq ? t('documents.oaciq.generating') : t('documents.oaciq.generate')}
                 </Button>

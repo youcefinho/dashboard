@@ -55,7 +55,7 @@ export function BlogPage() {
 
   return (
     <PublicLayout>
-      <a href="#blog-list" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:px-3 focus:py-2 focus:bg-white focus:border focus:border-[var(--primary)] focus:rounded-md">
+      <a href="#blog-list" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:px-3 focus:py-2 focus:bg-[var(--bg-surface)] focus:border focus:border-[var(--primary)] focus:rounded-md">
         Aller au contenu
       </a>
 

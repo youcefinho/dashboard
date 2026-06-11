@@ -616,7 +616,7 @@ export function PipelineSettings() {
                 {pipeline.is_default === 1 && (
                   <span
                     className={`text-[9px] px-1.5 py-0.5 rounded-full ${
-                      activePipelineId === pipeline.id ? 'bg-white/20' : 'bg-[var(--bg-muted)]'
+                      activePipelineId === pipeline.id ? 'bg-[var(--bg-surface)]/20' : 'bg-[var(--bg-muted)]'
                     }`}
                   >
                     {t('set.pipe.default')}
@@ -641,14 +641,14 @@ export function PipelineSettings() {
                 <div className="flex gap-1 justify-end">
                   <button
                     onClick={() => setIsCreatingPipeline(false)}
-                    className="p-1 hover:bg-white rounded text-[var(--text-muted)]"
+                    className="p-1 hover:bg-[var(--bg-surface)] rounded text-[var(--text-muted)]"
                     aria-label="Annuler"
                   >
                     <X size={14} />
                   </button>
                   <button
                     onClick={() => void handleCreatePipeline()}
-                    className="p-1 hover:bg-white rounded text-[var(--success)]"
+                    className="p-1 hover:bg-[var(--bg-surface)] rounded text-[var(--success)]"
                     aria-label="Confirmer"
                   >
                     <Check size={14} />

@@ -197,9 +197,9 @@ export function SignDocumentPage() {
         />
         {/* Document Content */}
         <div className="flex-1 p-8 sm:p-12 overflow-y-auto max-h-[70vh] md:max-h-[85vh] border-b md:border-b-0 md:border-r border-[var(--border-subtle)]">
-          <h1 className="text-2xl font-bold mb-8 text-black border-b pb-4">{doc.title}</h1>
+          <h1 className="text-2xl font-bold mb-8 text-[var(--text-primary)] border-b pb-4">{doc.title}</h1>
           <div 
-            className="prose prose-sm sm:prose-base max-w-none text-black"
+            className="prose prose-sm sm:prose-base max-w-none text-[var(--text-primary)]"
             dangerouslySetInnerHTML={{ __html: doc.body_html }}
           />
         </div>
@@ -226,7 +226,7 @@ export function SignDocumentPage() {
 
             <div>
               <label className="block text-sm font-medium mb-1">{t('sign.panel.signature')}</label>
-              <div className="border border-[var(--border-default)] rounded bg-white overflow-hidden touch-none relative">
+              <div className="border border-[var(--border-default)] rounded bg-[var(--bg-surface)] overflow-hidden touch-none relative">
                 <SignatureCanvas 
                   ref={sigCanvas} 
                   penColor="black"

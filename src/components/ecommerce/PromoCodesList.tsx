@@ -270,7 +270,7 @@ export function PromoCodesList({}: PromoCodesListProps) {
           />
         </Card>
       ) : (
-        <Card className="p-0 overflow-hidden border border-[var(--border-subtle)] shadow-md bg-white dark:bg-zinc-900 rounded-lg">
+        <Card className="p-0 overflow-hidden border border-[var(--border-subtle)] shadow-md bg-[var(--bg-surface)] dark:bg-zinc-900 rounded-lg">
           <div className="table-premium-container overflow-x-auto">
             <table className="table-premium w-full min-w-[800px]">
               <thead>

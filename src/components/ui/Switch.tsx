@@ -135,10 +135,10 @@ export const Switch = forwardRef<HTMLButtonElement, SwitchProps>(
       : {
           width: dims.trackW,
           height: dims.trackH,
-          background: 'rgba(0,0,0,0.08)',
+          background: 'var(--bg-muted)',
           boxShadow:
-            'inset 0 1px 2px rgba(15,23,42,0.10), inset 0 0 0 1px rgba(0,157,219,0.06)',
-          borderColor: 'rgba(0,157,219,0.10)',
+            'inset 0 1px 2px rgba(0,0,0,0.08)',
+          borderColor: 'var(--border)',
         };
 
     const thumbOffset = checked ? dims.translate : 2;
@@ -188,7 +188,7 @@ export const Switch = forwardRef<HTMLButtonElement, SwitchProps>(
       >
         <span
           aria-hidden="true"
-          className="pointer-events-none block rounded-full bg-white"
+          className="pointer-events-none block rounded-full bg-[var(--bg-surface)]"
           style={thumbStyle}
         />
       </button>

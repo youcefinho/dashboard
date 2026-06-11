@@ -121,7 +121,7 @@ function MultiSelectEditor({ options, value, onSave, onCancel }: MultiSelectEdit
               type="checkbox"
               checked={selected.includes(opt)}
               onChange={() => toggle(opt)}
-              className="rounded border-[var(--border)] text-[var(--brand-primary)] focus:ring-[var(--brand-primary)]"
+              className="rounded border-[var(--border)] text-[var(--primary)] focus:ring-[var(--primary)]"
             />
             {opt}
           </label>
@@ -393,7 +393,7 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
       {/* Bouton retour — masqué en mode compact (panel) */}
       {!compact && (
         <button onClick={() => void navigate({ to: '/leads' })}
-          className="text-sm text-[var(--text-muted)] hover:text-[var(--brand-primary)] mb-4 flex items-center gap-1.5 cursor-pointer transition-colors">
+          className="text-sm text-[var(--text-muted)] hover:text-[var(--primary)] mb-4 flex items-center gap-1.5 cursor-pointer transition-colors">
           <ArrowLeft size={16} /> {t('lead.back')}
         </button>
       )}
@@ -427,7 +427,7 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
                     {lead.score >= 70 ? <span className="text-gradient-brand">{lead.name}</span> : lead.name}
                   </h2>
                   <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)] mt-1">
-                    <button onClick={() => void navigate({ to: `/clients/${lead.client_id}` })} className="hover:text-[var(--brand-primary)] cursor-pointer transition-colors font-medium">{lead.client_name}</button>
+                    <button onClick={() => void navigate({ to: `/clients/${lead.client_id}` })} className="hover:text-[var(--primary)] cursor-pointer transition-colors font-medium">{lead.client_name}</button>
                     <span className="text-[var(--text-muted)]">·</span>
                     <span>{SOURCE_LABELS[lead.source] || lead.source}</span>
                     <span className="text-[var(--text-muted)]">·</span>
@@ -447,7 +447,7 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
                   className="p-1 cursor-pointer hover:scale-110 transition-transform" title={lead.favorite ? t('lead.fav.remove') : t('lead.fav.add')}>
                   <Star size={18} className={lead.favorite ? 'fill-[var(--warning)] text-[var(--warning)]' : 'text-[var(--text-muted)]'} />
                 </button>
-                <Badge color={lead.type === 'inbound' ? 'var(--brand-primary)' : 'var(--warning)'}>
+                <Badge color={lead.type === 'inbound' ? 'var(--primary)' : 'var(--warning)'}>
                   {lead.type === 'inbound' ? t('lead.type.inbound') : lead.type === 'customer' ? t('lead.type.customer') : lead.type}
                 </Badge>
                 <Badge color={STATUS_COLORS[lead.status]}>{STATUS_LABELS[lead.status]}</Badge>
@@ -501,17 +501,17 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
             {/* Actions rapides */}
             <div className="flex flex-wrap gap-2 mb-4 pb-4 border-b border-[var(--border-subtle)]">
               {lead.phone && (
-                <PhoneLink phone={lead.phone} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-[var(--radius-sm)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] hover:bg-[var(--brand-primary)] hover:text-white transition-colors cursor-pointer">
+                <PhoneLink phone={lead.phone} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-[var(--radius-sm)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] hover:bg-[var(--primary)] hover:text-white transition-colors cursor-pointer">
                   <Phone size={13} /> {t('lead.action.call')}
                 </PhoneLink>
               )}
-              <a href={`mailto:${lead.email}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-[var(--radius-sm)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] hover:bg-[var(--brand-primary)] hover:text-white transition-colors cursor-pointer">
+              <a href={`mailto:${lead.email}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-[var(--radius-sm)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] hover:bg-[var(--primary)] hover:text-white transition-colors cursor-pointer">
                 <Mail size={13} /> Email
               </a>
-              <button onClick={() => void navigate({ to: '/calendar' })} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-[var(--radius-sm)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] hover:bg-[var(--brand-primary)] hover:text-white transition-colors cursor-pointer">
+              <button onClick={() => void navigate({ to: '/calendar' })} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-[var(--radius-sm)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] hover:bg-[var(--primary)] hover:text-white transition-colors cursor-pointer">
                 <CalendarPlus size={13} /> {t('lead.action.schedule')}
               </button>
-              <button onClick={() => void navigate({ to: '/tasks' })} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-[var(--radius-sm)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] hover:bg-[var(--brand-primary)] hover:text-white transition-colors cursor-pointer">
+              <button onClick={() => void navigate({ to: '/tasks' })} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-[var(--radius-sm)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] hover:bg-[var(--primary)] hover:text-white transition-colors cursor-pointer">
                 <CheckSquare size={13} /> {t('lead.action.create_task')}
               </button>
               <button onClick={() => void navigate({ to: `/visit/${leadId}` })} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-[var(--radius-sm)] bg-gradient-to-r from-indigo-500/10 to-purple-500/10 text-indigo-600 border border-indigo-500/20 hover:bg-indigo-500 hover:text-white transition-colors cursor-pointer">
@@ -533,10 +533,10 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
                   {editingField === f.key ? (
                     <input autoFocus value={fieldValue} onChange={e => setFieldValue(e.target.value)}
                       onBlur={() => void saveField(f.key)} onKeyDown={e => { if (e.key === 'Enter') void saveField(f.key); if (e.key === 'Escape') setEditingField(null); }}
-                      className="w-full px-1.5 py-0.5 text-sm bg-[var(--bg-surface)] border border-[var(--brand-primary)] rounded-[var(--radius-sm)] focus:outline-none" />
+                      className="w-full px-1.5 py-0.5 text-sm bg-[var(--bg-surface)] border border-[var(--primary)] rounded-[var(--radius-sm)] focus:outline-none" />
                   ) : (
-                    <button onClick={() => startEdit(f.key, f.val === '—' ? '' : f.val)} className="text-left cursor-pointer hover:text-[var(--brand-primary)] transition-colors w-full group">
-                      {'isPhone' in f && f.isPhone && f.val !== '—' ? <PhoneLink phone={f.val} showIcon={false}>{f.val}</PhoneLink> : f.link && f.val !== '—' ? <a href={f.link} className="text-[var(--brand-primary)] hover:underline" onClick={e => e.stopPropagation()}>{f.val}</a> : <span>{f.val}</span>}
+                    <button onClick={() => startEdit(f.key, f.val === '—' ? '' : f.val)} className="text-left cursor-pointer hover:text-[var(--primary)] transition-colors w-full group">
+                      {'isPhone' in f && f.isPhone && f.val !== '—' ? <PhoneLink phone={f.val} showIcon={false}>{f.val}</PhoneLink> : f.link && f.val !== '—' ? <a href={f.link} className="text-[var(--primary)] hover:underline" onClick={e => e.stopPropagation()}>{f.val}</a> : <span>{f.val}</span>}
                       <span className="text-[10px] text-[var(--text-muted)] opacity-0 group-hover:opacity-100 ml-1">✏️</span>
                     </button>
                   )}
@@ -558,7 +558,7 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
             <div className="mt-4 pt-4 border-t border-[var(--border-subtle)]">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">{t('lead.custom_fields.title')}</h3>
-                <button onClick={() => void navigate({ to: '/settings' })} className="text-[10px] text-[var(--brand-primary)] hover:underline cursor-pointer">{t('lead.custom_fields.manage')}</button>
+                <button onClick={() => void navigate({ to: '/settings' })} className="text-[10px] text-[var(--primary)] hover:underline cursor-pointer">{t('lead.custom_fields.manage')}</button>
               </div>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 {customFields.length > 0 ? (
@@ -570,29 +570,29 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
                         <p className="text-[var(--text-muted)] text-[10px] uppercase tracking-wider mb-0.5">{cf.field_name}</p>
                         {isEditing ? (
                           cf.field_type === 'boolean' ? (
-                            <select
+                            <Select
+                              size="sm"
                               autoFocus
                               value={fieldValue}
                               onChange={e => setFieldValue(e.target.value)}
                               onBlur={() => void saveCustomField(cf.field_id, fieldValue)}
-                              className="w-full px-1.5 py-0.5 text-sm bg-[var(--bg-surface)] border border-[var(--brand-primary)] rounded-[var(--radius-sm)] focus:outline-none"
                             >
                               <option value="true">Oui</option>
                               <option value="false">Non</option>
-                            </select>
+                            </Select>
                           ) : cf.field_type === 'select' ? (
-                            <select
+                            <Select
+                              size="sm"
                               autoFocus
                               value={fieldValue}
                               onChange={e => setFieldValue(e.target.value)}
                               onBlur={() => void saveCustomField(cf.field_id, fieldValue)}
-                              className="w-full px-1.5 py-0.5 text-sm bg-[var(--bg-surface)] border border-[var(--brand-primary)] rounded-[var(--radius-sm)] focus:outline-none"
                             >
                               <option value="">—</option>
                               {def?.options?.map(opt => (
                                 <option key={opt} value={opt}>{opt}</option>
                               ))}
-                            </select>
+                            </Select>
                           ) : cf.field_type === 'multiselect' ? (
                             <MultiSelectEditor
                               options={def?.options || []}
@@ -607,7 +607,7 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
                               value={fieldValue}
                               onChange={e => setFieldValue(e.target.value)}
                               onBlur={() => void saveCustomField(cf.field_id, fieldValue)}
-                              className="w-full px-1.5 py-0.5 text-sm bg-[var(--bg-surface)] border border-[var(--brand-primary)] rounded-[var(--radius-sm)] focus:outline-none"
+                              className="w-full px-1.5 py-0.5 text-sm bg-[var(--bg-surface)] border border-[var(--primary)] rounded-[var(--radius-sm)] focus:outline-none"
                             />
                           ) : cf.field_type === 'textarea' ? (
                             <textarea
@@ -615,7 +615,7 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
                               value={fieldValue}
                               onChange={e => setFieldValue(e.target.value)}
                               onBlur={() => void saveCustomField(cf.field_id, fieldValue)}
-                              className="w-full px-1.5 py-0.5 text-sm bg-[var(--bg-surface)] border border-[var(--brand-primary)] rounded-[var(--radius-sm)] focus:outline-none resize-y"
+                              className="w-full px-1.5 py-0.5 text-sm bg-[var(--bg-surface)] border border-[var(--primary)] rounded-[var(--radius-sm)] focus:outline-none resize-y"
                             />
                           ) : cf.field_type === 'number' ? (
                             <input
@@ -624,7 +624,7 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
                               value={fieldValue}
                               onChange={e => setFieldValue(e.target.value)}
                               onBlur={() => void saveCustomField(cf.field_id, fieldValue)}
-                              className="w-full px-1.5 py-0.5 text-sm bg-[var(--bg-surface)] border border-[var(--brand-primary)] rounded-[var(--radius-sm)] focus:outline-none"
+                              className="w-full px-1.5 py-0.5 text-sm bg-[var(--bg-surface)] border border-[var(--primary)] rounded-[var(--radius-sm)] focus:outline-none"
                             />
                           ) : (
                             <input
@@ -637,13 +637,13 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
                                 if (e.key === 'Enter') void saveCustomField(cf.field_id, fieldValue);
                                 if (e.key === 'Escape') setEditingField(null);
                               }}
-                              className="w-full px-1.5 py-0.5 text-sm bg-[var(--bg-surface)] border border-[var(--brand-primary)] rounded-[var(--radius-sm)] focus:outline-none"
+                              className="w-full px-1.5 py-0.5 text-sm bg-[var(--bg-surface)] border border-[var(--primary)] rounded-[var(--radius-sm)] focus:outline-none"
                             />
                           )
                         ) : (
                           <button
                             onClick={() => startEdit(cf.field_id, cf.value || '')}
-                            className="text-left cursor-pointer hover:text-[var(--brand-primary)] transition-colors w-full group/btn"
+                            className="text-left cursor-pointer hover:text-[var(--primary)] transition-colors w-full group/btn"
                           >
                             <div className="text-sm text-[var(--text-secondary)]">{renderCustomFieldValue(cf)}</div>
                             <span className="text-[10px] text-[var(--text-muted)] opacity-0 group-hover/btn:opacity-100 ml-1">✏️</span>
@@ -666,7 +666,7 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
               return (
                 <button key={key} onClick={() => setActiveTab(key as typeof activeTab)}
                   className={`relative px-4 py-2.5 text-[13px] font-semibold transition-all cursor-pointer whitespace-nowrap ${
-                    isActive ? 'text-[var(--brand-primary)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+                    isActive ? 'text-[var(--primary)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
                   }`}>
                   {label}
                   {isActive && (
@@ -722,7 +722,7 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
                         const r = await getLeadNotes(leadId); if (r.data) setLeadNotes(r.data);
                         void loadLead();
                       }}
-                      className="text-xs text-[var(--brand-primary)] hover:underline cursor-pointer">
+                      className="text-xs text-[var(--primary)] hover:underline cursor-pointer">
                       {t('lead.notes.convert')}
                     </button>
                     <button
@@ -745,14 +745,13 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
               <div className="relative">
                 <textarea value={newNoteBody} onChange={e => setNewNoteBody(e.target.value)} rows={3}
                   placeholder={t('lead.notes.placeholder')}
-                  className="w-full px-3 py-2 pr-10 text-sm bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-[var(--text-primary)] resize-none focus:border-[var(--brand-primary)] focus:outline-none" />
+                  className="w-full px-3 py-2 pr-10 text-sm bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-[var(--text-primary)] resize-none focus:border-[var(--primary)] focus:outline-none" />
                 <AiSparkles value={newNoteBody} onChange={setNewNoteBody} leadId={leadId} className="absolute bottom-2 right-2" />
               </div>
               <div className="flex items-center gap-2">
-                <select value={newNoteCategory} onChange={e => setNewNoteCategory(e.target.value)}
-                  className="text-xs px-2 py-1 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] text-[var(--text-secondary)]">
+                <Select size="sm" value={newNoteCategory} onChange={e => setNewNoteCategory(e.target.value)}>
                   {Object.entries(NOTE_CATEGORY_LABELS).map(([k, v]) => <option key={k} value={k}>{NOTE_CATEGORY_ICONS[k]} {v}</option>)}
-                </select>
+                </Select>
                 <Button size="sm" disabled={!newNoteBody.trim()} onClick={async () => {
                   await createLeadNote(leadId, { body: newNoteBody, category: newNoteCategory });
                   setNewNoteBody(''); setNewNoteCategory('general');
@@ -837,8 +836,8 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
                           <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                             <defs>
                               <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="var(--brand-primary, #009DDB)" stopOpacity={0.2}/>
-                                <stop offset="95%" stopColor="var(--brand-primary, #009DDB)" stopOpacity={0}/>
+                                <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.2}/>
+                                <stop offset="95%" stopColor="var(--primary)" stopOpacity={0}/>
                               </linearGradient>
                             </defs>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-subtle)" />
@@ -876,7 +875,7 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
                             <Area
                               type="monotone"
                               dataKey="score"
-                              stroke="var(--brand-primary, #009DDB)"
+                              stroke="var(--primary)"
                               strokeWidth={2}
                               fillOpacity={1}
                               fill="url(#colorScore)"
@@ -927,7 +926,8 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold">Automatisations & Workflows</h3>
               <div className="flex items-center gap-2">
-                <select
+                <Select
+                  size="sm"
                   aria-label="Sélectionner un workflow"
                   onChange={async (e) => {
                     const workflowId = e.target.value;
@@ -941,13 +941,12 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
                     }
                     e.target.value = '';
                   }}
-                  className="text-xs px-2 py-1.5 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] text-[var(--text-secondary)] focus:border-[var(--brand-primary)] focus:outline-none cursor-pointer"
                 >
                   <option value="">Enrôler dans un workflow...</option>
                   {availableWorkflows.filter(w => w.is_active).map(w => (
                     <option key={w.id} value={w.id}>{w.name}</option>
                   ))}
-                </select>
+                </Select>
               </div>
             </div>
 
@@ -996,7 +995,7 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
                 <button key={s} onClick={() => void handleStatusChange(s)}
                   className={`w-full text-left px-3 py-2 rounded-[var(--radius-md)] text-sm font-medium transition-all cursor-pointer ${lead.status === s
                     ? 'text-white shadow-[var(--shadow-glow)]' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]'}`}
-                  style={lead.status === s ? { backgroundColor: STATUS_COLORS[s].replace('var(', '').replace(')', '') ? undefined : undefined, background: 'var(--brand-primary)' } : {}}>
+                  style={lead.status === s ? { backgroundColor: STATUS_COLORS[s].replace('var(', '').replace(')', '') ? undefined : undefined, background: 'var(--primary)' } : {}}>
                   <Badge color={STATUS_COLORS[s]}>{STATUS_LABELS[s]}</Badge>
                 </button>
               ))}
@@ -1009,7 +1008,7 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
               <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">
                 {t('leads.routing.ai_btn')}
               </h3>
-              <Badge color="var(--brand-primary)">IA</Badge>
+              <Badge color="var(--primary)">IA</Badge>
             </div>
             
             {lead.assigned_to && (
@@ -1093,7 +1092,7 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
                     <Button size="sm" onClick={() => void handleSaveDeal()}>OK</Button>
                   </div>
                 ) : (
-                  <button onClick={() => setIsEditingDeal(true)} className="text-xl font-bold text-[var(--brand-primary)] cursor-pointer hover:underline">
+                  <button onClick={() => setIsEditingDeal(true)} className="text-xl font-bold text-[var(--primary)] cursor-pointer hover:underline">
                     {lead.deal_value ? `${lead.deal_value.toLocaleString('fr-CA')} $` : t('lead.sidebar.deal_add')}
                   </button>
                 )}
@@ -1102,9 +1101,9 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
                 <p className="text-[10px] text-[var(--text-muted)] mb-0.5">{t('lead.sidebar.probability')} ({stageFromBackend?.name || STATUS_LABELS[lead.status]})</p>
                 <div className="flex items-center gap-2">
                   <div className="flex-1 h-1.5 rounded-full bg-[var(--bg-subtle)] overflow-hidden">
-                    <div className="h-full rounded-full bg-[var(--brand-primary)] transition-all" style={{ width: `${probability}%` }} />
+                    <div className="h-full rounded-full bg-[var(--primary)] transition-all" style={{ width: `${probability}%` }} />
                   </div>
-                  <span className="text-xs font-semibold text-[var(--brand-primary)]">{probability}%</span>
+                  <span className="text-xs font-semibold text-[var(--primary)]">{probability}%</span>
                 </div>
               </div>
               {forecast > 0 && (
@@ -1166,7 +1165,7 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
                   >
                     <span>{icons[channel]} {labels[channel]}</span>
                     <span className={`w-8 h-[18px] rounded-full relative transition-all ${isActive ? 'bg-[var(--danger)]' : 'bg-[var(--border-default)]'}`}>
-                      <span className={`absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white transition-all shadow-sm ${isActive ? 'left-[14px]' : 'left-[2px]'}`} />
+                      <span className={`absolute top-[2px] w-[14px] h-[14px] rounded-full bg-[var(--bg-surface)] transition-all shadow-sm ${isActive ? 'left-[14px]' : 'left-[2px]'}`} />
                     </span>
                   </button>
                 );
@@ -1191,10 +1190,10 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
                       onChange={e => setFieldValue(e.target.value)}
                       onBlur={() => void saveField(f.key)}
                       onKeyDown={e => { if (e.key === 'Enter') void saveField(f.key); if (e.key === 'Escape') setEditingField(null); }}
-                      className="w-32 px-1.5 py-0.5 text-xs bg-[var(--bg-surface)] border border-[var(--brand-primary)] rounded-[var(--radius-sm)] focus:outline-none text-right"
+                      className="w-32 px-1.5 py-0.5 text-xs bg-[var(--bg-surface)] border border-[var(--primary)] rounded-[var(--radius-sm)] focus:outline-none text-right"
                     />
                   ) : (
-                    <button onClick={() => startEdit(f.key, f.val === '—' ? '' : f.val)} className="text-right cursor-pointer hover:text-[var(--brand-primary)] transition-colors">
+                    <button onClick={() => startEdit(f.key, f.val === '—' ? '' : f.val)} className="text-right cursor-pointer hover:text-[var(--primary)] transition-colors">
                       {f.val}
                     </button>
                   )}
@@ -1203,7 +1202,8 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
               {/* Sprint MULTILANG-B — sélecteur langue préférée (additif, à côté de country/timezone) */}
               <div className="flex items-center justify-between">
                 <span className="text-[var(--text-muted)]">{t('leads.language.label')}</span>
-                <select
+                <Select
+                  size="sm"
                   value={lead.preferred_language || ''}
                   onChange={async (e) => {
                     if (!lead) return;
@@ -1214,13 +1214,14 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
                     if (res.error) { setLead(prev); toastError(`Erreur de mise à jour de la langue : ${res.error}`); }
                     else { void loadLead(); }
                   }}
-                  className="w-40 px-1.5 py-0.5 text-xs bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] text-right text-[var(--text-secondary)] focus:border-[var(--brand-primary)] focus:outline-none cursor-pointer">
+                  className="w-40"
+                >
                   <option value="">{t('leads.language.default')}</option>
                   <option value="fr-CA">Français (QC)</option>
                   <option value="fr-FR">Français (FR)</option>
                   <option value="en">English</option>
                   <option value="es">Español</option>
-                </select>
+                </Select>
               </div>
               <p className="col-span-full text-[10px] text-[var(--text-muted)] leading-snug">{t('leads.language.help')}</p>
             </div>
@@ -1290,7 +1291,7 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
                       <div className="flex items-center gap-1.5 mb-0.5">
                         {isInbound
                           ? <PhoneIncoming size={12} className="text-[var(--success)] shrink-0" aria-label={t('telephony.direction.inbound')} />
-                          : <PhoneOutgoing size={12} className="text-[var(--brand-primary)] shrink-0" aria-label={t('telephony.direction.outbound')} />}
+                          : <PhoneOutgoing size={12} className="text-[var(--primary)] shrink-0" aria-label={t('telephony.direction.outbound')} />}
                         <span className="text-xs font-medium truncate">{number || (isInbound ? t('telephony.direction.inbound') : t('telephony.direction.outbound'))}</span>
                         {durationFmt && <span className="text-[10px] text-[var(--text-muted)] ml-auto tabular-nums">{durationFmt}</span>}
                       </div>
@@ -1305,7 +1306,7 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
                       )}
                       {call.transcription && (
                         <details className="mt-1 group">
-                          <summary className="text-[10px] text-[var(--brand-primary)] cursor-pointer hover:underline list-none">
+                          <summary className="text-[10px] text-[var(--primary)] cursor-pointer hover:underline list-none">
                             {t('telephony.transcription')}
                           </summary>
                           <p className="text-[11px] text-[var(--text-secondary)] mt-1 whitespace-pre-wrap leading-snug">{call.transcription}</p>

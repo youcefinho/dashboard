@@ -37,6 +37,11 @@ export interface Env {
   BROADCAST_QUEUE: Queue;
   WEBHOOK_QUEUE?: Queue;
   RATE_LIMITER?: KVNamespace;
+  // ── Sprint 92 — Chiffrement PII at rest (AES-GCM 256 + HMAC blind index) ──
+  // Clé hex 64 chars (256 bits) partagée entre AES-GCM et HMAC-SHA256.
+  // Fournie via `wrangler secret put ENCRYPTION_KEY` — JAMAIS hardcodée.
+  // Tant qu'absente, chiffrement/blind index sont no-op (champs en clair).
+  ENCRYPTION_KEY?: string;
   GHL_CLIENT_ID?: string;
   GHL_CLIENT_SECRET?: string;
   GHL_REDIRECT_URI?: string;

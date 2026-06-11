@@ -628,7 +628,7 @@ export function SurveyBuilder() {
               <li
                 key={s.id}
                 data-testid={`survey-card-${s.id}`}
-                className="p-4 rounded-xl border border-[var(--border-subtle)] bg-white flex flex-col gap-3"
+                className="p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] flex flex-col gap-3"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
@@ -862,7 +862,7 @@ export function SurveyBuilder() {
                 <li
                   key={q.id}
                   data-testid={`survey-question-row-${q.id}`}
-                  className="p-3 rounded-xl border border-[var(--border-subtle)] bg-white"
+                  className="p-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)]"
                 >
                   <div className="flex items-start gap-3">
                     <span
@@ -893,7 +893,7 @@ export function SurveyBuilder() {
                           {opts.map((opt, i) => (
                             <li
                               key={`${q.id}-opt-${i}`}
-                              className="inline-flex items-center px-2 py-0.5 rounded-full text-xs border bg-white text-[var(--text-secondary)] border-[var(--border-subtle)]"
+                              className="inline-flex items-center px-2 py-0.5 rounded-full text-xs border bg-[var(--bg-surface)] text-[var(--text-secondary)] border-[var(--border-subtle)]"
                             >
                               {opt}
                             </li>
@@ -959,7 +959,7 @@ export function SurveyBuilder() {
                             return (
                               <li
                                 key={b.id}
-                                className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-md bg-white border border-[var(--border-subtle)] text-xs"
+                                className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-md bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-xs"
                               >
                                 <div className="min-w-0 flex-1">
                                   <span className="font-mono text-[var(--text-primary)]">

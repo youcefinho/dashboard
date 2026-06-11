@@ -333,7 +333,7 @@ export function DnsRecordsEditor({ domainId }: DnsRecordsEditorProps) {
           }
         />
       ) : (
-        <div className="rounded-xl border border-[var(--border-subtle)] bg-white overflow-hidden">
+        <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] overflow-hidden">
           <table
             className="w-full text-sm"
             aria-label={t('dns.records.title')}

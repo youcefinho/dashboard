@@ -629,7 +629,7 @@ export function POSTerminal() {
     >
       {/* Header session active */}
       <header
-        className="flex items-start justify-between gap-4 flex-wrap p-4 rounded-xl border border-[var(--border-subtle)] bg-white"
+        className="flex items-start justify-between gap-4 flex-wrap p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)]"
         data-testid="pos-session-header"
       >
         <div className="min-w-0 space-y-1">
@@ -680,7 +680,7 @@ export function POSTerminal() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* ── Colonne Gauche : recherche + scan + grille produits ──────────── */}
         <section
-          className="lg:col-span-5 p-4 rounded-xl border border-[var(--border-subtle)] bg-white space-y-3"
+          className="lg:col-span-5 p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] space-y-3"
           aria-label={t('pos.scan_barcode')}
           data-testid="pos-catalog-panel"
         >
@@ -729,7 +729,7 @@ export function POSTerminal() {
                   <button
                     type="button"
                     onClick={() => addToCart(entry)}
-                    className="w-full h-20 p-2 rounded-lg border border-[var(--border-subtle)] bg-white hover:border-[var(--primary)] hover:shadow-sm transition text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
+                    className="w-full h-20 p-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] hover:border-[var(--primary)] hover:shadow-sm transition text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
                     aria-label={`${entry.title}${entry.variant_title ? ` — ${entry.variant_title}` : ''}`}
                     data-testid={`pos-product-${entry.variant_id}`}
                   >
@@ -757,7 +757,7 @@ export function POSTerminal() {
 
         {/* ── Colonne Centre : panier ─────────────────────────────────────── */}
         <section
-          className="lg:col-span-4 p-4 rounded-xl border border-[var(--border-subtle)] bg-white space-y-3"
+          className="lg:col-span-4 p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] space-y-3"
           aria-label={t('pos.cart_empty')}
           data-testid="pos-cart-panel"
         >
@@ -867,7 +867,7 @@ export function POSTerminal() {
 
         {/* ── Colonne Droite : paiement ───────────────────────────────────── */}
         <section
-          className="lg:col-span-3 p-4 rounded-xl border border-[var(--border-subtle)] bg-white space-y-3"
+          className="lg:col-span-3 p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] space-y-3"
           aria-label={t('pos.finalize')}
           data-testid="pos-payment-panel"
         >

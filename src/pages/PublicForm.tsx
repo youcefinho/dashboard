@@ -414,7 +414,7 @@ export function PublicFormPage() {
               name={f.name}
               required={f.required}
               aria-required={ariaRequired}
-              className="block w-full text-sm text-[var(--text-secondary)] file:mr-3 file:rounded-md file:border-0 file:bg-[var(--bg-canvas)] file:px-3 file:py-2 file:text-sm file:text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)] rounded-lg border border-[var(--border-default)] p-1 bg-[var(--bg-surface)]"
+              className="block w-full text-sm text-[var(--text-secondary)] file:mr-3 file:rounded-md file:border-0 file:bg-[var(--bg-canvas)] file:px-3 file:py-2 file:text-sm file:text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] rounded-lg border border-[var(--border-default)] p-1 bg-[var(--bg-surface)]"
               onChange={handleFileChangeLocal}
             />
           </div>

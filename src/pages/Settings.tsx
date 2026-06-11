@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useAuth } from '@/lib/auth';
 import { getPacks, installPack, getIvrMenus, saveIvrMenu, deleteIvrMenu, type IndustryPack, type IvrMenu } from '@/lib/api';
-import { Card, Button, Tag, useToast, useConfirm, Skeleton, Input, Icon } from '@/components/ui';
+import { Card, Button, Tag, useToast, useConfirm, Skeleton, Input, Icon, Select } from '@/components/ui';
 import {
   User, Bell, Shield, Palette,
   Columns, Package, Brain, Users, Key, FileText, CreditCard,
@@ -410,68 +410,23 @@ function SettingsNavButton({ tab, isActive, onClick, labelNode }: SettingsNavBut
     <button
       onClick={onClick}
       title={tab.description}
-      className="group w-full flex items-center gap-2.5 px-2.5 py-2 rounded-[10px] text-[13px] font-semibold text-left cursor-pointer transition-all duration-200 mb-1 relative"
-      style={
+      className={`group w-full flex items-center gap-2.5 px-2.5 py-2 rounded-[10px] text-[13px] font-semibold text-left cursor-pointer transition-all duration-200 mb-1 relative border ${
         isActive
-          ? {
-              background:
-                'linear-gradient(90deg, rgba(0,157,219,0.18) 0%, rgba(217,110,39,0.06) 100%)',
-              color: 'var(--primary)',
-              border: '1px solid rgba(0,157,219,0.40)',
-              boxShadow:
-                '0 2px 8px -2px rgba(0,157,219,0.25), 0 0 16px -6px rgba(217,110,39,0.18), inset 0 1px 0 rgba(255,255,255,0.7)',
-            }
-          : {
-              background:
-                'linear-gradient(180deg, var(--bg-surface) 0%, var(--bg-subtle) 100%)',
-              color: 'var(--text-secondary)',
-              border: '1px solid var(--border-subtle)',
-              boxShadow: '0 1px 2px rgba(15,23,42,0.03)',
-            }
-      }
-      onMouseEnter={(e) => {
-        if (isActive) return;
-        e.currentTarget.style.background =
-          'linear-gradient(90deg, rgba(0,157,219,0.10) 0%, rgba(217,110,39,0.04) 100%)';
-        e.currentTarget.style.borderColor = 'rgba(0,157,219,0.32)';
-        e.currentTarget.style.color = 'var(--text-primary)';
-        e.currentTarget.style.transform = 'translateX(2px)';
-      }}
-      onMouseLeave={(e) => {
-        if (isActive) return;
-        e.currentTarget.style.background =
-          'linear-gradient(180deg, var(--bg-surface) 0%, var(--bg-subtle) 100%)';
-        e.currentTarget.style.borderColor = 'var(--border-subtle)';
-        e.currentTarget.style.color = 'var(--text-secondary)';
-        e.currentTarget.style.transform = 'translateX(0)';
-      }}
+          ? 'bg-[var(--primary-soft)] border-[var(--primary)]/40 text-[var(--primary)] shadow-sm'
+          : 'bg-[var(--bg-surface)] border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:border-[var(--border-strong)] hover:text-[var(--text-primary)] hover:translate-x-0.5'
+      }`}
     >
       {isActive && (
         <div
-          className="absolute -left-px top-1.5 bottom-1.5 w-[3px] rounded-r-full"
-          style={{
-            background: 'linear-gradient(180deg, #009DDB 0%, #D96E27 100%)',
-            boxShadow: '0 0 8px rgba(0,157,219,0.7), 2px 0 6px rgba(217,110,39,0.4)',
-          }}
+          className="absolute -left-px top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-[var(--primary)]"
         />
       )}
       <span
-        className="inline-flex items-center justify-center w-6 h-6 rounded-md shrink-0 transition-all"
-        style={
+        className={`inline-flex items-center justify-center w-6 h-6 rounded-md shrink-0 transition-all border ${
           isActive
-            ? {
-                background:
-                  'linear-gradient(135deg, rgba(0,157,219,0.30) 0%, rgba(217,110,39,0.18) 100%)',
-                border: '1px solid rgba(0,157,219,0.45)',
-                color: 'var(--primary)',
-                boxShadow: '0 0 8px rgba(0,157,219,0.30)',
-              }
-            : {
-                background: 'rgba(0,157,219,0.06)',
-                border: '1px solid rgba(0,157,219,0.12)',
-                color: 'var(--text-secondary)',
-              }
-        }
+            ? 'bg-[var(--primary-soft)] border-[var(--primary)]/30 text-[var(--primary)]'
+            : 'bg-[var(--bg-subtle)] border-[var(--border)] text-[var(--text-secondary)]'
+        }`}
       >
         <Icon as={tab.icon} size={13} />
       </span>
@@ -906,29 +861,29 @@ function TelephonySettings() {
                       <label className="block text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-1">
                         Touche
                       </label>
-                      <select
+                      <Select
+                        size="sm"
                         value={opt.digit}
                         onChange={(e) => handleUpdateOption(idx, 'digit', e.target.value)}
-                        className="w-full px-2 py-1.5 text-xs bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none"
                       >
                         {['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '*', '#'].map(d => (
                           <option key={d} value={d}>{d}</option>
                         ))}
-                      </select>
+                      </Select>
                     </div>
 
                     <div className="w-40">
                       <label className="block text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-1">
                         Action
                       </label>
-                      <select
+                      <Select
+                        size="sm"
                         value={opt.action}
                         onChange={(e) => handleUpdateOption(idx, 'action', e.target.value as any)}
-                        className="w-full px-2 py-1.5 text-xs bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-[var(--text-primary)] focus:border-[var(--brand-primary)] focus:outline-none"
                       >
                         <option value="dial">Transférer l'appel</option>
                         <option value="voicemail">Messagerie vocale</option>
-                      </select>
+                      </Select>
                     </div>
 
                     {opt.action === 'dial' && (
@@ -988,7 +943,7 @@ function TelephonySettings() {
                 title={menu.is_active ? t('telephony.status.queued') : t('telephony.status.completed')}
                 aria-label={menu.is_active ? t('telephony.status.queued') : t('telephony.status.completed')}
                 aria-pressed={!!menu.is_active}
-                className="p-1.5 rounded-md text-[var(--text-muted)] hover:text-[var(--brand-primary)] hover:bg-[var(--bg-subtle)] cursor-pointer transition-all">
+                className="p-1.5 rounded-md text-[var(--text-muted)] hover:text-[var(--primary)] hover:bg-[var(--bg-subtle)] cursor-pointer transition-all">
                 <Icon as={Check} size={15} />
               </button>
               <button

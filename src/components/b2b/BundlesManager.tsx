@@ -372,7 +372,7 @@ export function BundlesManager() {
           {Array.from({ length: 3 }).map((_, i) => (
             <div
               key={i}
-              className="p-4 rounded-xl border border-[var(--border-subtle)] bg-white"
+              className="p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)]"
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 space-y-2 min-w-0">
@@ -412,7 +412,7 @@ export function BundlesManager() {
               <li
                 key={b.id}
                 data-testid={`bundle-row-${b.id}`}
-                className="p-4 rounded-xl border border-[var(--border-subtle)] bg-white flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
+                className="p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
               >
                 <div className="flex-1 min-w-0 space-y-1.5">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -666,7 +666,7 @@ export function BundlesManager() {
                   <li
                     key={item.id}
                     data-testid={`bundle-item-row-${item.id}`}
-                    className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-[var(--border-subtle)] bg-white"
+                    className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)]"
                   >
                     <div className="min-w-0 flex-1 flex items-center gap-3 flex-wrap">
                       <span

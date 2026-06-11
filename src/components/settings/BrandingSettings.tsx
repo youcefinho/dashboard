@@ -661,7 +661,7 @@ export function BrandingSettings() {
                       background: `linear-gradient(180deg, ${primary}14 0%, rgba(255,255,255,1) 50%)`,
                     }}
                   >
-                    <div className="px-4 py-3 border-b border-[var(--border-subtle)] flex items-center gap-2 bg-white/60">
+                    <div className="px-4 py-3 border-b border-[var(--border-subtle)] flex items-center gap-2 bg-[var(--bg-surface)]/60">
                       <div
                         className="w-8 h-8 rounded-md flex items-center justify-center overflow-hidden"
                         style={{

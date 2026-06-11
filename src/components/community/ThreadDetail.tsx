@@ -516,7 +516,7 @@ export function ThreadDetail({ threadId, onMutated }: ThreadDetailProps) {
               <li
                 key={comment.id}
                 data-testid={`comment-root-${comment.id}`}
-                className="rounded-xl border border-[var(--border-subtle)] bg-white p-4 space-y-3"
+                className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 space-y-3"
               >
                 <CommentBlock
                   comment={comment}

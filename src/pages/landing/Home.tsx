@@ -47,7 +47,7 @@ export function HomePage() {
         
         {/* Screenshot mock */}
         <div className="mt-16 rounded-2xl border border-[var(--border-subtle)] shadow-2xl overflow-hidden bg-[var(--bg-subtle)] p-2 max-w-5xl mx-auto">
-          <div className="rounded-xl overflow-hidden border border-[var(--border-subtle)] bg-white">
+          <div className="rounded-xl overflow-hidden border border-[var(--border-subtle)] bg-[var(--bg-surface)]">
             <div className="bg-[var(--bg-muted)] border-b border-[var(--border-subtle)] px-4 py-3 flex gap-2">
               <div className="w-3 h-3 rounded-full bg-red-400"></div>
               <div className="w-3 h-3 rounded-full bg-amber-400"></div>
@@ -55,7 +55,7 @@ export function HomePage() {
             </div>
             <div className="aspect-[16/9] bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-8">
                {/* Un mock visuel du dashboard (image placeholder) */}
-               <div className="w-full h-full bg-white rounded-lg shadow-sm border border-[var(--border-subtle)] flex p-4 gap-4">
+               <div className="w-full h-full bg-[var(--bg-surface)] rounded-lg shadow-sm border border-[var(--border-subtle)] flex p-4 gap-4">
                   <div className="w-48 bg-[var(--bg-subtle)] rounded hidden md:block"></div>
                   <div className="flex-1 flex flex-col gap-4">
                     <div className="h-20 bg-[var(--bg-subtle)] rounded"></div>
@@ -151,7 +151,7 @@ export function HomePage() {
           </h2>
           <p className="text-white/90 text-lg mb-10 leading-relaxed">Rejoignez des centaines de PMEs qui utilisent Intralys pour générer plus de ventes avec moins d'effort.</p>
           <Link to="/demo">
-            <Button size="lg" className="bg-white text-[var(--primary)] hover:bg-[var(--bg-subtle)] px-10 h-14 text-lg font-bold shadow-[0_8px_32px_rgba(0,0,0,0.2)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.25)] transition-all hover:scale-[1.02]">
+            <Button size="lg" className="bg-[var(--bg-surface)] text-[var(--primary)] hover:bg-[var(--bg-subtle)] px-10 h-14 text-lg font-bold shadow-[0_8px_32px_rgba(0,0,0,0.2)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.25)] transition-all hover:scale-[1.02]">
               Démarrer gratuitement
             </Button>
           </Link>
@@ -164,7 +164,7 @@ export function HomePage() {
 
 function FeatureCard({ icon, title, description }: { icon: React.ReactNode, title: string, description: string }) {
   return (
-    <div className="group relative bg-white p-6 rounded-2xl border border-[var(--border-subtle)] transition-all duration-300 hover:-translate-y-1 overflow-hidden"
+    <div className="group relative bg-[var(--bg-surface)] p-6 rounded-2xl border border-[var(--border-subtle)] transition-all duration-300 hover:-translate-y-1 overflow-hidden"
       style={{ boxShadow: '0 1px 2px rgba(15,23,42,0.04), 0 4px 12px -4px rgba(15,23,42,0.06)' }}
       onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,157,219,0.06), 0 16px 40px -8px rgba(0,157,219,0.22)'; }}
       onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 1px 2px rgba(15,23,42,0.04), 0 4px 12px -4px rgba(15,23,42,0.06)'; }}>

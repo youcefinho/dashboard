@@ -110,7 +110,7 @@ export function CoursesLMSPage() {
         {/* ── Onglet Leçons ────────────────────────────────────────────── */}
         <TabsContent value="lessons" className="space-y-6">
           <div
-            className="p-4 rounded-xl border border-[var(--border-subtle)] bg-white"
+            className="p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)]"
             data-testid="lms-courses-card"
           >
             {loadingCourses ? (
@@ -177,7 +177,7 @@ export function CoursesLMSPage() {
         {/* ── Onglet Certificats ──────────────────────────────────────── */}
         <TabsContent value="certificates" className="space-y-6">
           <div
-            className="p-4 rounded-xl border border-[var(--border-subtle)] bg-white"
+            className="p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)]"
             data-testid="lms-customer-card"
           >
             <div className="max-w-md">

@@ -147,7 +147,7 @@ export function HelpCenterPage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               leftIcon={<Search size={16} />}
-              className="h-12 text-base bg-white/95"
+              className="h-12 text-base bg-[var(--bg-surface)]/95"
               aria-label={t('help.search_aria')}
             />
           </div>
@@ -253,7 +253,7 @@ export function HelpCenterPage() {
                     </p>
                   </div>
                 ) : (
-                  <ul className="divide-y divide-[var(--border-subtle)] rounded-2xl overflow-hidden border border-[var(--border-subtle)] bg-white">
+                  <ul className="divide-y divide-[var(--border-subtle)] rounded-2xl overflow-hidden border border-[var(--border-subtle)] bg-[var(--bg-surface)]">
                     {visibleArticles.map(([id, a], i) => (
                       <li
                         key={id}

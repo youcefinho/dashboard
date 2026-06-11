@@ -28,6 +28,7 @@ import { useState, useEffect, type ChangeEvent } from 'react';
 import {
   Wizard,
   useToast,
+  Select,
   type WizardStep,
 } from '@/components/ui';
 import { Icon } from '@/components/ui/Icon';
@@ -634,7 +635,7 @@ export function WelcomeWizard({
             <label htmlFor="welcome-lang" className="welcome-label">
               <Icon as={Globe} size={12} /> Langue préférée
             </label>
-            <select
+            <Select
               id="welcome-lang"
               value={lang}
               onChange={(e) => setLang(e.target.value as WelcomeLang)}
@@ -644,7 +645,7 @@ export function WelcomeWizard({
               <option value="fr-FR">Français (France)</option>
               <option value="en">English</option>
               <option value="es">Español</option>
-            </select>
+            </Select>
           </div>
         </div>
       ),
@@ -901,7 +902,7 @@ export function WelcomeWizard({
                 <label htmlFor="welcome-region" className="welcome-label">
                   <Icon as={Globe} size={12} /> {t('onboarding.step.region')}
                 </label>
-                <select
+                <Select
                   id="welcome-region"
                   value={region}
                   onChange={(e) => setRegion(e.target.value)}
@@ -912,7 +913,7 @@ export function WelcomeWizard({
                       {r.label} — {r.currency}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
             </div>
           ),

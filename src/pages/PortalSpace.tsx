@@ -265,7 +265,7 @@ export function PortalSpacePage() {
   // ── Écran auth (pas de token portail) ────────────────────────────────────
   if (!portalToken) {
     return (
-      <div className="min-h-screen bg-white p-4 flex justify-center items-start">
+      <div className="min-h-screen bg-[var(--bg-surface)] p-4 flex justify-center items-start">
         <div className="w-full max-w-sm p-6" data-portal-slug={slug}>
           <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>
             {t('portal.login.title')}
@@ -362,7 +362,7 @@ export function PortalSpacePage() {
   ];
 
   return (
-    <div className="min-h-screen bg-white p-4 flex justify-center items-start">
+    <div className="min-h-screen bg-[var(--bg-surface)] p-4 flex justify-center items-start">
       <div className="w-full max-w-2xl p-6">
         <div className="flex items-center justify-between mb-6">
           <h1 style={{ fontSize: 22, fontWeight: 700 }}>

@@ -296,7 +296,7 @@ export function SnapshotDetail({ snapshotId, onClose, onMutated }: SnapshotDetai
                       data-testid={`snapshot-entity-${entity}`}
                       className={`flex items-center justify-between gap-2 rounded-lg border px-3 py-1.5 text-sm ${
                         count > 0
-                          ? 'border-[var(--border-subtle)] bg-white'
+                          ? 'border-[var(--border-subtle)] bg-[var(--bg-surface)]'
                           : 'border-[var(--border-subtle)] bg-[var(--gray-50)] text-[var(--text-muted)]'
                       }`}
                     >

@@ -190,7 +190,7 @@ export function GiftCardsLoyaltyPage() {
                 {Array.from({ length: 3 }).map((_, i) => (
                   <div
                     key={i}
-                    className="p-4 rounded-xl border border-[var(--border-subtle)] bg-white"
+                    className="p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)]"
                   >
                     <Skeleton className="h-5 w-1/3 mb-2" />
                     <Skeleton className="h-3 w-2/3" />
@@ -223,7 +223,7 @@ export function GiftCardsLoyaltyPage() {
                     <button
                       type="button"
                       onClick={() => openEditDrawer(p.id)}
-                      className="w-full text-left p-4 rounded-xl border border-[var(--border-subtle)] bg-white hover:border-[var(--primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] transition-colors"
+                      className="w-full text-left p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] hover:border-[var(--primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] transition-colors"
                       data-testid={`loyalty-program-row-${p.id}`}
                       aria-label={`${t('loyalty.program.editTitle')} — ${p.name}`}
                     >
@@ -285,7 +285,7 @@ export function GiftCardsLoyaltyPage() {
                 {Array.from({ length: 3 }).map((_, i) => (
                   <div
                     key={i}
-                    className="p-5 rounded-xl border border-[var(--border-subtle)] bg-white"
+                    className="p-5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)]"
                   >
                     <Skeleton className="h-5 w-1/3 mb-2" />
                     <Skeleton className="h-3 w-2/3" />

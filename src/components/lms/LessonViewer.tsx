@@ -385,7 +385,7 @@ export function LessonViewer({
               <form
                 key={quiz.id}
                 onSubmit={(e) => void handleSubmitQuiz(quiz.id, e)}
-                className="p-4 sm:p-5 rounded-xl border border-[var(--border-subtle)] bg-white space-y-4"
+                className="p-4 sm:p-5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] space-y-4"
                 data-testid={`quiz-form-${quiz.id}`}
                 aria-label={quiz.title ?? t('lms.quizzes.title')}
               >

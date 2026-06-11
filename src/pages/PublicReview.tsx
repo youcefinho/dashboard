@@ -102,7 +102,7 @@ export function PublicReviewPage() {
   // ── Spinner de chargement (calque PublicBooking.tsx:394-406) ──────────────
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
+      <div className="min-h-screen flex items-center justify-center bg-[var(--bg-surface)]">
         <div
           style={{
             width: 32,
@@ -120,7 +120,7 @@ export function PublicReviewPage() {
   // ── Erreur de chargement = absence data / token inconnu (§6.A) ────────────
   if (loadError || !page) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6 text-center bg-white">
+      <div className="min-h-screen flex items-center justify-center p-6 text-center bg-[var(--bg-surface)]">
         <div style={{ maxWidth: 420 }}>
           <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>
             {t('pubreview.title')}
@@ -138,7 +138,7 @@ export function PublicReviewPage() {
   if (done || alreadySubmitted) {
     const isPublicRedirect = !!done?.redirectUrl;
     return (
-      <div className="min-h-screen flex items-center justify-center p-6 text-center bg-white">
+      <div className="min-h-screen flex items-center justify-center p-6 text-center bg-[var(--bg-surface)]">
         <div style={{ maxWidth: 480 }}>
           <div
             style={{
@@ -192,7 +192,7 @@ export function PublicReviewPage() {
   const shown = hover || rating;
 
   return (
-    <div className="min-h-screen bg-white p-4 flex justify-center items-start">
+    <div className="min-h-screen bg-[var(--bg-surface)] p-4 flex justify-center items-start">
       <div className="w-full max-w-lg p-6">
         <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>
           {page.business_name}

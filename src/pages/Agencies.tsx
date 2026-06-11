@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, type FormEvent } from 'react';
 import { useAuth } from '@/lib/auth';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, EmptyState, Skeleton, PageHero, KpiStrip, Icon, useToast, type KpiItem } from '@/components/ui';
+import { Card, Button, EmptyState, Skeleton, PageHero, KpiStrip, Icon, useToast, Select, type KpiItem } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import {
@@ -187,14 +187,14 @@ export function AgenciesPage() {
           <label htmlFor="agency-switch" className="text-sm font-medium text-[var(--text-secondary)]">
             {t('agencies.switch.label')}
           </label>
-          <select
+          <Select
             id="agency-switch"
             disabled={switching}
             aria-busy={switching}
             aria-label={t('agencies.switch.label')}
             value={active ?? ALL_VALUE}
             onChange={(e) => void handleSwitch(e.target.value)}
-            className="min-w-[14rem] px-3 py-2 text-sm border border-[var(--border-subtle)] rounded-lg bg-[var(--bg-surface)] disabled:opacity-60"
+            className="min-w-[14rem]"
           >
             <option value={ALL_VALUE}>{t('agencies.switch.all')}</option>
             {subAccounts.map((s) => (
@@ -202,7 +202,7 @@ export function AgenciesPage() {
                 {s.name}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
       )}
 

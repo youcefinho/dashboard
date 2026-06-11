@@ -388,7 +388,7 @@ export function ChatWidgetSettings({
                 value={primaryColor}
                 onChange={(e) => setPrimaryColor(e.target.value)}
                 aria-label={t('chat_widgets.primary_color')}
-                className="h-9 w-12 rounded border border-[var(--border)] bg-white cursor-pointer"
+                className="h-9 w-12 rounded border border-[var(--border)] bg-[var(--bg-surface)] cursor-pointer"
                 data-testid="cw-input-color"
               />
               <Input
@@ -414,7 +414,7 @@ export function ChatWidgetSettings({
                 setPosition(e.target.value as ChatWidgetPosition)
               }
               aria-label={t('chat_widgets.position')}
-              className="h-9 w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-white px-3 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--brand-purple)] focus:ring-3 focus:ring-[var(--primary-ring)]"
+              className="h-9 w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-surface)] px-3 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--brand-purple)] focus:ring-3 focus:ring-[var(--primary-ring)]"
               data-testid="cw-input-position"
             >
               {POSITIONS.map((p) => (
@@ -473,7 +473,7 @@ export function ChatWidgetSettings({
             {t('chat_widgets.allowed_origins')}
           </label>
           <div
-            className="flex flex-wrap items-center gap-2 p-2 rounded-[var(--radius-md)] border border-[var(--border)] bg-white min-h-[2.5rem] focus-within:border-[var(--brand-purple)] focus-within:ring-3 focus-within:ring-[var(--primary-ring)]"
+            className="flex flex-wrap items-center gap-2 p-2 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-surface)] min-h-[2.5rem] focus-within:border-[var(--brand-purple)] focus-within:ring-3 focus-within:ring-[var(--primary-ring)]"
             data-testid="cw-origins-container"
           >
             {allowedOrigins.map((o) => (
@@ -608,7 +608,7 @@ export function ChatWidgetSettings({
       {/* ── Side panel : snippet + preview ───────────────────────────── */}
       <aside className="space-y-4">
         {loadedWidget ? (
-          <div className="p-4 rounded-xl border border-[var(--border-subtle)] bg-white">
+          <div className="p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)]">
             <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-2">
               {t('chat_widgets.snippet_copy')}
             </h3>
@@ -648,7 +648,7 @@ export function ChatWidgetSettings({
 
         {showPreview && PreviewCmp ? (
           <div
-            className="p-4 rounded-xl border border-[var(--border-subtle)] bg-white"
+            className="p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)]"
             data-testid="cw-preview-panel"
           >
             <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-2">

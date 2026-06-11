@@ -291,7 +291,7 @@ export function SubscriptionAdvancedActions({
       {/* ── Section 1 : Plan change ────────────────────────────────────── */}
       <section
         aria-labelledby="sub-adv-plan-heading"
-        className="p-5 rounded-xl border border-[var(--border-subtle)] bg-white space-y-4"
+        className="p-5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] space-y-4"
       >
         <h3
           id="sub-adv-plan-heading"
@@ -406,7 +406,7 @@ export function SubscriptionAdvancedActions({
       {canPause ? (
         <section
           aria-labelledby="sub-adv-pause-heading"
-          className="p-5 rounded-xl border border-[var(--border-subtle)] bg-white space-y-3"
+          className="p-5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] space-y-3"
         >
           <h3
             id="sub-adv-pause-heading"
@@ -455,7 +455,7 @@ export function SubscriptionAdvancedActions({
       {isPaused ? (
         <section
           aria-labelledby="sub-adv-resume-heading"
-          className="p-5 rounded-xl border border-[var(--border-subtle)] bg-white space-y-3"
+          className="p-5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] space-y-3"
         >
           <h3
             id="sub-adv-resume-heading"
@@ -480,7 +480,7 @@ export function SubscriptionAdvancedActions({
       {!isCancelled ? (
         <section
           aria-labelledby="sub-adv-cancel-heading"
-          className="p-5 rounded-xl border border-[var(--border-subtle)] bg-white space-y-3"
+          className="p-5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] space-y-3"
         >
           <h3
             id="sub-adv-cancel-heading"
@@ -522,7 +522,7 @@ export function SubscriptionAdvancedActions({
       {/* ── Section 5 : History ────────────────────────────────────────── */}
       <section
         aria-labelledby="sub-adv-history-heading"
-        className="p-5 rounded-xl border border-[var(--border-subtle)] bg-white space-y-3"
+        className="p-5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] space-y-3"
       >
         <div className="flex items-center justify-between gap-2">
           <h3

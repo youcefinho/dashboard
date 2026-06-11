@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Button, Card, EmptyState, PageHero, KpiStrip, type KpiItem, Tag } from '@/components/ui';
+import { Button, Card, EmptyState, PageHero, KpiStrip, type KpiItem, Tag, Select } from '@/components/ui';
 // Sprint 44 M3.3 — Pull-to-refresh
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { PullToRefreshIndicator } from '@/components/ui/PullToRefreshIndicator';
@@ -510,17 +510,18 @@ export function ReviewsPage() {
                   <label className="block text-sm font-medium text-[var(--text-primary)] mb-1" htmlFor="rep-threshold">
                     {t('reputation.threshold_label')}
                   </label>
-                  <select
+                  <Select
                     id="rep-threshold"
-                    className="w-32 px-3 py-2 text-sm bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] focus:border-[var(--primary)] focus:outline-none"
+                    size="sm"
                     value={settings?.rating_threshold ?? 4}
                     onChange={e => setSettings(s => s ? { ...s, rating_threshold: Number(e.target.value) } : s)}
                     disabled={!settings}
+                    className="w-32"
                   >
                     {[1, 2, 3, 4, 5].map(n => (
                       <option key={n} value={n}>{n} ★</option>
                     ))}
-                  </select>
+                  </Select>
                   <p className="text-xs text-[var(--text-muted)] mt-1">{t('reputation.threshold_help')}</p>
                 </div>
 

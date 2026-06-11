@@ -706,7 +706,7 @@ function OpsCard({
 }: OpsCardProps) {
   return (
     <section
-      className="p-5 rounded-xl border border-[var(--border-subtle)] bg-white"
+      className="p-5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)]"
       data-testid={testId}
     >
       <header className="flex items-start gap-3 mb-4">

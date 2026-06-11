@@ -36,7 +36,7 @@ export const DropdownMenuContent = forwardRef<
         className
       )}
       style={{
-        background: '#FFFFFF',
+        background: 'var(--bg-surface)',
         border: '1px solid var(--border)',
         borderRadius: 'var(--radius-md)',
         boxShadow: 'var(--shadow-md)',
@@ -287,7 +287,7 @@ export const DropdownMenuSubContent = forwardRef<
       className
     )}
     style={{
-      background: '#FFFFFF',
+      background: 'var(--bg-surface)',
       border: '1px solid var(--border)',
       borderRadius: 'var(--radius-md)',
       boxShadow: 'var(--shadow-md)',

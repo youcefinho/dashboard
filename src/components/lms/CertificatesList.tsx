@@ -168,7 +168,7 @@ export function CertificatesList({ customerId }: CertificatesListProps) {
           <li
             key={cert.id}
             data-testid={`certificate-card-${cert.id}`}
-            className="p-5 rounded-xl border border-[var(--border-subtle)] bg-white flex flex-col gap-3 transition-shadow hover:shadow-sm"
+            className="p-5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] flex flex-col gap-3 transition-shadow hover:shadow-sm"
           >
             <div className="flex items-start gap-3">
               <span

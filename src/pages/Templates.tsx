@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Skeleton, EmptyState, Input, useConfirm, PageHero, KpiStrip, Icon, type KpiItem, Tag, EmptyStateIllustration } from '@/components/ui';
+import { Card, Button, Skeleton, EmptyState, Input, useConfirm, PageHero, KpiStrip, Icon, type KpiItem, Tag, EmptyStateIllustration, Select } from '@/components/ui';
 // Sprint 44 M3.3 — Pull-to-refresh
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { PullToRefreshIndicator } from '@/components/ui/PullToRefreshIndicator';
@@ -388,7 +388,7 @@ export function TemplatesPage() {
                   </div>
 
                   {/* Aperçu mini */}
-                  <div className="bg-white text-gray-700 rounded-[var(--radius-sm)] p-2 mb-3 text-[10px] line-clamp-3 h-12 overflow-hidden">
+                  <div className="bg-[var(--bg-surface)] text-[var(--text-secondary)] rounded-[var(--radius-sm)] p-2 mb-3 text-[10px] line-clamp-3 h-12 overflow-hidden">
                     {tpl.body_html.replace(/<[^>]+>/g, '').replace(/&[^;]+;/g, ' ').slice(0, 150)}
                   </div>
 
@@ -518,10 +518,9 @@ export function TemplatesPage() {
             </div>
             <div>
               <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">{tb('tpl.modal.category')}</label>
-              <select value={formCategory} onChange={(e) => setFormCategory(e.target.value as TemplateCategory)}
-                className="w-full px-3 py-2 bg-[var(--bg-subtle)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-sm focus:outline-none focus:border-[var(--primary)]">
+              <Select value={formCategory} onChange={(e) => setFormCategory(e.target.value as TemplateCategory)}>
                 {TEMPLATE_CATEGORIES.map(cat => <option key={cat} value={cat}>{CATEGORY_ICONS[cat]} {TEMPLATE_CATEGORY_LABELS[cat]}</option>)}
-              </select>
+              </Select>
             </div>
           </div>
 
@@ -559,7 +558,7 @@ export function TemplatesPage() {
                       if (data?.data?.content) setFormBody(data.data.content);
                     } catch { /* silencieux */ }
                     setIsGenerating(false);
-                  }} isLoading={isGenerating} leftIcon={<Icon as={Wand2} size="xs" className="text-[#A855F7]" />} className="h-[24px] text-[10px] px-2 py-0 border border-[var(--border-subtle)] bg-white hover:bg-purple-50">
+                  }} isLoading={isGenerating} leftIcon={<Icon as={Wand2} size="xs" className="text-[#A855F7]" />} className="h-[24px] text-[10px] px-2 py-0 border border-[var(--border-subtle)] bg-[var(--bg-surface)] hover:bg-purple-50">
                     {tb('tpl.modal.generate')}
                   </Button>
                 </div>
@@ -574,7 +573,7 @@ export function TemplatesPage() {
                 placeholder={tb('templates.body_placeholder')}
                 className="w-full px-3 py-2 bg-[var(--bg-subtle)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--primary)] resize-none font-mono text-xs" />
             ) : (
-              <div className="bg-white text-gray-900 p-4 rounded-[var(--radius-md)] text-sm min-h-[200px] border border-[var(--border-subtle)]"
+              <div className="bg-[var(--bg-surface)] text-[var(--text-primary)] p-4 rounded-[var(--radius-md)] text-sm min-h-[200px] border border-[var(--border-subtle)]"
                 dangerouslySetInnerHTML={{ __html: formBody || tb('templates.preview_placeholder') }} />
             )}
           </div>
@@ -644,7 +643,7 @@ export function TemplatesPage() {
               </div>
             </div>
             {/* Corps */}
-            <div className="bg-white text-gray-900 p-5 rounded-[var(--radius-md)] text-sm shadow-sm" dangerouslySetInnerHTML={{ __html: previewTemplate.body_html }} />
+            <div className="bg-[var(--bg-surface)] text-[var(--text-primary)] p-5 rounded-[var(--radius-md)] text-sm shadow-sm" dangerouslySetInnerHTML={{ __html: previewTemplate.body_html }} />
             {/* Infos */}
             <div className="flex items-center justify-between text-[10px] text-[var(--text-muted)]">
               <span>{CATEGORY_ICONS[previewTemplate.category]} {TEMPLATE_CATEGORY_LABELS[previewTemplate.category]}</span>

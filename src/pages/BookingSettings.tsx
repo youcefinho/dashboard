@@ -30,6 +30,7 @@ import {
   useToast,
   useConfirm,
   Icon,
+  Select,
 } from '@/components/ui';
 import { CalendarClock, Plus, Pencil, Trash2, ExternalLink } from 'lucide-react';
 import {
@@ -430,9 +431,8 @@ export function BookingSettingsPage() {
               >
                 {t('booking.event_type.reminder_channel')}
               </label>
-              <select
+              <Select
                 id="bk-reminder-channel"
-                className="w-full rounded-lg border border-[var(--border)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)]"
                 value={draft.reminder_channel}
                 onChange={(e) =>
                   setDraft((d) => ({
@@ -454,7 +454,7 @@ export function BookingSettingsPage() {
                 <option value="both">
                   {t('booking.reminder.channel.both')}
                 </option>
-              </select>
+              </Select>
             </div>
             <div>
               <label

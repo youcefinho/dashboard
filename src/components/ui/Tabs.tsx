@@ -42,8 +42,8 @@ export const TabsTrigger = forwardRef<
     <span aria-hidden
       className="absolute bottom-0 left-2 right-2 h-[3px] rounded-t-full opacity-0 group-data-[state=active]:opacity-100 transition-opacity"
       style={{
-        background: 'linear-gradient(90deg, #009DDB 0%, #D96E27 100%)',
-        boxShadow: '0 -2px 12px rgba(0,157,219,0.5), 0 0 8px rgba(217,110,39,0.4)',
+        background: 'var(--primary)',
+        boxShadow: '0 -2px 8px var(--primary-ring)',
       }} />
   </TabsPrimitive.Trigger>
 ));

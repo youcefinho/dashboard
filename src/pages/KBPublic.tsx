@@ -45,7 +45,7 @@ export function KBPublicPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white px-4 py-10 flex justify-center font-inter">
+      <div className="min-h-screen bg-[var(--bg-surface)] px-4 py-10 flex justify-center font-inter">
         <div
           className="kb-public-skeleton"
           style={{ width: '100%', maxWidth: 720 }}
@@ -66,7 +66,7 @@ export function KBPublicPage() {
 
   if (notFound || !article) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6 text-center bg-white">
+      <div className="min-h-screen flex items-center justify-center p-6 text-center bg-[var(--bg-surface)]">
         <div style={{ maxWidth: 480 }}>
           <h1
             style={{
@@ -87,7 +87,7 @@ export function KBPublicPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white px-4 py-10 flex justify-center font-inter">
+    <div className="min-h-screen bg-[var(--bg-surface)] px-4 py-10 flex justify-center font-inter">
       <article className="kb-public-article" style={{ width: '100%', maxWidth: 720 }}>
         {article.category && (
           <div

@@ -342,7 +342,7 @@ export function VoiceAgentSettings() {
             <p>{t('voice_agent.scripts.empty')}</p>
           </div>
         ) : (
-          <div className="rounded-xl border border-[var(--border-subtle)] bg-white overflow-hidden">
+          <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] overflow-hidden">
             <table
               className="w-full text-sm"
               aria-label={t('voice_agent.title')}
@@ -467,7 +467,7 @@ export function VoiceAgentSettings() {
         <section
           aria-labelledby="voice-agent-test-heading"
           data-testid="voice-agent-section-test"
-          className="rounded-xl border border-[var(--border-subtle)] bg-white p-5"
+          className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5"
         >
           <header className="flex items-start justify-between gap-3 mb-4">
             <div className="min-w-0">
@@ -564,7 +564,7 @@ export function VoiceAgentSettings() {
                 </p>
               ) : null}
               <div
-                className="rounded-md border border-[var(--border-subtle)] bg-white px-3 py-2 text-sm text-[var(--text-primary)] whitespace-pre-wrap"
+                className="rounded-md border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-2 text-sm text-[var(--text-primary)] whitespace-pre-wrap"
                 data-testid="voice-agent-test-response"
               >
                 {testResult.response_preview ?? (

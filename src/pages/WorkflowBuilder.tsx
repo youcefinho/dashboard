@@ -77,7 +77,7 @@ const TriggerNode = ({ data, selected }: any) => {
         style={{
           width: 14,
           height: 14,
-          background: '#FFFFFF',
+          background: 'var(--bg-surface)',
           border: '2px solid #009DDB',
           boxShadow: '0 0 0 4px rgba(0,157,219,0.30), 0 0 12px rgba(0,157,219,0.55)',
         }}
@@ -103,7 +103,7 @@ const ActionNode = ({ data, selected }: any) => {
         style={{
           width: 12,
           height: 12,
-          background: '#FFFFFF',
+          background: 'var(--bg-surface)',
           border: '2px solid #009DDB',
           boxShadow: '0 0 0 3px rgba(0,157,219,0.20)',
         }}
@@ -141,7 +141,7 @@ const ActionNode = ({ data, selected }: any) => {
         style={{
           width: 12,
           height: 12,
-          background: '#FFFFFF',
+          background: 'var(--bg-surface)',
           border: '2px solid #009DDB',
           boxShadow: '0 0 0 3px rgba(0,157,219,0.20)',
         }}
@@ -168,7 +168,7 @@ const ConditionNode = ({ selected }: any) => {
         style={{
           width: 12,
           height: 12,
-          background: '#FFFFFF',
+          background: 'var(--bg-surface)',
           border: '2px solid #FF9A00',
           boxShadow: '0 0 0 3px rgba(255,154,0,0.30)',
         }}
@@ -218,7 +218,7 @@ const ConditionNode = ({ selected }: any) => {
           left: '25%',
           width: 12,
           height: 12,
-          background: '#FFFFFF',
+          background: 'var(--bg-surface)',
           border: '2px solid #37CA37',
           boxShadow: '0 0 0 3px rgba(55,202,55,0.30)',
         }}
@@ -251,7 +251,7 @@ const ConditionNode = ({ selected }: any) => {
           left: '75%',
           width: 12,
           height: 12,
-          background: '#FFFFFF',
+          background: 'var(--bg-surface)',
           border: '2px solid #E93D3D',
           boxShadow: '0 0 0 3px rgba(233,61,61,0.30)',
         }}

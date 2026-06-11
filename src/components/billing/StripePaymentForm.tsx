@@ -108,7 +108,7 @@ export function StripePaymentForm({
       {paymentRequest && (
         <div data-section="payment-request">
           <PaymentRequestButtonElement options={{ paymentRequest }} />
-          <div className="text-center text-sm text-gray-500 my-2">
+          <div className="text-center text-sm text-[var(--text-muted)] my-2">
             {t('billing.real.payment_method.or_card')}
           </div>
         </div>
@@ -121,7 +121,7 @@ export function StripePaymentForm({
         <div className="p-3 border rounded">
           <CardElement options={{ hidePostalCode: false }} />
         </div>
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-[var(--text-muted)]">
           {t('billing.real.payment_method.pci_notice')}
         </p>
         <Button type="submit" variant="primary" disabled={!stripe || submitting}>
