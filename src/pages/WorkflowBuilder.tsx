@@ -20,7 +20,7 @@ const NODE_CARD_BASE: React.CSSProperties = {
   width: 200,
   borderRadius: 14,
   overflow: 'visible',
-  boxShadow: '0 8px 24px -8px rgba(15,23,42,0.18), 0 2px 8px -4px rgba(0,157,219,0.12)',
+  boxShadow: '0 8px 24px -8px rgba(15,23,42,0.18), 0 2px 8px -4px rgba(99,91,255,0.12)',
   transition: 'transform 200ms cubic-bezier(0.4,0,0.2,1), box-shadow 200ms cubic-bezier(0.4,0,0.2,1)',
 };
 
@@ -30,9 +30,9 @@ const TriggerNode = ({ data, selected }: any) => {
       className={`wf-node wf-node-trigger ${selected ? 'wf-node-selected' : ''}`}
       style={{
         ...NODE_CARD_BASE,
-        background: 'linear-gradient(135deg, rgba(0,181,245,0.96) 0%, rgba(0,157,219,0.95) 55%, rgba(0,134,192,0.92) 100%)',
+        background: 'linear-gradient(135deg, rgba(99,91,255,0.96) 0%, rgba(88,81,229,0.95) 55%, rgba(88,81,229,0.92) 100%)',
         color: 'white',
-        border: '1px solid rgba(0,134,192,0.55)',
+        border: '1px solid rgba(88,81,229,0.55)',
       }}
     >
       <div
@@ -78,8 +78,8 @@ const TriggerNode = ({ data, selected }: any) => {
           width: 14,
           height: 14,
           background: 'var(--bg-surface)',
-          border: '2px solid #009DDB',
-          boxShadow: '0 0 0 4px rgba(0,157,219,0.30), 0 0 12px rgba(0,157,219,0.55)',
+          border: '2px solid #635BFF',
+          boxShadow: '0 0 0 4px rgba(99,91,255,0.30), 0 0 12px rgba(99,91,255,0.55)',
         }}
       />
     </div>
@@ -93,7 +93,7 @@ const ActionNode = ({ data, selected }: any) => {
       style={{
         ...NODE_CARD_BASE,
         background: 'linear-gradient(180deg, #FFFFFF 0%, #FAFBFC 100%)',
-        border: '1px solid rgba(0,157,219,0.20)',
+        border: '1px solid rgba(99,91,255,0.20)',
       }}
     >
       <Handle
@@ -104,15 +104,15 @@ const ActionNode = ({ data, selected }: any) => {
           width: 12,
           height: 12,
           background: 'var(--bg-surface)',
-          border: '2px solid #009DDB',
-          boxShadow: '0 0 0 3px rgba(0,157,219,0.20)',
+          border: '2px solid #635BFF',
+          boxShadow: '0 0 0 3px rgba(99,91,255,0.20)',
         }}
       />
       <div
         aria-hidden
         style={{
           height: 2,
-          background: 'linear-gradient(90deg, rgba(0,157,219,0.30) 0%, rgba(217,110,39,0.30) 100%)',
+          background: 'linear-gradient(90deg, rgba(99,91,255,0.30) 0%, rgba(139,92,246,0.30) 100%)',
           borderRadius: '14px 14px 0 0',
         }}
       />
@@ -142,8 +142,8 @@ const ActionNode = ({ data, selected }: any) => {
           width: 12,
           height: 12,
           background: 'var(--bg-surface)',
-          border: '2px solid #009DDB',
-          boxShadow: '0 0 0 3px rgba(0,157,219,0.20)',
+          border: '2px solid #635BFF',
+          boxShadow: '0 0 0 3px rgba(99,91,255,0.20)',
         }}
       />
     </div>
@@ -629,8 +629,8 @@ function PremiumControls({ locked, setLocked }: { locked: boolean; setLocked: (v
         background: 'linear-gradient(135deg, rgba(255,255,255,0.92) 0%, rgba(240,250,254,0.92) 100%)',
         backdropFilter: 'blur(12px) saturate(160%)',
         WebkitBackdropFilter: 'blur(12px) saturate(160%)',
-        border: '1px solid rgba(0,157,219,0.20)',
-        boxShadow: '0 8px 24px -8px rgba(0,157,219,0.22)',
+        border: '1px solid rgba(99,91,255,0.20)',
+        boxShadow: '0 8px 24px -8px rgba(99,91,255,0.22)',
       }}
     >
       <button type="button" onClick={() => zoomIn()} className="chip-btn chip-btn--sm" title="Zoom +" aria-label="Zoom avant">
@@ -1167,12 +1167,12 @@ function WorkflowBuilderInner() {
               <svg style={{ position: 'absolute', width: 0, height: 0 }} aria-hidden>
                 <defs>
                   <linearGradient id="wf-edge-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#009DDB" stopOpacity="0.85" />
-                    <stop offset="100%" stopColor="#D96E27" stopOpacity="0.85" />
+                    <stop offset="0%" stopColor="#635BFF" stopOpacity="0.85" />
+                    <stop offset="100%" stopColor="#8B5CF6" stopOpacity="0.85" />
                   </linearGradient>
                 </defs>
               </svg>
-              <Background gap={24} size={1.5} color="rgba(0,157,219,0.15)" />
+              <Background gap={24} size={1.5} color="rgba(99,91,255,0.15)" />
               <PremiumControls locked={canvasLocked} setLocked={setCanvasLocked} />
             </ReactFlow>
           </Card>

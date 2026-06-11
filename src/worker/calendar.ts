@@ -21,7 +21,7 @@ export async function handleCreateCalendar(request: Request, env: Env, auth: { u
     'INSERT INTO calendars (id, user_id, client_id, name, color, is_default, is_visible) VALUES (?, ?, ?, ?, ?, ?, ?)'
   ).bind(
     id, auth.userId, body.client_id ? String(body.client_id) : null, name,
-    sanitizeInput((body.color as string) || '#009DDB', 20),
+    sanitizeInput((body.color as string) || '#635BFF', 20),
     body.is_default ? 1 : 0, body.is_visible !== false ? 1 : 0
   ).run();
 

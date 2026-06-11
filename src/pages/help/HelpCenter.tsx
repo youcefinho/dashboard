@@ -109,7 +109,7 @@ export function HelpCenterPage() {
         className="relative pt-20 pb-20 px-4 sm:px-6 lg:px-8 overflow-hidden"
         style={{
           background:
-            'linear-gradient(135deg, #009DDB 0%, #0086C0 50%, #D96E27 100%)',
+            'linear-gradient(135deg, #635BFF 0%, #5851E5 50%, #8B5CF6 100%)',
         }}
       >
         <div aria-hidden className="absolute inset-0 opacity-30 pointer-events-none">
@@ -270,8 +270,8 @@ export function HelpCenterPage() {
                             className="shrink-0 w-2 h-2 rounded-full"
                             style={{
                               background:
-                                'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
-                              boxShadow: '0 0 8px rgba(0,157,219,0.45)',
+                                'linear-gradient(135deg, #635BFF 0%, #8B5CF6 100%)',
+                              boxShadow: '0 0 8px rgba(99,91,255,0.45)',
                             }}
                           />
                           <span className="flex-1 text-sm font-medium text-[var(--text-primary)] truncate">
@@ -304,39 +304,39 @@ export function HelpCenterPage() {
           color: var(--text-secondary);
         }
         .help-cat-item .help-cat-icon {
-          background: rgba(0,157,219,0.08);
-          border: 1px solid rgba(0,157,219,0.18);
+          background: rgba(99,91,255,0.08);
+          border: 1px solid rgba(99,91,255,0.18);
           color: var(--primary);
         }
         .help-cat-item:hover {
-          background: linear-gradient(90deg, rgba(0,157,219,0.10) 0%, rgba(217,110,39,0.04) 100%);
-          border-color: rgba(0,157,219,0.40);
+          background: linear-gradient(90deg, rgba(99,91,255,0.10) 0%, rgba(139,92,246,0.04) 100%);
+          border-color: rgba(99,91,255,0.40);
           color: var(--primary);
           transform: translateX(2px);
-          box-shadow: 0 4px 14px -4px rgba(0,157,219,0.30);
+          box-shadow: 0 4px 14px -4px rgba(99,91,255,0.30);
         }
         .help-cat-item:hover .help-cat-icon {
-          background: linear-gradient(135deg, rgba(0,157,219,0.20) 0%, rgba(217,110,39,0.12) 100%);
-          border-color: rgba(0,157,219,0.45);
-          box-shadow: 0 0 12px rgba(0,157,219,0.35);
+          background: linear-gradient(135deg, rgba(99,91,255,0.20) 0%, rgba(139,92,246,0.12) 100%);
+          border-color: rgba(99,91,255,0.45);
+          box-shadow: 0 0 12px rgba(99,91,255,0.35);
         }
         .help-cat-item.is-active {
-          background: linear-gradient(90deg, rgba(0,157,219,0.18) 0%, rgba(217,110,39,0.08) 100%);
-          border-color: rgba(0,157,219,0.55);
+          background: linear-gradient(90deg, rgba(99,91,255,0.18) 0%, rgba(139,92,246,0.08) 100%);
+          border-color: rgba(99,91,255,0.55);
           color: var(--primary);
           box-shadow:
-            0 4px 16px -4px rgba(0,157,219,0.40),
-            0 0 24px -8px rgba(217,110,39,0.28);
+            0 4px 16px -4px rgba(99,91,255,0.40),
+            0 0 24px -8px rgba(139,92,246,0.28);
         }
         .help-cat-item.is-active .help-cat-icon {
-          background: linear-gradient(135deg, #009DDB 0%, #D96E27 100%);
-          border-color: rgba(0,157,219,0.65);
+          background: linear-gradient(135deg, #635BFF 0%, #8B5CF6 100%);
+          border-color: rgba(99,91,255,0.65);
           color: #FFFFFF;
-          box-shadow: 0 0 14px rgba(0,157,219,0.55);
+          box-shadow: 0 0 14px rgba(99,91,255,0.55);
         }
         .help-cat-item:focus-visible {
           outline: none;
-          box-shadow: 0 0 0 2px rgba(0,157,219,0.55), 0 0 14px rgba(217,110,39,0.30);
+          box-shadow: 0 0 0 2px rgba(99,91,255,0.55), 0 0 14px rgba(139,92,246,0.30);
         }
         @media (prefers-reduced-motion: reduce) {
           .help-cat-item:hover { transform: none !important; }

@@ -27,11 +27,11 @@ export interface WorkflowTemplateMeta {
 }
 
 // Accent par industrie — palette alignée sur funnel-templates / index.css
-// (brand #009DDB, accent #D96E27, success #37CA37, warning #FF9A00).
+// (primary #635BFF, accent #8B5CF6, success #37CA37, warning #FF9A00).
 const WORKFLOW_TEMPLATE_META: Record<string, WorkflowTemplateMeta> = {
-  immobilier: { industry: 'immobilier', industryLabel: 'Immobilier', icon: '🏠', accent: '#009DDB' },
+  immobilier: { industry: 'immobilier', industryLabel: 'Immobilier', icon: '🏠', accent: '#635BFF' },
   dentiste: { industry: 'dentiste', industryLabel: 'Dentiste', icon: '🦷', accent: '#37CA37' },
-  services: { industry: 'services', industryLabel: 'Services professionnels', icon: '💼', accent: '#D96E27' },
+  services: { industry: 'services', industryLabel: 'Services professionnels', icon: '💼', accent: '#8B5CF6' },
   restauration: { industry: 'restauration', industryLabel: 'Restauration', icon: '🍽️', accent: '#FF9A00' },
   construction: { industry: 'construction', industryLabel: 'Construction & rénovation', icon: '🔨', accent: '#1c1917' },
   sante: { industry: 'sante', industryLabel: 'Santé & bien-être', icon: '🌿', accent: '#134e4a' },
@@ -41,7 +41,7 @@ const WORKFLOW_TEMPLATE_META_FALLBACK: WorkflowTemplateMeta = {
   industry: 'autre',
   industryLabel: 'Automation',
   icon: '⚡',
-  accent: '#009DDB',
+  accent: '#635BFF',
 };
 
 /** Métadonnées d'affichage pour une industrie donnée (fallback générique). */

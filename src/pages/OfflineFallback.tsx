@@ -34,7 +34,7 @@ export function OfflineFallback() {
         className="hero-stat-orb absolute -top-32 left-1/4 w-[420px] h-[420px] rounded-full pointer-events-none"
         style={{
           background:
-            'radial-gradient(circle, rgba(0,157,219,0.28) 0%, rgba(0,157,219,0.08) 50%, transparent 80%)',
+            'radial-gradient(circle, rgba(99,91,255,0.28) 0%, rgba(99,91,255,0.08) 50%, transparent 80%)',
           filter: 'blur(70px)',
         }}
       />
@@ -44,7 +44,7 @@ export function OfflineFallback() {
         className="hero-stat-orb absolute -bottom-32 right-1/4 w-[380px] h-[380px] rounded-full pointer-events-none"
         style={{
           background:
-            'radial-gradient(circle, rgba(217,110,39,0.22) 0%, rgba(217,110,39,0.06) 50%, transparent 80%)',
+            'radial-gradient(circle, rgba(139,92,246,0.22) 0%, rgba(139,92,246,0.06) 50%, transparent 80%)',
           filter: 'blur(70px)',
           animationDelay: '4s',
         }}
@@ -57,7 +57,7 @@ export function OfflineFallback() {
           className="absolute inset-0 rounded-3xl pointer-events-none"
           style={{
             background:
-              'radial-gradient(circle, rgba(0,157,219,0.40) 0%, rgba(217,110,39,0.22) 50%, transparent 80%)',
+              'radial-gradient(circle, rgba(99,91,255,0.40) 0%, rgba(139,92,246,0.22) 50%, transparent 80%)',
             filter: 'blur(28px)',
             transform: 'scale(1.8)',
             animation: 'hot-lead-pulse 3.5s ease-in-out infinite',
@@ -67,9 +67,9 @@ export function OfflineFallback() {
           className="relative w-[104px] h-[104px] rounded-3xl flex items-center justify-center"
           style={{
             background:
-              'linear-gradient(135deg, #009DDB 0%, #0BB5E9 50%, #D96E27 100%)',
+              'linear-gradient(135deg, #635BFF 0%, #7C6AFF 50%, #8B5CF6 100%)',
             boxShadow:
-              '0 8px 32px -6px rgba(0,157,219,0.55), 0 0 40px -8px rgba(217,110,39,0.40), inset 0 1px 0 rgba(255,255,255,0.25)',
+              '0 8px 32px -6px rgba(99,91,255,0.55), 0 0 40px -8px rgba(139,92,246,0.40), inset 0 1px 0 rgba(255,255,255,0.25)',
           }}
         >
           <WifiOff
@@ -84,7 +84,7 @@ export function OfflineFallback() {
       <p
         className="relative text-[10px] font-bold uppercase tracking-[0.18em] mb-2"
         style={{
-          background: 'linear-gradient(90deg, #009DDB 0%, #D96E27 100%)',
+          background: 'linear-gradient(135deg, #635BFF 0%, #8B5CF6 100%)',
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
           backgroundClip: 'text',
@@ -108,10 +108,10 @@ export function OfflineFallback() {
         className="relative inline-flex items-center gap-2 h-11 px-6 text-sm font-semibold rounded-[10px] text-white active:scale-[0.98] transition-all cursor-pointer mb-8"
         style={{
           background:
-            'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
+            'var(--primary)',
           boxShadow:
-            '0 4px 16px -2px rgba(0,157,219,0.45), 0 0 22px -4px rgba(217,110,39,0.35), inset 0 1px 0 rgba(255,255,255,0.20)',
-          border: '1px solid rgba(0,157,219,0.55)',
+            '0 4px 16px -2px rgba(99,91,255,0.45), inset 0 1px 0 rgba(255,255,255,0.20)',
+          border: '1px solid rgba(99,91,255,0.55)',
         }}
       >
         <Icon as={RefreshCcw} size="md" strokeWidth={2.4} />
@@ -122,7 +122,7 @@ export function OfflineFallback() {
         <p
           className="text-[9px] font-bold uppercase tracking-[0.18em] mb-3"
           style={{
-            background: 'linear-gradient(90deg, #009DDB 0%, #D96E27 100%)',
+            background: 'linear-gradient(135deg, #635BFF 0%, #8B5CF6 100%)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
             backgroundClip: 'text',

@@ -68,7 +68,7 @@ export class ErrorBoundary extends Component<Props, State> {
           className="hero-stat-orb absolute -top-32 left-1/4 w-[440px] h-[440px] rounded-full pointer-events-none"
           style={{
             background:
-              'radial-gradient(circle, rgba(0,157,219,0.30) 0%, rgba(0,157,219,0.10) 50%, transparent 80%)',
+              'radial-gradient(circle, rgba(99,91,255,0.30) 0%, rgba(99,91,255,0.10) 50%, transparent 80%)',
             filter: 'blur(70px)',
           }}
         />
@@ -78,7 +78,7 @@ export class ErrorBoundary extends Component<Props, State> {
           className="hero-stat-orb absolute -bottom-32 right-1/4 w-[400px] h-[400px] rounded-full pointer-events-none"
           style={{
             background:
-              'radial-gradient(circle, rgba(217,110,39,0.28) 0%, rgba(217,110,39,0.08) 50%, transparent 80%)',
+              'radial-gradient(circle, rgba(139,92,246,0.28) 0%, rgba(139,92,246,0.08) 50%, transparent 80%)',
             filter: 'blur(70px)',
             animationDelay: '3s',
           }}
@@ -129,7 +129,7 @@ export class ErrorBoundary extends Component<Props, State> {
         <p
           className="relative text-[10px] font-bold uppercase tracking-[0.18em] mb-2"
           style={{
-            background: 'linear-gradient(90deg, #009DDB 0%, #D96E27 100%)',
+            background: 'linear-gradient(135deg, #635BFF 0%, #8B5CF6 100%)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
             backgroundClip: 'text',
@@ -157,8 +157,8 @@ export class ErrorBoundary extends Component<Props, State> {
             <pre
               className="text-[10px] font-mono p-3 rounded-lg overflow-auto max-h-40 text-[var(--text-secondary)]"
               style={{
-                background: 'rgba(0,157,219,0.04)',
-                border: '1px solid rgba(0,157,219,0.18)',
+                background: 'rgba(99,91,255,0.04)',
+                border: '1px solid rgba(99,91,255,0.18)',
               }}
             >
               {this.state.error.message}
@@ -172,11 +172,11 @@ export class ErrorBoundary extends Component<Props, State> {
             onClick={this.handleReload}
             className="inline-flex items-center gap-2 h-11 px-5 text-sm font-semibold rounded-[10px] text-white active:scale-[0.98] transition-all cursor-pointer"
             style={{
-              background:
-                'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
-              boxShadow:
-                '0 4px 16px -2px rgba(0,157,219,0.45), 0 0 22px -4px rgba(217,110,39,0.35), inset 0 1px 0 rgba(255,255,255,0.20)',
-              border: '1px solid rgba(0,157,219,0.55)',
+               background:
+                'var(--primary)',
+               boxShadow:
+                '0 4px 16px -2px rgba(99,91,255,0.45), inset 0 1px 0 rgba(255,255,255,0.20)',
+              border: '1px solid rgba(99,91,255,0.55)',
             }}
           >
             <Icon as={RefreshCcw} size="md" strokeWidth={2.4} />
@@ -193,8 +193,8 @@ export class ErrorBoundary extends Component<Props, State> {
               boxShadow: '0 1px 2px rgba(15,23,42,0.04)',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = 'rgba(0,157,219,0.45)';
-              e.currentTarget.style.boxShadow = '0 4px 14px -4px rgba(0,157,219,0.20)';
+              e.currentTarget.style.borderColor = 'rgba(99,91,255,0.45)';
+              e.currentTarget.style.boxShadow = '0 4px 14px -4px rgba(99,91,255,0.20)';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.borderColor = 'var(--border-default)';

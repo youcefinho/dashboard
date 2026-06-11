@@ -158,17 +158,17 @@ export function SignDocumentPage() {
       style={{ background: 'linear-gradient(135deg, #FFFFFF 0%, #FAFBFC 35%, #F0FAFE 70%, #FFF1DD 100%)' }}>
       {/* Orbs décoratifs */}
       <div className="hero-stat-orb absolute w-[600px] h-[600px] rounded-full -top-60 -right-60 pointer-events-none"
-        style={{ background: 'radial-gradient(circle, rgba(0,157,219,0.22) 0%, transparent 70%)', filter: 'blur(60px)' }} />
+        style={{ background: 'radial-gradient(circle, rgba(99,91,255,0.22) 0%, transparent 70%)', filter: 'blur(60px)' }} />
       <div className="hero-stat-orb absolute w-[400px] h-[400px] rounded-full -bottom-40 -left-40 pointer-events-none"
-        style={{ background: 'radial-gradient(circle, rgba(217,110,39,0.18) 0%, transparent 70%)', filter: 'blur(60px)', animationDelay: '3s' }} />
+        style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.18) 0%, transparent 70%)', filter: 'blur(60px)', animationDelay: '3s' }} />
 
       {/* Header bar Sprint 23 */}
       <div className="relative w-full max-w-4xl flex justify-between items-center mb-6 z-10">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-base"
             style={{
-              background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
-              boxShadow: '0 4px 12px rgba(0,157,219,0.4)',
+              background: 'var(--primary)',
+              boxShadow: '0 4px 12px rgba(99,91,255,0.4)',
               color: 'white',
             }}>I</div>
           <div className="text-xl font-bold tracking-tight">
@@ -184,15 +184,15 @@ export function SignDocumentPage() {
           backdropFilter: 'blur(12px) saturate(160%)',
           WebkitBackdropFilter: 'blur(12px) saturate(160%)',
           border: '1px solid var(--border-subtle)',
-          boxShadow: '0 1px 2px rgba(15,23,42,0.04), 0 24px 64px -12px rgba(0,157,219,0.18)',
+          boxShadow: '0 1px 2px rgba(15,23,42,0.04), 0 24px 64px -12px rgba(99,91,255,0.18)',
         }}>
         {/* Bandeau top — gradient brand 30% */}
         <div
           aria-hidden
           className="absolute top-0 left-0 right-0 h-[2px] z-10"
           style={{
-            background: 'linear-gradient(90deg, rgba(0,157,219,0.85) 0%, rgba(217,110,39,0.85) 100%)',
-            boxShadow: '0 0 14px -2px rgba(0,157,219,0.45)',
+            background: 'linear-gradient(90deg, rgba(99,91,255,0.85) 0%, rgba(139,92,246,0.85) 100%)',
+            boxShadow: '0 0 14px -2px rgba(99,91,255,0.45)',
           }}
         />
         {/* Document Content */}

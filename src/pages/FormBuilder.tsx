@@ -181,7 +181,7 @@ export function FormBuilderPage() {
           </Button>
           <Input value={formName} onChange={e => setFormName(e.target.value)} placeholder={t('fb.form_name_ph')}
             style={{ fontWeight: 600, fontSize: '15px', background: 'transparent', border: 'none', padding: 0, maxWidth: 300 }} />
-          <Tag solid size="sm" color={formType === 'quiz' ? '#a855f7' : formType === 'survey' ? '#f59e0b' : '#009DDB'}>
+          <Tag solid size="sm" color={formType === 'quiz' ? '#a855f7' : formType === 'survey' ? '#f59e0b' : '#635BFF'}>
             {formType.toUpperCase()}
           </Tag>
         </div>
@@ -435,7 +435,7 @@ export function FormBuilderPage() {
                     </span>
                   </div>
                   <div style={{ height: 6, borderRadius: 999, background: 'var(--bg-canvas)', overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${completionPct}%`, background: 'var(--primary, #009DDB)' }} />
+                    <div style={{ height: '100%', width: `${completionPct}%`, background: 'var(--primary, #635BFF)' }} />
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
                     {t('fb.analytics.dropoff')}: {dropoffPct}%
@@ -514,8 +514,8 @@ export function FormBuilderPage() {
 
 const formBuilderStyles = `
 .form-field-item { display:flex; align-items:center; gap:8px; padding:10px 12px; border:2px solid transparent; border-radius:8px; background:var(--bg-surface); margin-bottom:4px; cursor:pointer; transition:all 0.15s; }
-.form-field-item:hover { border-color:rgba(0,157,219,0.2); }
-.form-field-item.selected { border-color:var(--primary); background:rgba(0,157,219,0.04); }
+.form-field-item:hover { border-color:rgba(99,91,255,0.2); }
+.form-field-item.selected { border-color:var(--primary); background:rgba(99,91,255,0.04); }
 .field-drag { cursor:grab; color:var(--text-muted); }
 .field-icon { font-size:16px; }
 .field-info { flex:1; display:flex; flex-direction:column; gap:2px; }

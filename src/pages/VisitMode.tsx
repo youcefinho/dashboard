@@ -356,7 +356,7 @@ export function VisitModePage() {
               <button onClick={() => void saveNote()} disabled={!note.trim() || isSavingNote}
                 aria-label={t('visit.note.save')}
                 className="flex-1 py-2 rounded-lg text-sm font-semibold text-white active:scale-95 disabled:opacity-50"
-                style={{ background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)', boxShadow: '0 4px 12px rgba(0,157,219,0.4)' }}>
+                style={{ background: 'var(--primary)', boxShadow: '0 4px 12px rgba(99,91,255,0.4)' }}>
                 {isSavingNote ? t('visit.note.saving') : t('visit.note.save')}
               </button>
             </div>
@@ -390,7 +390,7 @@ export function VisitModePage() {
                 aria-label={label}
                 className={`list-item-enter w-full flex items-center gap-3 p-3 rounded-xl border transition-all active:scale-[0.98] text-left min-h-[52px] ${
                   item.done
-                    ? 'border-[rgba(0,157,219,0.40)] bg-[rgba(0,157,219,0.10)]'
+                    ? 'border-[rgba(99,91,255,0.40)] bg-[rgba(99,91,255,0.10)]'
                     : 'border-[var(--border-strong)] bg-[var(--gray-800)]/50 hover:border-gray-600'
                 }`}
                 style={{ animationDelay: `${Math.min(idx, 20) * 30}ms` }}
@@ -401,8 +401,8 @@ export function VisitModePage() {
                   style={
                     item.done
                       ? {
-                          background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
-                          boxShadow: '0 0 16px -2px rgba(0,157,219,0.55), 0 0 0 2px rgba(0,157,219,0.18)',
+                          background: 'var(--primary)',
+                          boxShadow: '0 0 16px -2px rgba(99,91,255,0.55), 0 0 0 2px rgba(99,91,255,0.18)',
                           transform: 'scale(1)',
                         }
                       : {
@@ -488,8 +488,8 @@ export function VisitModePage() {
                 style={
                   isActive
                     ? {
-                        background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
-                        boxShadow: '0 4px 14px -2px rgba(0,157,219,0.50), 0 0 0 1px rgba(0,157,219,0.32)',
+                        background: 'var(--primary)',
+                        boxShadow: '0 4px 14px -2px rgba(99,91,255,0.50), 0 0 0 1px rgba(99,91,255,0.32)',
                       }
                     : undefined
                 }
@@ -513,7 +513,7 @@ export function VisitModePage() {
               aria-label={t('visit.kpi.progress')}
             >
               <div className="h-full rounded-full transition-all"
-                style={{ width: `${progress}%`, background: 'linear-gradient(90deg, #009DDB, #D96E27)' }} />
+                style={{ width: `${progress}%`, background: 'linear-gradient(135deg, #635BFF, #8B5CF6)' }} />
             </div>
             <span className="text-[10px] text-[var(--text-muted)] tabular-nums w-9 text-right">{progress}%</span>
           </div>
@@ -522,8 +522,8 @@ export function VisitModePage() {
             aria-label={t('visit.finish.cta_aria')}
             className="px-4 py-2.5 min-h-[44px] rounded-xl text-sm font-semibold text-white active:scale-95 transition-all whitespace-nowrap"
             style={{
-              background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
-              boxShadow: '0 4px 14px -2px rgba(0,157,219,0.50)',
+              background: 'var(--primary)',
+              boxShadow: '0 4px 14px -2px rgba(99,91,255,0.50)',
             }}
           >
             {t('visit.finish.cta')}

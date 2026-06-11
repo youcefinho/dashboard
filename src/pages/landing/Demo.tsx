@@ -34,7 +34,7 @@ export function DemoPage() {
           className="hero-stat-orb absolute w-[700px] h-[700px] rounded-full -top-80 left-1/2 -translate-x-1/2 pointer-events-none -z-10"
           style={{
             background:
-              'radial-gradient(circle, rgba(0,157,219,0.18) 0%, rgba(217,110,39,0.10) 50%, transparent 75%)',
+              'radial-gradient(circle, rgba(99,91,255,0.18) 0%, rgba(139,92,246,0.10) 50%, transparent 75%)',
             filter: 'blur(80px)',
           }}
         />
@@ -42,7 +42,7 @@ export function DemoPage() {
           className="hero-stat-orb absolute w-[420px] h-[420px] rounded-full top-40 -right-32 pointer-events-none -z-10"
           style={{
             background:
-              'radial-gradient(circle, rgba(217,110,39,0.18) 0%, rgba(0,157,219,0.10) 50%, transparent 75%)',
+              'radial-gradient(circle, rgba(139,92,246,0.18) 0%, rgba(99,91,255,0.10) 50%, transparent 75%)',
             filter: 'blur(60px)',
             animationDelay: '4s',
           }}
@@ -54,8 +54,8 @@ export function DemoPage() {
             style={{
               background: 'rgba(255,255,255,0.7)',
               backdropFilter: 'blur(8px)',
-              border: '1px solid rgba(0,157,219,0.2)',
-              boxShadow: '0 4px 16px -4px rgba(0,157,219,0.15)',
+              border: '1px solid rgba(99,91,255,0.2)',
+              boxShadow: '0 4px 16px -4px rgba(99,91,255,0.15)',
             }}
           >
             <Calendar size={12} className="text-[var(--primary)]" />
@@ -83,16 +83,16 @@ export function DemoPage() {
               key={item.label}
               className="flex items-center gap-3 p-4 rounded-xl"
               style={{
-                background: 'linear-gradient(135deg, #FFFFFF 0%, #F0FAFE 100%)',
-                border: '1px solid rgba(0,157,219,0.2)',
-                boxShadow: '0 1px 2px rgba(0,157,219,0.06), 0 4px 12px -4px rgba(0,157,219,0.12)',
+                background: 'linear-gradient(135deg, #FFFFFF 0%, #F0EFFE 100%)',
+                border: '1px solid rgba(99,91,255,0.2)',
+                boxShadow: '0 1px 2px rgba(99,91,255,0.06), 0 4px 12px -4px rgba(99,91,255,0.12)',
               }}
             >
               <div
                 className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
                 style={{
-                  background: 'linear-gradient(135deg, #009DDB 0%, #0086C0 100%)',
-                  boxShadow: '0 2px 8px rgba(0,157,219,0.4)',
+                  background: 'linear-gradient(135deg, #635BFF 0%, #5851E5 100%)',
+                  boxShadow: '0 2px 8px rgba(99,91,255,0.4)',
                 }}
               >
                 <item.icon size={16} className="text-white" />
@@ -113,7 +113,7 @@ export function DemoPage() {
               className="absolute -top-12 -right-12 w-44 h-44 rounded-full pointer-events-none opacity-60"
               style={{
                 background:
-                  'radial-gradient(circle, rgba(217,110,39,0.20) 0%, rgba(0,157,219,0.12) 50%, transparent 75%)',
+                  'radial-gradient(circle, rgba(139,92,246,0.20) 0%, rgba(99,91,255,0.12) 50%, transparent 75%)',
                 filter: 'blur(40px)',
               }}
             />
@@ -214,7 +214,7 @@ export function DemoPage() {
               className="absolute -top-16 -left-16 w-56 h-56 rounded-full pointer-events-none opacity-70"
               style={{
                 background:
-                  'radial-gradient(circle, rgba(0,157,219,0.30) 0%, rgba(217,110,39,0.12) 50%, transparent 75%)',
+                  'radial-gradient(circle, rgba(99,91,255,0.30) 0%, rgba(139,92,246,0.12) 50%, transparent 75%)',
                 filter: 'blur(50px)',
               }}
             />
@@ -223,7 +223,7 @@ export function DemoPage() {
               className="absolute -bottom-12 -right-12 w-44 h-44 rounded-full pointer-events-none opacity-60"
               style={{
                 background:
-                  'radial-gradient(circle, rgba(217,110,39,0.28) 0%, rgba(0,157,219,0.15) 50%, transparent 75%)',
+                  'radial-gradient(circle, rgba(139,92,246,0.28) 0%, rgba(99,91,255,0.15) 50%, transparent 75%)',
                 filter: 'blur(40px)',
               }}
             />
@@ -232,9 +232,9 @@ export function DemoPage() {
               <div
                 className="w-20 h-20 rounded-2xl mx-auto mb-6 flex items-center justify-center"
                 style={{
-                  background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
+                  background: 'linear-gradient(135deg, #635BFF 0%, #8B5CF6 100%)',
                   boxShadow:
-                    '0 12px 32px -8px rgba(0,157,219,0.55), 0 0 40px -4px rgba(217,110,39,0.30)',
+                    '0 12px 32px -8px rgba(99,91,255,0.55), 0 0 40px -4px rgba(139,92,246,0.30)',
                 }}
               >
                 <CheckCircle2 size={36} className="text-white" strokeWidth={2.5} />
@@ -267,8 +267,8 @@ export function DemoPage() {
                     <span
                       className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold"
                       style={{
-                        background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
-                        boxShadow: '0 2px 6px -1px rgba(0,157,219,0.45)',
+                        background: 'linear-gradient(135deg, #635BFF 0%, #8B5CF6 100%)',
+                        boxShadow: '0 2px 6px -1px rgba(99,91,255,0.45)',
                       }}
                     >
                       {i + 1}

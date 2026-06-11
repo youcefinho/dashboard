@@ -227,8 +227,8 @@ export function PublicSitePage() {
           style={{
             width: 36,
             height: 36,
-            border: '3px solid rgba(0,157,219,0.2)',
-            borderTopColor: '#009DDB',
+            border: '3px solid rgba(99,91,255,0.2)',
+            borderTopColor: '#635BFF',
             borderRadius: '50%',
             animation: 'spin 0.8s linear infinite',
           }}
@@ -319,7 +319,7 @@ export function PublicSitePage() {
                 style={{
                   fontSize: 14,
                   fontWeight: isActive ? 700 : 500,
-                  color: isActive ? '#009DDB' : '#374151',
+                  color: isActive ? '#635BFF' : '#374151',
                   textDecoration: 'none',
                 }}
               >
@@ -467,7 +467,7 @@ export function PublicSitePage() {
                     style={{
                       width: '100%',
                       padding: '12px',
-                      backgroundColor: '#009DDB',
+                      backgroundColor: '#635BFF',
                       color: '#ffffff',
                       border: 'none',
                       borderRadius: 8,
@@ -475,7 +475,7 @@ export function PublicSitePage() {
                       fontWeight: 600,
                       cursor: 'pointer',
                       marginTop: 8,
-                      boxShadow: '0 4px 6px -1px rgba(0, 157, 219, 0.2)',
+                      boxShadow: '0 4px 6px -1px rgba(99, 91, 255, 0.2)',
                     }}
                   >
                     {popupSubmitting ? 'Envoi...' : 'Envoyer'}

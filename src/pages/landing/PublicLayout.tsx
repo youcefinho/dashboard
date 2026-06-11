@@ -17,7 +17,7 @@ export function PublicLayout({ children }: { children: ReactNode }) {
                   className="absolute -inset-1.5 rounded-[10px] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
                   style={{
                     background:
-                      'radial-gradient(circle, rgba(0,157,219,0.45) 0%, rgba(217,110,39,0.20) 60%, transparent 80%)',
+                      'radial-gradient(circle, rgba(99,91,255,0.45) 0%, rgba(139,92,246,0.20) 60%, transparent 80%)',
                     filter: 'blur(10px)',
                   }}
                 />
@@ -25,9 +25,9 @@ export function PublicLayout({ children }: { children: ReactNode }) {
                   className="relative w-8 h-8 text-white rounded-[var(--radius-sm)] flex items-center justify-center font-bold text-lg"
                   style={{
                     background:
-                      'linear-gradient(135deg, #009DDB 0%, #0086C0 60%, #D96E27 100%)',
+                      'linear-gradient(135deg, #635BFF 0%, #5851E5 60%, #8B5CF6 100%)',
                     boxShadow:
-                      '0 2px 8px rgba(0,157,219,0.45), 0 0 16px -4px rgba(217,110,39,0.30)',
+                      '0 2px 8px rgba(99,91,255,0.45), 0 0 16px -4px rgba(139,92,246,0.30)',
                   }}
                 >
                   I
@@ -65,7 +65,7 @@ export function PublicLayout({ children }: { children: ReactNode }) {
           className="absolute -top-20 -left-20 w-[420px] h-[420px] rounded-full pointer-events-none opacity-30"
           style={{
             background:
-              'radial-gradient(circle, rgba(0,157,219,0.20) 0%, rgba(217,110,39,0.10) 50%, transparent 75%)',
+              'radial-gradient(circle, rgba(99,91,255,0.20) 0%, rgba(139,92,246,0.10) 50%, transparent 75%)',
             filter: 'blur(70px)',
           }}
         />
@@ -79,8 +79,8 @@ export function PublicLayout({ children }: { children: ReactNode }) {
                     className="w-7 h-7 text-white rounded-[var(--radius-xs)] flex items-center justify-center font-bold text-sm"
                     style={{
                       background:
-                        'linear-gradient(135deg, #009DDB 0%, #0086C0 60%, #D96E27 100%)',
-                      boxShadow: '0 2px 8px rgba(0,157,219,0.45)',
+                        'linear-gradient(135deg, #635BFF 0%, #5851E5 60%, #8B5CF6 100%)',
+                      boxShadow: '0 2px 8px rgba(99,91,255,0.45)',
                     }}
                   >
                     I
@@ -153,7 +153,7 @@ function FooterMiniSection({ title, links }: { title: string; links: FooterLink[
       <h3
         className="relative font-bold text-sm mb-3 tracking-tight"
         style={{
-          background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
+          background: 'linear-gradient(135deg, #635BFF 0%, #8B5CF6 100%)',
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
           backgroundClip: 'text',

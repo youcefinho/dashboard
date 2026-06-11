@@ -54,7 +54,7 @@ export function LegalPage({ type }: { type: 'privacy' | 'terms' }) {
         <div
           className="hero-stat-orb absolute w-[500px] h-[500px] rounded-full -top-60 right-0 pointer-events-none -z-10"
           style={{
-            background: 'radial-gradient(circle, rgba(0,157,219,0.10) 0%, transparent 70%)',
+            background: 'radial-gradient(circle, rgba(99,91,255,0.10) 0%, transparent 70%)',
             filter: 'blur(60px)',
           }}
         />
@@ -79,8 +79,8 @@ export function LegalPage({ type }: { type: 'privacy' | 'terms' }) {
           aria-hidden
           className="h-1 w-24 rounded-full mb-6"
           style={{
-            background: 'linear-gradient(90deg, #009DDB 0%, #D96E27 100%)',
-            boxShadow: '0 0 12px rgba(0,157,219,0.45)',
+            background: 'linear-gradient(135deg, #635BFF 0%, #8B5CF6 100%)',
+            boxShadow: '0 0 12px rgba(99,91,255,0.45)',
           }}
         />
         <p className="text-[var(--text-muted)] text-sm mb-10">
@@ -96,7 +96,7 @@ export function LegalPage({ type }: { type: 'privacy' | 'terms' }) {
                 className="absolute -top-10 -right-10 w-32 h-32 rounded-full pointer-events-none opacity-50"
                 style={{
                   background:
-                    'radial-gradient(circle, rgba(0,157,219,0.18) 0%, rgba(217,110,39,0.10) 50%, transparent 75%)',
+                    'radial-gradient(circle, rgba(99,91,255,0.18) 0%, rgba(139,92,246,0.10) 50%, transparent 75%)',
                   filter: 'blur(28px)',
                 }}
               />
@@ -117,7 +117,7 @@ export function LegalPage({ type }: { type: 'privacy' | 'terms' }) {
                           className="legal-toc-dot inline-block w-1.5 h-1.5 rounded-full shrink-0 transition-all"
                           style={{
                             background:
-                              'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
+                              'linear-gradient(135deg, #635BFF 0%, #8B5CF6 100%)',
                           }}
                         />
                         <span className="truncate">{s.title}</span>
@@ -154,22 +154,22 @@ export function LegalPage({ type }: { type: 'privacy' | 'terms' }) {
        * Légers, inline via <style> JSX-safe (pas dans index.css car page-specifique). */}
       <style>{`
         .legal-toc-item:hover {
-          background: linear-gradient(90deg, rgba(0,157,219,0.10) 0%, rgba(217,110,39,0.04) 100%);
+          background: linear-gradient(90deg, rgba(99,91,255,0.10) 0%, rgba(139,92,246,0.04) 100%);
           color: var(--primary);
           transform: translateX(2px);
-          box-shadow: 0 2px 8px -4px rgba(0,157,219,0.25);
+          box-shadow: 0 2px 8px -4px rgba(99,91,255,0.25);
         }
         .legal-toc-item:hover .legal-toc-dot {
-          box-shadow: 0 0 10px rgba(0,157,219,0.65);
+          box-shadow: 0 0 10px rgba(99,91,255,0.65);
           transform: scale(1.4);
         }
         .legal-toc-item:focus-visible {
           outline: none;
-          box-shadow: 0 0 0 2px rgba(0,157,219,0.55), 0 0 12px rgba(217,110,39,0.25);
+          box-shadow: 0 0 0 2px rgba(99,91,255,0.55), 0 0 12px rgba(139,92,246,0.25);
         }
         .legal-prose h2 { margin-top: 0; }
         .legal-section + .legal-section h2 {
-          border-top: 1px dashed rgba(0,157,219,0.18);
+          border-top: 1px dashed rgba(99,91,255,0.18);
           padding-top: 1.5rem;
         }
       `}</style>

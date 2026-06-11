@@ -100,7 +100,7 @@ const TESTIMONIALS: Testimonial[] = [
     city: 'Sherbrooke',
     quote: 'Mes clients reçoivent automatique leurs rappels. Plus de no-shows. Mon revenu mensuel a monté de 22% en trois mois.',
     initials: 'MB',
-    color: '#009DDB',
+    color: '#635BFF',
   },
   {
     name: 'Julie Lavoie',
@@ -116,7 +116,7 @@ const TESTIMONIALS: Testimonial[] = [
     city: 'Québec',
     quote: 'Les rapports m\'aident à voir où va mon argent. J\'ai coupé 18% des dépenses inutiles dès le premier mois.',
     initials: 'MC',
-    color: '#D96E27',
+    color: '#8B5CF6',
   },
   {
     name: 'Émilie Gagnon',

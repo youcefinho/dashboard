@@ -164,7 +164,7 @@ function renderSnapshotHtml(meta: Required<RouteMeta>, fullUrl: string): string 
   <title>${escapedTitle}</title>
   <meta name="description" content="${escapedDesc}" />
   <link rel="canonical" href="${escapedUrl}" />
-  <meta name="theme-color" content="#009DDB" />
+  <meta name="theme-color" content="#635BFF" />
 
   <!-- Open Graph -->
   <meta property="og:type" content="website" />

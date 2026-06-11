@@ -11,7 +11,7 @@ export function HomePage() {
       <section className="relative pt-24 pb-16 md:pt-32 md:pb-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-center overflow-hidden">
         {/* Orbs décoratifs marketing */}
         <div className="hero-stat-orb absolute w-[800px] h-[800px] rounded-full -top-80 left-1/2 -translate-x-1/2 pointer-events-none -z-10"
-          style={{ background: 'radial-gradient(circle, rgba(0,157,219,0.18) 0%, rgba(217,110,39,0.10) 40%, transparent 70%)', filter: 'blur(80px)' }} />
+          style={{ background: 'radial-gradient(circle, rgba(99,91,255,0.18) 0%, rgba(139,92,246,0.10) 40%, transparent 70%)', filter: 'blur(80px)' }} />
         <div className="hero-stat-orb absolute w-[400px] h-[400px] rounded-full top-40 -right-40 pointer-events-none -z-10"
           style={{ background: 'radial-gradient(circle, rgba(55,202,55,0.12) 0%, transparent 70%)', filter: 'blur(60px)', animationDelay: '3s' }} />
 
@@ -20,8 +20,8 @@ export function HomePage() {
           style={{
             background: 'rgba(255,255,255,0.7)',
             backdropFilter: 'blur(8px)',
-            border: '1px solid rgba(0,157,219,0.2)',
-            boxShadow: '0 4px 16px -4px rgba(0,157,219,0.15)',
+            border: '1px solid rgba(99,91,255,0.2)',
+            boxShadow: '0 4px 16px -4px rgba(99,91,255,0.15)',
           }}>
           <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#37CA37', boxShadow: '0 0 6px rgba(55,202,55,0.6)' }} />
           <span className="text-[var(--text-secondary)]">CRM #1 des PMEs québécoises</span>
@@ -138,7 +138,7 @@ export function HomePage() {
 
       {/* CTA Bottom Sprint 23 — gradient + orbs */}
       <section className="relative py-24 text-white text-center overflow-hidden"
-        style={{ background: 'linear-gradient(135deg, #009DDB 0%, #0086C0 50%, #D96E27 100%)' }}>
+        style={{ background: 'linear-gradient(135deg, #635BFF 0%, #5851E5 50%, #8B5CF6 100%)' }}>
         <div className="absolute inset-0 pointer-events-none opacity-30">
           <div className="hero-stat-orb absolute w-[600px] h-[600px] rounded-full -top-40 -left-40"
             style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%)', filter: 'blur(60px)' }} />
@@ -166,15 +166,15 @@ function FeatureCard({ icon, title, description }: { icon: React.ReactNode, titl
   return (
     <div className="group relative bg-[var(--bg-surface)] p-6 rounded-2xl border border-[var(--border-subtle)] transition-all duration-300 hover:-translate-y-1 overflow-hidden"
       style={{ boxShadow: '0 1px 2px rgba(15,23,42,0.04), 0 4px 12px -4px rgba(15,23,42,0.06)' }}
-      onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,157,219,0.06), 0 16px 40px -8px rgba(0,157,219,0.22)'; }}
+      onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 1px 2px rgba(99,91,255,0.06), 0 16px 40px -8px rgba(99,91,255,0.22)'; }}
       onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 1px 2px rgba(15,23,42,0.04), 0 4px 12px -4px rgba(15,23,42,0.06)'; }}>
       <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"
-        style={{ background: 'radial-gradient(circle, rgba(0,157,219,0.15) 0%, transparent 70%)', filter: 'blur(20px)' }} />
+        style={{ background: 'radial-gradient(circle, rgba(99,91,255,0.15) 0%, transparent 70%)', filter: 'blur(20px)' }} />
       <div className="relative w-12 h-12 rounded-xl flex items-center justify-center mb-4"
         style={{
-          background: 'linear-gradient(135deg, #FFFFFF 0%, #F0FAFE 100%)',
+          background: 'linear-gradient(135deg, #FFFFFF 0%, #F0EFFE 100%)',
           border: '1px solid var(--border-subtle)',
-          boxShadow: '0 1px 2px rgba(0,157,219,0.06), 0 0 16px rgba(0,157,219,0.08)',
+          boxShadow: '0 1px 2px rgba(99,91,255,0.06), 0 0 16px rgba(99,91,255,0.08)',
         }}>
         {icon}
       </div>
@@ -188,14 +188,14 @@ function TestimonialCard({ quote, author, role }: { quote: string, author: strin
   return (
     <div className="relative p-8 rounded-2xl transition-all duration-300 hover:-translate-y-1 overflow-hidden"
       style={{
-        background: 'linear-gradient(135deg, #FFFFFF 0%, #FAFBFC 50%, #F0FAFE 100%)',
+        background: 'linear-gradient(135deg, #FFFFFF 0%, #FAFBFC 50%, #F0EFFE 100%)',
         border: '1px solid var(--border-subtle)',
         boxShadow: '0 1px 2px rgba(15,23,42,0.04), 0 8px 24px -8px rgba(15,23,42,0.08)',
       }}>
       {/* Quote mark décoratif */}
       <div aria-hidden className="absolute top-2 right-4 text-7xl font-bold leading-none pointer-events-none opacity-15"
         style={{
-          background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
+          background: 'linear-gradient(135deg, #635BFF 0%, #8B5CF6 100%)',
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
         }}>"</div>
@@ -205,7 +205,7 @@ function TestimonialCard({ quote, author, role }: { quote: string, author: strin
             <defs>
               <linearGradient id={`star-${i}-${author.replace(/\s/g, '')}`} x1="0" y1="0" x2="20" y2="20">
                 <stop offset="0%" stopColor="#FF9A00" />
-                <stop offset="100%" stopColor="#D96E27" />
+                <stop offset="100%" stopColor="#8B5CF6" />
               </linearGradient>
             </defs>
             <path fill={`url(#star-${i}-${author.replace(/\s/g, '')})`} d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
@@ -216,8 +216,8 @@ function TestimonialCard({ quote, author, role }: { quote: string, author: strin
       <div className="relative flex items-center gap-3">
         <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
           style={{
-            background: `linear-gradient(135deg, #009DDB 0%, #D96E27 100%)`,
-            boxShadow: '0 2px 8px rgba(0,157,219,0.3)',
+            background: `linear-gradient(135deg, #635BFF 0%, #8B5CF6 100%)`,
+            boxShadow: '0 2px 8px rgba(99,91,255,0.3)',
           }}>
           {author.charAt(0)}
         </div>

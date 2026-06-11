@@ -43,12 +43,12 @@ export function NotFound() {
         >
           <defs>
             <linearGradient id="lens-grad" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stopColor="#009DDB" />
-              <stop offset="100%" stopColor="#D96E27" />
+              <stop offset="0%" stopColor="#635BFF" />
+              <stop offset="100%" stopColor="#8B5CF6" />
             </linearGradient>
             <radialGradient id="halo-grad" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="rgba(0,157,219,0.30)" />
-              <stop offset="100%" stopColor="rgba(0,157,219,0)" />
+              <stop offset="0%" stopColor="rgba(99,91,255,0.30)" />
+              <stop offset="100%" stopColor="rgba(99,91,255,0)" />
             </radialGradient>
           </defs>
           {/* Halo */}
@@ -63,7 +63,7 @@ export function NotFound() {
             fill="none"
           />
           {/* Loupe glass tint */}
-          <circle cx="78" cy="78" r="44" fill="rgba(0,157,219,0.08)" />
+          <circle cx="78" cy="78" r="44" fill="rgba(99,91,255,0.08)" />
           {/* Handle */}
           <line
             x1="118"
@@ -98,11 +98,10 @@ export function NotFound() {
             onClick={() => void navigate({ to: '/dashboard' })}
             className="inline-flex items-center gap-2 h-10 px-5 text-sm font-semibold rounded-[10px] text-white active:scale-[0.98] transition-all cursor-pointer"
             style={{
-              background:
-                'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
+              background: 'var(--primary)',
               boxShadow:
-                '0 4px 16px -2px rgba(0,157,219,0.45), 0 0 22px -4px rgba(217,110,39,0.35), inset 0 1px 0 rgba(255,255,255,0.20)',
-              border: '1px solid rgba(0,157,219,0.55)',
+                '0 4px 16px -2px rgba(99,91,255,0.45), inset 0 1px 0 rgba(255,255,255,0.20)',
+              border: '1px solid rgba(99,91,255,0.55)',
             }}
           >
             <Icon as={Home} size={15} strokeWidth={2.3} />
@@ -124,9 +123,9 @@ export function NotFound() {
               className="ml-1 text-[10px] px-1.5 py-0.5 rounded font-bold tracking-wider"
               style={{
                 background:
-                  'linear-gradient(135deg, rgba(0,157,219,0.10) 0%, rgba(217,110,39,0.06) 100%)',
+                  'linear-gradient(135deg, rgba(99,91,255,0.10) 0%, rgba(139,92,246,0.06) 100%)',
                 color: 'var(--primary)',
-                border: '1px solid rgba(0,157,219,0.22)',
+                border: '1px solid rgba(99,91,255,0.22)',
               }}
             >
               ⌘K

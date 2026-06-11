@@ -52,7 +52,7 @@ function renderSnapshotHtml(
   <title>${t}</title>
   <meta name="description" content="${d}" />
   <link rel="canonical" href="${u}" />
-  <meta name="theme-color" content="#009DDB" />
+  <meta name="theme-color" content="#635BFF" />
 
   <!-- Open Graph -->
   <meta property="og:type" content="website" />

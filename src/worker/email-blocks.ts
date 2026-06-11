@@ -112,7 +112,7 @@ function renderText(config: Partial<TextBlockConfig>): string {
 function renderButton(config: Partial<ButtonBlockConfig>): string {
   const text = config.text || 'Cliquer ici';
   const url = config.url || '#';
-  const bg = config.backgroundColor || '#009DDB';
+  const bg = config.backgroundColor || '#635BFF';
   const color = config.color || '#ffffff';
   const radius = config.borderRadius || '6px';
   const align = config.align || 'center';
@@ -218,7 +218,7 @@ export function createDefaultBlock(type: BlockType): EmailBlock {
     header: { text: 'Titre', level: 2, align: 'left', color: '#1a1a2e', backgroundColor: 'transparent' },
     image: { src: '', alt: '', width: '100%', align: 'center', link: '' },
     text: { html: '<p>Votre texte ici...</p>', color: '#374151', fontSize: '15px', lineHeight: '1.6', padding: '10px 30px' },
-    button: { text: 'Cliquer ici', url: '#', backgroundColor: '#009DDB', color: '#ffffff', borderRadius: '6px', align: 'center', fullWidth: false },
+    button: { text: 'Cliquer ici', url: '#', backgroundColor: '#635BFF', color: '#ffffff', borderRadius: '6px', align: 'center', fullWidth: false },
     columns: { columns: [{ html: 'Colonne 1', width: '50%' }, { html: 'Colonne 2', width: '50%' }], gap: '10px' },
     divider: { color: '#e5e7eb', thickness: '1px', padding: '10px 30px' },
     spacer: { height: '20px' },

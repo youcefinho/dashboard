@@ -6,7 +6,7 @@ export function AboutPage() {
     <PublicLayout>
       <div className="relative pt-20 pb-24 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto overflow-hidden">
         <div className="hero-stat-orb absolute w-[600px] h-[600px] rounded-full -top-72 left-1/2 -translate-x-1/2 pointer-events-none -z-10"
-          style={{ background: 'radial-gradient(circle, rgba(0,157,219,0.16) 0%, rgba(217,110,39,0.10) 50%, transparent 75%)', filter: 'blur(80px)' }} />
+          style={{ background: 'radial-gradient(circle, rgba(99,91,255,0.16) 0%, rgba(139,92,246,0.10) 50%, transparent 75%)', filter: 'blur(80px)' }} />
 
         <div className="text-center mb-16">
           <p className="heading-premium mb-3">Notre histoire</p>
@@ -22,8 +22,8 @@ export function AboutPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
           {[
             { icon: Heart, title: 'Local first', desc: 'Conçu au Québec pour les PMEs francophones. Loi 25 native, support FR, hébergement local.', color: '#E93D3D', dark: '#c92424' },
-            { icon: Globe, title: '100% francophone', desc: 'Interface, AI, support, contrats : tout est pensé pour le marché québécois sans compromis.', color: '#009DDB', dark: '#0086C0' },
-            { icon: Zap, title: 'Sans complexité', desc: 'Onboarding 5 minutes, packs industrie 1-clic. Une PME ne devrait pas avoir besoin d\'une équipe IT.', color: '#FF9A00', dark: '#D96E27' },
+            { icon: Globe, title: '100% francophone', desc: 'Interface, AI, support, contrats : tout est pensé pour le marché québécois sans compromis.', color: '#635BFF', dark: '#5851E5' },
+            { icon: Zap, title: 'Sans complexité', desc: 'Une PME ne devrait pas avoir besoin d\'une équipe IT.', color: '#FF9A00', dark: '#8B5CF6' },
           ].map((v, i) => (
             <div
               key={v.title}
@@ -57,7 +57,7 @@ export function AboutPage() {
             className="absolute -top-10 -left-20 w-72 h-72 rounded-full pointer-events-none opacity-50 -z-10"
             style={{
               background:
-                'radial-gradient(circle, rgba(0,157,219,0.18) 0%, rgba(217,110,39,0.10) 50%, transparent 75%)',
+                'radial-gradient(circle, rgba(99,91,255,0.18) 0%, rgba(139,92,246,0.10) 50%, transparent 75%)',
               filter: 'blur(60px)',
             }}
           />
@@ -66,7 +66,7 @@ export function AboutPage() {
             className="absolute -bottom-10 -right-20 w-64 h-64 rounded-full pointer-events-none opacity-45 -z-10"
             style={{
               background:
-                'radial-gradient(circle, rgba(217,110,39,0.22) 0%, rgba(0,157,219,0.10) 50%, transparent 75%)',
+                'radial-gradient(circle, rgba(139,92,246,0.22) 0%, rgba(99,91,255,0.10) 50%, transparent 75%)',
               filter: 'blur(60px)',
             }}
           />
@@ -89,23 +89,23 @@ export function AboutPage() {
           <div
             className="card-premium p-8 flex flex-col sm:flex-row gap-6 items-center"
             style={{
-              background: 'linear-gradient(135deg, #FFFFFF 0%, #F0FAFE 50%, #FFF1DD 100%)',
-              boxShadow: '0 1px 2px rgba(15,23,42,0.04), 0 16px 48px -12px rgba(0,157,219,0.22)',
+              background: 'linear-gradient(135deg, #FFFFFF 0%, #F0EFFE 50%, #F0EFFE 100%)',
+              boxShadow: '0 1px 2px rgba(15,23,42,0.04), 0 16px 48px -12px rgba(99,91,255,0.22)',
             }}
           >
             <div aria-hidden className="absolute -top-12 -right-12 w-44 h-44 rounded-full pointer-events-none opacity-60"
-              style={{ background: 'radial-gradient(circle, rgba(217,110,39,0.22) 0%, rgba(0,157,219,0.14) 50%, transparent 75%)', filter: 'blur(40px)' }} />
+              style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.22) 0%, rgba(99,91,255,0.14) 50%, transparent 75%)', filter: 'blur(40px)' }} />
             <div className="relative w-32 h-32 rounded-full shrink-0 flex items-center justify-center text-white font-bold text-4xl"
               style={{
-                background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
-                boxShadow: '0 8px 32px rgba(0,157,219,0.45), 0 0 40px rgba(217,110,39,0.3)',
+                background: 'linear-gradient(135deg, #635BFF 0%, #8B5CF6 100%)',
+                boxShadow: '0 8px 32px rgba(99,91,255,0.45), 0 0 40px rgba(139,92,246,0.3)',
               }}>
               RD
             </div>
             <div className="relative">
               <h3 className="text-xl font-bold text-[var(--text-primary)] tracking-tight">Rochdi Dahmani</h3>
               <p className="text-sm font-semibold mb-3" style={{
-                background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
+                background: 'linear-gradient(135deg, #635BFF 0%, #8B5CF6 100%)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
               }}>Fondateur & CEO</p>

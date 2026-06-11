@@ -45,16 +45,16 @@ export function ResetPasswordPage() {
     <div className="min-h-screen flex flex-col justify-center items-center p-4 relative overflow-hidden"
       style={{ background: 'linear-gradient(135deg, #FFFFFF 0%, #FAFBFC 35%, #F0FAFE 70%, #FFE9D6 100%)' }}>
       <div className="hero-stat-orb absolute w-[500px] h-[500px] rounded-full -top-48 -right-48 pointer-events-none"
-        style={{ background: 'radial-gradient(circle, rgba(0,157,219,0.28) 0%, transparent 70%)', filter: 'blur(60px)' }} />
+        style={{ background: 'radial-gradient(circle, rgba(99,91,255,0.28) 0%, transparent 70%)', filter: 'blur(60px)' }} />
       <div className="hero-stat-orb absolute w-[400px] h-[400px] rounded-full -bottom-32 -left-32 pointer-events-none"
-        style={{ background: 'radial-gradient(circle, rgba(217,110,39,0.25) 0%, transparent 70%)', filter: 'blur(60px)', animationDelay: '3s' }} />
+        style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.25) 0%, transparent 70%)', filter: 'blur(60px)', animationDelay: '3s' }} />
 
       <div className="w-full max-w-md relative z-10">
         <div className="text-center mb-8">
           <div className="relative w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
             style={{
-              background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
-              boxShadow: '0 8px 32px rgba(0,157,219,0.45)',
+              background: 'var(--primary)',
+              boxShadow: '0 8px 32px rgba(99,91,255,0.45)',
               animation: 'hot-lead-pulse 3s ease-in-out infinite',
             }}>
             <span className="text-white font-bold text-2xl">I</span>
@@ -73,7 +73,7 @@ export function ResetPasswordPage() {
             backdropFilter: 'blur(16px) saturate(160%)',
             WebkitBackdropFilter: 'blur(16px) saturate(160%)',
             border: '1px solid rgba(255,255,255,0.6)',
-            boxShadow: '0 1px 2px rgba(15,23,42,0.04), 0 24px 64px -12px rgba(0,157,219,0.18)',
+            boxShadow: '0 1px 2px rgba(15,23,42,0.04), 0 24px 64px -12px rgba(99,91,255,0.18)',
           }}>
           {success ? (
             <div

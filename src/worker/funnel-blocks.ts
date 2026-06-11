@@ -268,7 +268,7 @@ function renderBlock(block: FunnelBlock): string {
     case 'button': {
       const text = esc((c.text as string) || '');
       const url = safeUrl(c.url);
-      const bg = esc((c.backgroundColor as string) || '#009DDB');
+      const bg = esc((c.backgroundColor as string) || '#635BFF');
       const color = esc((c.color as string) || '#ffffff');
       const radius = esc((c.borderRadius as string) || '8px');
       const align = safeAlign(c.align ?? 'center');
@@ -284,7 +284,7 @@ function renderBlock(block: FunnelBlock): string {
       const align = safeAlign(c.align ?? 'center');
       const bg = esc((c.backgroundColor as string) || '#0b1220');
       const fg = esc((c.textColor as string) || '#ffffff');
-      const btnColor = esc((c.buttonColor as string) || '#009DDB');
+      const btnColor = esc((c.buttonColor as string) || '#635BFF');
       const btnUrl = safeUrl(c.buttonUrl);
       return `<section class="fb-cta" style="background:${bg};color:${fg};text-align:${align};">
   <div class="fb-container">
@@ -339,8 +339,8 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans
 .fb-label{font-size:13px;font-weight:600;color:#374151;}
 .fb-req{color:#E93D3D;}
 .fb-input{width:100%;padding:11px 13px;border:1px solid #d6dae1;border-radius:8px;font-size:15px;font-family:inherit;background:#fff;color:#1a1a2e;transition:border-color .15s;}
-.fb-input:focus{outline:none;border-color:#009DDB;box-shadow:0 0 0 3px rgba(0,157,219,0.15);}
-.fb-btn{display:inline-block;padding:13px 28px;background:#009DDB;color:#fff;font-size:15px;font-weight:600;text-decoration:none;border:0;border-radius:8px;cursor:pointer;font-family:inherit;transition:filter .15s,transform .15s;}
+.fb-input:focus{outline:none;border-color:#635BFF;box-shadow:0 0 0 3px rgba(99,91,255,0.15);}
+.fb-btn{display:inline-block;padding:13px 28px;background:#635BFF;color:#fff;font-size:15px;font-weight:600;text-decoration:none;border:0;border-radius:8px;cursor:pointer;font-family:inherit;transition:filter .15s,transform .15s;}
 .fb-btn:hover{filter:brightness(1.06);transform:translateY(-1px);}
 .fb-btn--block{width:100%;text-align:center;}
 .fb-cta{padding:72px 0;}
@@ -397,7 +397,7 @@ export function createDefaultBlock(type: BlockType): FunnelBlock {
     button: {
       text: 'En savoir plus',
       url: '#',
-      backgroundColor: '#009DDB',
+      backgroundColor: '#635BFF',
       color: '#ffffff',
       borderRadius: '8px',
       align: 'center',
@@ -410,7 +410,7 @@ export function createDefaultBlock(type: BlockType): FunnelBlock {
       buttonUrl: '#',
       backgroundColor: '#0b1220',
       textColor: '#ffffff',
-      buttonColor: '#009DDB',
+      buttonColor: '#635BFF',
       align: 'center',
     },
     spacer: { height: '40px' },

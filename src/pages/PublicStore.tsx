@@ -55,8 +55,8 @@ function Spinner() {
         style={{
           width: 28,
           height: 28,
-          border: '3px solid rgba(0,157,219,0.2)',
-          borderTopColor: '#009DDB',
+          border: '3px solid rgba(99,91,255,0.2)',
+          borderTopColor: '#635BFF',
           borderRadius: '50%',
           animation: 'spin 0.8s linear infinite',
         }}

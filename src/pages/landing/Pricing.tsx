@@ -42,15 +42,15 @@ export function PricingPage() {
       <div className="relative pt-20 pb-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto overflow-hidden">
         {/* Orbs marketing */}
         <div className="hero-stat-orb absolute w-[700px] h-[700px] rounded-full -top-72 left-1/2 -translate-x-1/2 pointer-events-none -z-10"
-          style={{ background: 'radial-gradient(circle, rgba(0,157,219,0.16) 0%, rgba(217,110,39,0.10) 50%, transparent 75%)', filter: 'blur(80px)' }} />
+          style={{ background: 'radial-gradient(circle, rgba(99,91,255,0.16) 0%, rgba(139,92,246,0.10) 50%, transparent 75%)', filter: 'blur(80px)' }} />
 
         <div className="text-center mb-16">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 mb-6 rounded-full text-xs font-semibold"
             style={{
               background: 'rgba(255,255,255,0.7)',
               backdropFilter: 'blur(8px)',
-              border: '1px solid rgba(0,157,219,0.2)',
-              boxShadow: '0 4px 16px -4px rgba(0,157,219,0.15)',
+              border: '1px solid rgba(99,91,255,0.2)',
+              boxShadow: '0 4px 16px -4px rgba(99,91,255,0.15)',
             }}>
             <Icon as={Sparkles} size={12} className="text-[var(--primary)]" />
             <span className="text-[var(--text-secondary)]">14 jours gratuits sur tous les plans</span>
@@ -98,11 +98,11 @@ function PricingCard({ plan }: { plan: Plan }) {
       style={
         isPopular
           ? {
-              background: 'linear-gradient(135deg, #FFFFFF 0%, #F0FAFE 50%, #E0F4FB 100%)',
-              borderColor: 'rgba(0,157,219,0.55)',
+              background: 'linear-gradient(135deg, #FFFFFF 0%, #F0EFFE 50%, #EDE9FE 100%)',
+              borderColor: 'rgba(99,91,255,0.55)',
               borderWidth: '1.5px',
               boxShadow:
-                '0 1px 2px rgba(0,157,219,0.08), 0 24px 64px -12px rgba(0,157,219,0.32), 0 0 40px -8px rgba(217,110,39,0.18)',
+                '0 1px 2px rgba(99,91,255,0.08), 0 24px 64px -12px rgba(99,91,255,0.32), 0 0 40px -8px rgba(139,92,246,0.18)',
               // Permet au badge "LE PLUS POPULAIRE" de dépasser au-dessus de la card
               overflow: 'visible',
             }
@@ -112,7 +112,7 @@ function PricingCard({ plan }: { plan: Plan }) {
       {/* Orb décoratif sur plan populaire */}
       {isPopular && (
         <div aria-hidden className="absolute -top-12 -right-12 w-44 h-44 rounded-full pointer-events-none opacity-60"
-          style={{ background: 'radial-gradient(circle, rgba(217,110,39,0.25) 0%, rgba(0,157,219,0.15) 50%, transparent 75%)', filter: 'blur(40px)' }} />
+          style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.25) 0%, rgba(99,91,255,0.15) 50%, transparent 75%)', filter: 'blur(40px)' }} />
       )}
 
       {/* Badge populaire — Tag brand solid (wave 41) */}
@@ -147,8 +147,8 @@ function PricingCard({ plan }: { plan: Plan }) {
               {/* Check disk gradient brand (wave 41) */}
               <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5"
                 style={{
-                  background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
-                  boxShadow: '0 2px 6px -1px rgba(0,157,219,0.40), 0 0 10px -2px rgba(217,110,39,0.28)',
+                  background: 'linear-gradient(135deg, #635BFF 0%, #8B5CF6 100%)',
+                  boxShadow: '0 2px 6px -1px rgba(99,91,255,0.40), 0 0 10px -2px rgba(139,92,246,0.28)',
                 }}>
                 <Icon as={Check} size={12} className="text-white" strokeWidth={3} />
               </div>
