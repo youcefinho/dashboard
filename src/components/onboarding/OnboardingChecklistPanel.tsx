@@ -257,8 +257,8 @@ export function OnboardingChecklistPanel({
       <li key={def.key} className="onboarding-checklist-panel-item">
         <div
           className={cn(
-            'flex items-start gap-3 rounded-lg border p-3 transition-colors',
-            isDone && 'bg-[var(--bg-subtle)] border-[var(--border)]',
+            'checklist-item flex items-start gap-3 rounded-lg border p-3 transition-colors',
+            isDone && 'is-done bg-[var(--bg-subtle)] border-[var(--border)]',
             isSkipped && 'bg-[var(--bg-subtle)] border-[var(--border)] opacity-70',
             !isDone && !isSkipped && 'bg-[var(--bg-surface)] border-[var(--border)] hover:bg-[var(--bg-hover)]',
           )}
@@ -266,8 +266,8 @@ export function OnboardingChecklistPanel({
           {/* Indicateur visuel done/skipped/pending */}
           <span
             className={cn(
-              'inline-flex h-6 w-6 items-center justify-center rounded-full shrink-0',
-              isDone && 'bg-[var(--success-soft,rgba(21,128,61,0.12))] text-[var(--success,#15803D)]',
+              'checklist-check inline-flex h-6 w-6 items-center justify-center rounded-full shrink-0',
+              isDone && 'is-done bg-[var(--success-soft,rgba(21,128,61,0.12))] text-[var(--success,#15803D)]',
               isSkipped && 'bg-[var(--gray-100)] text-[var(--text-muted)]',
               !isDone && !isSkipped && 'bg-[var(--primary-soft,rgba(0,157,219,0.10))] text-[var(--primary)]',
             )}
@@ -284,12 +284,12 @@ export function OnboardingChecklistPanel({
 
           <div className="flex-1 min-w-0">
             <p className={cn(
-              'text-sm font-semibold',
+              'checklist-title text-sm font-semibold',
               isDone ? 'text-[var(--text-secondary)] line-through' : 'text-[var(--text-primary)]',
             )}>
               {label}
             </p>
-            <p className="text-xs text-[var(--text-muted)] mt-0.5">{desc}</p>
+            <p className="checklist-desc text-xs text-[var(--text-muted)] mt-0.5">{desc}</p>
 
             {/* Actions inline (sauf si déjà done) */}
             {!isDone && (

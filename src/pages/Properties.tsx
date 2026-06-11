@@ -219,7 +219,7 @@ export function PropertiesPage() {
       ) : (
         /* Sprint 31 vague 31-2A — Table premium (frozen first col + expand row inline) */
         <Card className="p-0 overflow-hidden">
-          <div className="table-premium-container overflow-x-auto">
+          <div className="table-premium-container overflow-x-auto animate-stagger">
             <table className="table-premium print-data-table">
               <thead>
                 <tr>
@@ -241,7 +241,7 @@ export function PropertiesPage() {
                   return (
                     <Fragment key={property.id}>
                       <tr
-                        className="list-item-enter"
+                        className="row-premium table-row-hover list-item-enter"
                         style={{ animationDelay: `${idx * 28}ms` }}
                       >
                         <td className="col-frozen">
@@ -278,7 +278,7 @@ export function PropertiesPage() {
                         <td className="text-[12px] font-mono text-[var(--text-secondary)]">
                           {property.mls_number || '—'}
                         </td>
-                        <td className="text-right font-semibold t-mono-num" style={{ color: 'var(--primary)' }}>
+                        <td className="table-cell-numeric text-right font-bold t-mono-num" style={{ color: 'var(--primary)', fontWeight: 700 }}>
                           {property.price ? formatMoneyCAD(property.price, getLocale()) : '—'}
                         </td>
                         <td className="text-[12px]">
@@ -296,7 +296,7 @@ export function PropertiesPage() {
                         <td className="text-center t-mono-num text-[12px]">
                           {property.bathrooms || '—'}
                         </td>
-                        <td className="text-right t-mono-num text-[12px] text-[var(--text-secondary)]">
+                        <td className="table-cell-numeric text-right t-mono-num text-[12px] text-[var(--text-secondary)]">
                           {property.area_sqft ? `${formatNumber(property.area_sqft, getLocale())} pc` : '—'}
                         </td>
                         <td>

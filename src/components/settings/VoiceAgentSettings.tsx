@@ -298,7 +298,7 @@ export function VoiceAgentSettings() {
 
   // ── Render ─────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-8" data-testid="voice-agent-settings">
+    <div className="space-y-8 animate-stagger" data-testid="voice-agent-settings">
       {/* Header */}
       <header className="flex items-start justify-between gap-4 flex-wrap">
         <div className="min-w-0">
@@ -374,7 +374,7 @@ export function VoiceAgentSettings() {
                   <tr
                     key={script.id}
                     data-testid={`voice-agent-row-${script.id}`}
-                    className="border-t border-[var(--border-subtle)]"
+                    className="border-t border-[var(--border-subtle)] table-row-hover"
                   >
                     <td className="px-4 py-2 font-medium text-[var(--text-primary)]">
                       {script.name}
@@ -421,6 +421,7 @@ export function VoiceAgentSettings() {
                           type="button"
                           size="sm"
                           variant="ghost"
+                          className="btn-action-ghost-s1"
                           onClick={() => handleOpenTest(script)}
                           leftIcon={<Icon as={PlayCircle} size="sm" />}
                           aria-label={`${t('voice_agent.scripts.test_cta')} — ${script.name}`}
@@ -432,6 +433,7 @@ export function VoiceAgentSettings() {
                           type="button"
                           size="sm"
                           variant="ghost"
+                          className="btn-action-ghost-s1"
                           onClick={() => handleOpenEdit(script)}
                           leftIcon={<Icon as={Pencil} size="sm" />}
                           aria-label={`${t('voice_agent.scripts.name')} — ${script.name}`}
@@ -443,6 +445,7 @@ export function VoiceAgentSettings() {
                           type="button"
                           size="sm"
                           variant="ghost"
+                          className="btn-action-ghost-s1"
                           onClick={() => void handleDelete(script)}
                           leftIcon={<Icon as={Trash2} size="sm" />}
                           aria-label={`${t('voice_agent.scripts.name')} — ${script.name}`}
@@ -467,7 +470,7 @@ export function VoiceAgentSettings() {
         <section
           aria-labelledby="voice-agent-test-heading"
           data-testid="voice-agent-section-test"
-          className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5"
+          className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 form-section-s4"
         >
           <header className="flex items-start justify-between gap-3 mb-4">
             <div className="min-w-0">

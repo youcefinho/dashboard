@@ -498,7 +498,7 @@ export function CalendarPage() {
     <AppLayout title={t('calendar.page.title')}>
       <div ref={ptr.containerRef}>
       <PullToRefreshIndicator distance={ptr.pullDistance} progress={ptr.pullProgress} isRefreshing={ptr.isRefreshing} />
-      <div className="cal-page">
+      <div className="cal-page animate-stagger stagger-1">
         <PageHero
           title={t('calendar.page.title')}
           description={t('calendar.subtitle')}
@@ -1117,7 +1117,7 @@ export function CalendarPage() {
 
           <div>
             <label className="text-xs font-medium mb-1 block">{t('calendar.field.notes')}</label>
-            <textarea value={formDescription} onChange={e => setFormDescription(e.target.value)} rows={2} className="w-full px-3 py-2 border rounded-lg text-sm resize-none" />
+            <textarea value={formDescription} onChange={e => setFormDescription(e.target.value)} rows={2} className="w-full px-3 py-2 border border-[var(--border)] rounded-lg text-sm resize-none bg-[var(--bg-surface)] text-[var(--text-primary)] outline-none transition-[border-color,box-shadow] focus:border-[var(--primary)] focus:ring-[3px] focus:ring-[var(--primary-ring)]" />
           </div>
 
           <div className="flex gap-2 justify-end pt-2">
@@ -1162,7 +1162,7 @@ export function CalendarPage() {
                   <div className="cal-event-panel-row-primary">
                     {startD.toLocaleDateString('fr-CA', { weekday: 'short', day: 'numeric', month: 'long' })}
                   </div>
-                  <div className="cal-event-panel-row-secondary">
+                  <div className="cal-event-panel-row-secondary" style={{ fontVariantNumeric: 'tabular-nums' }}>
                     {startD.toLocaleTimeString('fr-CA', { hour: '2-digit', minute: '2-digit', hour12: false })} – {endD.toLocaleTimeString('fr-CA', { hour: '2-digit', minute: '2-digit', hour12: false })}
                   </div>
                 </div>

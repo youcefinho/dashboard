@@ -239,7 +239,7 @@ export function ForecastView({ pipelineId }: { pipelineId: string }) {
       </div>
 
       {/* Graphe principal : pondéré + objectif/réalisé + projection de tendance */}
-      <Card className="p-5 h-[400px]">
+      <Card className="card-premium p-5 h-[400px]" style={{ borderTop: '3px solid var(--primary)' }}>
         {groupBy === 'month' ? (
           chartData.length === 0 ? (
             <div className="flex items-center justify-center h-full text-sm text-[var(--text-muted)]">
@@ -263,8 +263,8 @@ export function ForecastView({ pipelineId }: { pipelineId: string }) {
                   tickLine={false} axisLine={false}
                 />
                 <Tooltip
-                  cursor={{ fill: 'rgba(0,157,219,0.06)' }}
-                  contentStyle={{ backgroundColor: 'var(--bg-surface)', borderColor: 'rgba(0,157,219,0.30)', borderRadius: '10px', fontSize: '12px', boxShadow: '0 8px 24px -6px rgba(0,157,219,0.25)' }}
+                  cursor={{ fill: 'var(--bg-hover)' }}
+                  contentStyle={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)', borderRadius: 'var(--radius-lg)', fontSize: '12px', boxShadow: 'var(--shadow-md)' }}
                   formatter={(value, name) => [moneyFmt(Number(value ?? 0)), String(name ?? '')]}
                   labelStyle={{ fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '4px' }}
                 />
@@ -304,8 +304,8 @@ export function ForecastView({ pipelineId }: { pipelineId: string }) {
                   tickLine={false} axisLine={false}
                 />
                 <Tooltip
-                  cursor={{ fill: 'rgba(0,157,219,0.06)' }}
-                  contentStyle={{ backgroundColor: 'var(--bg-surface)', borderColor: 'rgba(0,157,219,0.30)', borderRadius: '10px', fontSize: '12px', boxShadow: '0 8px 24px -6px rgba(0,157,219,0.25)' }}
+                  cursor={{ fill: 'var(--bg-hover)' }}
+                  contentStyle={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)', borderRadius: 'var(--radius-lg)', fontSize: '12px', boxShadow: 'var(--shadow-md)' }}
                   formatter={(value) => [moneyFmt(Number(value ?? 0)), groupBy === 'rep' ? t('forecast.by_rep') : t('forecast.by_source')]}
                   labelStyle={{ fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '4px' }}
                 />
@@ -318,13 +318,13 @@ export function ForecastView({ pipelineId }: { pipelineId: string }) {
 
       {/* Objectifs définis (lecture). Affiché sobrement si présents. */}
       {targets.length > 0 && (
-        <Card className="p-5">
+        <Card className="card-premium p-5">
           <div className="flex items-center gap-2 mb-3">
             <span className="text-sm font-semibold text-[var(--text-primary)]">{t('forecast.target')}</span>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {targets.map(tg => (
-              <div key={tg.id} className="flex flex-col rounded-lg border border-[var(--border-subtle)] p-3">
+              <div key={tg.id} className="flex flex-col rounded-lg border border-[var(--border)] p-3 transition-all duration-200 hover:-translate-y-px hover:shadow-[var(--shadow-sm)]">
                 <span className="text-xs text-[var(--text-muted)]">{tg.period_month}</span>
                 <span className="text-sm font-semibold text-[var(--text-primary)] tabular-nums">
                   {moneyFmt(tg.target_amount)}

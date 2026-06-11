@@ -215,23 +215,22 @@ export function DashboardPage() {
         );
       case 'chart':
         return (
-          <div key={w.id} className="page-grid-2-1 mb-8">
-            <DashboardChart
-              isLoading={isLoading}
-              leadsData={stats?.leads_by_day || []}
-              periodDays={periodDays}
-            />
-            {isVisible('activity') && (
-              <DashboardActivity
-                isLoading={isLoading}
-                activities={stats?.activity_feed || []}
-                onViewAll={() => void navigate({ to: '/leads' })}
-              />
-            )}
-          </div>
+          <DashboardChart
+            key={w.id}
+            isLoading={isLoading}
+            leadsData={stats?.leads_by_day || []}
+            periodDays={periodDays}
+          />
         );
       case 'activity':
-        return null; // Rendu couplé avec chart (dans le grid 2/3 + 1/3)
+        return (
+          <DashboardActivity
+            key={w.id}
+            isLoading={isLoading}
+            activities={stats?.activity_feed || []}
+            onViewAll={() => void navigate({ to: '/leads' })}
+          />
+        );
       case 'pipeline_donut':
         return (
           <DashboardPipeline
@@ -281,7 +280,7 @@ export function DashboardPage() {
 
         {/* ── Panneau de configuration des widgets ── */}
         {showConfig && (
-          <div className="surface-card p-4 mb-4 animate-fade-in-scale" style={{ borderStyle: 'dashed', borderColor: 'var(--primary)' }}>
+          <div className="stripe-card mb-4 animate-fade-in-scale" style={{ borderStyle: 'dashed', borderColor: 'var(--primary)' }}>
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-card-title flex items-center gap-2">
                 <Settings2 size={14} className="text-[var(--primary)]" />
@@ -341,8 +340,16 @@ export function DashboardPage() {
           </div>
         )}
 
-        {/* ── Widgets (ordre configurable) ── */}
-        {widgets.filter(w => w.visible).map(renderWidget)}
+        {/* ── Widgets non-bento (stats, weekly_insight, clients) ── */}
+        {widgets.filter(w => w.visible && ['stats', 'weekly_insight', 'clients'].includes(w.id)).map(renderWidget)}
+
+        {/* ── Bento grid pour chart/activity/pipeline/contacts ── */}
+        <div className="bento-dashboard">
+          {isVisible('chart') && <div className="bento-8">{renderWidget(widgets.find(w => w.id === 'chart')!)}</div>}
+          {isVisible('activity') && <div className="bento-4">{renderWidget(widgets.find(w => w.id === 'activity')!)}</div>}
+          {isVisible('pipeline_donut') && <div className="bento-6">{renderWidget(widgets.find(w => w.id === 'pipeline_donut')!)}</div>}
+          {isVisible('contacts') && <div className="bento-6">{renderWidget(widgets.find(w => w.id === 'contacts')!)}</div>}
+        </div>
       </>
     </AppLayout>
   );

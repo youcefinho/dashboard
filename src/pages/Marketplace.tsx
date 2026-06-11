@@ -664,7 +664,7 @@ export function MarketplacePage() {
                     {filtered.map((l) => (
                       <Card
                         key={l.id}
-                        className="p-5 flex flex-col gap-3 mk-card"
+                        className="product-card-s4 p-5 flex flex-col gap-3 mk-card"
                       >
                         <div className="flex items-start justify-between gap-2">
                           <span className="font-semibold leading-tight">
@@ -939,7 +939,7 @@ export function MarketplacePage() {
                 ) : (
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {packs.map((p) => (
-                      <Card key={p.id} className="p-5 flex flex-col gap-3 mk-card">
+                      <Card key={p.id} className="product-card-s4 p-5 flex flex-col gap-3 mk-card">
                         <div className="flex items-start justify-between gap-2">
                           <span className="font-semibold leading-tight">{p.name}</span>
                           <Tag variant="info" size="sm">

@@ -239,8 +239,8 @@ export function ChannelSettings() {
   const externalChannels = channels.filter((c) => c.type !== 'native');
 
   return (
-    <div className="space-y-6">
-      <Card className="settings-card p-6">
+    <div className="space-y-6 animate-stagger">
+      <Card className="settings-card p-6 form-section-s4">
         <header className="settings-section-header settings-section-header--with-action">
           <div>
             <h3 className="t-h3 flex items-center gap-2">
@@ -336,6 +336,7 @@ export function ChannelSettings() {
                       <Button
                         variant="ghost"
                         size="sm"
+                        className="btn-action-ghost-s1"
                         onClick={() => void handleConnect(ch)}
                         disabled={busy}
                         aria-label={t('shop.channel.connect')}
@@ -346,6 +347,7 @@ export function ChannelSettings() {
                       <Button
                         variant="ghost"
                         size="sm"
+                        className="btn-action-ghost-s1"
                         onClick={() => void handleDelete(ch)}
                         aria-label={t('shop.channel.delete')}
                       >
@@ -398,6 +400,7 @@ export function ChannelSettings() {
                     <Button
                       variant="ghost"
                       size="sm"
+                      className="btn-action-ghost-s1"
                       onClick={() => void openLog(ch)}
                     >
                       <Icon as={ScrollText} size={13} aria-hidden />

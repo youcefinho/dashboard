@@ -53,7 +53,7 @@ export function MagicLinkVerifyPage() {
 
   return (
     <div className="magic-auth">
-      <div className="magic-auth__card">
+      <div className="magic-auth__card animate-stagger stagger-1">
         {phase === 'verifying' && (
           <div className="magic-auth__state" role="status" aria-live="polite">
             <span className="magic-auth__icon">

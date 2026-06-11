@@ -743,7 +743,7 @@ export function InboxPage() {
   // ── Render ────────────────────────────────────────────────
   return (
     <AppLayout title={t('inbox.page.title')}>
-      <div className="flex h-[calc(100vh-64px)] -m-6 overflow-hidden">
+      <div className="flex h-[calc(100vh-64px)] -m-6 overflow-hidden animate-stagger stagger-1">
         <div ref={listWrapperRef} className={`flex flex-col shrink-0 ${selectedConvId || isComposingNew ? 'hidden md:flex md:w-80' : 'flex-1 md:w-80 md:flex-none'}`}>
           {/* Sprint 24 vague 1B — BulkActionBar conversations (Gmail) */}
           {selectedConvIds.size > 0 && (
@@ -983,23 +983,23 @@ export function InboxPage() {
                     <span className="hidden sm:inline">{isClassifyingConv ? t('inbox.classify.classifying') : t('inbox.classify.label')}</span>
                   </button>
                   {activeConv.status !== 'closed' && (
-                    <button onClick={() => void changeStatus('closed')} className="p-1.5 rounded-lg text-[var(--text-muted)] hover:bg-[var(--bg-subtle)] cursor-pointer" title={t('inbox.close')} aria-label={t('inbox.aria.close_conv')}>
+                    <button onClick={() => void changeStatus('closed')} className="p-1.5 rounded-md text-[var(--text-muted)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-[var(--primary)] focus-visible:outline-offset-1" title={t('inbox.close')} aria-label={t('inbox.aria.close_conv')}>
                       <CheckCircle2 size={15} />
                     </button>
                   )}
                   {activeConv.status === 'closed' && (
-                    <button onClick={() => void changeStatus('open')} className="p-1.5 rounded-lg text-[var(--text-muted)] hover:bg-[var(--bg-subtle)] cursor-pointer" title={t('inbox.reopen')} aria-label={t('inbox.aria.reopen_conv')}>
+                    <button onClick={() => void changeStatus('open')} className="p-1.5 rounded-md text-[var(--text-muted)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-[var(--primary)] focus-visible:outline-offset-1" title={t('inbox.reopen')} aria-label={t('inbox.aria.reopen_conv')}>
                       <Icon as={Inbox} size={15} />
                     </button>
                   )}
                   {activeConv.status === 'open' && (
-                    <button onClick={() => void changeStatus('snoozed')} className="p-1.5 rounded-lg text-[var(--text-muted)] hover:bg-[var(--bg-subtle)] cursor-pointer" title={t('inbox.snooze')} aria-label={t('inbox.aria.snooze_conv')}>
+                    <button onClick={() => void changeStatus('snoozed')} className="p-1.5 rounded-md text-[var(--text-muted)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-[var(--primary)] focus-visible:outline-offset-1" title={t('inbox.snooze')} aria-label={t('inbox.aria.snooze_conv')}>
                       <Pause size={15} />
                     </button>
                   )}
                   <button
                     onClick={(e) => void toggleStar(activeConv, e)}
-                    className="p-1.5 rounded-lg text-[var(--text-muted)] hover:bg-[var(--bg-subtle)] cursor-pointer"
+                    className="p-1.5 rounded-md text-[var(--text-muted)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-[var(--primary)] focus-visible:outline-offset-1"
                     aria-label={activeConv.is_starred ? t('inbox.aria.unstar') : t('inbox.aria.star')}
                     aria-pressed={activeConv.is_starred ? 'true' : 'false'}
                   >
@@ -1007,7 +1007,7 @@ export function InboxPage() {
                   </button>
                   <button
                     onClick={() => setShowRightPanel(!showRightPanel)}
-                    className="p-1.5 rounded-lg text-[var(--text-muted)] hover:bg-[var(--bg-subtle)] cursor-pointer"
+                    className="p-1.5 rounded-md text-[var(--text-muted)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-[var(--primary)] focus-visible:outline-offset-1"
                     aria-label={showRightPanel ? t('inbox.aria.close_panel') : t('inbox.aria.open_panel')}
                     aria-expanded={showRightPanel ? 'true' : 'false'}
                   >

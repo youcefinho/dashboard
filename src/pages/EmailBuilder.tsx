@@ -260,7 +260,7 @@ export function EmailBuilderPage() {
   return (
     <AppLayout title={t('eb.title')}>
       <DesktopOnlyBanner />
-      <div className="hidden lg:block">
+      <div className="hidden lg:block animate-stagger">
       <style>{emailBuilderStyles}</style>
 
       <div className="builder-topbar">

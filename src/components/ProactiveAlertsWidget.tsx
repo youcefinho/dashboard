@@ -156,7 +156,8 @@ export function ProactiveAlertsWidget() {
             return (
               <li
                 key={a.id}
-                className={`proactive-alert${seen ? ' proactive-alert--seen' : ''}`}
+                className={`proactive-alert proactive-alert-s18${seen ? ' proactive-alert--seen' : ''}`}
+                data-kind={a.kind}
               >
                 <span className="proactive-alert-kind" aria-hidden>
                   <Icon as={KIcon} size={15} />

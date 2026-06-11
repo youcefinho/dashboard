@@ -1,6 +1,5 @@
-// ── DashboardHero — Greeting + période + actions (Giga Sprint Design) ───
-// Extrait de Dashboard.tsx. Utilise les nouvelles classes CSS au lieu de
-// styles inline. Animation d'entrée fadeInUp.
+// ── DashboardHero — Greeting + période + actions (Sprint S1) ───────────
+// Utilise les nouvelles classes CSS S1. Logique métier inchangée.
 
 import { Download, Settings2, Sun, Moon, CloudSun } from 'lucide-react';
 import { exportLeadsCsv } from '@/lib/api';
@@ -24,7 +23,6 @@ export function DashboardHero({
 }: DashboardHeroProps) {
   const { user } = useAuth();
 
-  const periodDays = period === '7d' ? 7 : period === '30d' ? 30 : 90;
   const hour = new Date().getHours();
   const greeting = hour < 12
     ? t('dashboard.greeting.morning')
@@ -32,14 +30,20 @@ export function DashboardHero({
       ? t('dashboard.greeting.afternoon')
       : t('dashboard.greeting.evening');
 
+  // Date longue formatée (ex: "mercredi 11 juin 2026")
+  const longDate = new Date().toLocaleDateString('fr-CA', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+
   return (
-    <div className="surface-card p-6 mb-8 animate-fade-in-up" style={{ borderLeft: '3px solid var(--primary)' }}>
+    <div className="dashboard-hero-s1">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <p className="text-meta-label mb-1">
-            {t('dashboard.period.days', { days: periodDays })}
-          </p>
-          <h2 className="text-page-title">
+          <p className="hero-date">{longDate}</p>
+          <h2 className="hero-greeting greeting-animate">
             <span className="inline-flex items-center align-middle mr-1.5">
               {hour < 12
                 ? <Sun size={22} className="text-amber-400 inline-block animate-pulse" />
@@ -49,24 +53,24 @@ export function DashboardHero({
               }
             </span>
             {greeting}{' '}
-            <span className="text-[var(--primary)]">
+            <span className="text-[var(--primary)] greeting-name">
               {user?.name || 'Rochdi'}
             </span>{' '}
             👋
           </h2>
-          <p className="text-subtitle mt-1.5">
+          <p className="hero-subtitle">
             {t('dashboard.subtitle')}
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Sélecteur de période — segmented control premium */}
-          <div className="segmented-premium">
+          {/* Sélecteur de période — segmented control S1 */}
+          <div className="segmented-s1">
             {(['7d', '30d', '90d'] as const).map(p => (
               <button
                 key={p}
                 onClick={() => onPeriodChange(p)}
-                className={`segmented-premium-item ${period === p ? 'active' : ''}`}
+                className={period === p ? 'active' : ''}
                 aria-selected={period === p}
               >
                 {p === '7d' ? t('dashboard.period.7d') : p === '30d' ? t('dashboard.period.30d') : t('dashboard.period.90d')}
@@ -77,7 +81,7 @@ export function DashboardHero({
           {/* Export CSV */}
           <button
             onClick={() => void exportLeadsCsv()}
-            className="h-9 px-4 rounded-[var(--radius-lg)] text-sm font-medium flex items-center gap-2 transition-all duration-200 cursor-pointer border border-[var(--border)] text-[var(--text-secondary)] hover:border-[var(--primary)] hover:text-[var(--primary)] hover:shadow-sm press-scale"
+            className="btn-action-ghost-s1"
           >
             <Download size={16} />
             {t('dashboard.action.export')}
@@ -86,11 +90,10 @@ export function DashboardHero({
           {/* Config toggle */}
           <button
             onClick={onToggleConfig}
-            className={`h-9 w-9 rounded-[var(--radius-md)] flex items-center justify-center transition-all duration-200 cursor-pointer press-scale ${
-              showConfig
-                ? 'bg-[var(--primary)] text-white hover:shadow-sm'
-                : 'hover:bg-[var(--bg-hover)] hover:shadow-sm border border-[var(--border)] text-[var(--text-secondary)]'
-            }`}
+            className={showConfig
+              ? 'h-9 w-9 rounded-[var(--radius-md)] flex items-center justify-center transition-all duration-200 cursor-pointer bg-[var(--primary)] text-white hover:shadow-sm'
+              : 'btn-action-ghost-s1 h-9 w-9 !px-0 justify-center'
+            }
             title={t('dashboard.page.config_title')}
             aria-label={t('dashboard.page.config_aria')}
             aria-expanded={showConfig}

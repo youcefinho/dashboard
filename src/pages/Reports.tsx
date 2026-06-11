@@ -561,8 +561,10 @@ export function ReportsPage() {
         return (
           <SalesReports>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <Card className="p-5">
-                <h3 className="text-sm font-semibold mb-4 flex items-center gap-2"><Icon as={DollarSign} size="md" className="text-[var(--success)]" /> Revenus par Source (ROI)</h3>
+              <Card className="p-5 stripe-card">
+                <div className="widget-header-s1">
+                  <h3 className="text-sm font-semibold flex items-center gap-2"><Icon as={DollarSign} size="md" className="text-[var(--success)]" /> Revenus par Source (ROI)</h3>
+                </div>
                 {revenueData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={250}>
                   <BarChart data={revenueData} layout="vertical" margin={{ left: 20 }}>
@@ -585,8 +587,10 @@ export function ReportsPage() {
                 ) : <p className="text-xs text-[var(--text-muted)] text-center py-10">{t('reports.no_revenue')}</p>}
               </Card>
               
-              <Card className="p-5">
-                <h3 className="text-sm font-semibold mb-4 flex items-center gap-2"><Icon as={Target} size={16} className="text-[var(--primary)]" /> {t('reports.cac_title')}</h3>
+              <Card className="p-5 stripe-card">
+                <div className="widget-header-s1">
+                  <h3 className="text-sm font-semibold flex items-center gap-2"><Icon as={Target} size={16} className="text-[var(--primary)]" /> {t('reports.cac_title')}</h3>
+                </div>
                 <div className="table-premium-container print-data-table">
                   <table className="table-premium w-full text-left">
                     <thead>
@@ -602,9 +606,9 @@ export function ReportsPage() {
                         const total = sourceCounts[d.sourceKey] || 0;
                         const conv = total > 0 ? Math.round((d.wonLeads / total) * 100) : 0;
                         return (
-                          <tr key={d.name}>
+                          <tr key={d.name} className="table-row-hover">
                             <td className="font-medium">{d.name}</td>
-                            <td className="text-right" style={{ color: 'var(--danger)' }}>
+                            <td className="text-right table-cell-numeric" style={{ color: 'var(--danger)' }}>
                               <CellHoverInfo
                                 title={`Dépenses · ${d.name}`}
                                 description={`Total leads source : ${total}`}
@@ -635,7 +639,7 @@ export function ReportsPage() {
                                 <span className="t-mono-num cursor-help">{d.wonLeads}</span>
                               </CellHoverInfo>
                             </td>
-                            <td className="text-right font-semibold" style={{ color: 'var(--primary)' }}>
+                            <td className="text-right table-cell-numeric font-semibold" style={{ color: 'var(--primary)' }}>
                               <CellHoverInfo
                                 title={`CAC · ${d.name}`}
                                 description={d.wonLeads > 0 ? `Coût moyen pour acquérir un client gagné` : 'Aucun client gagné'}
@@ -667,8 +671,10 @@ export function ReportsPage() {
       case 'funnel': return (
         <FunnelReports>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <Card className="p-5">
-              <h3 className="text-sm font-semibold mb-4">📊 Funnel de conversion</h3>
+            <Card className="p-5 stripe-card">
+              <div className="widget-header-s1">
+                <h3 className="text-sm font-semibold">📊 Funnel de conversion</h3>
+              </div>
               <ResponsiveContainer width="100%" height={250}>
                 <BarChart data={funnelData} layout="vertical" margin={{ left: 20 }}>
                   <XAxis type="number" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
@@ -692,8 +698,10 @@ export function ReportsPage() {
                 Perdus : {statusCounts['lost'] || 0} · Fermés : {statusCounts['closed'] || 0}
               </p>
             </Card>
-            <Card className="p-5">
-              <h3 className="text-sm font-semibold mb-4">{t('reports.split_by_type')}</h3>
+            <Card className="p-5 stripe-card">
+              <div className="widget-header-s1">
+                <h3 className="text-sm font-semibold">{t('reports.split_by_type')}</h3>
+              </div>
               <ResponsiveContainer width="100%" height={250}>
                 <PieChart>
                   <Pie data={[{ name: 'Entrants', value: typeCounts.inbound }, { name: 'Clients', value: typeCounts.customer }]}
@@ -711,8 +719,10 @@ export function ReportsPage() {
       case 'sources': return (
         <SourcesReports>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <Card className="p-5">
-              <h3 className="text-sm font-semibold mb-4">🎯 Sources d'acquisition</h3>
+            <Card className="p-5 stripe-card">
+              <div className="widget-header-s1">
+                <h3 className="text-sm font-semibold">🎯 Sources d'acquisition</h3>
+              </div>
               <ResponsiveContainer width="100%" height={280}>
                 <PieChart>
                   <Pie data={sourceData} cx="50%" cy="50%" outerRadius={100} dataKey="value"
@@ -724,8 +734,10 @@ export function ReportsPage() {
                 </PieChart>
               </ResponsiveContainer>
             </Card>
-            <Card className="p-5">
-              <h3 className="text-sm font-semibold mb-4">{t('reports.detail_by_source')}</h3>
+            <Card className="p-5 stripe-card">
+              <div className="widget-header-s1">
+                <h3 className="text-sm font-semibold">{t('reports.detail_by_source')}</h3>
+              </div>
               <div className="space-y-3">
                 {Object.entries(sourceCounts).sort(([, a], [, b]) => b - a).map(([source, count], i) => {
                     const pct = Math.round((count / totalLeads) * 100);
@@ -744,8 +756,10 @@ export function ReportsPage() {
             </Card>
           </div>
           {/* Sprint 51 M3.3 — Provenance par campagne (utm_campaign) */}
-          <Card className="p-5 mt-4">
-            <h3 className="text-sm font-semibold mb-4">📣 Leads par campagne</h3>
+          <Card className="p-5 mt-4 stripe-card">
+            <div className="widget-header-s1">
+              <h3 className="text-sm font-semibold">📣 Leads par campagne</h3>
+            </div>
             {Object.keys(campaignCounts).length === 0 ? (
               <p className="text-xs text-[var(--text-muted)] italic">
                 Aucune campagne UTM détectée. Les leads entrants via formulaires, Lead Ads ou
@@ -774,8 +788,10 @@ export function ReportsPage() {
       case 'performance': return (
         <PerformanceReports>
           <div className="space-y-4">
-            <Card className="p-5">
-              <h3 className="text-sm font-semibold mb-4">🏆 Performance par sous-compte</h3>
+            <Card className="p-5 stripe-card">
+              <div className="widget-header-s1">
+                <h3 className="text-sm font-semibold">🏆 Performance par sous-compte</h3>
+              </div>
               <ResponsiveContainer width="100%" height={Math.max(200, Object.keys(clientCounts).length * 60)}>
                 <BarChart data={Object.values(clientCounts).sort((a, b) => b.total - a.total)} layout="vertical" margin={{ left: 30 }}>
                   <XAxis type="number" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
@@ -813,7 +829,7 @@ export function ReportsPage() {
                         const conv = data.total > 0 ? Math.round((data.won / data.total) * 100) : 0;
                         const avgValue = data.won > 0 ? Math.round(data.value / data.won) : 0;
                         return (
-                          <tr key={i}>
+                          <tr key={i} className="table-row-hover">
                             <td className="font-medium">{data.name}</td>
                             <td className="text-right">
                               <CellHoverInfo
@@ -873,8 +889,10 @@ export function ReportsPage() {
       case 'trends': return (
         <TrendsReports>
           <div className="space-y-4">
-            <Card className="p-5">
-              <h3 className="text-sm font-semibold mb-4">📈 Tendance ({period})</h3>
+            <Card className="p-5 stripe-card">
+              <div className="widget-header-s1">
+                <h3 className="text-sm font-semibold">📈 Tendance ({period})</h3>
+              </div>
               <ResponsiveContainer width="100%" height={300}>
                 <AreaChart data={trendData}>
                   <defs>
@@ -999,10 +1017,10 @@ export function ReportsPage() {
               </button>
             ))}
           </div>
-          <Button variant="secondary" onClick={() => setComparePeriod(!comparePeriod)} className={`text-xs gap-1.5 ${comparePeriod ? 'bg-[var(--brand-tint)] text-[var(--primary)]' : ''}`}>
+          <Button variant="secondary" onClick={() => setComparePeriod(!comparePeriod)} className={`btn-action-ghost-s1 text-xs gap-1.5 ${comparePeriod ? 'bg-[var(--brand-tint)] text-[var(--primary)]' : ''}`}>
             <Icon as={Presentation} size="sm" /> {t('reports.action.compare')}
           </Button>
-          <Button variant="secondary" onClick={handleSaveReport} className="text-xs gap-1.5">
+          <Button variant="secondary" onClick={handleSaveReport} className="btn-action-ghost-s1 text-xs gap-1.5">
             <Icon as={Save} size={14} /> {t('reports.action.save')}
           </Button>
           <Button variant="primary" onClick={handleExportPDF} disabled={isExporting} className="text-xs gap-1.5" aria-label={activeTab === 'builder' ? 'Exporter le dashboard en PDF' : 'Exporter le rapport en PDF'}>
@@ -1011,7 +1029,7 @@ export function ReportsPage() {
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-6 max-w-6xl">
+      <div className="flex flex-col md:flex-row gap-6 max-w-6xl animate-stagger">
         {/* Mobile tabs */}
         <div className="md:hidden w-full flex gap-1.5 overflow-x-auto pb-3 mb-2 -mx-1 px-1 no-scrollbar">
           {TABS.map(tab => (
@@ -1023,7 +1041,7 @@ export function ReportsPage() {
         </div>
 
         {/* Sidebar Navigation */}
-        <nav className="hidden md:block w-56 shrink-0 h-[calc(100vh-160px)] overflow-y-auto pr-2">
+        <nav className="hidden md:block w-56 shrink-0 h-[calc(100vh-160px)] overflow-y-auto pr-2 stagger-1">
           {(() => {
             const groups = [...new Set(TABS.map(t => t.group))];
             return groups.map(group => (
@@ -1042,7 +1060,7 @@ export function ReportsPage() {
         </nav>
 
         {/* Content */}
-        <div className="flex-1 min-w-0 h-[calc(100vh-160px)] overflow-y-auto pb-10 pr-2">
+        <div className="flex-1 min-w-0 h-[calc(100vh-160px)] overflow-y-auto pb-10 pr-2 stagger-2">
           {/* Sprint LOT 1-3 — Error state inline + retry (gap audit Reports) */}
           {loadError ? (
             <Card className="p-6 border border-[var(--danger)]/30" role="alert" aria-live="assertive">

@@ -671,7 +671,7 @@ export function MemberSpacePage() {
                 {t('course.empty')}
               </p>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-3 animate-stagger">
                 {courses.map((c) => (
                   <CourseCard
                     key={c.id}
@@ -816,7 +816,7 @@ function CourseCard({
     : [];
 
   return (
-    <div className="rounded-lg border border-[var(--border)] p-4">
+    <div className="stripe-card hover-lift-stripe rounded-lg border border-[var(--border)] p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="text-sm font-semibold">{course.title}</h3>
@@ -854,7 +854,7 @@ function CourseCard({
         <div className="mt-3">
           <div className="flex items-center justify-between text-xs mb-1">
             <span style={{ color: 'var(--text-muted)' }}>{t('course.progress')}</span>
-            <span style={{ color: 'var(--text-muted)' }}>{pct}%</span>
+            <span style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{pct}%</span>
           </div>
           <div
             style={{

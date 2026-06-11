@@ -1,5 +1,5 @@
-// ── DashboardStatsGrid — Grille de 4 KPIs (Giga Sprint Design) ──────────
-// Extrait de Dashboard.tsx. Orchestre les 4 StatCards avec skeleton loading.
+// ── DashboardStatsGrid — Grille de 4 KPIs (Sprint S1) ────────────────────
+// Orchestre les 4 StatCards avec skeleton loading et stagger animation.
 
 import { Users, Target, DollarSign, Zap } from 'lucide-react';
 import { StatCard } from './StatCard';
@@ -17,9 +17,9 @@ export function DashboardStatsGrid({ stats, isLoading }: DashboardStatsGridProps
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-8">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="stat-card">
+          <div key={i} className="stat-card-s1">
             <div className="skeleton-shimmer h-24 w-full rounded-lg" />
           </div>
         ))}
@@ -28,7 +28,7 @@ export function DashboardStatsGrid({ stats, isLoading }: DashboardStatsGridProps
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-8">
       <StatCard
         label={t('dashboard.stat.contacts')}
         value={stats?.total_leads ?? 0}
@@ -38,7 +38,7 @@ export function DashboardStatsGrid({ stats, isLoading }: DashboardStatsGridProps
         accentColor="#635BFF"
         sparkColor="#635BFF"
         sparkData={sparkPts}
-        className="stagger-1"
+        index={1}
       />
       <StatCard
         label={t('dashboard.stat.pipeline_value')}
@@ -49,7 +49,7 @@ export function DashboardStatsGrid({ stats, isLoading }: DashboardStatsGridProps
         accentColor="#10B981"
         sparkColor="#10B981"
         sparkData={sparkPts.slice(-7)}
-        className="stagger-2"
+        index={2}
       />
       <StatCard
         label={t('dashboard.stat.conversion')}
@@ -59,7 +59,7 @@ export function DashboardStatsGrid({ stats, isLoading }: DashboardStatsGridProps
         iconColor="#F59E0B"
         accentColor="#F59E0B"
         sparkColor="#F59E0B"
-        className="stagger-3"
+        index={3}
       />
       <StatCard
         label={t('dashboard.stat.revenue')}
@@ -69,7 +69,7 @@ export function DashboardStatsGrid({ stats, isLoading }: DashboardStatsGridProps
         iconColor="#3B82F6"
         accentColor="#3B82F6"
         sparkColor="#3B82F6"
-        className="stagger-4"
+        index={4}
       />
     </div>
   );

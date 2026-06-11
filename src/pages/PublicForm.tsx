@@ -207,20 +207,20 @@ export function PublicFormPage() {
       </div>
     );
   }
-  if (error) return <div className="p-6 text-center text-red-500">{error}</div>;
+  if (error) return <div className="p-6 text-center text-[var(--danger)]">{error}</div>;
   if (!config) return <div className="p-6 text-center">{t('public_form.not_found')}</div>;
 
   if (submitResult?.success) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-transparent font-inter">
-        <Card className="w-full max-w-md text-center p-8 border-none shadow-none bg-transparent">
-          <div className="w-16 h-16 bg-green-50 text-green-500 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">✓</div>
+        <Card className="w-full max-w-md text-center p-8 border-none shadow-none bg-transparent animate-stagger stagger-1">
+          <div className="w-16 h-16 bg-[var(--success-soft)] text-[var(--success)] rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">✓</div>
           <h2 className="text-xl font-bold mb-2 text-[var(--text-primary)]">{t('public_form.success')}</h2>
           <p className="text-[var(--text-muted)] whitespace-pre-wrap">{submitResult.message}</p>
 
           {submitResult.quiz_result && (
-            <div className="mt-6 p-4 rounded-xl bg-blue-50 text-left">
-              <p className="text-sm font-semibold text-blue-600 mb-1">{t('public_form.quiz_result')}</p>
+            <div className="mt-6 p-4 rounded-xl bg-[var(--primary-soft)] text-left">
+              <p className="text-sm font-semibold text-[var(--primary)] mb-1">{t('public_form.quiz_result')}</p>
               <p className="text-[var(--text-primary)]">{submitResult.quiz_result.message}</p>
             </div>
           )}
@@ -244,7 +244,7 @@ export function PublicFormPage() {
         return (
           <div key={f.id}>
             <label className={labelClasses} htmlFor={f.id}>
-              {f.label} {f.required && <span className="text-red-500">*</span>}
+              {f.label} {f.required && <span className="text-[var(--danger)]">*</span>}
             </label>
             <Input
               id={f.id}
@@ -265,7 +265,7 @@ export function PublicFormPage() {
         return (
           <div key={f.id}>
             <label className={labelClasses} htmlFor={f.id}>
-              {f.label} {f.required && <span className="text-red-500">*</span>}
+              {f.label} {f.required && <span className="text-[var(--danger)]">*</span>}
             </label>
             <Textarea
               id={f.id}
@@ -284,7 +284,7 @@ export function PublicFormPage() {
         return (
           <div key={f.id}>
             <label className={labelClasses} htmlFor={f.id}>
-              {f.label} {f.required && <span className="text-red-500">*</span>}
+              {f.label} {f.required && <span className="text-[var(--danger)]">*</span>}
             </label>
             <Select
               id={f.id}
@@ -311,7 +311,7 @@ export function PublicFormPage() {
         return (
           <div key={f.id} className="space-y-2">
             <label className={labelClasses}>
-              {f.label} {f.required && <span className="text-red-500">*</span>}
+              {f.label} {f.required && <span className="text-[var(--danger)]">*</span>}
             </label>
             <input type="hidden" name={f.name} value={selected.join(',')} aria-required={ariaRequired} />
             <div className="flex flex-wrap gap-2" role="group" aria-label={f.label}>
@@ -337,7 +337,7 @@ export function PublicFormPage() {
         return (
           <div key={f.id} className="space-y-2">
             <label className={labelClasses}>
-              {f.label} {f.required && <span className="text-red-500">*</span>}
+              {f.label} {f.required && <span className="text-[var(--danger)]">*</span>}
             </label>
             <input
               type="hidden"
@@ -406,7 +406,7 @@ export function PublicFormPage() {
         return (
           <div key={f.id}>
             <label className={labelClasses} htmlFor={f.id}>
-              {f.label} {f.required && <span className="text-red-500">*</span>}
+              {f.label} {f.required && <span className="text-[var(--danger)]">*</span>}
             </label>
             <input
               id={f.id}
@@ -430,7 +430,7 @@ export function PublicFormPage() {
           />
         );
       default:
-        return <div key={f.id} className="text-sm text-red-500">{t('public_form.unsupported')} : {f.type}</div>;
+        return <div key={f.id} className="text-sm text-[var(--danger)]">{t('public_form.unsupported')} : {f.type}</div>;
     }
   };
 
@@ -486,7 +486,7 @@ export function PublicFormPage() {
   return (
     <div className="min-h-screen bg-transparent p-4 flex justify-center items-start font-inter">
       <Card className="w-full max-w-lg border-none shadow-none bg-transparent">
-        <div className="p-6">
+        <div className="p-6 animate-stagger stagger-1">
           <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-2">{config.name}</h1>
           {config.description && <p className="text-[var(--text-muted)] mb-6 text-sm">{config.description}</p>}
 

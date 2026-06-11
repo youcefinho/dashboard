@@ -83,8 +83,8 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        'empty-state flex flex-col items-center justify-center text-center',
-        isCompact ? 'py-8 px-4' : 'py-16 px-6',
+        'empty-state empty-state-premium-s4 flex flex-col items-center justify-center text-center',
+        isCompact ? 'py-8 px-4' : 'py-20 px-6',
         isFirstTime && 'empty-state--first-time',
         isFiltered && 'empty-state--filtered',
         className
@@ -101,7 +101,7 @@ export function EmptyState({
             isIllustration
               ? 'empty-state-illustration'
               : cn(
-                  'text-[var(--gray-400)]',
+                  'empty-icon-ring text-[var(--gray-400)]',
                   isCompact ? 'w-8 h-8' : 'w-14 h-14'
                 )
           )}

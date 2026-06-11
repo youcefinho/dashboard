@@ -146,7 +146,7 @@ export function CookiesBanner() {
       role="dialog"
       aria-label={t('cookies.banner.title')}
       aria-describedby="cookies-banner-desc"
-      className="fixed bottom-0 left-0 right-0 z-[100] border-t border-[var(--border)] bg-[var(--bg-surface)] shadow-[var(--shadow-lg,0_-4px_24px_rgba(0,0,0,0.08))]"
+      className="cookies-banner-s18"
     >
       <div className="mx-auto max-w-6xl px-4 py-4 sm:px-6 sm:py-5">
         <h2 className="text-base font-semibold text-[var(--text-primary)]">

@@ -1,4 +1,4 @@
-import { useState, lazy, Suspense } from 'react';
+import React, { useState, lazy, Suspense } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Combobox, type ComboboxOption } from '@/components/ui/Combobox';
@@ -108,33 +108,37 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
       {/* Sprint 24 vague 5B — Modal cachée quand le tour démarre (sinon overlap visuel avec Coachmark) */}
       <Modal open={!tourOpen} onOpenChange={(open) => { if (!open && !tourOpen) onComplete(); }} title={t('onboarding.wiz_title')}>
       <div className="w-[600px] max-w-full">
-        {/* Progress Bar Sprint 23 — gradient + glow */}
-        <div className="mb-8">
-          <div className="flex justify-between text-xs mb-2 font-semibold">
-            <span className="text-[var(--primary)]">{t('onboarding.wiz_step_of').replace('{step}', String(step)).replace('{total}', String(TOTAL_STEPS))}</span>
-            <span className="text-[var(--text-muted)] tabular-nums">{t('onboarding.wiz_pct').replace('{pct}', String(Math.round((step / TOTAL_STEPS) * 100)))}</span>
+        {/* Progress Ring + Step Dots — Sprint Deep 5A */}
+        <div className="flex flex-col items-center mb-8">
+          <div className="progress-ring-wrap">
+            <svg viewBox="0 0 80 80">
+              <circle className="progress-ring-bg" cx="40" cy="40" r="36" />
+              <circle
+                className="progress-ring-fill"
+                cx="40" cy="40" r="36"
+                strokeDasharray={`${(step / TOTAL_STEPS) * 226.2} 226.2`}
+              />
+            </svg>
+            <span className="progress-ring-text">{step}/{TOTAL_STEPS}</span>
           </div>
-          <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'rgba(0,157,219,0.08)' }}>
-            <div
-              className="h-full rounded-full transition-all duration-500 ease-out"
-              style={{
-                width: `${(step / TOTAL_STEPS) * 100}%`,
-                background: 'linear-gradient(90deg, #009DDB 0%, #D96E27 100%)',
-                boxShadow: '0 0 12px rgba(0,157,219,0.5), 0 0 6px rgba(217,110,39,0.4)',
-              }}
-            />
+          <div className="step-dots">
+            {Array.from({ length: TOTAL_STEPS }, (_, i) => (
+              <React.Fragment key={i}>
+                {i > 0 && <div className={`step-connector ${i < step ? 'is-done' : ''}`} />}
+                <div className={`step-dot ${i + 1 < step ? 'is-done' : i + 1 === step ? 'is-active' : ''}`} />
+              </React.Fragment>
+            ))}
           </div>
         </div>
 
-        {/* Content */}
-        <div className="min-h-[300px] mb-8">
+        {/* Content — animation slide Sprint Deep 5A */}
+        <div className="min-h-[300px] mb-8 step-content-enter" key={step}>
           {step === 1 && (
-            <div className="text-center animate-fade-in">
+            <div className="text-center animate-stagger stagger-1">
               <div className="relative w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6"
                 style={{
-                  background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
-                  boxShadow: '0 8px 32px rgba(0,157,219,0.45), 0 0 40px rgba(217,110,39,0.3)',
-                  animation: 'hot-lead-pulse 3s ease-in-out infinite',
+                  background: 'var(--primary)',
+                  boxShadow: 'var(--shadow-md)',
                 }}>
                 <Icon as={Check} size={36} className="text-white" strokeWidth={3} />
               </div>
@@ -157,7 +161,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
           )}
 
           {step === 2 && (
-            <div className="animate-fade-in">
+            <div className="animate-stagger stagger-1">
               <div className="flex items-center gap-3 mb-6">
                 <div className="p-2 bg-[var(--brand-tint)] text-[var(--primary)] rounded-lg">
                   <Icon as={Building} size="lg" />
@@ -168,7 +172,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
               <div className="space-y-5">
                 <div>
                   <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">{t('onboarding.wiz_company_name')}</label>
-                  <input type="text" value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder={t('onboarding.wiz_company_name_ph')} className="w-full px-3 py-2 bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-default)] rounded-[var(--radius-sm)] focus:outline-none focus:border-[var(--primary)]" />
+                  <input type="text" value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder={t('onboarding.wiz_company_name_ph')} className="w-full px-3 py-2 bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border)] rounded-[var(--radius-md)] focus:outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)]" />
                 </div>
 
                 <div>
@@ -199,7 +203,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
           )}
 
           {step === 3 && (
-            <div className="animate-fade-in">
+            <div className="animate-stagger stagger-1">
               <div className="flex items-center gap-3 mb-6">
                 <div className="p-2 bg-[var(--brand-tint)] text-[var(--primary)] rounded-lg">
                   <Icon as={Palette} size="lg" />
@@ -234,7 +238,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
           )}
 
           {step === 4 && (
-            <div className="animate-fade-in">
+            <div className="animate-stagger stagger-1">
               <div className="flex items-center gap-3 mb-6">
                 <div className="p-2 bg-[var(--brand-tint)] text-[var(--primary)] rounded-lg">
                   <Icon as={Settings} size="lg" />
@@ -262,7 +266,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
                 </ul>
               </div>
 
-              <button onClick={() => toast.success(t('onboarding.wiz_pack_installed'))} className="w-full py-3 bg-[var(--bg-surface)] border border-[var(--border-default)] hover:border-[var(--primary)] hover:text-[var(--primary)] text-[var(--text-primary)] font-medium rounded-[var(--radius-sm)] transition-all flex justify-center items-center gap-2 shadow-[var(--shadow-brand-xs)] hover:shadow-[var(--shadow-brand-md)] hover:-translate-y-0.5">
+              <button onClick={() => toast.success(t('onboarding.wiz_pack_installed'))} className="w-full py-3 bg-[var(--bg-surface)] border border-[var(--border)] hover:border-[var(--primary)] hover:text-[var(--primary)] text-[var(--text-primary)] font-medium rounded-[var(--radius-md)] transition-all flex justify-center items-center gap-2 hover:shadow-[var(--shadow-sm)] hover:-translate-y-0.5">
                 <Icon as={Settings} size={18} />
                 {t('onboarding.wiz_pack_install_btn')}
               </button>
@@ -270,7 +274,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
           )}
 
           {step === 5 && (
-            <div className="animate-fade-in text-center py-6">
+            <div className="animate-stagger stagger-1 text-center py-6">
               <div className="w-16 h-16 bg-[var(--bg-muted)] text-[var(--text-muted)] rounded-full flex items-center justify-center mx-auto mb-6">
                 <Icon as={UserPlus} size={32} />
               </div>
@@ -280,14 +284,14 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
               </p>
 
               <div className="max-w-xs mx-auto space-y-4 text-left">
-                <input type="text" placeholder={t('onboarding.wiz_fullname_ph')} className="w-full px-3 py-2 bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-default)] rounded-[var(--radius-sm)] focus:outline-none focus:border-[var(--primary)]" />
-                <input type="email" placeholder={t('onboarding.wiz_email_ph')} className="w-full px-3 py-2 bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-default)] rounded-[var(--radius-sm)] focus:outline-none focus:border-[var(--primary)]" />
+                <input type="text" placeholder={t('onboarding.wiz_fullname_ph')} className="w-full px-3 py-2 bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border)] rounded-[var(--radius-md)] focus:outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)]" />
+                <input type="email" placeholder={t('onboarding.wiz_email_ph')} className="w-full px-3 py-2 bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border)] rounded-[var(--radius-md)] focus:outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)]" />
               </div>
             </div>
           )}
 
           {step === 6 && (
-            <div className="animate-fade-in">
+            <div className="animate-stagger stagger-1">
               <h2 className="text-xl font-bold text-[var(--text-primary)] mb-4">{t('onboarding.wiz_emails_title')}</h2>
               <p className="text-[var(--text-secondary)] mb-6">
                 {t('onboarding.wiz_emails_desc')}
@@ -302,7 +306,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
           )}
 
           {step === 7 && (
-            <div className="animate-fade-in text-center py-6">
+            <div className="animate-stagger stagger-1 text-center py-6">
               <div className="w-16 h-16 bg-[var(--bg-muted)] text-[var(--text-muted)] rounded-full flex items-center justify-center mx-auto mb-6">
                 <Icon as={UserPlus} size={32} />
               </div>
@@ -312,14 +316,14 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
               </p>
 
               <div className="max-w-sm mx-auto flex gap-2">
-                <input type="email" placeholder={t('onboarding.wiz_invite_email_ph')} className="flex-1 px-3 py-2 bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-default)] rounded-[var(--radius-sm)] focus:outline-none focus:border-[var(--primary)]" />
+                <input type="email" placeholder={t('onboarding.wiz_invite_email_ph')} className="flex-1 px-3 py-2 bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border)] rounded-[var(--radius-md)] focus:outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)]" />
                 <Button>{t('onboarding.wiz_invite')}</Button>
               </div>
             </div>
           )}
 
           {step === 8 && (
-            <div className="animate-fade-in text-center py-8">
+            <div className="animate-stagger stagger-1 text-center py-8">
               <div className="w-20 h-20 bg-[var(--success)]/10 text-[var(--success)] rounded-full flex items-center justify-center mx-auto mb-6">
                 <Icon as={Check} size={40} />
               </div>
@@ -333,7 +337,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
 
         {/* Footer Actions */}
         <div className="flex items-center justify-between pt-6 border-t border-[var(--border-subtle)]">
-          <button onClick={handleSkip} className="text-sm font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
+          <button onClick={handleSkip} className="skip-step-btn">
             {t('onboarding.wiz_skip_step')}
           </button>
 

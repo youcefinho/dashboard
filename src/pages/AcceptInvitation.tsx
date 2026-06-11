@@ -114,51 +114,26 @@ export function AcceptInvitationPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden"
-      style={{ background: 'linear-gradient(135deg, #FFFFFF 0%, #FAFBFC 35%, #F0FAFE 70%, #FFE9D6 100%)' }}>
-      {/* Orbs dramatiques animés — calque Signup.tsx */}
-      <div className="hero-stat-orb absolute w-[600px] h-[600px] rounded-full -top-60 -right-60 pointer-events-none"
-        style={{ background: 'radial-gradient(circle, rgba(0,157,219,0.32) 0%, rgba(0,157,219,0.08) 50%, transparent 80%)', filter: 'blur(60px)' }} />
-      <div className="hero-stat-orb absolute w-[500px] h-[500px] rounded-full -bottom-40 -left-40 pointer-events-none"
-        style={{ background: 'radial-gradient(circle, rgba(217,110,39,0.28) 0%, rgba(217,110,39,0.08) 50%, transparent 80%)', filter: 'blur(60px)', animationDelay: '4s' }} />
-      <div className="hero-stat-orb absolute w-[300px] h-[300px] rounded-full top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
-        style={{ background: 'radial-gradient(circle, rgba(55,202,55,0.12) 0%, transparent 70%)', filter: 'blur(80px)', animationDelay: '2s' }} />
+    <div className="min-h-screen flex items-center justify-center p-4 bg-[var(--bg-canvas)]">
 
-      <div className="w-full max-w-sm animate-fade-in relative z-10">
-        {/* Logo — calque Signup.tsx */}
-        <div className="text-center mb-8">
-          <div className="relative w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-5"
-            style={{
-              background: 'linear-gradient(135deg, #635BFF 0%, #8B5CF6 100%)',
-              boxShadow: '0 8px 32px rgba(0,157,219,0.45), 0 0 40px rgba(217,110,39,0.3)',
-              animation: 'hot-lead-pulse 3s ease-in-out infinite',
-            }}>
-            <span className="text-white font-bold text-3xl tracking-tight">I</span>
-            <div className="absolute inset-0 rounded-2xl pointer-events-none"
-              style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.3) 0%, transparent 50%)' }} />
+      <div className="w-full max-w-sm animate-stagger stagger-1">
+        {/* Logo compact Stripe-clean */}
+        <div className="text-center mb-6">
+          <div
+            className="w-10 h-10 rounded-[var(--radius-lg)] flex items-center justify-center mx-auto mb-4 text-white font-bold text-lg shadow-[var(--shadow-sm)]"
+            style={{ background: 'var(--brand-gradient)' }}
+          >
+            I
           </div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            <span className="text-gradient-brand">Intralys</span> <span className="text-[var(--text-primary)]">CRM</span>
-          </h1>
-          <p className="text-sm text-[var(--text-secondary)] mt-1.5">{t('team.accept.title')}</p>
         </div>
 
         {invalidLink ? (
           // Lien invalide/expiré/déjà utilisé — pas de retry token.
-          // Renforcement a11y : role=alert + aria-live=assertive pour annonce
-          // immédiate lecteurs d'écran ; clé help_link distincte de
-          // error_invalid (évite duplication clé identique).
           <div
             role="alert"
             aria-live="assertive"
-            className="p-6 rounded-2xl relative overflow-hidden text-center"
-            style={{
-              background: 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.85) 100%)',
-              backdropFilter: 'blur(16px) saturate(160%)',
-              WebkitBackdropFilter: 'blur(16px) saturate(160%)',
-              border: '1px solid rgba(255,255,255,0.6)',
-              boxShadow: '0 1px 2px rgba(15,23,42,0.04), 0 24px 64px -12px rgba(0,157,219,0.18), 0 0 60px -8px rgba(217,110,39,0.12)',
-            }}>
+            className="auth-card-s4 text-center animate-stagger stagger-2"
+          >
             <p className="text-sm text-[var(--danger)] font-medium mb-2">
               {t('team.accept.error_invalid')}
             </p>
@@ -173,15 +148,10 @@ export function AcceptInvitationPage() {
             </Link>
           </div>
         ) : (
-          /* Formulaire — premium card calque Signup.tsx */
-          <form onSubmit={handleSubmit} className="p-6 space-y-4 rounded-2xl relative overflow-hidden"
-            style={{
-              background: 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.85) 100%)',
-              backdropFilter: 'blur(16px) saturate(160%)',
-              WebkitBackdropFilter: 'blur(16px) saturate(160%)',
-              border: '1px solid rgba(255,255,255,0.6)',
-              boxShadow: '0 1px 2px rgba(15,23,42,0.04), 0 24px 64px -12px rgba(0,157,219,0.18), 0 0 60px -8px rgba(217,110,39,0.12)',
-            }}>
+          /* Formulaire — auth-card-s4 Stripe-clean */
+          <form onSubmit={handleSubmit} className="auth-card-s4 animate-stagger stagger-2">
+            <h1 className="auth-title">{t('team.accept.title')}</h1>
+            <div className="space-y-4">
             <Input
               type="password"
               id="accept-password"
@@ -221,12 +191,10 @@ export function AcceptInvitationPage() {
             />
 
             {error && (
-              // Renforcement a11y : live-region polite pour annoncer l'erreur
-              // au lecteur d'écran sans interrompre la saisie. Calque Signup.tsx.
               <div
                 role="alert"
                 aria-live="polite"
-                className="p-3 rounded-[var(--radius-md)] bg-[color-mix(in_oklch,var(--danger)_10%,transparent)] border border-[color-mix(in_oklch,var(--danger)_30%,transparent)] text-sm text-[var(--danger)] animate-fade-in"
+                className="p-3 rounded-[var(--radius-md)] bg-[var(--danger-soft)] border border-[color-mix(in_oklch,var(--danger)_30%,transparent)] text-sm text-[var(--danger-text)] animate-fade-in"
               >
                 {error}
               </div>
@@ -234,7 +202,7 @@ export function AcceptInvitationPage() {
 
             <Button
               type="submit"
-              variant="premium"
+              variant="primary"
               className="w-full"
               size="lg"
               isLoading={isLoading}
@@ -250,10 +218,11 @@ export function AcceptInvitationPage() {
                 {t('login.submit')}
               </Link>
             </p>
+            </div>
           </form>
         )}
 
-        <p className="text-center text-xs text-[var(--text-muted)] mt-4">
+        <p className="text-center text-xs text-[var(--text-muted)] mt-4 animate-stagger stagger-3">
           {t('login.copyright', { year: new Date().getFullYear() })}
         </p>
       </div>

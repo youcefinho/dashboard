@@ -482,7 +482,7 @@ export function FunnelBuilderPage() {
   return (
     <AppLayout title={t('funnel.builder.title')}>
       <DesktopOnlyBanner />
-      <div className="hidden lg:block">
+      <div className="hidden lg:block animate-stagger">
         <style>{builderStyles}</style>
 
         <div className="builder-topbar">

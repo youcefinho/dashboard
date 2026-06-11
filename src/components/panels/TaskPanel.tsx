@@ -486,9 +486,8 @@ export function TaskPanel({ id, stackLevel }: TaskPanelProps) {
               <p
                 className="text-sm text-[var(--text-secondary)] whitespace-pre-wrap min-h-[60px] p-3 rounded-[var(--radius-md)] cursor-text"
                 style={{
-                  background:
-                    'linear-gradient(135deg, rgba(0,157,219,0.04) 0%, rgba(217,110,39,0.025) 100%)',
-                  border: '1px solid rgba(0,157,219,0.10)',
+                  background: 'var(--bg-subtle)',
+                  border: '1px solid var(--border)',
                 }}
                 onClick={() => setIsEditingDesc(true)}
               >
@@ -514,15 +513,14 @@ export function TaskPanel({ id, stackLevel }: TaskPanelProps) {
               {subtaskTotal > 0 && (
                 <div
                   className="h-1 w-20 rounded-full overflow-hidden"
-                  style={{ background: 'rgba(0,157,219,0.10)' }}
+                  style={{ background: 'var(--bg-subtle)' }}
                   aria-hidden
                 >
                   <div
                     className="h-full rounded-full transition-all duration-500"
                     style={{
                       width: `${(subtaskDone / subtaskTotal) * 100}%`,
-                      background: 'linear-gradient(90deg, #635BFF 0%, #8B5CF6 100%)',
-                      boxShadow: '0 0 8px rgba(0,157,219,0.5)',
+                      background: 'var(--primary)',
                     }}
                   />
                 </div>
@@ -538,9 +536,8 @@ export function TaskPanel({ id, stackLevel }: TaskPanelProps) {
                     className={`row-premium list-item-enter flex items-center gap-2.5 p-2 rounded-[var(--radius-sm)] group ${isHighlighted ? 'list-item-highlight' : ''}`}
                     style={{
                       animationDelay: `${Math.min(idx, 12) * 40}ms`,
-                      background:
-                        'linear-gradient(135deg, rgba(0,157,219,0.04) 0%, rgba(217,110,39,0.02) 100%)',
-                      border: '1px solid rgba(0,157,219,0.10)',
+                      background: 'var(--bg-subtle)',
+                      border: '1px solid var(--border)',
                     }}
                   >
                     {/* Custom premium checkbox */}
@@ -551,12 +548,10 @@ export function TaskPanel({ id, stackLevel }: TaskPanelProps) {
                       style={
                         s.is_done === 1
                           ? {
-                              background:
-                                'linear-gradient(135deg, #635BFF 0%, #8B5CF6 100%)',
-                              border: '1px solid rgba(0,157,219,0.55)',
+                              background: 'var(--primary)',
+                              border: '1px solid var(--primary-hover)',
                               color: '#FFFFFF',
-                              boxShadow:
-                                '0 2px 8px -2px rgba(0,157,219,0.40), 0 0 12px -4px rgba(217,110,39,0.30), inset 0 1px 0 rgba(255,255,255,0.30)',
+                              boxShadow: 'var(--shadow-xs)',
                             }
                           : {
                               background:
@@ -608,7 +603,7 @@ export function TaskPanel({ id, stackLevel }: TaskPanelProps) {
                 onChange={(e) => setNewSubtask(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') void addSubtask(); }}
                 placeholder={t('panels.task_subtask_ph')}
-                className="flex-1 px-3 py-1.5 text-xs rounded-[10px] bg-[var(--bg-surface)] border border-[var(--border-default)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] transition-all hover:border-[oklch(0.85_0.02_220)] focus:border-[var(--primary)] focus:outline-none focus:shadow-[0_0_0_4px_rgba(0,157,219,0.15),0_0_20px_-4px_rgba(0,157,219,0.35)]"
+                className="flex-1 px-3 py-1.5 text-xs rounded-[var(--radius-md)] bg-[var(--bg-surface)] border border-[var(--border)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] transition-all hover:border-[var(--border-strong)] focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-ring)]"
               />
               <button
                 type="button"
@@ -656,9 +651,8 @@ export function TaskPanel({ id, stackLevel }: TaskPanelProps) {
                       className={`row-premium list-item-enter relative flex items-start gap-2.5 p-2.5 rounded-[var(--radius-md)] group ${isHighlighted ? 'list-item-highlight' : ''}`}
                       style={{
                         animationDelay: `${Math.min(idx, 10) * 50}ms`,
-                        background:
-                          'linear-gradient(135deg, rgba(0,157,219,0.04) 0%, rgba(217,110,39,0.02) 100%)',
-                        border: '1px solid rgba(0,157,219,0.10)',
+                        background: 'var(--bg-subtle)',
+                        border: '1px solid var(--border)',
                       }}
                     >
                       <Avatar

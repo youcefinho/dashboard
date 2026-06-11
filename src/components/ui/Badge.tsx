@@ -136,6 +136,7 @@ export function Badge({
         sizeClass,
         resolvedFill === 'outline' && 'border',
         intentStyles[intent]?.[resolvedFill],
+        pulse && 'badge-pulse-s1',
         className
       )}
       style={{ borderRadius: 'var(--radius-pill)', ...style }}

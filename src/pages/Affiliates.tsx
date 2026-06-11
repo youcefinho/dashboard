@@ -474,7 +474,7 @@ export function AffiliatesPage() {
 
   return (
     <AppLayout title={t('affiliate.title')}>
-      <div className="p-6">
+      <div className="p-6 animate-stagger">
         <PageHero
           meta={t('affiliate.program.title')}
           title={t('affiliate.title')}
@@ -692,11 +692,11 @@ export function AffiliatesPage() {
                       <th aria-hidden="true" />
                     </tr>
                   </thead>
-                  <tbody>
-                    {affiliates.map((a) => (
+                  <tbody className="animate-stagger">
+                    {affiliates.map((a, idx) => (
                       <tr
                         key={a.id}
-                        className="affiliate-row"
+                        className={`affiliate-row table-row-hover stagger-${Math.min(idx + 1, 8)}`}
                         tabIndex={0}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') openEditAff(a);
@@ -839,12 +839,12 @@ export function AffiliatesPage() {
                       <th aria-hidden="true" />
                     </tr>
                   </thead>
-                  <tbody>
-                    {commissions.map((c) => {
+                  <tbody className="animate-stagger">
+                    {commissions.map((c, idx) => {
                       const status =
                         (c.status as CommissionStatus) || 'pending';
                       return (
-                        <tr key={c.id} className="affiliate-row">
+                        <tr key={c.id} className={`affiliate-row table-row-hover stagger-${Math.min(idx + 1, 8)}`}>
                           <td className="font-medium">
                             {c.affiliate_id
                               ? affiliateNameById.get(c.affiliate_id) ||
@@ -852,7 +852,7 @@ export function AffiliatesPage() {
                               : '—'}
                           </td>
                           <td className="text-muted">{c.lead_id || '—'}</td>
-                          <td className="tabular-nums">
+                          <td className="table-cell-numeric tabular-nums font-medium">
                             {fmtAmount(c.amount, c.currency)}
                           </td>
                           <td>

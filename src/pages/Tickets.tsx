@@ -411,7 +411,7 @@ export function TicketsPage() {
             />
           </Card>
         ) : (
-          <Card className="!p-0 overflow-hidden">
+          <Card className="!p-0 overflow-hidden stripe-card animate-stagger stagger-1">
             <div className="ticket-table" role="table">
               <div className="ticket-row ticket-row--head" role="row">
                 <span role="columnheader">{t('ticket.col.subject')}</span>
@@ -456,7 +456,7 @@ export function TicketsPage() {
                         </span>
                       )}
                     </span>
-                    <span role="cell" className="t-caption">
+                    <span role="cell" className="t-caption" style={{ fontVariantNumeric: 'tabular-nums' }}>
                       {fmtRelative(tk.last_message_at || tk.updated_at)}
                     </span>
                   </button>

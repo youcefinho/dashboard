@@ -255,7 +255,7 @@ export function SocialPage() {
       />
 
       {/* ── Composer ── */}
-      <section className="mb-8">
+      <section className="mb-8 animate-stagger stagger-1">
         <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-3">{t('social.composer')}</h2>
         <PostComposer
           key={editing?.id ?? 'new'}
@@ -273,7 +273,7 @@ export function SocialPage() {
       </section>
 
       {/* ── Liste des posts ── */}
-      <section className="mb-8">
+      <section className="mb-8 animate-stagger stagger-2">
         <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-3">{t('social.title')}</h2>
         {loading ? (
           <div className="space-y-3" aria-busy="true" aria-live="polite">
@@ -298,7 +298,7 @@ export function SocialPage() {
             description={t('social.subtitle')}
           />
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-3 animate-stagger stagger-3">
             {posts.map((post) => (
               <SocialPostCard
                 key={post.id}
@@ -313,9 +313,9 @@ export function SocialPage() {
       </section>
 
       {/* ── Connexions sociales ── */}
-      <section>
+      <section className="animate-stagger stagger-4">
         <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-3">{t('social.connections')}</h2>
-        <Card>
+        <Card className="stripe-card">
           <div className="space-y-2.5">
             {ALL_NETWORKS.map((provider) => (
               <AccountConnectCard

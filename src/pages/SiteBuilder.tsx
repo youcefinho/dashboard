@@ -613,7 +613,7 @@ export function SiteBuilderPage() {
   return (
     <AppLayout title={t('site.builder.title')}>
       <DesktopOnlyBanner />
-      <div className="hidden lg:block">
+      <div className="hidden lg:block animate-stagger">
         <style>{builderStyles}</style>
 
         <div className="builder-topbar">

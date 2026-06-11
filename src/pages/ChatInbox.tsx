@@ -444,13 +444,13 @@ export function ChatInbox() {
       />
 
       <div
-        className="grid gap-4 lg:grid-cols-[320px_1fr_280px]"
+        className="grid gap-4 lg:grid-cols-[320px_1fr_280px] animate-stagger stagger-1"
         role="region"
         aria-label={t('chat_inbox.title')}
       >
         {/* ── Colonne gauche : liste sessions ─────────────────────────────── */}
         <Card
-          className="flex min-h-[480px] flex-col overflow-hidden p-0"
+          className="flex min-h-[480px] flex-col overflow-hidden p-0 animate-stagger stagger-2"
           aria-label="Sessions actives"
         >
           <div className="flex items-center justify-between border-b border-[var(--border-default)] px-4 py-3">
@@ -508,10 +508,10 @@ export function ChatInbox() {
                         onClick={() => setSelected(row)}
                         aria-pressed={isActive}
                         aria-label={`Conversation ${visitorLabel}`}
-                        className={`flex w-full flex-col gap-1 px-4 py-3 text-left transition-colors ${
+                        className={`flex w-full flex-col gap-1 px-4 py-3 text-left transition-all duration-150 ${
                           isActive
-                            ? 'bg-[var(--primary-soft)]'
-                            : 'hover:bg-[var(--bg-muted)]'
+                            ? 'bg-[var(--primary-soft)] border-l-[3px] border-l-[var(--primary)]'
+                            : 'hover:bg-[var(--bg-subtle)] border-l-[3px] border-l-transparent'
                         }`}
                       >
                         <div className="flex items-center justify-between gap-2">
@@ -552,7 +552,7 @@ export function ChatInbox() {
 
         {/* ── Colonne centre : transcript + composer ───────────────────────── */}
         <Card
-          className="flex min-h-[480px] flex-col overflow-hidden p-0"
+          className="flex min-h-[480px] flex-col overflow-hidden p-0 animate-stagger stagger-3"
           aria-label="Transcript"
         >
           <div className="flex items-center justify-between border-b border-[var(--border-default)] px-4 py-3">
@@ -688,7 +688,7 @@ export function ChatInbox() {
 
         {/* ── Colonne droite : info visiteur ───────────────────────────────── */}
         <Card
-          className="flex min-h-[480px] flex-col overflow-hidden p-0"
+          className="flex min-h-[480px] flex-col overflow-hidden p-0 animate-stagger stagger-4"
           aria-label="Informations visiteur"
         >
           <div className="border-b border-[var(--border-default)] px-4 py-3">

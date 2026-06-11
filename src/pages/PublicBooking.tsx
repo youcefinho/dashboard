@@ -259,28 +259,17 @@ export function PublicBookingPage() {
         aria-live="polite"
         data-testid="bk-done"
       >
-        <div style={{ maxWidth: 480 }}>
+        <div className="animate-stagger stagger-1" style={{ maxWidth: 480 }}>
           <div
-            style={{
-              width: 64,
-              height: 64,
-              background: '#ecfdf5',
-              color: '#10b981',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto 16px',
-              fontSize: 28,
-            }}
+            className="w-16 h-16 rounded-full bg-[var(--success-soft)] text-[var(--success)] flex items-center justify-center mx-auto mb-4 text-[28px]"
           >
             ✓
           </div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>
+          <h1 className="text-[var(--text-h2)] font-bold mb-2">
             {heading}
           </h1>
           {done.kind === 'booked' && (
-            <p style={{ color: '#6b7280' }}>
+            <p className="text-[var(--text-secondary)]">
               {t('booking.public.confirmed_detail')}
             </p>
           )}
@@ -299,8 +288,8 @@ export function PublicBookingPage() {
       className="min-h-screen bg-[var(--bg-surface)] p-4 flex justify-center items-start"
       data-testid="bk-page"
     >
-      <div className="w-full max-w-lg p-6">
-        <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>
+      <div className="w-full max-w-lg p-6 animate-stagger stagger-1">
+        <h1 className="text-[var(--text-h2)] font-bold mb-1">
           {isCancel
             ? t('booking.public.cancel')
             : isReschedule
@@ -308,8 +297,7 @@ export function PublicBookingPage() {
               : t('booking.public.title')}
         </h1>
         <p
-          className="text-sm"
-          style={{ color: '#6b7280', marginBottom: 20 }}
+          className="text-sm text-[var(--text-muted)] mb-5"
           data-booking-slug={slug}
         >
           {t('booking.public.timezone_note')}
@@ -333,7 +321,7 @@ export function PublicBookingPage() {
             </div>
             {error && (
               <p
-                className="text-sm text-red-500"
+                className="text-sm text-[var(--danger)]"
                 role="alert"
                 aria-live="polite"
                 data-testid="bk-error"
@@ -386,8 +374,7 @@ export function PublicBookingPage() {
                   );
                   return sel?.description ? (
                     <p
-                      className="mt-1 text-xs"
-                      style={{ color: '#6b7280' }}
+                      className="mt-1 text-xs text-[var(--text-muted)]"
                     >
                       {sel.description}
                     </p>
@@ -437,7 +424,7 @@ export function PublicBookingPage() {
                 </div>
               ) : slotsError ? (
                 <p
-                  className="text-sm text-red-500"
+                  className="text-sm text-[var(--danger)]"
                   role="alert"
                   aria-live="polite"
                   data-testid="bk-slots-error"
@@ -446,8 +433,7 @@ export function PublicBookingPage() {
                 </p>
               ) : slots.length === 0 ? (
                 <p
-                  className="text-sm"
-                  style={{ color: '#6b7280' }}
+                  className="text-sm text-[var(--text-muted)]"
                   data-testid="bk-slots-empty"
                 >
                   {t('booking.public.no_slots')}
@@ -481,7 +467,7 @@ export function PublicBookingPage() {
                 </div>
               )}
               {selectedSlot && (
-                <p className="mt-2 text-xs" style={{ color: '#6b7280' }}>
+                <p className="mt-2 text-xs text-[var(--text-muted)]">
                   {fmtDateLong(selectedSlot, pageTz)} ·{' '}
                   {fmtTime(selectedSlot, pageTz)}
                 </p>
@@ -493,7 +479,7 @@ export function PublicBookingPage() {
               <>
                 {error && (
                   <p
-                    className="text-sm text-red-500"
+                    className="text-sm text-[var(--danger)]"
                     role="alert"
                     aria-live="polite"
                     data-testid="bk-error"
@@ -581,7 +567,7 @@ export function PublicBookingPage() {
 
                 {error && (
                   <p
-                    className="text-sm text-red-500"
+                    className="text-sm text-[var(--danger)]"
                     role="alert"
                     aria-live="polite"
                     data-testid="bk-error"
@@ -612,8 +598,7 @@ export function PublicBookingPage() {
             )}
 
             <p
-              className="text-center pt-2"
-              style={{ fontSize: 10, color: '#6b7280' }}
+              className="text-center pt-2 text-[10px] text-[var(--text-muted)]"
             >
               Propulsé par <strong>Intralys</strong>
             </p>

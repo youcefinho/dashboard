@@ -35,9 +35,9 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
         className={cn(
           // Baseline Stripe : white surface, thin gray border, radius-xl, shadow-xs, padding 20px
           'rounded-[var(--radius-xl)] border border-[var(--border)] bg-[var(--bg-surface)] shadow-[var(--shadow-xs)] p-5 transition-[box-shadow,transform,border-color] duration-[var(--duration-base)] ease-[var(--ease)]',
-          // Sprint 38 — hover lift -1px CSS-only, shadow-sm, border-strong. Pas de cyan-tinted.
+          // Sprint 38 — hover lift CSS-only + Sprint S5 card-interactive-bump pour -2px lift + shadow-md.
           isInteractive &&
-            'cursor-pointer hover:-translate-y-px hover:shadow-[var(--shadow-sm)] hover:border-[var(--border-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2',
+            'card-interactive-bump focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2',
           className
         )}
         {...props}

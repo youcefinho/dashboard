@@ -47,12 +47,10 @@ export const MessageThread = forwardRef<HTMLDivElement, Props>(({ messages, onRe
 
   return (
     <>
-      {groupMessagesByDay(messages).map(group => (
+      {groupMessagesByDay(messages).map((group, groupIdx) => (
         <div key={group.date}>
-          <div className="flex items-center gap-2 my-3">
-            <div className="flex-1 h-px bg-[var(--border-subtle)]" />
-            <span className="text-[9px] text-[var(--text-muted)] uppercase font-medium">{group.date}</span>
-            <div className="flex-1 h-px bg-[var(--border-subtle)]" />
+          <div className="date-separator" style={{ animationDelay: `${groupIdx * 40}ms` }}>
+            <span className="date-separator-pill">{group.date}</span>
           </div>
           {group.messages.map((msg, i) => {
             const isOut = msg.direction === 'outbound';

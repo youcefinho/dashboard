@@ -200,7 +200,7 @@ export function QuickAddFab() {
             >
               <Icon size={14} strokeWidth={2.25} />
             </span>
-            <kbd className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-[var(--bg-subtle)] border border-[var(--border-subtle)] text-[var(--text-muted)] group-hover:border-[rgba(0,157,219,0.30)] group-hover:text-[var(--primary)] transition-colors">
+            <kbd className="fab-action-kbd-s18">
               {shortcut}
             </kbd>
           </span>
@@ -241,7 +241,7 @@ export function QuickAddFab() {
   };
 
   const fabClassName = [
-    'quick-add-fab',
+    'quick-add-fab quick-add-fab-s18',
     'fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-5 z-40 rounded-full transition-all active:scale-95 cursor-pointer flex items-center justify-center md:bottom-[calc(1.5rem+env(safe-area-inset-bottom))]',
     isShrunk ? 'fab-shrunk w-10 h-10' : 'w-14 h-14 hover:scale-110',
   ].join(' ');
@@ -259,10 +259,6 @@ export function QuickAddFab() {
       onMouseUp={cancelLongPress}
       onMouseLeave={cancelLongPress}
       className={fabClassName}
-      style={{
-        background: 'linear-gradient(135deg, #635BFF 0%, #8B5CF6 100%)',
-        boxShadow: '0 6px 22px -2px rgba(99,91,255,0.50), 0 0 0 4px rgba(99,91,255,0.12), 0 0 28px -4px rgba(139,92,246,0.35)',
-      }}
       aria-label={t('fab.title')}
       title={t('fab.title')}
     >
@@ -302,7 +298,7 @@ export function QuickAddFab() {
               key={id}
               type="button"
               onClick={() => handleFanOutAction(id)}
-              className="fab-fan-out-item pointer-events-auto absolute w-11 h-11 rounded-full flex items-center justify-center"
+              className="fab-fan-out-item fab-fan-item-s18 pointer-events-auto absolute w-11 h-11 rounded-full flex items-center justify-center"
               style={{
                 transform: `translate(${dx}px, ${dy}px)`,
                 background: `color-mix(in srgb, ${color} 92%, white)`,
@@ -347,7 +343,7 @@ export function QuickAddFab() {
               align="end"
               sideOffset={14}
               className="z-[60] w-[300px] p-3 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] shadow-[var(--shadow-lg)] animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95"
-              style={{ boxShadow: '0 1px 2px rgba(15,23,42,0.04), 0 24px 64px -12px rgba(0,157,219,0.20)' }}
+              style={{ boxShadow: '0 1px 2px rgba(15,23,42,0.04), 0 24px 64px -12px rgba(99,91,255,0.12)' }}
             >
               <div className="px-1 pb-2 text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-[0.16em] flex items-center justify-between">
                 <span>{t('fab.title')}</span>

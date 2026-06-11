@@ -63,8 +63,8 @@ export function ChangePasswordPage() {
         highlight={t('auth.change_pw.title')}
         description={t('auth.change_pw.hero_desc')}
       />
-      <div className="max-w-md mx-auto">
-        <Card className="p-6">
+      <div className="max-w-md mx-auto animate-stagger stagger-1">
+        <Card className="p-6 form-section-s4">
 
           {success ? (
             <div className="p-4 bg-[var(--success)]/10 border border-[var(--success)]/30 rounded-[var(--radius-md)] text-sm text-[var(--success)]">
@@ -121,7 +121,7 @@ export function ChangePasswordPage() {
                 success={confirmMatch ? t('auth.change_pw.hint_match') : undefined}
               />
 
-              <Button type="submit" variant="premium" className="w-full" disabled={loading}>
+              <Button type="submit" variant="primary" className="w-full" disabled={loading}>
                 {loading ? t('auth.change_pw.submitting') : t('auth.change_pw.submit')}
               </Button>
             </form>

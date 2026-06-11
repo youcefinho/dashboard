@@ -27,6 +27,18 @@ function timeAgo(dateStr: string): string {
   return t('dashboard.time.days_ago', { n: diffD });
 }
 
+/** Couleur du dot timeline selon le type d'activité (Vague 1B) */
+function dotColorForType(action: string): string {
+  if (action.includes('call') || action.includes('phone')) return '#10B981';
+  if (action.includes('email') || action.includes('sms')) return 'var(--primary)';
+  if (action.includes('note')) return 'var(--text-muted)';
+  if (action.includes('status') || action.includes('update')) return 'var(--warning)';
+  if (action.includes('task')) return '#8B5CF6';
+  if (action.includes('create') || action.includes('add')) return 'var(--success)';
+  if (action.includes('delete') || action.includes('remove')) return 'var(--danger)';
+  return 'var(--text-muted)';
+}
+
 interface DashboardActivityProps {
   isLoading: boolean;
   activities: Array<ActivityLogEntry>;
@@ -36,14 +48,18 @@ interface DashboardActivityProps {
 // ── Composant ────────────────────────────────────────────────
 export function DashboardActivity({ isLoading, activities, onViewAll }: DashboardActivityProps) {
   return (
-    <div className="surface-card p-6 animate-fade-in-up stagger-4">
+    <div className="stripe-card animate-stagger stagger-5" style={{ borderTop: '3px solid var(--primary)' }}>
       {/* En-tête */}
-      <div className="flex items-center justify-between mb-5">
+      <div className="widget-header-s1">
         <h3 className="text-section-title tracking-tight">{t('dashboard.activity.title')}</h3>
+        <button onClick={onViewAll} className="widget-action-btn">
+          {t('dashboard.activity.view_all')} <ArrowRight size={14} />
+        </button>
       </div>
 
-      {/* Liste d'activités */}
-      <div className="space-y-4">
+      {/* Liste d'activités avec timeline */}
+      <div className="activity-timeline-s1">
+        <div className="timeline-line" />
         {isLoading ? (
           Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="skeleton-shimmer h-12 w-full rounded-[var(--radius-md)]" />
@@ -53,10 +69,12 @@ export function DashboardActivity({ isLoading, activities, onViewAll }: Dashboar
             let details: Record<string, string> = {};
             try { details = JSON.parse(activity.details); } catch { /* json invalide */ }
             return (
-              <div key={activity.id} className="activity-row flex gap-3 cursor-pointer rounded-lg px-3 py-2 -mx-3">
-                {/* Timeline dot */}
-                <div className={`timeline-dot ${i === 0 ? 'timeline-dot--active' : ''}`}
-                  style={{ background: i === 0 ? 'var(--primary)' : 'var(--border-strong)', marginTop: '6px' }} />
+              <div key={activity.id} className="activity-item-s1 group">
+                {/* Timeline dot coloré par type */}
+                <div
+                  className={`timeline-dot-s1 ${i === 0 ? 'timeline-dot-s1--active' : ''}`}
+                  style={{ '--dot-color': dotColorForType(activity.action) } as React.CSSProperties}
+                />
 
                 {/* Avatar gradient */}
                 <div
@@ -74,13 +92,20 @@ export function DashboardActivity({ isLoading, activities, onViewAll }: Dashboar
                       {ACTIVITY_LABELS[activity.action as ActivityType] || activity.action}
                     </span>
                   </div>
-                  <div className="text-meta-label mt-0.5" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                  <div className="text-meta-label mt-0.5 t-mono-num">
                     {timeAgo(activity.created_at)} · {details.name || details.email || details.to || ''}
                   </div>
+                  {/* Lien hover — Vague 1B */}
+                  <span
+                    className="text-[11px] font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-200 inline-block mt-0.5"
+                    style={{ color: 'var(--primary)' }}
+                  >
+                    Voir le lead →
+                  </span>
                 </div>
 
-                {/* Flèche slide-in au hover */}
-                <ArrowRight size={14} className="activity-arrow" />
+                {/* Flèche CTA */}
+                <ArrowRight size={14} className="activity-cta-arrow" />
               </div>
             );
           })
@@ -94,7 +119,7 @@ export function DashboardActivity({ isLoading, activities, onViewAll }: Dashboar
       {/* Bouton voir tout */}
       <button
         onClick={onViewAll}
-        className="w-full mt-5 text-xs font-semibold py-2.5 rounded-lg transition-all duration-200 cursor-pointer text-[var(--primary)] border border-[var(--border)] hover:border-[var(--primary)] hover:text-[var(--primary)] hover:shadow-sm press-scale"
+        className="btn-action-ghost-s1 w-full mt-5"
       >
         {t('dashboard.activity.view_all')}
       </button>

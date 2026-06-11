@@ -72,14 +72,8 @@ function Spinner() {
   return (
     <div className="flex justify-center py-10">
       <div
-        style={{
-          width: 28,
-          height: 28,
-          border: '3px solid rgba(99,91,255,0.2)',
-          borderTopColor: '#635BFF',
-          borderRadius: '50%',
-          animation: 'spin 0.8s linear infinite',
-        }}
+        className="w-7 h-7 rounded-full border-[3px] border-[rgba(99,91,255,0.2)] border-t-[var(--primary)]"
+        style={{ animation: 'spin 0.8s linear infinite' }}
       />
     </div>
   );
@@ -263,33 +257,22 @@ export function PublicCheckoutPage() {
 
   const labelClasses = 'mb-1 block text-sm font-medium text-[var(--text-secondary)]';
   const inputClasses =
-    'w-full rounded-lg border border-[var(--border)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)]';
+    'w-full rounded-lg border border-[var(--border)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)] focus:shadow-[0_0_0_3px_var(--primary-ring)]';
 
   // ── Écran de confirmation (calque écran de succès PublicBooking). ──────────
   if (order) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6 bg-[var(--bg-surface)]">
-        <div style={{ maxWidth: 480, width: '100%' }} className="text-center">
+        <div style={{ maxWidth: 480, width: '100%' }} className="text-center animate-stagger stagger-1">
           <div
-            style={{
-              width: 64,
-              height: 64,
-              background: 'var(--success-bg, #ecfdf5)',
-              color: 'var(--success, #10b981)',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto 16px',
-              fontSize: 28,
-            }}
+            className="w-16 h-16 rounded-full bg-[var(--success-soft)] text-[var(--success)] flex items-center justify-center mx-auto mb-4 text-[28px]"
           >
             ✓
           </div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>
+          <h1 className="text-[var(--text-h2)] font-bold mb-2">
             {t('checkout.confirmation')}
           </h1>
-          <p style={{ color: 'var(--text-muted, #6b7280)' }}>
+          <p className="text-[var(--text-muted)]">
             {t('checkout.order_number')} : <strong>{order.order_number}</strong>
           </p>
 
@@ -297,7 +280,7 @@ export function PublicCheckoutPage() {
             <div className="mt-5 rounded-xl border border-[var(--border)] p-4 text-left text-sm">
               {order.items.map((it, i) => (
                 <div key={i} className="flex justify-between py-1">
-                  <span style={{ color: 'var(--text-primary, #374151)' }}>
+                  <span className="text-[var(--text-primary)]">
                     {it.name} × {it.qty}
                   </span>
                   <span className="tabular-nums">{fmtMoney(it.price_cents * it.qty, currency)}</span>
@@ -316,7 +299,7 @@ export function PublicCheckoutPage() {
           >
             {t('store.continue_shopping')}
           </Link>
-          <p className="pt-6" style={{ fontSize: 10, color: 'var(--text-muted, #6b7280)' }}>
+          <p className="pt-6 text-[10px] text-[var(--text-muted)]">
             Propulsé par <strong>Intralys</strong>
           </p>
         </div>
@@ -335,7 +318,7 @@ export function PublicCheckoutPage() {
       </header>
 
       <main className="mx-auto max-w-3xl px-4 py-6" data-store-slug={slug}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 16 }}>{t('checkout.title')}</h1>
+        <h1 className="text-[var(--text-h2)] font-bold mb-4">{t('checkout.title')}</h1>
         <div className="mb-6">
           <CheckoutStepper steps={stepLabels} current={step} />
         </div>
@@ -345,7 +328,7 @@ export function PublicCheckoutPage() {
         ) : !cartHasItems ? (
           // Panier vide (calque store.cart_empty).
           <div className="py-10 text-center">
-            <p className="text-sm" style={{ color: 'var(--text-muted, #6b7280)' }}>
+            <p className="text-sm text-[var(--text-muted)]">
               {t('store.cart_empty')}
             </p>
             <Link
@@ -360,7 +343,7 @@ export function PublicCheckoutPage() {
             {/* Colonne principale : contenu de l'étape */}
             <div>
               {error && (
-                <p className="mb-4 text-sm" style={{ color: 'var(--danger, #dc2626)' }}>
+                <p className="mb-4 text-sm text-[var(--danger)]">
                   {error}
                 </p>
               )}
@@ -584,7 +567,7 @@ export function PublicCheckoutPage() {
           </div>
         )}
 
-        <footer className="py-8 text-center" style={{ fontSize: 10, color: 'var(--text-muted, #6b7280)' }}>
+        <footer className="py-8 text-center text-[10px] text-[var(--text-muted)]">
           Propulsé par <strong>Intralys</strong>
         </footer>
       </main>

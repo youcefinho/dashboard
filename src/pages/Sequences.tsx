@@ -27,6 +27,7 @@ import {
   Skeleton,
   EmptyState,
   Switch,
+  PageHero,
   useToast,
   useConfirm,
 } from '@/components/ui';
@@ -321,19 +322,20 @@ export function SequencesPage() {
   return (
     <AppLayout title={t('seq.title')}>
       <div className="p-6">
-        <div className="flex items-start justify-between gap-4 mb-6">
-          <div>
-            <h1 className="t-h1">{t('seq.title')}</h1>
-            <p className="text-muted">{t('seq.subtitle')}</p>
-          </div>
-          <Button
-            variant="primary"
-            leftIcon={<Icon as={Plus} size="sm" />}
-            onClick={openCreate}
-          >
-            {t('seq.new')}
-          </Button>
-        </div>
+        <PageHero
+          meta={t('seq.title')}
+          title={t('seq.title')}
+          description={t('seq.subtitle')}
+          actions={
+            <Button
+              variant="primary"
+              leftIcon={<Icon as={Plus} size="sm" />}
+              onClick={openCreate}
+            >
+              {t('seq.new')}
+            </Button>
+          }
+        />
 
         {isLoading ? (
           <div
@@ -376,9 +378,9 @@ export function SequencesPage() {
             }
           />
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {sequences.map((seq) => (
-              <Card key={seq.id} className="p-5 flex flex-col gap-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 animate-stagger">
+            {sequences.map((seq, idx) => (
+              <Card key={seq.id} className={`p-5 flex flex-col gap-3 card-interactive-bump stagger-${Math.min(idx + 1, 8)}`}>
                 <div className="flex items-start justify-between gap-2">
                   <button
                     className="text-left font-semibold leading-tight hover:underline"
@@ -403,12 +405,12 @@ export function SequencesPage() {
 
                 <div className="flex items-center gap-4 text-sm text-muted">
                   <span title={t('seq.steps')}>
-                    <Icon as={Mail} size="sm" /> {seq.steps_count ?? 0}{' '}
+                    <Icon as={Mail} size="sm" /> <span className="t-mono-num">{seq.steps_count ?? 0}</span>{' '}
                     {t('seq.steps')}
                   </span>
                   <span title={t('seq.enrolled')}>
                     <Icon as={UserPlus} size="sm" />{' '}
-                    {seq.active_enrollments ?? 0} {t('seq.enrolled')}
+                    <span className="t-mono-num">{seq.active_enrollments ?? 0}</span> {t('seq.enrolled')}
                   </span>
                 </div>
 
@@ -501,7 +503,7 @@ export function SequencesPage() {
                 ).map((s) => (
                   <Card key={s.key} className="p-3">
                     <div className="text-xs text-muted">{t(s.key)}</div>
-                    <div className="text-lg font-semibold leading-tight mt-0.5">
+                    <div className="text-lg font-semibold leading-tight mt-0.5 t-mono-num">
                       {s.value}
                     </div>
                   </Card>

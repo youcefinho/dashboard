@@ -148,15 +148,15 @@ export function LeadTimeline({ lead, notes, appointments, tasks }: LeadTimelineP
   }
 
   return (
-    <div className="relative">
+    <div className="relative activity-timeline-s1">
       {/* Ligne verticale */}
       <div className="absolute left-[14px] top-2 bottom-2 w-px bg-[var(--border-subtle)]" />
 
       <div className="space-y-6">
         {groups.map(([day, items]) => (
           <div key={day}>
-            <h4 className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-3 pl-9 sticky top-0 bg-[var(--bg-surface)] py-1 z-[1]">
-              {day} <span className="ml-1 text-[var(--text-muted)]/70">· {items.length}</span>
+            <h4 className="t-meta text-[var(--text-muted)] mb-3 pl-9 sticky top-0 bg-[var(--bg-surface)] py-1.5 z-[1]">
+              {day} <span className="ml-1 opacity-60">· {items.length}</span>
             </h4>
             <div className="space-y-3">
               {items.map((event, i) => {
@@ -169,11 +169,11 @@ export function LeadTimeline({ lead, notes, appointments, tasks }: LeadTimelineP
                   >
                     {/* Pastille avec icône — glow brand subtil, animation scale-in */}
                     <div
-                      className="relative w-[30px] h-[30px] rounded-full flex items-center justify-center shrink-0 z-[2] border-2 border-[var(--bg-surface)] shadow-sm animate-in zoom-in-50 fade-in-0 duration-300"
+                      className="timeline-dot-s1 relative w-[30px] h-[30px] rounded-full flex items-center justify-center shrink-0 z-[2] border-2 border-[var(--bg-surface)] animate-in zoom-in-50 fade-in-0 duration-300"
                       style={{
-                        background: `color-mix(in srgb, ${event.color} 18%, transparent)`,
+                        background: `color-mix(in srgb, ${event.color} 15%, transparent)`,
                         color: event.color,
-                        boxShadow: `0 0 12px -2px color-mix(in srgb, ${event.color} 35%, transparent)`,
+                        boxShadow: 'var(--shadow-xs)',
                       }}
                     >
                       <UIcon as={EventIconCmp} size="sm" strokeWidth={2.25} />

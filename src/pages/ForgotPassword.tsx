@@ -40,28 +40,29 @@ export function ForgotPasswordPage() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-[var(--bg-canvas)]">
 
-      <div className="w-full max-w-[380px] animate-fade-in">
+      <div className="w-full max-w-[420px] animate-stagger stagger-1">
         {/* Logo — compact 40×40, gradient brand conservé (signature Intralys) */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <div
             className="w-10 h-10 rounded-[var(--radius-lg)] flex items-center justify-center mx-auto mb-4 text-white font-bold text-lg shadow-[var(--shadow-sm)]"
             style={{ background: 'var(--brand-gradient)' }}
           >
             I
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">
-            {t('auth.forgot.title')}
-          </h1>
-          <p className="text-sm text-[var(--text-muted)] mt-1">
-            {t('auth.forgot.desc')}
-          </p>
         </div>
 
-        {/* Card Stripe-clean : bg-surface + border + shadow-lg */}
-        <div className="p-6 rounded-[var(--radius-xl)] bg-[var(--bg-surface)] border border-[var(--border)] shadow-[var(--shadow-lg)]">
+        {/* Card auth Stripe-clean */}
+        <div className="auth-card-s4 animate-stagger stagger-2">
+          <h1 className="auth-title">
+            {t('auth.forgot.title')}
+          </h1>
+          <p className="text-sm text-[var(--text-muted)] text-center mb-6">
+            {t('auth.forgot.desc')}
+          </p>
+
           {success ? (
             <div
-              className="text-center py-4"
+              className="text-center py-4 animate-stagger stagger-3"
               role="status"
               aria-live="polite"
               aria-atomic="true"
@@ -117,7 +118,7 @@ export function ForgotPasswordPage() {
         </div>
 
         {/* Lien retour */}
-        <div className="mt-6 text-center text-sm">
+        <div className="mt-6 text-center text-sm animate-stagger stagger-3">
           <Link to="/login" className="font-medium text-[var(--text-muted)] hover:text-[var(--text-link)] hover:underline">
             {t('auth.forgot.back')}
           </Link>

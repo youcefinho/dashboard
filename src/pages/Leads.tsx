@@ -10,7 +10,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Input } from '@/components/ui/Input';
 import { getLeads, getClients, updateLead, exportLeadsCsv, createLead, restoreLead, aiSummarizeLeads, getAiStatus, getLeadConversionScore, bulkLeads, importLeadsCsv, exportConfigurableCsv, type AiBatchLeadSummary } from '@/lib/api';
 import { STATUS_LABELS, STATUS_COLORS, SOURCE_LABELS, LEAD_STATUSES, type Lead, type LeadStatus, type Client, type SmartList } from '@/lib/types';
-import { Search, X, Download, Upload, Save, LayoutGrid, LayoutList, Map, MoreHorizontal, ArrowUpDown, ChevronUp, ChevronDown, StickyNote, Users, UserPlus, Zap, ExternalLink, Check, Plus, Trash2, Sparkles, Loader2, Flame } from 'lucide-react';
+import { Search, X, Download, Upload, Save, LayoutGrid, LayoutList, Map, MoreHorizontal, ArrowUpDown, ChevronUp, ChevronDown, StickyNote, Users, UserPlus, Zap, ExternalLink, Check, Plus, Trash2, Sparkles, Loader2, Flame, Phone, Mail, Archive } from 'lucide-react';
 import { SwipeAction } from '@/components/ui/SwipeAction';
 import { useLongPress } from '@/hooks/useLongPress';
 import { useToast, useConfirm, usePrompt } from '@/components/ui';
@@ -528,18 +528,18 @@ export function LeadsPage() {
       )}
       {/* Quick stats pills */}
       {/* Pilules KPI rapides */}
-      <div className="flex flex-wrap items-center gap-3 mb-5 animate-fade-in-up stagger-1">
-        <div className="stat-card flex items-center gap-2 !px-3 !py-1.5 !rounded-lg text-xs font-medium hover-lift">
-          <Users size={14} className="text-[var(--primary)]" />
-          <span className="stat-label !text-xs !normal-case !tracking-normal">{leads.length} leads</span>
+      <div className="flex flex-wrap items-center gap-3 mb-5 animate-stagger stagger-1">
+        <div className="stat-card-s1 flex items-center gap-2 !px-3 !py-1.5">
+          <span className="kpi-icon-chip-s1" style={{ background: 'var(--primary-soft)', width: 28, height: 28 }}><Users size={14} className="text-[var(--primary)]" /></span>
+          <span className="text-xs font-medium text-[var(--text-secondary)]" style={{ fontVariantNumeric: 'tabular-nums' }}>{leads.length} leads</span>
         </div>
-        <div className="stat-card flex items-center gap-2 !px-3 !py-1.5 !rounded-lg text-xs font-medium hover-lift">
-          <UserPlus size={14} className="text-[var(--info)]" />
-          <span className="stat-label !text-xs !normal-case !tracking-normal">{newCount} {t('leads.page.kpi_new').toLowerCase()}</span>
+        <div className="stat-card-s1 flex items-center gap-2 !px-3 !py-1.5">
+          <span className="kpi-icon-chip-s1" style={{ background: 'var(--primary-soft)', width: 28, height: 28 }}><UserPlus size={14} className="text-[var(--info)]" /></span>
+          <span className="text-xs font-medium text-[var(--text-secondary)]" style={{ fontVariantNumeric: 'tabular-nums' }}>{newCount} {t('leads.page.kpi_new').toLowerCase()}</span>
         </div>
-        <div className="stat-card flex items-center gap-2 !px-3 !py-1.5 !rounded-lg text-xs font-medium hover-lift">
-          <Zap size={14} className="text-[var(--success)]" />
-          <span className="stat-label !text-xs !normal-case !tracking-normal">{wonCount} {t('leads.page.kpi_won').toLowerCase()}</span>
+        <div className="stat-card-s1 flex items-center gap-2 !px-3 !py-1.5">
+          <span className="kpi-icon-chip-s1" style={{ background: 'var(--success-soft)', width: 28, height: 28 }}><Zap size={14} className="text-[var(--success)]" /></span>
+          <span className="text-xs font-medium text-[var(--text-secondary)]" style={{ fontVariantNumeric: 'tabular-nums' }}>{wonCount} {t('leads.page.kpi_won').toLowerCase()}</span>
         </div>
 
         {/* Sprint 13 — filtre « leads chauds » (proba calibrée ≥ seuil). Affiché
@@ -560,20 +560,20 @@ export function LeadsPage() {
         )}
 
         {/* Segmented control vue */}
-        <div className="segmented-premium ml-auto">
+        <div className="segmented-s1 ml-auto">
           <button onClick={() => setViewMode('table')}
             aria-label={t('leads.page.view_table')} aria-selected={viewMode === 'table'}
-            className={`segmented-premium-item press-scale ${viewMode === 'table' ? 'active' : ''}`}>
+            className={`press-scale ${viewMode === 'table' ? 'active' : ''}`}>
             <LayoutList size={16} />
           </button>
           <button onClick={() => setViewMode('cards')}
             aria-label={t('leads.page.view_cards')} aria-selected={viewMode === 'cards'}
-            className={`segmented-premium-item press-scale ${viewMode === 'cards' ? 'active' : ''}`}>
+            className={`press-scale ${viewMode === 'cards' ? 'active' : ''}`}>
             <LayoutGrid size={16} />
           </button>
           <button onClick={() => setViewMode('map')}
             aria-selected={viewMode === 'map'}
-            className={`segmented-premium-item press-scale ${viewMode === 'map' ? 'active' : ''}`}
+            className={`press-scale ${viewMode === 'map' ? 'active' : ''}`}
             title={t('leads.page.view_map_title')} aria-label={t('leads.page.view_map_title')}>
             <Map size={16} />
           </button>
@@ -581,7 +581,7 @@ export function LeadsPage() {
       </div>
 
       {/* Toolbar filtres */}
-      <Card className="p-4 mb-4 animate-fade-in-up stagger-2">
+      <Card className="p-4 mb-4 animate-stagger stagger-2">
         <div className="flex flex-wrap gap-3">
           <div className="flex-1 min-w-48">
             <Input placeholder={t('leads.search.placeholder')} id="search-all-leads"
@@ -678,7 +678,7 @@ export function LeadsPage() {
         <LeadsMapView leads={sortedLeads} />
       ) : viewMode === 'cards' ? (
         /* ── Vue Cartes ── */
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 animate-fade-in-up stagger-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6 animate-stagger stagger-3">
           {sortedLeads.map(lead => {
             const scoreColor = lead.score >= 70 ? 'var(--success)' : lead.score >= 40 ? 'var(--warning)' : 'var(--danger)';
             const longPressProps = useLongPress(() => openNotes(lead), undefined, { delay: 600 });
@@ -700,7 +700,7 @@ export function LeadsPage() {
               >
                 <div {...longPressProps}>
                   <LeadLink leadId={lead.id}
-                    className={`block relative z-10 p-4 hover-lift press-scale ${lead.score >= 70 ? 'card-premium-hot' : 'surface-card-interactive'}`}>
+                    className={`block relative z-10 p-4 stripe-card hover-lift-stripe press-scale ${lead.score >= 70 ? 'card-premium-hot' : ''}`}>
                 {lead.score >= 70 && (
                   <span className="badge-hot">HOT {lead.score}</span>
                 )}
@@ -716,13 +716,13 @@ export function LeadsPage() {
                 </div>
                 <div className="flex items-center gap-2 mb-2">
                   <Badge color={STATUS_COLORS[lead.status]}>{STATUS_LABELS[lead.status]}</Badge>
-                  {lead.deal_value > 0 && <span className="text-meta-label text-[var(--primary)]">{lead.deal_value.toLocaleString('fr-CA')} $</span>}
+                  {lead.deal_value > 0 && <span className="text-meta-label text-[var(--primary)]" style={{ fontVariantNumeric: 'tabular-nums' }}>{lead.deal_value.toLocaleString('fr-CA')} $</span>}
                 </div>
                 <div className="flex items-center gap-2 mb-2">
-                  <div className="flex-1 h-2 rounded-full bg-[var(--bg-muted)] overflow-hidden">
-                    <div className="h-full rounded-full transition-all duration-500" style={{ width: `${lead.score}%`, background: scoreColor }} />
+                  <div className="score-bar-s1 flex-1">
+                    <div className="score-fill" style={{ width: `${lead.score}%`, background: scoreColor }} />
                   </div>
-                  <span className="text-[10px] font-bold" style={{ color: scoreColor }}>{lead.score}</span>
+                  <span className="text-[10px] font-bold" style={{ color: scoreColor, fontVariantNumeric: 'tabular-nums' }}>{lead.score}</span>
                   {/* Sprint 13 — badge proba conversion calibrée (best-effort) */}
                   {proba !== undefined && (
                     <span
@@ -753,10 +753,10 @@ export function LeadsPage() {
           })}
         </div>
       ) : (
-        <Card className="overflow-hidden p-0 animate-fade-in-up stagger-3">
+        <Card className="overflow-hidden p-0 animate-stagger stagger-3">
           {/* Bulk bar */}
           {selectedIds.size > 0 && (
-            <div className="px-4 py-2.5 bg-[var(--brand-tint)] border-b border-[var(--primary)]/20 flex items-center gap-3 animate-slide-down">
+            <div className="px-4 py-2.5 bg-[var(--primary-soft)] border-b border-[var(--primary)]/20 flex items-center gap-3 animate-slide-down">
               <span className="text-xs font-semibold text-[var(--primary)]">{selectedIds.size} sélectionné(s)</span>
               <Select size="sm" onChange={(e) => { if (e.target.value) void bulkChangeStatus(e.target.value as LeadStatus); e.target.value = ''; }}>
                 <option value="">{t('leads.page.bulk_change_status')}</option>
@@ -796,18 +796,17 @@ export function LeadsPage() {
                     <span className="inline-flex items-center gap-1">{t('leads.table.date')} <SortIcon col="created_at" /></span>
                   </th>
                   <th className="table-header-cell w-16"></th>
+                  <th className="table-header-cell w-28"></th>
                 </tr>
               </thead>
               <tbody>
                 {sortedLeads.map((lead, index) => {
-                  const scoreColor = lead.score >= 70 ? 'var(--success)' : lead.score >= 40 ? 'var(--warning)' : 'var(--danger)';
                   const isHot = lead.score >= 70;
                   const proba = convProba[lead.id];
                   return (
                     <tr key={lead.id}
-                      className={`border-b border-[var(--border-subtle)] row-hover-reveal relative ${
-                        selectedIds.has(lead.id) ? 'bg-[var(--brand-tint)]' :
-                        isHot ? 'hover:bg-[var(--primary-soft)]' : ''
+                      className={`border-b border-[var(--border-subtle)] row-hover-reveal relative transition-colors duration-150 ${
+                        selectedIds.has(lead.id) ? 'bg-[var(--primary-soft)]' : 'hover:bg-[var(--bg-subtle)]'
                       }`}
                       style={{
                         animationDelay: `${Math.min(index, 20) * 20}ms`,
@@ -853,31 +852,52 @@ export function LeadsPage() {
                         </Select>
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-16 h-2 rounded-full bg-[var(--bg-muted)] overflow-hidden">
-                            <div className="h-full rounded-full transition-all duration-500" style={{ width: `${lead.score}%`, background: scoreColor }} />
+                        <div className="flex items-center gap-2">
+                          <div className="score-circle-wrap">
+                            <svg viewBox="0 0 36 36" className="w-9 h-9">
+                              <circle className="score-circle-bg" cx="18" cy="18" r="15.5" />
+                              <circle
+                                className="score-circle-fill"
+                                cx="18" cy="18" r="15.5"
+                                stroke={lead.score >= 70 ? 'var(--success)' : lead.score >= 40 ? 'var(--warning)' : 'var(--danger)'}
+                                strokeDasharray={`${((lead.score ?? 0) / 100) * 97.4} 97.4`}
+                              />
+                              <text className="score-circle-text" x="18" y="18">{lead.score ?? 0}</text>
+                            </svg>
                           </div>
-                          <span className="text-meta-label w-5 text-right" style={{ color: scoreColor }}>{lead.score}</span>
+                          {/* Sprint 13 — badge proba de conversion calibrée (best-effort) */}
+                          {proba !== undefined && (
+                            <span
+                              title={t('conversion.probability')}
+                              className="inline-flex items-center gap-1 px-1.5 h-[16px] rounded-full text-[9px] font-semibold tabular-nums"
+                              style={{
+                                background: proba >= HOT_THRESHOLD ? 'color-mix(in oklch, var(--accent-orange) 14%, transparent)' : 'var(--bg-muted)',
+                                color: proba >= HOT_THRESHOLD ? 'var(--accent-orange)' : 'var(--text-muted)',
+                              }}>
+                              {proba >= HOT_THRESHOLD && <Flame size={9} />}
+                              {Math.round(proba)}%
+                            </span>
+                          )}
                         </div>
-                        {/* Sprint 13 — badge proba de conversion calibrée (best-effort) */}
-                        {proba !== undefined && (
-                          <span
-                            title={t('conversion.probability')}
-                            className="inline-flex items-center gap-1 mt-1 px-1.5 h-[16px] rounded-full text-[9px] font-semibold tabular-nums"
-                            style={{
-                              background: proba >= HOT_THRESHOLD ? 'color-mix(in oklch, var(--accent-orange) 14%, transparent)' : 'var(--bg-muted)',
-                              color: proba >= HOT_THRESHOLD ? 'var(--accent-orange)' : 'var(--text-muted)',
-                            }}>
-                            {proba >= HOT_THRESHOLD && <Flame size={9} />}
-                            {Math.round(proba)}%
-                          </span>
-                        )}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap"><span className="text-meta-label">{timeAgo(lead.created_at)}</span></td>
                       <td className="px-4 py-3">
                         <button onClick={() => openNotes(lead)} className="p-1.5 rounded-[var(--radius-xs)] text-[var(--text-muted)] hover:bg-[var(--bg-subtle)] hover:text-[var(--primary)] transition-colors cursor-pointer reveal-on-hover" title={t('leads.page.expand_notes')} aria-label={t('leads.page.expand_notes')}>
                           {lead.notes ? <StickyNote size={14} /> : <MoreHorizontal size={14} />}
                         </button>
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="lead-row-actions">
+                          <button className="lead-row-action-btn" title="Appeler" aria-label="Appeler" onClick={e => e.stopPropagation()}>
+                            <Phone size={14} />
+                          </button>
+                          <button className="lead-row-action-btn" title="Email" aria-label="Envoyer un email" onClick={e => e.stopPropagation()}>
+                            <Mail size={14} />
+                          </button>
+                          <button className="lead-row-action-btn" title="Archiver" aria-label="Archiver" onClick={e => e.stopPropagation()}>
+                            <Archive size={14} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

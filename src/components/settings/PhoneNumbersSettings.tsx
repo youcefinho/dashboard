@@ -273,9 +273,9 @@ export function PhoneNumbersSettings() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-stagger">
       {/* SECTION RECHERCHE / ACHAT */}
-      <Card className="p-6">
+      <Card className="p-6 form-section-s4">
         <header className="mb-4">
           <h3 className="text-lg font-bold text-[var(--text-primary)] flex items-center gap-2">
             <Icon as={Phone} size={18} className="text-[var(--primary)]" />
@@ -310,7 +310,7 @@ export function PhoneNumbersSettings() {
             </h4>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {availableNumbers.map((num) => (
-                <div key={num.phone_number} className="flex items-center justify-between p-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)]">
+                <div key={num.phone_number} className="flex items-center justify-between p-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] table-row-hover">
                   <div>
                     <p className="text-sm font-semibold">{num.friendly_name}</p>
                     <p className="text-[10px] text-[var(--text-muted)]">{num.rate_center}, {num.region}</p>
@@ -333,7 +333,7 @@ export function PhoneNumbersSettings() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Colonne gauche : Liste des numéros provisionnés */}
         <div className="lg:col-span-5 space-y-4">
-          <Card className="p-5">
+          <Card className="p-5 form-section-s4">
             <h3 className="text-sm font-bold text-[var(--text-primary)] uppercase tracking-wider mb-4">
               Numéros configurés
             </h3>

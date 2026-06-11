@@ -1,6 +1,6 @@
 import { useRef, useState, useMemo, useEffect } from 'react';
 import { Button, AiSparkles, Textarea, Icon, AiLoadingShimmer } from '@/components/ui';
-import { Send, FileText, Variable, AlertTriangle, Sparkles, Reply, X as XIcon, Clock } from 'lucide-react';
+import { Send, FileText, Variable, AlertTriangle, Sparkles, Reply, X as XIcon, Clock, Bold, Italic, Link2, Smile } from 'lucide-react';
 import type { MessageChannel, Snippet, EmailTemplate, Lead } from '@/lib/types';
 import { CHANNEL_LABELS } from '@/lib/types';
 import { interpolateTemplate } from '@/lib/api';
@@ -581,21 +581,21 @@ export function MessageComposer({
 
   // ── Premium picker style (réutilisé pour snippets + templates + vars) ──
   const pickerWrapStyle: React.CSSProperties = {
-    background: 'linear-gradient(135deg, rgba(255,255,255,0.92) 0%, rgba(240,250,254,0.92) 100%)',
-    backdropFilter: 'blur(14px) saturate(170%)',
-    WebkitBackdropFilter: 'blur(14px) saturate(170%)',
-    border: '1px solid rgba(0,157,219,0.18)',
-    boxShadow: '0 16px 48px -12px rgba(0,157,219,0.25), 0 4px 14px -4px rgba(15,23,42,0.08)',
+    background: 'var(--bg-surface, #fff)',
+    backdropFilter: 'blur(12px) saturate(140%)',
+    WebkitBackdropFilter: 'blur(12px) saturate(140%)',
+    border: '1px solid var(--border)',
+    boxShadow: 'var(--shadow-md, 0 8px 32px -8px rgba(0,0,0,0.12))',
   };
 
   const pickerHeaderStyle: React.CSSProperties = {
-    background: 'linear-gradient(90deg, rgba(0,157,219,0.10) 0%, rgba(217,110,39,0.06) 100%)',
-    borderBottom: '1px solid rgba(0,157,219,0.15)',
-    letterSpacing: '0.18em',
+    background: 'var(--bg-subtle, #F6F8FA)',
+    borderBottom: '1px solid var(--border)',
+    letterSpacing: '0.12em',
   };
 
   return (
-    <div className="border-t border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3 relative">
+    <div className="composer-glass-s9 border-t border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3 relative">
       {/* Sélecteur de canal / mode Note interne */}
       <div className="flex items-center gap-1 border-b border-[var(--border-subtle)] pb-2 mb-2 text-xs">
         <button
@@ -696,8 +696,8 @@ export function MessageComposer({
                 onClick={() => applySnippet(s)}
                 className={`w-full text-left px-3 py-2 flex flex-col gap-0.5 transition-colors list-item-enter ${
                   i === 0
-                    ? 'bg-[rgba(0,157,219,0.08)] border-l-2 border-[var(--primary)]'
-                    : 'hover:bg-[rgba(0,157,219,0.05)] border-l-2 border-transparent'
+                    ? 'bg-[var(--primary-soft)] border-l-2 border-[var(--primary)]'
+                    : 'hover:bg-[var(--bg-hover)] border-l-2 border-transparent'
                 }`}
                 style={{ animationDelay: `${i * 20}ms` }}
               >
@@ -707,10 +707,9 @@ export function MessageComposer({
                     <span
                       className="text-[10px] font-mono px-1.5 py-0.5 rounded"
                       style={{
-                        background:
-                          'linear-gradient(135deg, rgba(0,157,219,0.14) 0%, rgba(217,110,39,0.10) 100%)',
+                        background: 'var(--primary-soft)',
                         color: 'var(--primary)',
-                        border: '1px solid rgba(0,157,219,0.25)',
+                        border: '1px solid rgba(99, 91, 255, 0.20)',
                       }}
                     >
                       /{s.shortcut}
@@ -748,8 +747,8 @@ export function MessageComposer({
                   onClick={() => applyVar(v.key)}
                   className={`w-full text-left px-3 py-2 flex flex-col gap-0.5 transition-colors list-item-enter ${
                     i === 0
-                      ? 'bg-[rgba(0,157,219,0.08)] border-l-2 border-[var(--primary)]'
-                      : 'hover:bg-[rgba(0,157,219,0.05)] border-l-2 border-transparent'
+                      ? 'bg-[var(--primary-soft)] border-l-2 border-[var(--primary)]'
+                      : 'hover:bg-[var(--bg-hover)] border-l-2 border-transparent'
                   }`}
                   style={{ animationDelay: `${i * 20}ms` }}
                 >
@@ -799,7 +798,7 @@ export function MessageComposer({
                 <button
                   key={t.id}
                   onClick={() => void applyTemplate(t)}
-                  className="w-full text-left px-3 py-2 text-xs font-medium text-[var(--text-primary)] truncate hover:bg-[rgba(0,157,219,0.06)] transition-colors list-item-enter"
+                  className="w-full text-left px-3 py-2 text-xs font-medium text-[var(--text-primary)] truncate hover:bg-[var(--bg-hover)] transition-colors list-item-enter"
                   style={{ animationDelay: `${i * 20}ms` }}
                 >
                   {t.name}
@@ -1015,6 +1014,25 @@ export function MessageComposer({
           </button>
         </div>
         <div className="flex-1 relative composer-wrap">
+          {/* ── Sprint Deep 4A — Toolbar de formatage ── */}
+          <div className="composer-toolbar">
+            <button type="button" className="composer-toolbar-btn" title="Gras" aria-label="Mettre en gras">
+              <Bold size={15} />
+            </button>
+            <button type="button" className="composer-toolbar-btn" title="Italique" aria-label="Mettre en italique">
+              <Italic size={15} />
+            </button>
+            <button type="button" className="composer-toolbar-btn" title="Lien" aria-label="Insérer un lien">
+              <Link2 size={15} />
+            </button>
+            <div style={{ width: 1, height: 20, background: 'var(--border)', margin: '0 4px' }} />
+            <button type="button" className="composer-toolbar-btn" title="Emoji" aria-label="Insérer un emoji">
+              <Smile size={15} />
+            </button>
+            <button type="button" className="composer-toolbar-btn" title="Brouillon IA" aria-label="Générer un brouillon IA">
+              <Sparkles size={15} />
+            </button>
+          </div>
           <Textarea
             ref={inputRef}
             value={composerText}
@@ -1031,6 +1049,13 @@ export function MessageComposer({
                 : 'text-[var(--text-primary)]'
             }`}
           />
+          {/* ── Sprint Deep 4A — Barre de progression caractères ── */}
+          <div className="char-count-bar">
+            <div
+              className={`char-count-bar-fill${composerText.length > 1800 ? ' is-danger' : composerText.length > 1400 ? ' is-warning' : ''}`}
+              style={{ width: `${Math.min((composerText.length / 2000) * 100, 100)}%` }}
+            />
+          </div>
           {/* ── Sprint 49 M1.3 — Proofread underline overlay (non-intrusif) ── */}
           {proofIssues.length > 0 && (
             <ProofreadOverlay

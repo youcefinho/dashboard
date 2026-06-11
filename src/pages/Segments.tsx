@@ -24,6 +24,7 @@ import {
   Switch,
   FilterChip,
   SlidePanel,
+  PageHero,
   useToast,
   useConfirm,
 } from '@/components/ui';
@@ -339,19 +340,20 @@ export function SegmentsPage() {
   return (
     <AppLayout title={t('segment.title')}>
       <div className="p-6">
-        <div className="flex items-start justify-between gap-4 mb-6">
-          <div>
-            <h1 className="t-h1">{t('segment.title')}</h1>
-            <p className="text-muted">{t('segment.subtitle')}</p>
-          </div>
-          <Button
-            variant="primary"
-            leftIcon={<Icon as={Plus} size="sm" />}
-            onClick={openCreate}
-          >
-            {t('segment.new')}
-          </Button>
-        </div>
+        <PageHero
+          meta={t('segment.title')}
+          title={t('segment.title')}
+          description={t('segment.subtitle')}
+          actions={
+            <Button
+              variant="primary"
+              leftIcon={<Icon as={Plus} size="sm" />}
+              onClick={openCreate}
+            >
+              {t('segment.new')}
+            </Button>
+          }
+        />
 
         {loadError && !isLoading && (
           <div
@@ -391,9 +393,9 @@ export function SegmentsPage() {
             }
           />
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {segments.map((seg) => (
-              <Card key={seg.id} className="p-5 flex flex-col gap-3 segment-card">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 animate-stagger">
+            {segments.map((seg, idx) => (
+              <Card key={seg.id} className={`p-5 flex flex-col gap-3 segment-card card-interactive-bump stagger-${Math.min(idx + 1, 8)}`}>
                 <div className="flex items-start justify-between gap-2">
                   <button
                     className="text-left font-semibold leading-tight hover:underline"
@@ -402,13 +404,13 @@ export function SegmentsPage() {
                     {seg.name}
                   </button>
                   <Tag variant="neutral" size="sm">
-                    <Icon as={Users} size="sm" /> {seg.cached_count ?? 0}
+                    <Icon as={Users} size="sm" /> <span className="t-mono-num">{seg.cached_count ?? 0}</span>
                   </Tag>
                 </div>
 
                 <div className="text-xs text-muted">
                   {t('segment.members_count')}:{' '}
-                  <strong>{seg.cached_count ?? 0}</strong>
+                  <strong className="t-mono-num">{seg.cached_count ?? 0}</strong>
                   {seg.cached_at ? (
                     <span className="ml-2">
                       {formatDateTime(seg.cached_at, getLocale())}

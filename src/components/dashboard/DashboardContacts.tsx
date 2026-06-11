@@ -1,4 +1,4 @@
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Phone, Mail, ExternalLink } from 'lucide-react';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { t } from '@/lib/i18n';
 import { STATUS_LABELS, STATUS_COLORS, type Lead } from '@/lib/types';
@@ -46,9 +46,9 @@ export function DashboardContacts({
   onLeadClick,
 }: DashboardContactsProps) {
   return (
-    <div className="surface-card mb-8 animate-fade-in-up stagger-6" style={{ borderTop: '3px solid var(--primary)' }}>
+    <div className="stripe-card mb-8 animate-stagger stagger-7" style={{ borderTop: '3px solid var(--primary)', padding: 0 }}>
       {/* En-tête */}
-      <div className="surface-section px-4 sm:px-6 py-4 flex items-center justify-between border-b border-[var(--border)]">
+      <div className="widget-header-s1 px-4 sm:px-6 py-4 border-b border-[var(--border)]">
         <div>
           <h3 className="text-section-title">
             {t('dashboard.contacts.title')}
@@ -60,7 +60,7 @@ export function DashboardContacts({
         <div className="flex items-center gap-2">
           <button
             onClick={onViewAll}
-            className="h-8 px-4 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all duration-200 cursor-pointer border border-[var(--border)] text-[var(--primary)] hover:border-[var(--primary)] hover:bg-[var(--primary-soft)] hover:shadow-sm press-scale"
+            className="widget-action-btn"
           >
             {t('dashboard.contacts.view_all')} <ArrowRight size={14} />
           </button>
@@ -92,7 +92,7 @@ export function DashboardContacts({
               return (
                 <div
                   key={lead.id}
-                  className="row-hover-reveal px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-[var(--bg-subtle)] transition"
+                  className="contact-row-s1"
                   style={{
                     borderTop:
                       i === 0 ? 'none' : '1px solid var(--border-subtle)',
@@ -135,16 +135,16 @@ export function DashboardContacts({
                             : lead.source || t('dashboard.source.direct')}
                       </span>
                       <span>·</span>
-                      <span style={{ fontVariantNumeric: 'tabular-nums' }}>
+                      <span className="t-mono-num">
                         {lead.deal_value
                           ? `${(lead.deal_value / 1000).toFixed(0)}k$`
                           : '—'}
                       </span>
                       <span>·</span>
                       <span
+                        className="t-mono-num"
                         style={{
                           color: scoreColor,
-                          fontVariantNumeric: 'tabular-nums',
                         }}
                       >
                         Score {score}
@@ -210,7 +210,7 @@ export function DashboardContacts({
                 return (
                   <tr
                     key={lead.id}
-                    className="row-hover-reveal transition cursor-pointer hover:bg-[var(--bg-subtle)]"
+                    className="row-hover-reveal transition cursor-pointer hover:bg-[var(--bg-subtle)] group"
                     style={{ borderTop: '1px solid var(--border-subtle)' }}
                     onClick={() => onLeadClick(lead.id)}
                   >
@@ -264,8 +264,7 @@ export function DashboardContacts({
                     </td>
                     {/* Valeur */}
                     <td
-                      className="px-4 py-3 text-right text-sm font-semibold"
-                      style={{ fontVariantNumeric: 'tabular-nums' }}
+                      className="px-4 py-3 text-right text-sm font-semibold t-mono-num"
                     >
                       {lead.deal_value ? (
                         `${(lead.deal_value / 1000).toFixed(0)}k$`
@@ -276,12 +275,9 @@ export function DashboardContacts({
                     {/* Score */}
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <div
-                          className="w-16 h-2 rounded-full overflow-hidden"
-                          style={{ background: 'var(--bg-muted)' }}
-                        >
+                        <div className="score-bar-s1">
                           <div
-                            className="h-full rounded-full transition-all duration-500"
+                            className="score-fill"
                             style={{
                               background: scoreColor,
                               width: `${score}%`,
@@ -289,19 +285,56 @@ export function DashboardContacts({
                           />
                         </div>
                         <span
-                          className="text-xs font-medium"
-                          style={{ fontVariantNumeric: 'tabular-nums', color: scoreColor }}
+                          className="text-xs font-medium t-mono-num"
+                          style={{ color: scoreColor }}
                         >
                           {score}
                         </span>
                       </div>
                     </td>
-                    {/* Activité */}
-                    <td
-                      className="px-6 py-3 text-right text-xs"
-                      style={{ color: 'var(--text-muted)' }}
-                    >
-                      {timeAgo(lead.created_at)}
+                    {/* Activité + Actions hover — Vague 1B */}
+                    <td className="px-6 py-3 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <span
+                          className="text-xs t-mono-num"
+                          style={{ color: 'var(--text-muted)' }}
+                        >
+                          {timeAgo(lead.created_at)}
+                        </span>
+                        {/* Boutons d'action — apparaissent au hover */}
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                          <button
+                            type="button"
+                            className="p-1.5 rounded-md hover:bg-[var(--bg-hover)] transition-colors"
+                            style={{ color: 'var(--text-secondary)' }}
+                            onClick={(e) => { e.stopPropagation(); }}
+                            aria-label="Téléphoner"
+                            title="Téléphoner"
+                          >
+                            <Phone size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            className="p-1.5 rounded-md hover:bg-[var(--bg-hover)] transition-colors"
+                            style={{ color: 'var(--text-secondary)' }}
+                            onClick={(e) => { e.stopPropagation(); }}
+                            aria-label="Envoyer un email"
+                            title="Envoyer un email"
+                          >
+                            <Mail size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            className="p-1.5 rounded-md hover:bg-[var(--bg-hover)] transition-colors"
+                            style={{ color: 'var(--text-secondary)' }}
+                            onClick={(e) => { e.stopPropagation(); }}
+                            aria-label="Voir la fiche"
+                            title="Voir la fiche"
+                          >
+                            <ExternalLink size={14} />
+                          </button>
+                        </div>
+                      </div>
                     </td>
                   </tr>
                 );

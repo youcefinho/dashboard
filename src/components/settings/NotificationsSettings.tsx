@@ -207,7 +207,7 @@ export function NotificationsSettings() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-stagger">
       <KpiStrip
         items={[
           { label: t('set.notif.enabled_label'), value: kpis.enabled, color: 'brand', icon: <Bell size={12} /> },
@@ -220,7 +220,7 @@ export function NotificationsSettings() {
         ]}
       />
 
-      <Card className="settings-card p-6 relative">
+      <Card className="settings-card p-6 relative form-section-s4">
         <div className="settings-autosave-slot">
           <AutosaveIndicator state={autosaveState} lastSaved={lastSaved} onRetry={retrySave} />
         </div>
@@ -305,7 +305,7 @@ function SensorialFeedbackSection() {
   const lockedByReducedMotion = sound.reducedMotion || haptic.reducedMotion;
 
   return (
-    <Card className="settings-card p-6">
+    <Card className="settings-card p-6 form-section-s4">
       <header className="settings-section-header">
         <h3 className="t-h3 flex items-center gap-2">
           <UIcon as={Volume2} size={16} className="text-[var(--primary)]" />

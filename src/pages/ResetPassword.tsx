@@ -42,48 +42,37 @@ export function ResetPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-center items-center p-4 relative overflow-hidden"
-      style={{ background: 'linear-gradient(135deg, #FFFFFF 0%, #FAFBFC 35%, #F0FAFE 70%, #FFE9D6 100%)' }}>
-      <div className="hero-stat-orb absolute w-[500px] h-[500px] rounded-full -top-48 -right-48 pointer-events-none"
-        style={{ background: 'radial-gradient(circle, rgba(99,91,255,0.28) 0%, transparent 70%)', filter: 'blur(60px)' }} />
-      <div className="hero-stat-orb absolute w-[400px] h-[400px] rounded-full -bottom-32 -left-32 pointer-events-none"
-        style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.25) 0%, transparent 70%)', filter: 'blur(60px)', animationDelay: '3s' }} />
+    <div className="min-h-screen flex items-center justify-center p-4 bg-[var(--bg-canvas)]">
 
-      <div className="w-full max-w-md relative z-10">
-        <div className="text-center mb-8">
-          <div className="relative w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
-            style={{
-              background: 'var(--primary)',
-              boxShadow: '0 8px 32px rgba(99,91,255,0.45)',
-              animation: 'hot-lead-pulse 3s ease-in-out infinite',
-            }}>
-            <span className="text-white font-bold text-2xl">I</span>
+      <div className="w-full max-w-[420px] animate-stagger stagger-1">
+        {/* Logo compact Stripe-clean */}
+        <div className="text-center mb-6">
+          <div
+            className="w-10 h-10 rounded-[var(--radius-lg)] flex items-center justify-center mx-auto mb-4 text-white font-bold text-lg shadow-[var(--shadow-sm)]"
+            style={{ background: 'var(--brand-gradient)' }}
+          >
+            I
           </div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            <span className="text-gradient-brand">{t('auth.reset.title')}</span>
-          </h1>
-          <p className="text-sm text-[var(--text-secondary)] mt-2">
-            {t('auth.reset.desc')}
-          </p>
         </div>
 
-        <div className="p-6 md:p-7 rounded-2xl"
-          style={{
-            background: 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.85) 100%)',
-            backdropFilter: 'blur(16px) saturate(160%)',
-            WebkitBackdropFilter: 'blur(16px) saturate(160%)',
-            border: '1px solid rgba(255,255,255,0.6)',
-            boxShadow: '0 1px 2px rgba(15,23,42,0.04), 0 24px 64px -12px rgba(99,91,255,0.18)',
-          }}>
+        {/* Card auth Stripe-clean */}
+        <div className="auth-card-s4 animate-stagger stagger-2">
+          <h1 className="auth-title">
+            {t('auth.reset.title')}
+          </h1>
+          <p className="text-sm text-[var(--text-muted)] text-center mb-6">
+            {t('auth.reset.desc')}
+          </p>
+
           {success ? (
             <div
-              className="text-center py-4"
+              className="text-center py-4 animate-stagger stagger-3"
               role="status"
               aria-live="polite"
               aria-atomic="true"
               aria-label={t('auth.reset.aria.success')}
             >
-              <div className="w-12 h-12 rounded-full bg-[var(--success-subtle)] text-[var(--success)] flex items-center justify-center mx-auto mb-4" aria-hidden="true">
+              <div className="w-12 h-12 rounded-full bg-[var(--success-soft)] text-[var(--success)] flex items-center justify-center mx-auto mb-4" aria-hidden="true">
                 ✓
               </div>
               <h3 className="text-lg font-medium text-[var(--text-primary)] mb-2">{t('auth.reset.success_title')}</h3>
@@ -91,7 +80,7 @@ export function ResetPasswordPage() {
                 {t('auth.reset.success_desc')}
               </p>
               <Link to="/login" className="block w-full">
-                <Button className="w-full">{t('auth.reset.signin')}</Button>
+                <Button variant="primary" className="w-full">{t('auth.reset.signin')}</Button>
               </Link>
             </div>
           ) : (
@@ -103,7 +92,7 @@ export function ResetPasswordPage() {
             >
               {error && (
                 <div
-                  className="p-3 text-sm text-[var(--danger)] bg-[var(--danger-subtle)] border border-[var(--danger-border)] rounded-lg"
+                  className="p-3 rounded-[var(--radius-md)] bg-[var(--danger-soft)] border border-[color-mix(in_oklch,var(--danger)_30%,transparent)] text-sm text-[var(--danger-text)] animate-fade-in"
                   role="alert"
                   aria-live="assertive"
                   aria-atomic="true"
@@ -133,12 +122,16 @@ export function ResetPasswordPage() {
                 </p>
               </div>
 
-              <Button type="submit" variant="premium" className="w-full mt-2" disabled={loading || !token}>
+              <Button type="submit" variant="primary" className="w-full mt-2" disabled={loading || !token}>
                 {loading ? t('auth.reset.submitting') : t('auth.reset.submit')}
               </Button>
             </form>
           )}
         </div>
+
+        <p className="text-center text-xs text-[var(--text-muted)] mt-4 animate-stagger stagger-3">
+          {t('login.copyright', { year: new Date().getFullYear() })}
+        </p>
       </div>
     </div>
   );

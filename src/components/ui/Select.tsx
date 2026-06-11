@@ -130,12 +130,12 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           >
             {children}
           </select>
-          {/* Chevron subtle gray-500 */}
+          {/* Sprint S10 — chevron transition couleur focus */}
           <span
             aria-hidden
             className={cn(
-              'absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none z-10',
-              disabled ? 'text-[var(--text-muted)] opacity-60' : 'text-[var(--text-muted)]',
+              'absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none z-10 transition-colors duration-150',
+              disabled ? 'text-[var(--text-muted)] opacity-60' : 'text-[var(--text-muted)] group-focus-within:text-[var(--primary)]',
             )}
           >
             <Icon as={ChevronDown} size={14} />

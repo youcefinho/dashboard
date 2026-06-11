@@ -22,129 +22,53 @@ export function OfflineFallback() {
 
   return (
     <div
-      className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden px-6 py-12 text-center"
-      style={{
-        background:
-          'linear-gradient(135deg, #FFFFFF 0%, #FAFBFC 50%, #F0FAFE 100%)',
-      }}
+      className="min-h-screen flex flex-col items-center justify-center px-6 py-12 text-center bg-[var(--bg-canvas)]"
     >
-      {/* Orb #1 — cyan top-left */}
-      <div
-        aria-hidden
-        className="hero-stat-orb absolute -top-32 left-1/4 w-[420px] h-[420px] rounded-full pointer-events-none"
-        style={{
-          background:
-            'radial-gradient(circle, rgba(99,91,255,0.28) 0%, rgba(99,91,255,0.08) 50%, transparent 80%)',
-          filter: 'blur(70px)',
-        }}
-      />
-      {/* Orb #2 — orange bottom-right */}
-      <div
-        aria-hidden
-        className="hero-stat-orb absolute -bottom-32 right-1/4 w-[380px] h-[380px] rounded-full pointer-events-none"
-        style={{
-          background:
-            'radial-gradient(circle, rgba(139,92,246,0.22) 0%, rgba(139,92,246,0.06) 50%, transparent 80%)',
-          filter: 'blur(70px)',
-          animationDelay: '4s',
-        }}
-      />
-
-      {/* WifiOff XL avec halo pulse */}
-      <div className="relative mb-7">
-        <div
-          aria-hidden
-          className="absolute inset-0 rounded-3xl pointer-events-none"
-          style={{
-            background:
-              'radial-gradient(circle, rgba(99,91,255,0.40) 0%, rgba(139,92,246,0.22) 50%, transparent 80%)',
-            filter: 'blur(28px)',
-            transform: 'scale(1.8)',
-            animation: 'hot-lead-pulse 3.5s ease-in-out infinite',
-          }}
-        />
-        <div
-          className="relative w-[104px] h-[104px] rounded-3xl flex items-center justify-center"
-          style={{
-            background:
-              'linear-gradient(135deg, #635BFF 0%, #7C6AFF 50%, #8B5CF6 100%)',
-            boxShadow:
-              '0 8px 32px -6px rgba(99,91,255,0.55), 0 0 40px -8px rgba(139,92,246,0.40), inset 0 1px 0 rgba(255,255,255,0.25)',
-          }}
-        >
+      {/* Section principale — empty-state-premium-s4 */}
+      <div className="empty-state-premium-s4 animate-stagger stagger-1">
+        {/* Icône WifiOff dans un ring subtil */}
+        <div className="empty-icon-ring">
           <WifiOff
-            size={52}
-            className="text-white"
-            strokeWidth={2.2}
-            style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.18))' }}
+            size={36}
+            strokeWidth={1.75}
           />
         </div>
+
+        <p className="t-meta text-[var(--primary)] mb-1">
+          Mode hors ligne
+        </p>
+
+        <h3>
+          Pas de connexion internet
+        </h3>
+
+        <p>
+          Cette page n'a pas été mise en cache et nécessite une connexion. Vérifiez votre
+          réseau WiFi ou cellulaire, puis réessayez.
+        </p>
+
+        <button
+          onClick={handleRetry}
+          className="inline-flex items-center gap-2 h-10 px-5 text-sm font-semibold rounded-[var(--radius-lg)] text-white bg-[var(--primary)] hover:bg-[var(--primary-hover)] active:scale-[0.98] transition-all cursor-pointer shadow-[var(--shadow-sm)] mt-2"
+        >
+          <Icon as={RefreshCcw} size="md" strokeWidth={2} />
+          {t('offline.retry')}
+        </button>
       </div>
 
-      <p
-        className="relative text-[10px] font-bold uppercase tracking-[0.18em] mb-2"
-        style={{
-          background: 'linear-gradient(135deg, #635BFF 0%, #8B5CF6 100%)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          backgroundClip: 'text',
-        }}
-      >
-        Mode hors ligne
-      </p>
-
-      <h1 className="relative text-3xl font-bold tracking-tight text-[var(--text-primary)] mb-3 max-w-2xl">
-        <span className="text-gradient-brand">Pas de connexion</span> internet
-      </h1>
-
-      <p className="relative text-sm text-[var(--text-secondary)] max-w-md mb-8 leading-relaxed">
-        Cette page n'a pas été mise en cache et nécessite une connexion. Vérifiez votre
-        réseau WiFi ou cellulaire, puis réessayez. Vos modifications faites hors ligne
-        seront synchronisées automatiquement.
-      </p>
-
-      <button
-        onClick={handleRetry}
-        className="relative inline-flex items-center gap-2 h-11 px-6 text-sm font-semibold rounded-[10px] text-white active:scale-[0.98] transition-all cursor-pointer mb-8"
-        style={{
-          background:
-            'var(--primary)',
-          boxShadow:
-            '0 4px 16px -2px rgba(99,91,255,0.45), inset 0 1px 0 rgba(255,255,255,0.20)',
-          border: '1px solid rgba(99,91,255,0.55)',
-        }}
-      >
-        <Icon as={RefreshCcw} size="md" strokeWidth={2.4} />
-        {t('offline.retry')}
-      </button>
-
-      <div className="relative max-w-md w-full">
-        <p
-          className="text-[9px] font-bold uppercase tracking-[0.18em] mb-3"
-          style={{
-            background: 'linear-gradient(135deg, #635BFF 0%, #8B5CF6 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text',
-          }}
-        >
+      {/* Liste des pages disponibles offline */}
+      <div className="max-w-md w-full mt-8 animate-stagger stagger-2">
+        <p className="t-meta text-[var(--text-muted)] mb-3">
           Disponible hors ligne
         </p>
         <ul className="space-y-2 text-left">
           {OFFLINE_AVAILABLE.map((it, i) => (
             <li
               key={it.path}
-              className="flex items-center gap-3 text-sm animate-fade-in"
-              style={{ animationDelay: `${i * 80}ms`, animationFillMode: 'both' }}
+              className={`flex items-center gap-3 text-sm animate-stagger stagger-${Math.min(i + 3, 8)}`}
             >
               <span
-                className="inline-flex items-center justify-center w-6 h-6 rounded-lg text-white shrink-0"
-                style={{
-                  background:
-                    'linear-gradient(135deg, #37CA37 0%, #2ba62b 100%)',
-                  boxShadow:
-                    '0 2px 8px -2px rgba(55,202,55,0.40), inset 0 1px 0 rgba(255,255,255,0.20)',
-                }}
+                className="inline-flex items-center justify-center w-6 h-6 rounded-[var(--radius-md)] bg-[var(--success-soft)] text-[var(--success)] shrink-0"
               >
                 <CheckCircle2 size={13} strokeWidth={2.5} />
               </span>

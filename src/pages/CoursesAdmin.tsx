@@ -27,6 +27,7 @@ import {
   Skeleton,
   EmptyState,
   Tooltip,
+  PageHero,
   useToast,
   useConfirm,
 } from '@/components/ui';
@@ -494,9 +495,19 @@ export function CoursesAdminPage() {
 
   return (
     <AppLayout title={t('course.admin_title')}>
-      <div className="space-y-6">
+      <div className="space-y-6 animate-stagger">
+        <PageHero
+          meta={t('course.admin_title')}
+          title={t('member.my_courses')}
+          description={
+            loading
+              ? t('common.loading')
+              : `${courses.length} ${t('member.my_courses')} · ${sites.length} ${t('member.title')} · ${plans.length} ${t('course.title')}`
+          }
+        />
+
         {/* ── Sites membres + plans ────────────────────────────────────── */}
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2 stagger-1">
           <Card>
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-semibold">{t('member.title')}</h2>
@@ -566,7 +577,7 @@ export function CoursesAdminPage() {
         </div>
 
         {/* ── LOT MEMBERSHIP ENROLL — Membres du tenant (gestion PRO) ──── */}
-        <Card>
+        <Card className="stagger-2">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-semibold">{t('members.title')}</h2>
           </div>
@@ -609,11 +620,12 @@ export function CoursesAdminPage() {
         </Card>
 
         {/* ── Liste des cours ──────────────────────────────────────────── */}
-        <Card>
+        <Card className="stagger-3">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold">{t('member.my_courses')}</h2>
             <Button
               size="sm"
+              variant="primary"
               leftIcon={<Plus size={14} />}
               onClick={() => setCourseOpen(true)}
             >
@@ -657,9 +669,9 @@ export function CoursesAdminPage() {
               }
             />
           ) : (
-            <ul className="divide-y divide-[var(--border)]">
-              {courses.map((c) => (
-                <li key={c.id} className="py-3">
+            <ul className="divide-y divide-[var(--border)] animate-stagger">
+              {courses.map((c, idx) => (
+                <li key={c.id} className={`py-3 product-card-s4 mb-3 stagger-${Math.min(idx + 1, 8)}`} style={{ padding: 'var(--space-4)' }}>
                   <div className="flex items-center justify-between">
                     <button
                       type="button"
@@ -671,8 +683,9 @@ export function CoursesAdminPage() {
                     </button>
                     <div className="flex items-center gap-2">
                       <Tag
-                        variant={c.is_published ? 'success' : 'warning'}
+                        variant={c.is_published ? 'success' : 'neutral'}
                         size="xs"
+                        statusIcon
                       >
                         {c.is_published
                           ? t('course.published')
@@ -681,6 +694,7 @@ export function CoursesAdminPage() {
                       <Button
                         size="sm"
                         variant="ghost"
+                        className="btn-action-ghost-s1"
                         onClick={() => void togglePublish(c)}
                       >
                         {c.is_published
@@ -690,6 +704,7 @@ export function CoursesAdminPage() {
                       <Button
                         size="sm"
                         variant="ghost"
+                        className="btn-action-ghost-s1"
                         leftIcon={<Trash2 size={14} />}
                         onClick={() => void handleDeleteCourse(c)}
                         aria-label={t('action.delete')}

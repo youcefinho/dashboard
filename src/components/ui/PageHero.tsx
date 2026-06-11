@@ -47,7 +47,7 @@ export function PageHero({ meta, title, description, actions, compact }: PageHer
     /* LOT A — surface sobre Stripe : carte blanche, border subtle, shadow-xs.
        Plus d'orbs, plus de gradient brand. .page-hero--sober = override append. */
     <div
-      className="page-hero--sober relative rounded-2xl mb-4"
+      className="page-hero--sober relative rounded-2xl mb-6"
       style={{
         background: 'var(--bg-surface)',
         border: '1px solid var(--border)',

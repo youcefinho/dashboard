@@ -1,6 +1,5 @@
-// ── StatCard — Carte KPI premium (Giga Sprint Design) ──────────────────
-// Composant extrait de Dashboard.tsx. Utilise les classes CSS du design system
-// au lieu de styles inline. Animation d'entrée stagger via className.
+// ── StatCard — Carte KPI (Sprint S1) ────────────────────────────────────
+// Utilise les nouvelles classes CSS S1. Logique métier inchangée.
 
 import type { ReactNode } from 'react';
 import { TrendingUp, TrendingDown } from 'lucide-react';
@@ -29,6 +28,8 @@ interface StatCardProps {
   sparkData?: number[];
   /** Classe CSS additionnelle (pour stagger) */
   className?: string;
+  /** Index pour animation stagger (1-8) */
+  index?: number;
 }
 
 export function StatCard({
@@ -43,6 +44,7 @@ export function StatCard({
   sparkColor,
   sparkData,
   className = '',
+  index,
 }: StatCardProps) {
   // Générer le SVG sparkline path
   const sparkPath = (sparkData && sparkData.length > 1) ? (() => {
@@ -62,15 +64,21 @@ export function StatCard({
   // ID unique pour le gradient SVG (basé sur le label)
   const gradientId = `spark-${label.replace(/\s+/g, '-').toLowerCase()}`;
 
+  // Classe stagger dynamique
+  const staggerClass = index != null ? `stagger-${index}` : '';
+
+  // Résoudre la direction du trend badge
+  const trendDirection = deltaUp === true ? 'up' : deltaUp === false ? 'down' : 'neutral';
+
   return (
     <div
-      className={`stat-card animate-fade-in-up ${className}`}
+      className={`stat-card-s1 animate-stagger ${staggerClass} ${className}`.trim()}
       style={accentColor ? { borderTop: `3px solid ${accentColor}` } : undefined}
     >
-      {/* En-tête : icône chip + label */}
+      {/* En-tête : icône chip S1 + label */}
       <div className="flex items-center gap-2.5 mb-3">
         <div
-          className="stat-icon-chip"
+          className="kpi-icon-chip-s1"
           style={{ background: iconBg }}
         >
           <span style={{ color: iconColor }}>{icon}</span>
@@ -78,14 +86,14 @@ export function StatCard({
         <span className="stat-label">{label}</span>
       </div>
 
-      {/* Valeur + delta badge */}
+      {/* Valeur + trend badge S1 */}
       <div className="flex items-baseline gap-2 mb-2">
-        <span className="stat-value">
+        <span className="stat-value t-mono-num" style={{ fontVariantNumeric: 'tabular-nums' }}>
           <AnimatedNumber value={value} />
         </span>
         {delta && (
-          <span className={`stat-delta ${deltaUp !== false ? 'stat-delta-up' : 'stat-delta-down'}`}>
-            {deltaUp !== false ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+          <span className={`trend-badge trend-badge--${trendDirection}`}>
+            {trendDirection === 'up' ? <TrendingUp size={10} /> : trendDirection === 'down' ? <TrendingDown size={10} /> : null}
             {delta}
           </span>
         )}
@@ -93,7 +101,7 @@ export function StatCard({
 
       {/* Sparkline SVG */}
       {sparkPath && (
-        <svg className="w-full h-8 mt-1" viewBox="0 0 100 30" preserveAspectRatio="none">
+        <svg className="w-full h-8 mt-1 kpi-sparkline-animated" viewBox="0 0 100 30" preserveAspectRatio="none">
           <defs>
             <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
               <stop offset="0" stopColor={sparkColor} stopOpacity={0.18} />

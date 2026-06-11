@@ -135,7 +135,7 @@ export const Avatar = forwardRef<HTMLElement, AvatarProps>(function Avatar(
   };
 
   const interactiveClass = interactive
-    ? 'cursor-pointer hover:opacity-90 focus-visible:outline-none active:scale-95'
+    ? 'cursor-pointer hover:scale-105 hover:shadow-[0_0_0_3px_var(--primary-ring)] focus-visible:outline-none active:scale-95 transition-transform'
     : '';
 
   const baseClass = cn(

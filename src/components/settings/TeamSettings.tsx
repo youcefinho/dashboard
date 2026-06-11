@@ -593,10 +593,10 @@ export function TeamSettings() {
   }, [users]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-stagger">
       <KpiStrip items={kpiItems} />
 
-      <Card className="settings-card p-6">
+      <Card className="settings-card p-6 form-section-s4">
         <header className="settings-section-header settings-section-header--with-action">
           <div className="flex items-center gap-3 min-w-0">
             <div>
@@ -614,7 +614,7 @@ export function TeamSettings() {
             )}
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="secondary" size="sm" onClick={() => setShowInviteModal(true)} leftIcon={<Icon as={UserPlus} size={14} />}>
+            <Button variant="secondary" size="sm" className="btn-action-ghost-s1" onClick={() => setShowInviteModal(true)} leftIcon={<Icon as={UserPlus} size={14} />}>
               {t('set.team.invite')}
             </Button>
             <Button variant="primary" size="sm" onClick={openWizard} leftIcon={<Icon as={Sparkles} size={14} />}>
@@ -643,7 +643,7 @@ export function TeamSettings() {
               return (
                 <div
                   key={u.id}
-                  className="row-premium list-item-enter flex items-center gap-3 p-3 rounded-xl"
+                  className="row-premium list-item-enter table-row-hover flex items-center gap-3 p-3 rounded-xl"
                   style={{ animationDelay: `${idx * 40}ms`, animationFillMode: 'both' }}
                 >
                   <Avatar size="sm" name={displayName} ring={generic === 'owner' ? 'active' : 'none'} />
@@ -702,7 +702,7 @@ export function TeamSettings() {
 
       {/* ── LOT TEAM B (§6.B) — invitations en attente RÉELLES (serveur) ── */}
       {invites.length > 0 && (
-        <Card className="settings-card p-6">
+        <Card className="settings-card p-6 form-section-s4">
           <header className="settings-section-header">
             <div>
               <h3 className="t-h3 flex items-center gap-2">
@@ -715,7 +715,7 @@ export function TeamSettings() {
             {invites.map((inv, idx) => (
               <div
                 key={inv.id}
-                className="row-premium list-item-enter flex items-center gap-3 p-3 rounded-xl"
+                className="row-premium list-item-enter table-row-hover flex items-center gap-3 p-3 rounded-xl"
                 style={{ animationDelay: `${idx * 40}ms`, animationFillMode: 'both' }}
               >
                 <Avatar size="sm" name={inv.email} />
@@ -741,6 +741,7 @@ export function TeamSettings() {
                 <Button
                   variant="ghost"
                   size="sm"
+                  className="btn-action-ghost-s1"
                   onClick={() => void resendInvite(inv.id)}
                   leftIcon={<Icon as={Send} size={14} />}
                 >
@@ -749,6 +750,7 @@ export function TeamSettings() {
                 <Button
                   variant="ghost"
                   size="sm"
+                  className="btn-action-ghost-s1"
                   onClick={() => void revokeInvite(inv.id)}
                   leftIcon={<Icon as={Ban} size={14} />}
                 >

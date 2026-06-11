@@ -108,7 +108,7 @@ export function CalendarConnectButtons({ onConnected: _onConnected }: Props) {
 
   return (
     <div data-component="CalendarConnectButtons" className="space-y-3">
-      <h3 className="font-medium">{t('calendar_sync.title')}</h3>
+      <h3 className="t-h3 text-[var(--text-primary)]">{t('calendar_sync.title')}</h3>
       <p className="text-sm text-[var(--text-muted)]">
         {t('calendar_sync.subtitle')}
       </p>
@@ -117,10 +117,10 @@ export function CalendarConnectButtons({ onConnected: _onConnected }: Props) {
         {/* Google Calendar */}
         <div
           data-provider="google_calendar"
-          className="flex items-center justify-between gap-3 flex-wrap p-3 border border-[var(--border)] rounded"
+          className="flex items-center justify-between gap-3 flex-wrap p-3 border border-[var(--border)] rounded-[var(--radius-md)] transition-colors hover:bg-[var(--bg-hover)]"
         >
           <div>
-            <div className="font-medium">Google Calendar</div>
+            <div className="font-medium text-[var(--text-primary)]">Google Calendar</div>
             {gcalConn && (
               <div className="text-xs text-[var(--success)]">
                 {t('calendar_sync.connected_as').replace(
@@ -151,10 +151,10 @@ export function CalendarConnectButtons({ onConnected: _onConnected }: Props) {
         {/* Microsoft Outlook */}
         <div
           data-provider="outlook"
-          className="flex items-center justify-between gap-3 flex-wrap p-3 border border-[var(--border)] rounded"
+          className="flex items-center justify-between gap-3 flex-wrap p-3 border border-[var(--border)] rounded-[var(--radius-md)] transition-colors hover:bg-[var(--bg-hover)]"
         >
           <div>
-            <div className="font-medium">Microsoft Outlook</div>
+            <div className="font-medium text-[var(--text-primary)]">Microsoft Outlook</div>
             {outlookConn && (
               <div className="text-xs text-[var(--success)]">
                 {t('calendar_sync.connected_as').replace(

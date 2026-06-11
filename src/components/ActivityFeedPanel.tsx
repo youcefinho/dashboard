@@ -100,7 +100,7 @@ export function ActivityFeedPanel({ open, onOpenChange }: ActivityFeedPanelProps
         <div className="space-y-5">
           {groups.map(group => (
             <div key={group.date}>
-              <h3 className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2 sticky top-0 bg-[var(--bg-surface)] py-1">
+              <h3 className="activity-feed-day-label-s18">
                 {group.date}
               </h3>
               <div className="space-y-1.5">
@@ -112,15 +112,12 @@ export function ActivityFeedPanel({ open, onOpenChange }: ActivityFeedPanelProps
                   return (
                     <div
                       key={entry.id}
-                      className="row-premium list-item-enter flex gap-2.5 p-2 rounded-[var(--radius-md)]"
+                      className="activity-feed-item-s18"
                       style={{ animationDelay: `${Math.min(idx, 20) * 30}ms` }}
                     >
                       <div className="relative shrink-0">
                         <Avatar name={entry.user_name || 'Système'} size="xs" />
-                        <span
-                          aria-hidden
-                          className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-[var(--bg-surface)] flex items-center justify-center text-[9px] shadow-sm border border-[var(--border-subtle)]"
-                        >
+                        <span aria-hidden className="activity-feed-dot-s18">
                           {icon}
                         </span>
                       </div>
@@ -137,7 +134,7 @@ export function ActivityFeedPanel({ open, onOpenChange }: ActivityFeedPanelProps
                             {Object.entries(parsedDetails).slice(0, 2).map(([k, v]) => `${k}: ${String(v).slice(0, 30)}`).join(' · ')}
                           </p>
                         )}
-                        <p className="text-[10px] text-[var(--text-muted)] mt-0.5">{timeAgo(entry.created_at)}</p>
+                        <p className="activity-feed-time-s18">{timeAgo(entry.created_at)}</p>
                       </div>
                     </div>
                   );

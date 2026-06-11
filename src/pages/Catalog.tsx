@@ -251,7 +251,7 @@ export function CatalogPage() {
               </thead>
               <tbody>
                 {items.map((item, idx) => (
-                  <tr key={item.id} className="list-item-enter" style={{ animationDelay: `${idx * 28}ms` }}>
+                  <tr key={item.id} className="row-premium list-item-enter" style={{ animationDelay: `${idx * 28}ms` }}>
                     <td>
                       <div className="flex items-center gap-2 min-w-0">
                         <Package size={14} className="text-[var(--text-muted)] shrink-0" />

@@ -34,11 +34,46 @@ export function DashboardPipeline({
   sourceTotal,
   showSources,
 }: DashboardPipelineProps) {
+  // Total pour la barre segmentée
+  const pipelineTotal = pipelineData.reduce((sum, d) => sum + d.value, 0);
+
   return (
-    <div className="page-grid-2-1 mb-8 animate-fade-in-up stagger-5">
+    <div className="page-grid-2-1 mb-8 animate-stagger stagger-6">
       {/* Donut pipeline */}
-      <div className="chart-container">
-        <h3 className="text-section-title mb-4">{t('dashboard.pipeline.title')}</h3>
+      <div className="stripe-card" style={{ borderTop: '3px solid var(--primary)' }}>
+        <div className="widget-header-s1">
+          <h3 className="text-section-title">{t('dashboard.pipeline.title')}</h3>
+        </div>
+
+        {/* Barre segmentée horizontale — Vague 1B */}
+        {!isLoading && pipelineData.length > 0 && pipelineTotal > 0 && (
+          <div
+            className="flex w-full overflow-hidden mb-5"
+            style={{ height: 6, borderRadius: 'var(--radius-pill)' }}
+            aria-label="Répartition pipeline"
+          >
+            {pipelineData.map((d, idx) => {
+              const widthPct = (d.value / pipelineTotal) * 100;
+              if (widthPct <= 0) return null;
+              return (
+                <div
+                  key={d.name}
+                  style={{
+                    width: `${widthPct}%`,
+                    background: d.color,
+                    borderRadius: idx === 0
+                      ? 'var(--radius-pill) 0 0 var(--radius-pill)'
+                      : idx === pipelineData.length - 1
+                        ? '0 var(--radius-pill) var(--radius-pill) 0'
+                        : '0',
+                    transition: 'width 0.6s ease',
+                  }}
+                />
+              );
+            })}
+          </div>
+        )}
+
         {isLoading ? (
           <div className="skeleton-shimmer h-48 w-full rounded-lg" />
         ) : pipelineData.length > 0 ? (
@@ -74,18 +109,15 @@ export function DashboardPipeline({
               </PieChart>
             </ResponsiveContainer>
             {/* Légende du donut */}
-            <div className="chart-legend space-y-2">
+            <div className="donut-legend-s1">
               {pipelineData.map((d) => (
-                <div key={d.name} className="flex items-center gap-2">
+                <div key={d.name} className="donut-legend-item-s1">
                   <span
-                    className="w-3 h-3 rounded-sm shrink-0"
+                    className="donut-legend-dot-s1"
                     style={{ background: d.color }}
                   />
                   <span className="text-subtitle">{d.name}</span>
-                  <span
-                    className="text-xs font-semibold ml-auto"
-                    style={{ fontVariantNumeric: 'tabular-nums' }}
-                  >
+                  <span className="text-xs font-semibold ml-auto t-mono-num">
                     {d.value}
                   </span>
                 </div>
@@ -101,12 +133,12 @@ export function DashboardPipeline({
 
       {/* Top sources */}
       {showSources && (
-        <div className="chart-container">
-          <h3 className="text-section-title mb-4">
-            {t('dashboard.sources.title')}
-          </h3>
+        <div className="stripe-card" style={{ borderTop: '3px solid var(--success)' }}>
+          <div className="widget-header-s1">
+            <h3 className="text-section-title">{t('dashboard.sources.title')}</h3>
+          </div>
           <div className="space-y-3">
-            {sourceData.map(({ source, count, value }) => {
+            {sourceData.map(({ source, count, value }, idx) => {
               const pct =
                 sourceTotal > 0
                   ? Math.round((count / sourceTotal) * 100)
@@ -120,20 +152,17 @@ export function DashboardPipeline({
                 instagram: t('dashboard.sources.instagram'),
               };
               return (
-                <div key={source} className="rounded-lg px-3 py-2 -mx-3 transition-colors hover:bg-[var(--bg-subtle)]">
+                <div key={source} className="source-bar-s1">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-subtitle">
                       {labels[source] || source}
                     </span>
                     <div className="flex flex-col items-end">
-                      <span
-                        className="text-xs font-semibold"
-                        style={{ fontVariantNumeric: 'tabular-nums' }}
-                      >
+                      <span className="text-xs font-semibold t-mono-num">
                         {count} ({pct}%)
                       </span>
                       <span
-                        className="text-[10px]"
+                        className="text-[10px] t-mono-num"
                         style={{ color: 'var(--success)' }}
                       >
                         {(value / 1000).toFixed(1)}K $
@@ -145,10 +174,10 @@ export function DashboardPipeline({
                     style={{ background: 'var(--bg-muted)' }}
                   >
                     <div
-                      className="h-full rounded-full transition-all duration-500"
+                      className="source-bar-fill-s1 source-bar-fill-animate"
                       style={{
                         width: `${pct}%`,
-                        background: 'var(--primary)',
+                        animationDelay: `${idx * 0.15}s`,
                       }}
                     />
                   </div>

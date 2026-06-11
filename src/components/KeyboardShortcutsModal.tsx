@@ -60,15 +60,7 @@ const SECTIONS: ShortcutSection[] = [
 
 function KbdChip({ children }: { children: React.ReactNode }) {
   return (
-    <span
-      className="inline-flex items-center justify-center min-w-[26px] h-7 px-2 text-[10px] font-mono font-bold rounded-md tabular-nums transition-all"
-      style={{
-        background: 'linear-gradient(135deg, rgba(0,157,219,0.10) 0%, rgba(217,110,39,0.06) 100%)',
-        border: '1px solid rgba(0,157,219,0.22)',
-        color: 'var(--primary)',
-        boxShadow: '0 1px 2px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.50)',
-      }}
-    >
+    <span className="kbd-chip-s18">
       {children}
     </span>
   );
@@ -162,28 +154,18 @@ export function KeyboardShortcutsModal() {
           ) : (
             filteredSections.map(section => (
               <div key={section.title}>
-                {/* Section header — gradient label + accent line */}
-                <div className="flex items-center gap-3 mb-3">
-                  <h3
-                    className="text-[10px] font-bold uppercase tracking-[0.18em] heading-premium text-gradient-brand"
-                  >
+                {/* Section header — Stripe-sober uppercase + border line */}
+                <div className="kbd-shortcuts-section-s18">
+                  <h3 className="kbd-shortcuts-section-title-s18">
                     {section.title}
                   </h3>
-                  <div
-                    aria-hidden
-                    className="flex-1 h-px"
-                    style={{
-                      background:
-                        'linear-gradient(90deg, rgba(0,157,219,0.40) 0%, rgba(217,110,39,0.18) 50%, transparent 100%)',
-                    }}
-                  />
+                  <div aria-hidden className="kbd-shortcuts-section-line-s18" />
                 </div>
                 <div className="space-y-1">
                   {section.shortcuts.map((s, i) => (
                     <div
                       key={i}
-                      className="row-premium list-item-enter flex items-center justify-between py-2 px-2.5 rounded-md"
-                      style={{ animationDelay: `${Math.min(i, 20) * 25}ms` }}
+                      className="kbd-shortcut-row-s18"
                     >
                       <span className="text-xs text-[var(--text-secondary)]">{s.description}</span>
                       <div className="flex items-center gap-1 shrink-0 ml-3">

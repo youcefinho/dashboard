@@ -94,8 +94,8 @@ export function LeadPrivacyActions({ leadId, leadName, leadEmail, isAdmin, onFor
   };
 
   return (
-    <Card className="p-4" aria-busy={busy}>
-      <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-1">
+    <Card className="card-premium p-4" aria-busy={busy}>
+      <h3 className="t-meta text-[var(--text-muted)] mb-1">
         {t('privacy.lead.title')}
       </h3>
       <p className="text-[10px] text-[var(--text-muted)] leading-snug mb-3">
@@ -112,7 +112,7 @@ export function LeadPrivacyActions({ leadId, leadName, leadEmail, isAdmin, onFor
         <Button
           size="sm"
           variant="secondary"
-          className="w-full justify-center"
+          className="w-full justify-center focus:ring-2 focus:ring-[var(--primary-ring)] focus:outline-none"
           disabled={busy}
           aria-busy={isExporting}
           onClick={() => void handleExport()}
@@ -123,7 +123,7 @@ export function LeadPrivacyActions({ leadId, leadName, leadEmail, isAdmin, onFor
 
         <Button
           size="sm"
-          className="w-full justify-center bg-[color-mix(in_oklch,var(--danger)_10%,transparent)] text-[var(--danger)] hover:bg-[color-mix(in_oklch,var(--danger)_20%,transparent)] border border-[color-mix(in_oklch,var(--danger)_30%,transparent)]"
+          className="w-full justify-center bg-[color-mix(in_oklch,var(--danger)_10%,transparent)] text-[var(--danger)] hover:bg-[color-mix(in_oklch,var(--danger)_20%,transparent)] border border-[color-mix(in_oklch,var(--danger)_30%,transparent)] focus:ring-2 focus:ring-[color-mix(in_oklch,var(--danger)_20%,transparent)] focus:outline-none"
           disabled={busy}
           aria-busy={isForgetting}
           onClick={() => void handleForget()}

@@ -171,7 +171,7 @@ export function FormBuilderPage() {
   return (
     <AppLayout title="Form Builder">
       <DesktopOnlyBanner />
-      <div className="hidden lg:block">
+      <div className="hidden lg:block animate-stagger">
       <style>{formBuilderStyles}</style>
 
       <div className="builder-topbar">

@@ -325,7 +325,7 @@ export function ChatBotSettings() {
 
   // ── Render ─────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-10" data-testid="chat-bot-settings">
+    <div className="space-y-10 animate-stagger" data-testid="chat-bot-settings">
       {/* Header global */}
       <header className="flex items-start justify-between gap-4 flex-wrap">
         <div className="min-w-0">
@@ -347,7 +347,7 @@ export function ChatBotSettings() {
           <section
             aria-labelledby="chat-bot-config-heading"
             data-testid="chat-bot-section-config"
-        className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5"
+        className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 form-section-s4"
       >
         <header className="mb-4 flex items-center gap-2">
           <Icon as={MessageSquare} size="sm" className="text-[var(--text-muted)]" />
@@ -561,7 +561,7 @@ export function ChatBotSettings() {
                   <tr
                     key={entry.id}
                     data-testid={`chat-bot-kb-row-${entry.id}`}
-                    className="border-t border-[var(--border-subtle)]"
+                    className="border-t border-[var(--border-subtle)] table-row-hover"
                   >
                     <td className="px-4 py-2 align-top">
                       <div className="font-medium text-[var(--text-primary)]">
@@ -582,6 +582,7 @@ export function ChatBotSettings() {
                           type="button"
                           size="sm"
                           variant="ghost"
+                          className="btn-action-ghost-s1"
                           onClick={() => handleOpenKbEdit(entry)}
                           leftIcon={<Icon as={Pencil} size="sm" />}
                           aria-label={`${t('chat_bot.knowledge.title')} — ${entry.title}`}
@@ -593,6 +594,7 @@ export function ChatBotSettings() {
                           type="button"
                           size="sm"
                           variant="ghost"
+                          className="btn-action-ghost-s1"
                           onClick={() => void handleDeleteKb(entry)}
                           leftIcon={<Icon as={Trash2} size="sm" />}
                           aria-label={`${t('chat_bot.knowledge.title')} — ${entry.title}`}

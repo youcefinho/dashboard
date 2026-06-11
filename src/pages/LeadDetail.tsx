@@ -401,30 +401,25 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 max-w-6xl">
         {/* Colonne principale */}
         <div className="lg:col-span-2 space-y-4">
-          {/* En-tête HERO (Sprint 23) — orb décoratif + gradient title */}
-          <div className="relative overflow-hidden rounded-2xl p-6"
+          {/* En-tête HERO (Sprint S2) — Stripe-sober : surface blanche, accent border-left */}
+          <div className="relative rounded-[var(--radius-xl)] p-6 bg-[var(--bg-surface)]"
             style={{
-              background: lead.score >= 70
-                ? 'linear-gradient(135deg, #FFFFFF 0%, #F0FAFE 60%, #E0F4FB 100%)'
-                : 'linear-gradient(135deg, #FFFFFF 0%, #FAFBFC 50%, #F0FAFE 100%)',
-              border: lead.score >= 70 ? '1.5px solid rgba(0,157,219,0.45)' : '1px solid var(--border-subtle)',
-              boxShadow: lead.score >= 70
-                ? '0 1px 2px rgba(0,157,219,0.08), 0 12px 32px -8px rgba(0,157,219,0.25)'
-                : '0 1px 2px rgba(15,23,42,0.04), 0 8px 24px -8px rgba(15,23,42,0.08)',
+              borderLeft: '3px solid var(--primary)',
+              border: '1px solid var(--border)',
+              borderLeftWidth: '3px',
+              borderLeftColor: 'var(--primary)',
+              boxShadow: 'var(--shadow-xs)',
               marginBottom: '1rem',
             }}>
-            {/* Orb décoratif animé */}
-            <div className="hero-stat-orb absolute rounded-full pointer-events-none"
-              style={{ background: 'radial-gradient(circle, rgba(217,110,39,0.28) 0%, rgba(0,157,219,0.16) 50%, transparent 80%)', width: 260, height: 260, top: -100, right: -80, filter: 'blur(48px)' }} />
 
-            {lead.score >= 70 && <span className="badge-hot">HOT {lead.score}</span>}
+            {lead.score >= 70 && <Badge color="var(--success)">HOT {lead.score}</Badge>}
 
             <div className="relative z-10 flex items-start justify-between mb-4">
               <div className="flex items-center gap-4">
                 <Avatar name={lead.name} size="lg" ring={lead.score >= 70 ? 'hot' : 'none'} />
                 <div>
-                  <h2 className="text-2xl font-bold tracking-tight leading-tight">
-                    {lead.score >= 70 ? <span className="text-gradient-brand">{lead.name}</span> : lead.name}
+                  <h2 className="t-h1 tracking-tight leading-tight text-[var(--text-primary)]">
+                    {lead.name}
                   </h2>
                   <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)] mt-1">
                     <button onClick={() => void navigate({ to: `/clients/${lead.client_id}` })} className="hover:text-[var(--primary)] cursor-pointer transition-colors font-medium">{lead.client_name}</button>
@@ -514,7 +509,7 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
               <button onClick={() => void navigate({ to: '/tasks' })} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-[var(--radius-sm)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] hover:bg-[var(--primary)] hover:text-white transition-colors cursor-pointer">
                 <CheckSquare size={13} /> {t('lead.action.create_task')}
               </button>
-              <button onClick={() => void navigate({ to: `/visit/${leadId}` })} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-[var(--radius-sm)] bg-gradient-to-r from-indigo-500/10 to-purple-500/10 text-indigo-600 border border-indigo-500/20 hover:bg-indigo-500 hover:text-white transition-colors cursor-pointer">
+              <button onClick={() => void navigate({ to: `/visit/${leadId}` })} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-[var(--radius-sm)] bg-[var(--primary-soft)] text-[var(--primary)] hover:bg-[var(--primary)] hover:text-white transition-colors cursor-pointer">
                 <Compass size={13} /> {t('lead.action.visit_mode')}
               </button>
             </div>
@@ -659,22 +654,18 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
             </div>
           </div>
 
-          {/* Onglets Sprint 23 — underline gradient + glow sur active */}
-          <div className="flex gap-1 border-b border-[var(--border-subtle)] overflow-x-auto relative">
+          {/* Onglets Sprint S2 — Stripe-sober underline, pas de glow */}
+          <div className="flex gap-1 border-b border-[var(--border)] overflow-x-auto relative">
             {([['details', t('lead.tab.details')], ['notes', `${t('lead.tab.notes')} (${leadNotes.length})`], ['conversations', `${t('lead.tab.conversations')} (${messagesCount})`], ['scores', t('lead.tab.scores')], ['automations', 'Automatisations'], ['activity', t('lead.tab.activity')]] as const).map(([key, label]) => {
               const isActive = activeTab === key;
               return (
                 <button key={key} onClick={() => setActiveTab(key as typeof activeTab)}
-                  className={`relative px-4 py-2.5 text-[13px] font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                  className={`relative px-4 py-2.5 text-sm font-medium transition-colors cursor-pointer whitespace-nowrap ${
                     isActive ? 'text-[var(--primary)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
                   }`}>
                   {label}
                   {isActive && (
-                    <div className="absolute bottom-0 left-2 right-2 h-[3px] rounded-t-full"
-                      style={{
-                        background: 'linear-gradient(135deg, #635BFF 0%, #8B5CF6 100%)',
-                        boxShadow: '0 -2px 12px rgba(99,91,255,0.5), 0 0 8px rgba(139,92,246,0.4)',
-                      }} />
+                    <div className="absolute bottom-0 left-2 right-2 h-[2px] rounded-t-full bg-[var(--primary)]" />
                   )}
                 </button>
               );
@@ -686,7 +677,7 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
 
           {activeTab === 'conversations' && (
           <Card className="p-5">
-            <h3 className="text-sm font-semibold mb-3">{t('lead.conversations.title')}</h3>
+            <h3 className="t-caption uppercase tracking-wider text-[var(--text-muted)] font-semibold mb-3">{t('lead.conversations.title')}</h3>
             <ConversationPanel
               leadId={lead.id}
               leadName={lead.name}
@@ -699,8 +690,8 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
           {activeTab === 'activity' && (
           <Card className="p-5">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold">{t('lead.activity.title')}</h3>
-              <span className="text-[10px] text-[var(--text-muted)]">{t('lead.activity.subtitle')}</span>
+              <h3 className="t-caption uppercase tracking-wider text-[var(--text-muted)] font-semibold">{t('lead.activity.title')}</h3>
+              <span className="t-caption text-[var(--text-muted)]">{t('lead.activity.subtitle')}</span>
             </div>
             <LeadTimeline lead={lead} notes={leadNotes} appointments={leadAppointments} tasks={leadTasks} />
           </Card>
@@ -708,7 +699,7 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
 
           {activeTab === 'notes' && (
           <Card className="p-5">
-            <h3 className="text-sm font-semibold mb-3">{t('lead.notes.title')} ({leadNotes.length})</h3>
+            <h3 className="t-caption uppercase tracking-wider text-[var(--text-muted)] font-semibold mb-3">{t('lead.notes.title')} ({leadNotes.length})</h3>
             {/* Note héritée (lead.notes legacy) — proposée à la conversion en note structurée */}
             {lead.notes && lead.notes.trim() && (
               <div className="mb-4 p-3 rounded-[var(--radius-md)] border border-[var(--warning)] bg-[oklch(0.95_0.02_90)]">
@@ -745,7 +736,7 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
               <div className="relative">
                 <textarea value={newNoteBody} onChange={e => setNewNoteBody(e.target.value)} rows={3}
                   placeholder={t('lead.notes.placeholder')}
-                  className="w-full px-3 py-2 pr-10 text-sm bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] text-[var(--text-primary)] resize-none focus:border-[var(--primary)] focus:outline-none" />
+                  className="w-full px-3 py-2 pr-10 text-sm bg-[var(--bg-surface)] border border-[var(--border)] rounded-[var(--radius-md)] text-[var(--text-primary)] resize-none focus:border-[var(--primary)] focus:outline-none focus:shadow-[0_0_0_3px_var(--primary-ring)]" />
                 <AiSparkles value={newNoteBody} onChange={setNewNoteBody} leadId={leadId} className="absolute bottom-2 right-2" />
               </div>
               <div className="flex items-center gap-2">
@@ -803,7 +794,7 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
 
             return (
               <Card className="p-5">
-                <h3 className="text-sm font-semibold mb-3">{t('lead.scores.title')}</h3>
+                <h3 className="t-caption uppercase tracking-wider text-[var(--text-muted)] font-semibold mb-3">{t('lead.scores.title')}</h3>
                 {leadScores.length === 0 ? (
                   <p className="text-sm text-[var(--text-muted)]">{t('lead.scores.empty')}</p>
                 ) : (
@@ -826,7 +817,7 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
 
                 {/* Graphique de score comportemental v2 */}
                 <div className="mt-6 pt-6 border-t border-[var(--border-subtle)] space-y-4">
-                  <h4 className="text-sm font-semibold">{t('lead.behavioral.title')}</h4>
+                  <h4 className="t-caption uppercase tracking-wider text-[var(--text-muted)] font-semibold">{t('lead.behavioral.title')}</h4>
                   {chartData.length === 0 ? (
                     <p className="text-xs text-[var(--text-muted)] italic">{t('lead.behavioral.empty')}</p>
                   ) : (
@@ -924,7 +915,7 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
           {activeTab === 'automations' && (
           <Card className="p-5">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold">Automatisations & Workflows</h3>
+              <h3 className="t-caption uppercase tracking-wider text-[var(--text-muted)] font-semibold">Automatisations & Workflows</h3>
               <div className="flex items-center gap-2">
                 <Select
                   size="sm"
@@ -1088,7 +1079,7 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
                 {isEditingDeal ? (
                   <div className="flex gap-2">
                     <input type="number" value={editDealValue} onChange={(e) => setEditDealValue(e.target.value)}
-                      className="flex-1 px-2 py-1.5 text-sm bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] focus:outline-none" />
+                      className="flex-1 px-2 py-1.5 text-sm bg-[var(--bg-surface)] border border-[var(--border)] rounded-[var(--radius-sm)] focus:outline-none focus:border-[var(--primary)] focus:shadow-[0_0_0_3px_var(--primary-ring)]" />
                     <Button size="sm" onClick={() => void handleSaveDeal()}>OK</Button>
                   </div>
                 ) : (
@@ -1129,7 +1120,7 @@ export function LeadDetailBody({ leadId, compact = false }: { leadId: string; co
             <div className="flex gap-1.5">
               <input type="text" value={newTag} onChange={(e) => setNewTag(e.target.value)} placeholder={t('lead.sidebar.tag_placeholder')}
                 onKeyDown={(e) => { if (e.key === 'Enter') void handleAddTag(); }}
-                className="flex-1 px-2 py-1.5 text-xs bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] focus:outline-none" />
+                className="flex-1 px-2 py-1.5 text-xs bg-[var(--bg-surface)] border border-[var(--border)] rounded-[var(--radius-sm)] focus:outline-none focus:border-[var(--primary)] focus:shadow-[0_0_0_3px_var(--primary-ring)]" />
               <Button size="sm" variant="secondary" onClick={() => void handleAddTag()}>+</Button>
             </div>
           </Card>

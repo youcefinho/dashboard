@@ -857,7 +857,7 @@ function WorkflowBuilderInner() {
     return (
       <AppLayout title="Nouveau workflow (2D Canvas)">
         <DesktopOnlyBanner />
-        <div className="hidden lg:block">
+        <div className="hidden lg:block animate-stagger">
           <div className="flex flex-col h-[calc(100vh-100px)]">
             {/* Topbar */}
             <div

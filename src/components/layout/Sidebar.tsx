@@ -12,6 +12,7 @@ import {
   LayoutTemplate, Phone,
   Sparkles,
   RotateCcw,
+  Search,
 } from 'lucide-react';
 import { Icon } from '@/components/ui';
 import { getSmartLists, getLeads, getTasks, getNotifications, getModules, getClientBranding, getActiveSubAccount, getOnboardingChecklist, type ModuleId } from '@/lib/api';
@@ -323,6 +324,19 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           </button>
         </div>
 
+        {/* Recherche rapide ⌘K */}
+        {!collapsed && (
+          <button
+            className="sidebar-search-trigger"
+            onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true }))}
+            type="button"
+          >
+            <Icon as={Search} size={14} />
+            <span>Rechercher…</span>
+            <span className="search-kbd">⌘K</span>
+          </button>
+        )}
+
         {/* Navigation — sections collapsibles */}
         <nav
           data-tour-id="sidebar-nav"
@@ -347,19 +361,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 {showLabel && (
                   <button
                     onClick={section.collapsible ? () => toggleSection(section.id) : undefined}
-                    className={`w-full flex items-center justify-between px-3 pt-4 pb-1.5 group ${section.collapsible ? 'cursor-pointer hover:text-[var(--text-primary)]' : ''}`}
+                    className={`sidebar-section-label-s1 ${section.collapsible ? 'cursor-pointer' : ''}`}
                     aria-expanded={section.collapsible ? !isSectionCollapsed : undefined}
                     type="button"
                   >
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)] group-hover:text-[var(--text-secondary)] transition-colors">
-                      {section.label}
-                    </span>
+                    <span>{section.label}</span>
                     {section.collapsible && (
-                      <Icon
-                        as={ChevronDown}
-                        size={12}
-                        className={`text-[var(--text-muted)] transition-transform duration-200 ${isSectionCollapsed ? '-rotate-90' : ''}`}
-                      />
+                      <ChevronDown size={12} className={`sidebar-section-chevron ${!isSectionCollapsed ? 'is-open' : ''}`} />
                     )}
                   </button>
                 )}
@@ -367,12 +375,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                   <div className="my-2 mx-3 h-px bg-[var(--border)]" />
                 )}
 
-                {/* Section items — animated collapse */}
+                {/* Section items — animated collapse (grid) */}
                 <div
-                  className={`space-y-px overflow-hidden transition-all duration-200 ${
-                    isSectionCollapsed ? 'max-h-0 opacity-0' : 'max-h-[600px] opacity-100'
+                  className={`sidebar-section-collapse ${
+                    !isSectionCollapsed ? 'is-open' : ''
                   }`}
                 >
+                <div className="sidebar-section-inner space-y-px">
                   {items.map(item => {
                     const isActive = location.pathname === item.path ||
                       (item.path !== '/dashboard' && location.pathname.startsWith(item.path));
@@ -398,7 +407,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                         </span>
                         {!collapsed && <span className="truncate flex-1">{item.label}</span>}
                         {!collapsed && item.badgeKey && badgeCounts[item.badgeKey] > 0 ? (
-                          <span className="sidebar-nav-item-badge-wrap shrink-0">
+                          <span className="sidebar-nav-item-badge-wrap badge-pulse-s1 shrink-0">
                             <span className="sidebar-nav-item-badge">
                               {badgeCounts[item.badgeKey] > 99 ? '99+' : badgeCounts[item.badgeKey]}
                             </span>
@@ -463,6 +472,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       })}
                     </>
                   )}
+                </div>
                 </div>
               </div>
             );

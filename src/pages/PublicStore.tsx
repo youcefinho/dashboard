@@ -52,12 +52,8 @@ function Spinner() {
   return (
     <div className="flex justify-center py-10">
       <div
+        className="w-7 h-7 rounded-full border-[3px] border-[rgba(99,91,255,0.2)] border-t-[var(--primary)]"
         style={{
-          width: 28,
-          height: 28,
-          border: '3px solid rgba(99,91,255,0.2)',
-          borderTopColor: '#635BFF',
-          borderRadius: '50%',
           animation: 'spin 0.8s linear infinite',
         }}
       />
@@ -207,11 +203,11 @@ export function PublicStorePage() {
   if (!loading && (loadError || !store)) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6 text-center bg-[var(--bg-surface)]">
-        <div style={{ maxWidth: 420 }}>
-          <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>
+        <div className="animate-stagger stagger-1" style={{ maxWidth: 420 }}>
+          <h1 className="text-[var(--text-h2)] font-bold mb-2">
             {t('store.not_found')}
           </h1>
-          {loadError && <p style={{ color: '#6b7280' }}>{loadError}</p>}
+          {loadError && <p className="text-[var(--text-muted)]">{loadError}</p>}
         </div>
       </div>
     );
@@ -262,18 +258,18 @@ export function PublicStorePage() {
             onAdd={() => detail && handleAdd(detail, selectedVariant || undefined)}
           />
         ) : products.length === 0 ? (
-          <p className="py-10 text-center text-sm" style={{ color: '#6b7280' }}>
+          <p className="py-10 text-center text-sm text-[var(--text-muted)]">
             {t('store.empty')}
           </p>
         ) : (
           // ── Grille produits ─────────────────────────────────────────────
           <>
             {actionError && (
-              <p className="mb-4 text-sm" style={{ color: '#dc2626' }}>
+              <p className="mb-4 text-sm text-[var(--danger)]">
                 {actionError}
               </p>
             )}
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 animate-stagger stagger-1">
               {products.map((p) => (
                 <ProductCard
                   key={p.id}
@@ -288,7 +284,7 @@ export function PublicStorePage() {
         )}
       </main>
 
-      <footer className="py-6 text-center" style={{ fontSize: 10, color: '#6b7280' }}>
+      <footer className="py-6 text-center text-[10px] text-[var(--text-muted)]">
         Propulsé par <strong>Intralys</strong>
       </footer>
     </div>
@@ -322,7 +318,7 @@ function ProductDetail({
           ← {t('store.continue_shopping')}
         </button>
         {error && (
-          <p className="mt-4 text-sm" style={{ color: '#dc2626' }}>
+          <p className="mt-4 text-sm text-[var(--danger)]">
             {error}
           </p>
         )}
@@ -352,7 +348,7 @@ function ProductDetail({
       <div className="grid gap-6 md:grid-cols-2">
         <div
           className="overflow-hidden rounded-xl border border-[var(--border)]"
-          style={{ aspectRatio: '4 / 3', background: '#f6f8fa' }}
+          style={{ aspectRatio: '4 / 3', background: 'var(--bg-subtle)' }}
         >
           {product.image ? (
             <img
@@ -364,10 +360,10 @@ function ProductDetail({
         </div>
 
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 700 }}>{product.name}</h1>
+          <h1 className="text-[var(--text-h2)] font-bold">{product.name}</h1>
           <p className="mt-1 text-lg font-semibold">{fmtMoney(priceCents, cur)}</p>
           {product.description && (
-            <p className="mt-3 text-sm" style={{ color: '#6b7280', whiteSpace: 'pre-wrap' }}>
+            <p className="mt-3 text-sm text-[var(--text-muted)] whitespace-pre-wrap">
               {product.description}
             </p>
           )}
@@ -396,7 +392,7 @@ function ProductDetail({
           )}
 
           {error && (
-            <p className="mt-4 text-sm" style={{ color: '#dc2626' }}>
+            <p className="mt-4 text-sm text-[var(--danger)]">
               {error}
             </p>
           )}
@@ -412,7 +408,7 @@ function ProductDetail({
                 {t('store.add_to_cart')}
               </button>
             ) : (
-              <span className="text-sm" style={{ color: '#9ca3af' }}>
+              <span className="text-sm text-[var(--text-muted)]">
                 {t('store.out_of_stock')}
               </span>
             )}

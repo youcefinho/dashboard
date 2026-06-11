@@ -275,7 +275,7 @@ export function ChatWidgetsPage() {
         </Card>
       ) : (
         <ul
-          className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+          className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 animate-stagger stagger-1"
           aria-label={t('chat_widgets.title')}
           data-testid="cwp-list"
         >
@@ -289,7 +289,7 @@ export function ChatWidgetsPage() {
             return (
               <li key={w.id}>
                 <Card
-                  className="flex h-full flex-col gap-4 p-5"
+                  className="flex h-full flex-col gap-4 p-5 stripe-card hover-lift-stripe"
                   data-testid={`cwp-card-${w.id}`}
                 >
                   {/* Header : name + couleur + statut */}
@@ -324,7 +324,7 @@ export function ChatWidgetsPage() {
                   <dl className="flex flex-col gap-1.5 text-xs text-[var(--text-secondary)]">
                     <div className="flex justify-between gap-2">
                       <dt>{t('chat_widgets.allowed_origins')}</dt>
-                      <dd className="font-mono text-[var(--text-primary)]">
+                      <dd className="font-mono text-[var(--text-primary)]" style={{ fontVariantNumeric: 'tabular-nums' }}>
                         {origins}
                       </dd>
                     </div>
@@ -332,6 +332,7 @@ export function ChatWidgetsPage() {
                       <dt>{t('chat_widgets.sessions_history')}</dt>
                       <dd
                         className="font-mono text-[var(--text-primary)]"
+                        style={{ fontVariantNumeric: 'tabular-nums' }}
                         data-testid={`cwp-sessions-${w.id}`}
                       >
                         {sessions === null ? '…' : sessions}

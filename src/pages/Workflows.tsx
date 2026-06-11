@@ -292,7 +292,7 @@ export function WorkflowsPage() {
                         { v: wf.total_executions ?? 0, l: t('workflows.kpi.executions'), c: 'var(--info)' },
                       ].map(s => (
                         <div key={s.l} className="text-center bg-[var(--bg-subtle)] rounded-lg px-2 py-1.5">
-                          <p className="text-sm font-bold" style={{ color: s.c }}>{s.v}</p>
+                          <p className="text-sm font-bold t-mono-num" style={{ color: s.c }}>{s.v}</p>
                           <p className="text-[9px] text-[var(--text-muted)]">{s.l}</p>
                         </div>
                       ))}
@@ -359,9 +359,9 @@ export function WorkflowsPage() {
                               </div>
                             </td>
                             <td className="text-xs text-[var(--text-secondary)]">{TRIGGER_LABELS[wf.trigger_type as TriggerType] || wf.trigger_type}</td>
-                            <td className="text-center text-xs font-semibold">{wf.steps_count ?? 0}</td>
-                            <td className="text-center text-xs font-semibold text-[var(--success)]">{wf.active_enrollments ?? 0}</td>
-                            <td className="text-center text-xs font-semibold text-[var(--info)]">{wf.total_executions ?? 0}</td>
+                            <td className="text-center text-xs font-semibold t-mono-num">{wf.steps_count ?? 0}</td>
+                            <td className="text-center text-xs font-semibold text-[var(--success)] t-mono-num">{wf.active_enrollments ?? 0}</td>
+                            <td className="text-center text-xs font-semibold text-[var(--info)] t-mono-num">{wf.total_executions ?? 0}</td>
                             <td className="text-center">
                               <button onClick={() => void handleToggle(wf.id, wf.is_active)}
                                 className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer ${wf.is_active ? 'bg-[var(--success)]' : 'bg-[var(--bg-muted)]'}`}

@@ -91,7 +91,7 @@ export function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-[var(--bg-canvas)]">
 
-      <div className="w-full max-w-[380px] animate-fade-in">
+      <div className="w-full max-w-[380px] animate-fade-in animate-stagger">
         {/* Logo — compact 40×40, gradient brand conservé (signature Intralys) */}
         <div className="text-center mb-8">
           <div
@@ -100,7 +100,7 @@ export function LoginPage() {
           >
             I
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">
+          <h1 className="text-2xl font-bold tracking-tight text-[var(--text-primary)] auth-title">
             Intralys <span className="font-normal text-[var(--text-secondary)]">CRM</span>
           </h1>
           <p className="text-sm text-[var(--text-muted)] mt-1">{t('login.subtitle')}</p>
@@ -109,7 +109,7 @@ export function LoginPage() {
         {/* Formulaire — Card Stripe-clean : bg-surface + border + shadow-lg */}
         <form
           onSubmit={handleSubmit}
-          className="p-6 space-y-4 rounded-[var(--radius-xl)] bg-[var(--bg-surface)] border border-[var(--border)] shadow-[var(--shadow-lg)]"
+          className="auth-card-s4 p-6 space-y-4 rounded-[var(--radius-xl)] bg-[var(--bg-surface)] border border-[var(--border)] shadow-[var(--shadow-lg)]"
           noValidate
           aria-label={t('login.aria.form')}
           aria-busy={isLoading || undefined}

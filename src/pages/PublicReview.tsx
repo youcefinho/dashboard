@@ -104,14 +104,8 @@ export function PublicReviewPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--bg-surface)]">
         <div
-          style={{
-            width: 32,
-            height: 32,
-            border: '3px solid rgba(99,91,255,0.2)',
-            borderTopColor: '#635BFF',
-            borderRadius: '50%',
-            animation: 'spin 0.8s linear infinite',
-          }}
+          className="w-8 h-8 rounded-full border-[3px] border-[rgba(99,91,255,0.2)] border-t-[var(--primary)]"
+          style={{ animation: 'spin 0.8s linear infinite' }}
         />
       </div>
     );
@@ -121,11 +115,11 @@ export function PublicReviewPage() {
   if (loadError || !page) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6 text-center bg-[var(--bg-surface)]">
-        <div style={{ maxWidth: 420 }}>
-          <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>
+        <div className="animate-stagger stagger-1" style={{ maxWidth: 420 }}>
+          <h1 className="text-[var(--text-h2)] font-bold mb-2">
             {t('pubreview.title')}
           </h1>
-          <p style={{ color: '#6b7280' }}>{loadError || t('pubreview.error')}</p>
+          <p className="text-[var(--text-muted)]">{loadError || t('pubreview.error')}</p>
         </div>
       </div>
     );
@@ -139,32 +133,21 @@ export function PublicReviewPage() {
     const isPublicRedirect = !!done?.redirectUrl;
     return (
       <div className="min-h-screen flex items-center justify-center p-6 text-center bg-[var(--bg-surface)]">
-        <div style={{ maxWidth: 480 }}>
+        <div className="animate-stagger stagger-1" style={{ maxWidth: 480 }}>
           <div
-            style={{
-              width: 64,
-              height: 64,
-              background: '#ecfdf5',
-              color: '#10b981',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto 16px',
-              fontSize: 28,
-            }}
+            className="w-16 h-16 rounded-full bg-[var(--success-soft)] text-[var(--success)] flex items-center justify-center mx-auto mb-4 text-[28px]"
           >
             ✓
           </div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>
+          <h1 className="text-[var(--text-h2)] font-bold mb-2">
             {t('pubreview.thanks_title')}
           </h1>
           {alreadySubmitted && !done ? (
-            <p style={{ color: '#6b7280' }}>{t('pubreview.already_submitted')}</p>
+            <p className="text-[var(--text-muted)]">{t('pubreview.already_submitted')}</p>
           ) : isPublicRedirect ? (
             <>
               {/* Avis satisfait → invitation à publier sur Google/FB + lien. */}
-              <p style={{ color: '#6b7280', marginBottom: 16 }}>
+              <p className="text-[var(--text-muted)] mb-4">
                 {t('pubreview.redirect_message')}
               </p>
               <a
@@ -176,7 +159,7 @@ export function PublicReviewPage() {
             </>
           ) : (
             // Feedback privé (note < seuil) — remerciement, AUCUNE redirection.
-            <p style={{ color: '#6b7280' }}>{t('pubreview.thanks_message')}</p>
+            <p className="text-[var(--text-muted)]">{t('pubreview.thanks_message')}</p>
           )}
         </div>
       </div>
@@ -186,20 +169,19 @@ export function PublicReviewPage() {
   const labelClasses =
     'mb-1 block text-sm font-medium text-[var(--text-secondary)]';
   const inputClasses =
-    'w-full rounded-lg border border-[var(--border)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)]';
+    'w-full rounded-lg border border-[var(--border)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)] focus:shadow-[0_0_0_3px_var(--primary-ring)]';
 
   // Sélecteur d'étoiles 1-5 (note affichée = survol > sélection).
   const shown = hover || rating;
 
   return (
     <div className="min-h-screen bg-[var(--bg-surface)] p-4 flex justify-center items-start">
-      <div className="w-full max-w-lg p-6">
-        <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>
+      <div className="w-full max-w-lg p-6 animate-stagger stagger-1">
+        <h1 className="text-[var(--text-h2)] font-bold mb-1">
           {page.business_name}
         </h1>
         <p
-          className="text-sm"
-          style={{ color: '#6b7280', marginBottom: 20 }}
+          className="text-sm text-[var(--text-muted)] mb-5"
           data-review-token={token}
         >
           {page.message || t('pubreview.subtitle')}
@@ -254,7 +236,7 @@ export function PublicReviewPage() {
             />
           </div>
 
-          {error && <p className="text-sm text-red-500">{error}</p>}
+          {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
 
           <button
             type="button"
@@ -266,8 +248,7 @@ export function PublicReviewPage() {
           </button>
 
           <p
-            className="text-center pt-2"
-            style={{ fontSize: 10, color: '#6b7280' }}
+            className="text-center pt-2 text-[10px] text-[var(--text-muted)]"
           >
             Propulsé par <strong>Intralys</strong>
           </p>

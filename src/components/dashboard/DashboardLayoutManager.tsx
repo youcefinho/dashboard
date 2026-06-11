@@ -159,8 +159,7 @@ export function DashboardLayoutManager({ currentWidgets, onApplyLayout }: Props)
 
   return (
     <div
-      className="mb-4 p-4 rounded-xl"
-      style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
+      className="stripe-card mb-4 hover-lift-stripe"
       aria-busy={isLoading || busy}
     >
       <div className="flex items-center justify-between mb-3">
@@ -212,8 +211,7 @@ export function DashboardLayoutManager({ currentWidgets, onApplyLayout }: Props)
             type="button"
             onClick={() => { setCreating(true); setNewName(''); }}
             disabled={busy}
-            className="h-8 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition hover:bg-[var(--brand-tint)] disabled:opacity-50"
-            style={{ border: '1px solid var(--border-default)', color: 'var(--primary)' }}
+            className="h-8 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition border border-[var(--border)] text-[var(--primary)] hover:border-[var(--primary)] hover:bg-[var(--primary-soft)] disabled:opacity-50"
           >
             <Plus size={14} /> {t('dashboards.create_first')}
           </button>
@@ -230,8 +228,7 @@ export function DashboardLayoutManager({ currentWidgets, onApplyLayout }: Props)
               value={activeId}
               onChange={(e) => handleSelect(e.target.value)}
               disabled={busy}
-              className="h-8 px-2 rounded-lg text-xs cursor-pointer disabled:opacity-50"
-              style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
+              className="h-8 px-2 rounded-lg text-xs cursor-pointer disabled:opacity-50 border border-[var(--border)] bg-[var(--bg-surface)] text-[var(--text-primary)] hover:border-[var(--primary)] transition duration-150"
             >
               <option value="">{t('dashboards.default_option')}</option>
               {layouts.map(l => (
@@ -280,8 +277,7 @@ export function DashboardLayoutManager({ currentWidgets, onApplyLayout }: Props)
               type="button"
               onClick={() => { setCreating(true); setNewName(''); setRenamingId(''); setConfirmDeleteId(''); }}
               disabled={busy || creating}
-              className="h-8 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition hover:bg-[var(--brand-tint)] disabled:opacity-50 ml-auto"
-              style={{ border: '1px solid var(--border-default)', color: 'var(--primary)' }}
+              className="h-8 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition border border-[var(--border)] text-[var(--primary)] hover:border-[var(--primary)] hover:bg-[var(--primary-soft)] disabled:opacity-50 ml-auto"
             >
               <Plus size={14} /> {t('dashboards.new')}
             </button>

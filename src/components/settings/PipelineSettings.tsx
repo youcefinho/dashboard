@@ -579,7 +579,7 @@ export function PipelineSettings() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-stagger">
       <div>
         <h2 className="text-base font-bold text-[var(--text-primary)] mb-1">{t('set.pipe.title')}</h2>
         <p className="text-sm text-[var(--text-muted)]">
@@ -589,7 +589,7 @@ export function PipelineSettings() {
 
       <div className="flex gap-6 items-start flex-col md:flex-row">
         {/* Liste des pipelines */}
-        <Card className="w-full md:w-64 shrink-0 p-4">
+        <Card className="w-full md:w-64 shrink-0 p-4 form-section-s4">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold uppercase tracking-wider text-[var(--text-muted)]">Pipelines</h3>
             <button
@@ -662,7 +662,7 @@ export function PipelineSettings() {
         {/* Détails du pipeline sélectionné */}
         {activePipeline ? (
           <div className="flex-1 w-full space-y-4">
-            <Card className="p-5">
+            <Card className="p-5 form-section-s4">
               <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
                 {isEditingPipeline ? (
                   <div className="flex items-center gap-2 flex-1 max-w-sm">

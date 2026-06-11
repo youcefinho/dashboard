@@ -247,44 +247,63 @@ export function PipelinePage() {
         {/* KPIs inline — Sprint 23 : mini hero cards */}
         <div className="flex items-stretch gap-2 ml-2">
           {/* KPI Valeur */}
-          <div className="stat-card flex items-center gap-2 px-3 py-2 hover-lift cursor-default animate-fade-in-up stagger-1">
-            <div className="stat-icon-chip" style={{ background: 'linear-gradient(135deg, #635BFF 0%, #5851E5 100%)' }}>
+          <div className="stat-card-s1 flex items-center gap-2 px-3 py-2 cursor-default animate-stagger stagger-1">
+            <div className="kpi-icon-chip-s1" style={{ background: 'linear-gradient(135deg, #635BFF 0%, #5851E5 100%)' }}>
               <DollarSign size={15} className="text-white" />
             </div>
             <div>
               <p className="text-meta-label">{t('pipeline.kpi.value')}</p>
-              <p className="text-sm font-bold tabular-nums leading-tight text-[var(--primary)]">
+              <p className="text-sm font-bold leading-tight text-[var(--primary)]" style={{ fontVariantNumeric: 'tabular-nums' }}>
                 {totalValue.toLocaleString('fr-CA')} <span className="text-[10px] text-[var(--text-muted)]">$</span>
               </p>
             </div>
           </div>
 
           {/* KPI Prévision */}
-          <div className="stat-card flex items-center gap-2 px-3 py-2 hover-lift cursor-default animate-fade-in-up stagger-2">
-            <div className="stat-icon-chip" style={{ background: 'linear-gradient(135deg, #37CA37 0%, #2ba62b 100%)' }}>
+          <div className="stat-card-s1 flex items-center gap-2 px-3 py-2 cursor-default animate-stagger stagger-2">
+            <div className="kpi-icon-chip-s1" style={{ background: 'linear-gradient(135deg, #37CA37 0%, #2ba62b 100%)' }}>
               <TrendingUp size={15} className="text-white" />
             </div>
             <div>
               <p className="text-meta-label">{t('pipeline.kpi.forecast')}</p>
-              <p className="text-sm font-bold tabular-nums leading-tight text-[var(--success)]">
+              <p className="text-sm font-bold leading-tight text-[var(--success)]" style={{ fontVariantNumeric: 'tabular-nums' }}>
                 {weightedForecast.toLocaleString('fr-CA')} <span className="text-[10px] text-[var(--text-muted)]">$</span>
               </p>
             </div>
           </div>
 
           {/* KPI Dormants */}
-          <div className="stat-card flex items-center gap-2 px-3 py-2 hover-lift cursor-default animate-fade-in-up stagger-3">
-            <div className="stat-icon-chip" style={{ background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)' }}>
+          <div className="stat-card-s1 flex items-center gap-2 px-3 py-2 cursor-default animate-stagger stagger-3">
+            <div className="kpi-icon-chip-s1" style={{ background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)' }}>
               <AlertTriangle size={15} className="text-white" />
             </div>
             <div>
               <p className="text-meta-label">{t('pipeline.kpi.dormant')}</p>
-              <p className="text-sm font-bold tabular-nums leading-tight text-[var(--warning)]">
+              <p className="text-sm font-bold leading-tight text-[var(--warning)]" style={{ fontVariantNumeric: 'tabular-nums' }}>
                 {dormantCount}
               </p>
             </div>
           </div>
         </div>
+
+        {/* Barre de progression globale pipeline */}
+        {totalValue > 0 && (
+          <div className="pipeline-progress-bar" style={{ flex: '0 0 100%', order: 99 }}>
+            {stages.map(stage => {
+              const stageValue = visibleLeads.filter(l => (l.stage_id || stages[0]?.id) === stage.id).reduce((s, l) => s + (l.deal_value || 0), 0);
+              const pct = (stageValue / totalValue) * 100;
+              if (pct <= 0) return null;
+              return (
+                <div
+                  key={stage.id}
+                  className="pipeline-progress-segment"
+                  style={{ width: `${pct}%`, background: stage.color }}
+                  title={`${stage.name}: ${pct.toFixed(0)}%`}
+                />
+              );
+            })}
+          </div>
+        )}
 
         {/* Spacer */}
         <div className="flex-1" />
@@ -295,26 +314,26 @@ export function PipelinePage() {
           <button onClick={() => setHotOnly(v => !v)}
             aria-pressed={hotOnly}
             title={t('conversion.hot_leads')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer press-scale transition-all ${hotOnly ? 'bg-[var(--primary)] text-white border border-[var(--primary)]' : 'surface-card text-[var(--text-secondary)] hover:border-[var(--primary)]'}`}>
+            className={`btn-action-ghost-s1 text-xs ${hotOnly ? '!bg-[var(--primary)] !text-white !border-[var(--primary)]' : ''}`}>
             <Flame size={13} className={hotOnly ? 'text-white' : 'text-[var(--accent-orange)]'} /> {t('conversion.hot_leads')}
           </button>
         )}
 
         {/* Filtres */}
         <button onClick={() => setShowFilters(!showFilters)}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer press-scale transition-all ${showFilters ? 'bg-[var(--primary)] text-white' : 'surface-card text-[var(--text-secondary)] hover:border-[var(--primary)]'}`}>
+          className={`btn-action-ghost-s1 text-xs ${showFilters ? '!bg-[var(--primary)] !text-white !border-[var(--primary)]' : ''}`}>
           <Filter size={13} /> {t('pipeline.filter.label')}
           {activeFilters.length > 0 && <span className="ml-1 w-4 h-4 rounded-full bg-[var(--bg-surface)]/20 text-[10px] flex items-center justify-center">{activeFilters.length}</span>}
         </button>
 
         {/* Vue switcher */}
-        <div className="segmented-premium">
+        <div className="segmented-s1">
           {([['kanban', Kanban], ['list', LayoutList], ['forecast', BarChart3]] as const).map(([mode, Icon]) => {
             const viewLabel = mode === 'kanban' ? t('pipeline.page.view_kanban') : mode === 'list' ? t('pipeline.page.view_list') : t('pipeline.page.view_forecast');
             return (
             <button key={mode} onClick={() => setViewMode(mode as ViewMode)}
               aria-label={viewLabel} aria-pressed={viewMode === mode} title={viewLabel}
-              className={`segmented-premium-item flex items-center justify-center p-1.5 ${viewMode === mode ? 'active' : ''}`}>
+              className={`flex items-center justify-center p-1.5 ${viewMode === mode ? 'active' : ''}`}>
               <Icon size={15} />
             </button>
           );})}
@@ -352,16 +371,19 @@ export function PipelinePage() {
           action={<Link to="/leads"><Button>{t('pipeline.empty.action')}</Button></Link>}
         />
       ) : viewMode === 'kanban' ? (
-        <div className="flex gap-3 overflow-x-auto pb-4 min-h-[calc(100vh-14rem)] snap-x snap-mandatory custom-scrollbar pr-4">
+        <div className="flex gap-3 overflow-x-auto pb-4 min-h-[calc(100vh-14rem)] snap-x snap-mandatory custom-scrollbar pr-4 animate-stagger stagger-2">
           {stages.map(stage => {
             const colLeads = getColumnLeads(stage.id);
             const isOver = dropTarget === stage.id;
             const colValue = colLeads.reduce((s, l) => s + (l.deal_value || 0), 0);
             const prob = getStageProbability(stage);
 
+            const colPct = totalValue > 0 ? (colValue / totalValue) * 100 : 0;
+            const isWonColumn = prob === 100;
+
             return (
               <div key={stage.id}
-                className={`pipeline-column surface-card relative flex flex-col overflow-hidden shrink-0 w-[85vw] sm:w-72 snap-center sm:snap-start animate-fade-in-up stagger-${Math.min(stages.indexOf(stage) + 1, 8)} ${isOver ? 'ring-2' : ''}`}
+                className={`pipeline-column stripe-card !p-0 relative flex flex-col overflow-hidden shrink-0 w-[85vw] sm:w-72 snap-center sm:snap-start animate-fade-in-up stagger-${Math.min(stages.indexOf(stage) + 1, 8)} ${isOver ? 'ring-2' : ''} ${isWonColumn ? 'kanban-col-won' : ''}`}
                 style={{
                   ['--stage-color' as string]: stage.color,
                   borderColor: hexToRgba(stage.color, isOver ? 0.55 : 0.25),
@@ -378,10 +400,19 @@ export function PipelinePage() {
                 {/* Indicateur de couleur stage — subtil Stripe */}
 
                 {/* Header sticky Stripe-clean */}
-                <div className="sticky top-0 z-10 px-4 py-3 surface-section">
+                <div className="sticky top-0 z-10 px-4 py-3 bg-[var(--bg-surface)]">
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="status-dot shrink-0" style={{ background: stage.color }} />
+                      {/* Cercle SVG de progression par colonne */}
+                      <svg className="kanban-col-progress" viewBox="0 0 28 28">
+                        <circle className="kanban-col-progress-bg" cx="14" cy="14" r="11" />
+                        <circle
+                          className="kanban-col-progress-fill"
+                          cx="14" cy="14" r="11"
+                          stroke={stage.color}
+                          strokeDasharray={`${(colPct / 100) * 69.1} 69.1`}
+                        />
+                      </svg>
                       <h3 className="text-meta-label truncate" style={{ color: stage.color }}>{stage.name}</h3>
                     </div>
                     <span className="status-badge text-value-mono text-xs" style={{ background: hexToRgba(stage.color, 0.1), color: stage.color }}>
@@ -396,7 +427,7 @@ export function PipelinePage() {
                     ) : (
                       <span className="text-subtitle">—</span>
                     )}
-                    <span className="text-meta-label tabular-nums" style={{ color: stage.color }}>{prob}%</span>
+                    <span className="text-meta-label t-mono-num" style={{ color: stage.color }}>{prob}%</span>
                   </div>
                   <div className="h-1 mt-2 rounded-full overflow-hidden bg-[var(--bg-subtle)]">
                     <div className="h-full rounded-full transition-all duration-700" style={{ width: `${prob}%`, background: stage.color }} />
@@ -412,7 +443,7 @@ export function PipelinePage() {
                 <div className="flex-1 space-y-2 px-2 pb-2 overflow-y-auto max-h-[calc(100vh-20rem)] custom-scrollbar">
                   {colLeads.length === 0 && (
                     draggedId ? (
-                      <div className="text-center py-8 text-[10px] text-[var(--text-muted)] border-2 border-dashed rounded-xl mx-1 transition-colors" style={{ borderColor: isOver ? stage.color : 'var(--border-subtle)' }}>
+                      <div className={`kanban-drop-zone text-center py-8 text-[10px] text-[var(--text-muted)] mx-1 ${isOver ? 'is-over' : ''}`} style={{ borderColor: isOver ? stage.color : undefined }}>
                         {t('pipeline.page.drop_here')}
                       </div>
                     ) : (
@@ -428,7 +459,7 @@ export function PipelinePage() {
                     return (
                       <div key={lead.id} draggable
                         onDragStart={e => handleDragStart(e, lead.id)}
-                        className={`group relative surface-card-interactive p-4 cursor-grab active:cursor-grabbing hover-lift ${
+                        className={`group relative surface-card-interactive p-4 cursor-grab active:cursor-grabbing hover-lift-stripe ${
                           isHot ? 'hot-lead-card' : ''
                         } ${draggedId === lead.id ? 'opacity-40 scale-95 rotate-1' : ''}`}
                         style={{
@@ -454,7 +485,7 @@ export function PipelinePage() {
                             {lead.client_name && <p className="text-[10px] text-[var(--text-muted)] truncate mt-0.5">{lead.client_name}</p>}
                           </div>
                           {hasScore && !isHot && (
-                            <span className="inline-flex items-center justify-center min-w-[26px] h-[18px] px-1.5 rounded-full text-[10px] font-bold tabular-nums shrink-0"
+                            <span className="inline-flex items-center justify-center min-w-[26px] h-[18px] px-1.5 rounded-full text-[10px] font-bold t-mono-num shrink-0"
                               style={{
                                 background: hexToRgba(scoreColor(lead.score).startsWith('var') ? '#FF9A00' : scoreColor(lead.score), 0.12),
                                 color: scoreColor(lead.score),
@@ -472,7 +503,7 @@ export function PipelinePage() {
                           <div className="flex items-center justify-between mb-2">
                             <Badge color={lead.type === 'inbound' ? 'var(--primary)' : 'var(--warning)'}>{TYPE_LABELS[lead.type]}</Badge>
                             {hasDeal && (
-                              <span className="text-[12px] font-bold tabular-nums"
+                              <span className="text-[12px] font-bold t-mono-num"
                                 style={isHot ? {
                                   background: 'linear-gradient(135deg, #635BFF 0%, #8B5CF6 100%)',
                                   WebkitBackgroundClip: 'text',
@@ -487,7 +518,7 @@ export function PipelinePage() {
 
                         {/* Row 3 : Days + Source (compact footer) */}
                         <div className="flex items-center justify-between text-[10px] mt-2 pt-2 border-t border-[var(--border)]">
-                          <span className="flex items-center gap-1 font-semibold tabular-nums" style={{ color: daysColor(days) }}>
+                          <span className="flex items-center gap-1 font-semibold t-mono-num" style={{ color: daysColor(days) }}>
                             <Clock size={10} />
                             {days}j
                             {isDormant && <span className="ml-0.5">⚠</span>}
@@ -557,7 +588,7 @@ export function PipelinePage() {
                         {stage && <Badge color={stage.color}>{stage.name}</Badge>}
                       </td>
                       <td className="px-4 py-3"><Badge color={lead.type === 'inbound' ? 'var(--primary)' : 'var(--warning)'}>{lead.type === 'inbound' ? t('pipeline.list.type_inbound') : t('pipeline.list.type_customer')}</Badge></td>
-                      <td className="px-4 py-3 text-right text-xs font-semibold text-[var(--primary)]">{lead.deal_value > 0 ? `${lead.deal_value.toLocaleString('fr-CA')} $` : '—'}</td>
+                      <td className="px-4 py-3 text-right text-xs font-semibold text-[var(--primary)]" style={{ fontVariantNumeric: 'tabular-nums' }}>{lead.deal_value > 0 ? `${lead.deal_value.toLocaleString('fr-CA')} $` : '—'}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5">
                           <div className="w-12 h-1.5 rounded-full bg-[var(--bg-muted)] overflow-hidden">

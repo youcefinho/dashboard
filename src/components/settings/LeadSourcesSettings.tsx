@@ -243,7 +243,7 @@ export function LeadSourcesSettings() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 animate-stagger">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold flex items-center gap-2">
@@ -270,7 +270,7 @@ export function LeadSourcesSettings() {
       ) : (
         <div className="space-y-3">
           {sources.map((s) => (
-            <Card key={s.id} className="p-4">
+            <Card key={s.id} className="p-4 form-section-s4">
               <div className="flex items-start justify-between gap-4 flex-wrap">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -308,16 +308,16 @@ export function LeadSourcesSettings() {
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <Button variant="ghost" size="sm" onClick={() => openTest(s)}>
+                  <Button variant="ghost" size="sm" className="btn-action-ghost-s1" onClick={() => openTest(s)}>
                     <Icon as={FlaskConical} size={14} /> {t('set.src.test')}
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => openLog(s)}>
+                  <Button variant="ghost" size="sm" className="btn-action-ghost-s1" onClick={() => openLog(s)}>
                     <Icon as={Inbox} size={14} /> Leads
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => openEdit(s)}>
+                  <Button variant="ghost" size="sm" className="btn-action-ghost-s1" onClick={() => openEdit(s)}>
                     {t('set.src.modify')}
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => toggleActive(s)}>
+                  <Button variant="ghost" size="sm" className="btn-action-ghost-s1" onClick={() => toggleActive(s)}>
                     {s.active ? t('set.src.deactivate') : t('set.src.activate')}
                   </Button>
                   <button

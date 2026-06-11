@@ -81,9 +81,10 @@ export function CalendarConflictResolver({
               {/* ── Version Intralys ────────────────────────────────────── */}
               <Card
                 data-version="intralys"
-                className="flex flex-col gap-2"
+                className="card-premium flex flex-col gap-2 p-4"
+                style={{ borderTop: '3px solid var(--primary)' }}
               >
-                <h4 className="text-sm font-semibold">Version Intralys</h4>
+                <h4 className="t-body-strong text-[var(--text-primary)]">Version Intralys</h4>
                 <p className="text-sm text-[var(--text-primary)] break-words">
                   {conflict.intralysSummary}
                 </p>
@@ -103,9 +104,10 @@ export function CalendarConflictResolver({
               {/* ── Version externe (Google / Outlook) ──────────────────── */}
               <Card
                 data-version="external"
-                className="flex flex-col gap-2"
+                className="card-premium flex flex-col gap-2 p-4"
+                style={{ borderTop: '3px solid var(--warning)' }}
               >
-                <h4 className="text-sm font-semibold">
+                <h4 className="t-body-strong text-[var(--text-primary)]">
                   Version{' '}
                   {conflict.provider === 'google_calendar'
                     ? 'Google'

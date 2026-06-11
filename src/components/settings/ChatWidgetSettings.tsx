@@ -344,13 +344,13 @@ export function ChatWidgetSettings({
 
   return (
     <div
-      className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6"
+      className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 animate-stagger"
       data-testid="chat-widget-settings"
     >
       {/* ── Form ─────────────────────────────────────────────────────── */}
       <form
         onSubmit={handleSubmit}
-        className="space-y-6"
+        className="space-y-6 form-section-s4"
         aria-label={t('chat_widgets.title')}
       >
         {/* Name */}

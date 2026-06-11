@@ -372,7 +372,7 @@ export function TemplatesPage() {
           {filteredTemplates.map((tpl, idx) => {
             const vars = extractVariables(tpl.subject + tpl.body_html);
             return (
-              <Card key={tpl.id} className="hover:border-[var(--primary)]/30 transition-all group list-item-enter" style={{ animationDelay: `${idx * 30}ms` }}>
+              <Card key={tpl.id} className="card-interactive-bump hover:border-[var(--primary)]/30 transition-all group list-item-enter" style={{ animationDelay: `${idx * 30}ms` }}>
                 <div className="p-4">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-2">

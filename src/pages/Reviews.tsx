@@ -256,36 +256,36 @@ export function ReviewsPage() {
           {tab === 'overview' && stats && (
             <div className="space-y-6">
               {/* KPIs — Sprint 23 wave 47B2 : migré vers .card-premium (gradient brand + glow) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="card-premium p-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-stagger stagger-1">
+                <div className="card-premium p-5 stripe-card">
                 <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider mb-1">{t('reviews.overview.avg_rating')}</p>
                   <div className="flex items-baseline gap-2">
-                    <span className="text-3xl font-bold">{stats.average_rating || '—'}</span>
+                    <span className="text-3xl font-bold" style={{ fontVariantNumeric: 'tabular-nums' }}>{stats.average_rating || '—'}</span>
                     <span className="text-lg">⭐</span>
                   </div>
                   <p className="text-xs text-[var(--text-muted)] mt-1">{stats.total_reviews} avis au total</p>
                 </div>
-                <div className="card-premium p-5">
+                <div className="card-premium p-5 stripe-card">
                   <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider mb-1">{t('reviews.overview.five_star')}</p>
-                  <span className="text-3xl font-bold text-[var(--success)]">{stats.five_star}</span>
+                  <span className="text-3xl font-bold text-[var(--success)]" style={{ fontVariantNumeric: 'tabular-nums' }}>{stats.five_star}</span>
                   <p className="text-xs text-[var(--text-muted)] mt-1">
                     {stats.total_reviews > 0 ? `${((stats.five_star / stats.total_reviews) * 100).toFixed(0)}%` : '—'} du total
                   </p>
                 </div>
-                <div className="card-premium p-5">
+                <div className="card-premium p-5 stripe-card">
                   <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider mb-1">{t('reviews.overview.replies')}</p>
-                  <span className="text-3xl font-bold">{stats.replied_count}</span>
+                  <span className="text-3xl font-bold" style={{ fontVariantNumeric: 'tabular-nums' }}>{stats.replied_count}</span>
                   <p className="text-xs text-[var(--text-muted)] mt-1">sur {stats.total_reviews} avis</p>
                 </div>
-                <div className="card-premium p-5">
+                <div className="card-premium p-5 stripe-card">
                   <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider mb-1">{t('reviews.overview.requests_sent')}</p>
-                  <span className="text-3xl font-bold">{stats.total_requests}</span>
+                  <span className="text-3xl font-bold" style={{ fontVariantNumeric: 'tabular-nums' }}>{stats.total_requests}</span>
                   <p className="text-xs text-[var(--text-muted)] mt-1">{stats.pending_requests} en attente</p>
                 </div>
               </div>
 
               {/* Distribution des notes */}
-              <Card>
+              <Card className="stripe-card animate-stagger stagger-2">
                 <h3 className="text-sm font-semibold mb-4">{t('reviews.overview.distribution')}</h3>
                 <div className="space-y-2 max-w-md">
                   {ratingBar(stats.five_star, stats.total_reviews, 5)}
@@ -330,7 +330,7 @@ export function ReviewsPage() {
                   </button>
                 ))}
               </div>
-              <Card className="p-0 overflow-hidden">
+              <Card className="p-0 overflow-hidden stripe-card animate-stagger stagger-3">
                 <div className="table-premium-container overflow-x-auto">
                   <table className="table-premium w-full text-left border-collapse">
                     <thead>

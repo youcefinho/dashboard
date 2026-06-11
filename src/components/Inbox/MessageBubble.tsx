@@ -377,11 +377,11 @@ export function MessageBubble({
     textClass = 'text-[var(--danger)]';
     metaClass = 'text-[var(--danger)]';
   } else if (isSent) {
-    bgClass = 'msg-bubble-gradient-sent';
+    bgClass = 'msg-bubble-gradient-sent shadow-xs';
     textClass = 'text-white';
     metaClass = 'text-white/70';
   } else {
-    bgClass = 'surface-1 border border-[var(--border-subtle)]';
+    bgClass = 'msg-bubble-received-s9';
   }
 
   // Stagger entrance (max 240ms)

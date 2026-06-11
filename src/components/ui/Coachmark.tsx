@@ -248,6 +248,7 @@ export function Coachmark({ steps, open, onClose, onComplete }: CoachmarkProps) 
     <div className="coachmark-root" role="dialog" aria-modal aria-label="Tour guidé">
       {/* Backdrop — capture click pour skip. Sprint 45 M3.1 : pas de blur (Stripe-clean) */}
       <div
+        className="coachmark-overlay"
         onClick={onClose}
         style={{
           position: 'fixed',
@@ -279,7 +280,7 @@ export function Coachmark({ steps, open, onClose, onComplete }: CoachmarkProps) 
       >
         {/* Sprint 45 M3.1 — Step indicator subtle, plus de gradient brand */}
         <div className="flex items-start justify-between gap-2 mb-2">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">
+          <p className="coachmark-step-counter text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">
             Étape {index + 1} / {steps.length}
           </p>
           <button
@@ -302,7 +303,7 @@ export function Coachmark({ steps, open, onClose, onComplete }: CoachmarkProps) 
         {currentStep.action && <div className="mb-3">{currentStep.action}</div>}
 
         {/* Sprint 45 M3.1 — Progress dots Stripe-clean (no glow, no gradient) */}
-        <div className="flex items-center justify-center gap-1.5 mb-3" aria-hidden>
+        <div className="coachmark-dots flex items-center justify-center gap-1.5 mb-3" aria-hidden>
           {steps.map((_, i) => (
             <span
               key={i}
@@ -324,7 +325,7 @@ export function Coachmark({ steps, open, onClose, onComplete }: CoachmarkProps) 
         </div>
 
         {/* Footer actions */}
-        <div className="flex items-center justify-between gap-2">
+        <div className="coachmark-actions flex items-center justify-between gap-2">
           <button
             type="button"
             onClick={onClose}

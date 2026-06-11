@@ -5,16 +5,42 @@
 // API préservée 100% :
 //   - `className?: string`        (width/height/radius via tailwind)
 //   - `style?: CSSProperties`     (Sprint 26 — inline pour animation-delay stagger)
+// Sprint S5 — ajout prop `variant` optionnelle :
+//   - `'line'`   : skeleton-line (h12px, radius-md)
+//   - `'circle'` : skeleton-circle (50%, flex-shrink)
+//   - `'card'`   : skeleton-card (radius-xl, min-h 120px)
+//   - `undefined` : comportement inline shimmer original (back-compat)
 import type { CSSProperties } from 'react';
 import { cn } from '@/lib/cn';
+
+export type SkeletonVariant = 'line' | 'circle' | 'card';
 
 interface SkeletonProps {
   className?: string;
   /** Inline style (utile pour width/height calculé ou animation-delay staggered). */
   style?: CSSProperties;
+  /** Sprint S5 — variant visuelle prédéfinie (line, circle, card). Optionnel. */
+  variant?: SkeletonVariant;
 }
 
-export function Skeleton({ className, style }: SkeletonProps) {
+const variantClasses: Record<SkeletonVariant, string> = {
+  line: 'skeleton-line',
+  circle: 'skeleton-circle',
+  card: 'skeleton-card',
+};
+
+export function Skeleton({ className, style, variant }: SkeletonProps) {
+  // Si un variant est spécifié, on utilise les classes CSS S4 prédéfinies
+  if (variant) {
+    return (
+      <div
+        className={cn(variantClasses[variant], className)}
+        style={style}
+      />
+    );
+  }
+
+  // Comportement original (back-compat) : shimmer inline
   return (
     <div
       className={cn('rounded-[var(--radius-sm)]', className)}

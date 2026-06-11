@@ -735,7 +735,7 @@ export function BrandingSettings() {
 
   return (
     <>
-      <Card className="settings-card p-6 relative">
+      <Card className="settings-card p-6 relative animate-stagger">
         <div className="settings-autosave-slot">
           <AutosaveIndicator state={autosaveState} lastSaved={lastSaved} onRetry={retry} />
         </div>
@@ -793,7 +793,7 @@ export function BrandingSettings() {
           </div>
         </div>
 
-        <div className="settings-form-grid">
+        <div className="settings-form-grid form-section-s4">
           <div className="settings-form-row settings-form-row--full">
             <label className="settings-label">{t('set.brand.company_name')}</label>
             <Input value={companyName} onChange={(e) => setCompanyName(e.target.value)} />
@@ -813,7 +813,7 @@ export function BrandingSettings() {
         {/* ── LOT WHITE-LABEL APPLY (Sprint 20) — champs white-label additionnels.
             favicon (URL ou base64 comme le logo) + sender_name + toggle
             remove_powered_by, sérialisés dans le MÊME JSON `branding`. */}
-        <div className="settings-form-grid">
+        <div className="settings-form-grid form-section-s4">
           <div className="settings-form-row settings-form-row--full">
             <label className="settings-label">{t('whitelabel.favicon')}</label>
             <div className="flex items-center gap-3">
@@ -851,7 +851,7 @@ export function BrandingSettings() {
                 {t('whitelabel.favicon')}
               </label>
               {favicon.trim().length > 0 && (
-                <Button variant="ghost" size="sm" onClick={() => setFavicon('')} leftIcon={<Icon as={X} size="sm" />}>
+                <Button variant="ghost" size="sm" className="btn-action-ghost-s1" onClick={() => setFavicon('')} leftIcon={<Icon as={X} size="sm" />}>
                   {t('set.brand.remove')}
                 </Button>
               )}
@@ -877,7 +877,7 @@ export function BrandingSettings() {
         </div>
 
         {/* Aperçu sobre — wordmark/logo Sidebar tel qu'appliqué (Stripe-clean). */}
-        <div className="settings-form-grid">
+        <div className="settings-form-grid form-section-s4">
           <div className="settings-form-row settings-form-row--full">
             <label className="settings-label">{t('whitelabel.preview')}</label>
             <div className="flex items-center gap-2.5 p-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-subtle)]">
@@ -909,7 +909,7 @@ export function BrandingSettings() {
       </Card>
 
       {/* ── LOT G9 White-label — Domaine personnalisé (par sous-compte/tenant) ── */}
-      <Card className="settings-card p-6">
+      <Card className="settings-card p-6 form-section-s4">
         <header className="settings-section-header">
           <div>
             <h3 className="t-h3 flex items-center gap-2">
@@ -940,6 +940,7 @@ export function BrandingSettings() {
                     <Button
                       variant="ghost"
                       size="sm"
+                      className="btn-action-ghost-s1"
                       onClick={() => handleDeleteDomain(host)}
                       leftIcon={<Icon as={Trash2} size="sm" />}
                     >

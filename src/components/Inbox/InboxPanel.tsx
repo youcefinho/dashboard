@@ -20,7 +20,7 @@ interface Props {
 export function InboxPanel({ activeConv, changeStatus }: Props) {
   return (
     <div className="w-72 shrink-0 border-l border-[var(--border-subtle)] bg-[var(--bg-surface)] overflow-y-auto">
-      <div className="p-4">
+      <div className="p-4 space-y-5">
         {/* Avatar + nom */}
         <div className="text-center mb-4">
           <Avatar
@@ -46,8 +46,8 @@ export function InboxPanel({ activeConv, changeStatus }: Props) {
         {/* Infos conversation */}
         <div className="space-y-3">
           <div>
-            <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-[0.18em] mb-1.5">Conversation</p>
-            <div className="rounded-lg overflow-hidden border border-[var(--border-subtle)]">
+            <p className="inbox-panel-section-label-s9">Conversation</p>
+            <div className="inbox-panel-info-card-s9">
               {[
                 ['Canal', CHANNEL_LABELS[activeConv.channel as MessageChannel] || activeConv.channel, null] as const,
                 ['Statut', CONVERSATION_STATUS_LABELS[activeConv.status as ConversationStatus] || activeConv.status, STATUS_TONE[activeConv.status] || 'neutral'] as const,
@@ -55,12 +55,12 @@ export function InboxPanel({ activeConv, changeStatus }: Props) {
                 ['Créée', new Date(activeConv.created_at).toLocaleDateString('fr-CA'), null] as const,
                 ['Messages', String(activeConv.messages?.length || 0), null] as const,
               ].map(([label, value, tone]) => (
-                <div key={label} className="row-premium flex items-center justify-between text-[10px] px-2 py-1.5">
-                  <span className="text-[var(--text-muted)]">{label}</span>
+                <div key={label} className="inbox-panel-info-row-s9">
+                  <span className="label">{label}</span>
                   {tone ? (
                     <Tag variant={tone} size="xs">{value}</Tag>
                   ) : (
-                    <span className="text-[var(--text-primary)] font-medium">{value}</span>
+                    <span className="value">{value}</span>
                   )}
                 </div>
               ))}
@@ -69,11 +69,11 @@ export function InboxPanel({ activeConv, changeStatus }: Props) {
 
           {/* Changer statut */}
           <div>
-            <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-[0.18em] mb-1.5">Actions</p>
+            <p className="inbox-panel-section-label-s9">Actions</p>
             <div className="space-y-1">
               {(['open', 'closed', 'snoozed'] as const).filter(s => s !== activeConv.status).map(s => (
                 <button key={s} onClick={() => void changeStatus(s as ConversationStatus)}
-                  className="w-full flex items-center gap-2 px-2 py-1.5 text-[10px] rounded-lg hover:bg-[var(--bg-subtle)] cursor-pointer transition-colors text-left">
+                  className="inbox-panel-action-btn-s9">
                   <div className="w-2 h-2 rounded-full" style={{ background: CONVERSATION_STATUS_COLORS[s as ConversationStatus] }} />
                   Marquer comme {CONVERSATION_STATUS_LABELS[s as ConversationStatus].toLowerCase()}
                 </button>

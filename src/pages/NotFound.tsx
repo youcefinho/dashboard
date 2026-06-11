@@ -5,6 +5,7 @@
 import { useNavigate } from '@tanstack/react-router';
 import { Search, Home } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { Button } from '@/components/ui/Button';
 import { Icon } from '@/components/ui/Icon';
 import { t } from '@/lib/i18n';
 
@@ -24,11 +25,7 @@ export function NotFound() {
 
   return (
     <div
-      className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden"
-      style={{
-        background:
-          'linear-gradient(135deg, #FFFFFF 0%, #FAFBFC 50%, #F0FAFE 100%)',
-      }}
+      className="empty-state-premium-s4 relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-[var(--bg-canvas)]"
     >
       {/* Illustration SVG inline — loupe + orb décoratif */}
       <div className="relative mb-2 mt-12">
@@ -94,43 +91,28 @@ export function NotFound() {
         title={t('notfound.title')}
         description={t('notfound.description')}
         action={
-          <button
+          <Button
+            variant="primary"
+            size="lg"
             onClick={() => void navigate({ to: '/dashboard' })}
-            className="inline-flex items-center gap-2 h-10 px-5 text-sm font-semibold rounded-[10px] text-white active:scale-[0.98] transition-all cursor-pointer"
-            style={{
-              background: 'var(--primary)',
-              boxShadow:
-                '0 4px 16px -2px rgba(99,91,255,0.45), inset 0 1px 0 rgba(255,255,255,0.20)',
-              border: '1px solid rgba(99,91,255,0.55)',
-            }}
+            leftIcon={<Icon as={Home} size={15} strokeWidth={2.3} />}
           >
-            <Icon as={Home} size={15} strokeWidth={2.3} />
             {t('notfound.action.home')}
-          </button>
+          </Button>
         }
         secondaryAction={
-          <button
+          <Button
+            variant="secondary"
             onClick={openSearch}
-            className="inline-flex items-center gap-2 h-10 px-4 text-sm font-semibold rounded-[10px] text-[var(--text-secondary)] hover:text-[var(--primary)] transition-colors cursor-pointer"
-            style={{
-              background: 'var(--bg-surface)',
-              border: '1px solid var(--border-default)',
-            }}
+            leftIcon={<Icon as={Search} size={15} strokeWidth={2.3} />}
           >
-            <Icon as={Search} size={15} strokeWidth={2.3} />
             {t('notfound.action.search')}
             <span
-              className="ml-1 text-[10px] px-1.5 py-0.5 rounded font-bold tracking-wider"
-              style={{
-                background:
-                  'linear-gradient(135deg, rgba(99,91,255,0.10) 0%, rgba(139,92,246,0.06) 100%)',
-                color: 'var(--primary)',
-                border: '1px solid rgba(99,91,255,0.22)',
-              }}
+              className="ml-1 text-[10px] px-1.5 py-0.5 rounded font-bold tracking-wider bg-[var(--primary-soft)] text-[var(--primary)] border border-[var(--primary-ring)]"
             >
               ⌘K
             </span>
-          </button>
+          </Button>
         }
         tips={[
           t('notfound.tips.url'),

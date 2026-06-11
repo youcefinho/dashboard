@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useAuth } from '@/lib/auth';
 import { getPacks, installPack, getIvrMenus, saveIvrMenu, deleteIvrMenu, type IndustryPack, type IvrMenu } from '@/lib/api';
-import { Card, Button, Tag, useToast, useConfirm, Skeleton, Input, Icon, Select } from '@/components/ui';
+import { Card, Button, Tag, useToast, useConfirm, Skeleton, Input, Icon, Select, PageHero } from '@/components/ui';
 import {
   User, Bell, Shield, Palette,
   Columns, Package, Brain, Users, Key, FileText, CreditCard,
@@ -242,6 +242,12 @@ export function SettingsPage() {
 
   return (
     <AppLayout title={t('settings.page.title')}>
+      <PageHero
+        meta={t('settings.page.title')}
+        title={t('settings.page.title')}
+        description={t('settings.default.desc')}
+        compact
+      />
       {/* Mobile tabs — action-chip premium */}
       <div className="md:hidden flex gap-1.5 overflow-x-auto pb-3 mb-4 -mx-1 px-1 no-scrollbar">
         {visibleTabs.map(tab => {
@@ -264,9 +270,9 @@ export function SettingsPage() {
         })}
       </div>
 
-      <div className="flex gap-6 max-w-6xl">
+      <div className="flex gap-6 max-w-6xl animate-stagger">
         {/* Sidebar navigation — Sprint 23 wave 14 : vrais boutons cohérents */}
-        <nav className="hidden md:block w-56 shrink-0 h-[calc(100vh-120px)] overflow-y-auto pr-2">
+        <nav className="hidden md:block w-56 shrink-0 h-[calc(100vh-120px)] overflow-y-auto pr-2 stagger-1">
           {/* Sprint 30 vague 30-1D — Settings nav search */}
           <div className="settings-nav-search">
             <Input
@@ -386,7 +392,7 @@ export function SettingsPage() {
         </nav>
 
         {/* Content */}
-        <div className="flex-1 min-w-0 h-[calc(100vh-120px)] overflow-y-auto pb-10 pr-2">
+        <div className="flex-1 min-w-0 h-[calc(100vh-120px)] overflow-y-auto pb-10 pr-2 stagger-2">
           {renderContent()}
         </div>
       </div>

@@ -338,7 +338,7 @@ export function QuotesPage() {
         highlight={t('quote.title')}
         description={t('quote.title')}
         actions={
-          <Button variant="premium" onClick={() => setShowAdd(true)}>{t('quote.new')}</Button>
+          <Button variant="primary" onClick={() => setShowAdd(true)}>{t('quote.new')}</Button>
         }
       />
 
@@ -388,7 +388,7 @@ export function QuotesPage() {
             action={<Button variant="primary" onClick={() => setShowAdd(true)}>{t('quote.new')}</Button>}
           />
         ) : (
-          <div className="table-premium-container overflow-x-auto">
+          <div className="table-premium-container overflow-x-auto animate-stagger">
             <table className="table-premium">
               <thead>
                 <tr>
@@ -417,7 +417,7 @@ export function QuotesPage() {
                   const signUrl = signUrls[q.id];
                   return (
                     <Fragment key={q.id}>
-                      <tr className="list-item-enter" style={{ animationDelay: `${idx * 28}ms` }}>
+                      <tr className="row-premium table-row-hover list-item-enter" style={{ animationDelay: `${idx * 28}ms` }}>
                         <td className="col-frozen">
                           <div className="flex items-center gap-2.5">
                             <button
@@ -442,7 +442,7 @@ export function QuotesPage() {
                             </span>
                           </div>
                         </td>
-                        <td className="text-right font-bold t-mono-num text-[13px]">
+                        <td className="table-cell-numeric text-right font-bold t-mono-num text-[13px]">
                           {formatCurrency(qTotal(q), getLocale(), 'CAD')}
                         </td>
                         <td className="text-[12px] text-[var(--text-secondary)]">
@@ -469,7 +469,7 @@ export function QuotesPage() {
                               <button
                                 disabled={busyId === q.id}
                                 onClick={() => void setStatus(q.id, 'sent')}
-                                className="text-[11px] font-semibold text-[var(--primary)] hover:underline cursor-pointer disabled:opacity-50"
+                                className="btn-action-ghost-s1 text-[11px] text-[var(--primary)]"
                               >
                                 {t('quote.status.sent')}
                               </button>
@@ -478,7 +478,7 @@ export function QuotesPage() {
                               <button
                                 disabled={busyId === q.id}
                                 onClick={() => void handleAccept(q)}
-                                className="inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--success)] hover:underline cursor-pointer disabled:opacity-50"
+                                className="btn-action-ghost-s1 text-[11px] text-[var(--success)]"
                               >
                                 <CheckCircle2 size={11} /> {t('quote.accept')}
                               </button>
@@ -487,7 +487,7 @@ export function QuotesPage() {
                               <button
                                 disabled={busyId === q.id}
                                 onClick={() => void setStatus(q.id, 'declined')}
-                                className="text-[11px] font-semibold text-[var(--text-muted)] hover:text-[var(--danger)] hover:underline cursor-pointer disabled:opacity-50"
+                                className="btn-action-ghost-s1 text-[11px] text-[var(--text-muted)] hover:text-[var(--danger)]"
                               >
                                 {t('quote.decline')}
                               </button>
@@ -496,7 +496,7 @@ export function QuotesPage() {
                               <button
                                 disabled={busyId === q.id}
                                 onClick={() => void handleSendForSignature(q)}
-                                className="inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--primary)] hover:underline cursor-pointer disabled:opacity-50"
+                                className="btn-action-ghost-s1 text-[11px] text-[var(--primary)]"
                               >
                                 <PenTool size={11} /> {t('proposal.send_for_sign')}
                               </button>
@@ -585,7 +585,7 @@ export function QuotesPage() {
                                     )}
                                     <div className="flex justify-between gap-4 pt-1 border-t border-[var(--border-subtle)]">
                                       <span className="font-semibold">{t('invoice.total')}</span>
-                                      <span className="t-mono-num font-bold" style={{ color: 'var(--primary)' }}>
+                                      <span className="t-mono-num" style={{ fontWeight: 700, color: 'var(--primary)' }}>
                                         {formatCurrency(qTotal(detailQuote), getLocale(), 'CAD')}
                                       </span>
                                     </div>

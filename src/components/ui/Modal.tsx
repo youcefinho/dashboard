@@ -84,6 +84,8 @@ export function Modal({
           className="fixed inset-0 z-50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
           style={{
             background: 'rgba(15, 17, 26, 0.4)',
+            backdropFilter: 'blur(4px)',
+            WebkitBackdropFilter: 'blur(4px)',
             animationDuration: 'var(--duration-base)',
             animationTimingFunction: 'var(--ease)',
           }}

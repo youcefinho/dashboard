@@ -76,7 +76,7 @@ export function DashboardWeeklyInsight() {
 
   if (loading) {
     return (
-      <div className="surface-card p-6 mb-8 animate-fade-in-up stagger-2">
+      <div className="ai-insight-card-s1 mb-8 animate-stagger stagger-2">
         <div className="flex items-center justify-between mb-4">
           <div className="skeleton-shimmer h-6 w-48 rounded" />
           <div className="skeleton-shimmer h-8 w-32 rounded" />
@@ -92,12 +92,9 @@ export function DashboardWeeklyInsight() {
   }
 
   return (
-    <div className="surface-card p-6 mb-8 animate-fade-in-up stagger-2" style={{ borderTop: '3px solid var(--primary)' }}>
+    <div className="ai-insight-card-s1 mb-8 animate-stagger stagger-2">
       {/* Header avec bouton Générer */}
-      <div
-        className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-4"
-        style={{ borderBottom: '1px solid var(--border)' }}
-      >
+      <div className="widget-header-s1" style={{ marginBottom: '24px', paddingBottom: '16px', borderBottom: '1px solid var(--border)' }}>
         <div>
           <h3 className="text-section-title flex items-center gap-2">
             <Sparkles size={18} className="text-[var(--primary)]" />
@@ -206,10 +203,13 @@ function MetricMini({
   isPositive?: boolean;
 }) {
   return (
-    <div className="surface-inset p-3.5 rounded-xl transition-all duration-200 hover:shadow-sm">
+    <div className="ai-insight-metric-s1">
       <div className="text-meta-label mb-1">{label}</div>
       <div className="flex items-baseline gap-2">
-        <span className="text-2xl font-bold text-[var(--text-primary)]" style={{ fontVariantNumeric: 'tabular-nums' }}>
+        <span
+          className="text-2xl font-bold text-[var(--text-primary)] t-mono-num"
+          style={{ fontVariantNumeric: 'tabular-nums' }}
+        >
           {value}
         </span>
         {delta && (

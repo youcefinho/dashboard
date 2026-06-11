@@ -27,23 +27,22 @@ export const TabsTrigger = forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      // Sprint 23 — gradient underline avec glow sur active (cohérent avec LeadDetail)
-      'relative px-4 py-2.5 text-sm font-semibold transition-all cursor-pointer whitespace-nowrap',
+      // Sprint S10 — underline 2px sliding Stripe-style
+      'relative px-4 py-2.5 text-sm font-medium transition-colors cursor-pointer whitespace-nowrap',
       'text-[var(--text-muted)] hover:text-[var(--text-primary)]',
-      'data-[state=active]:text-[var(--primary)]',
-      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]',
+      'data-[state=active]:text-[var(--primary)] data-[state=active]:font-semibold',
+      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary-ring)]',
       'group',
       className
     )}
     {...props}
   >
     {children}
-    {/* Underline gradient active state — invisible par défaut, visible via data-state */}
+    {/* Underline 2px — transition scale+opacity pour effet slide subtil */}
     <span aria-hidden
-      className="absolute bottom-0 left-2 right-2 h-[3px] rounded-t-full opacity-0 group-data-[state=active]:opacity-100 transition-opacity"
+      className="absolute bottom-0 left-2 right-2 h-[2px] rounded-t-full transition-all duration-200 ease-out scale-x-0 opacity-0 group-data-[state=active]:scale-x-100 group-data-[state=active]:opacity-100"
       style={{
         background: 'var(--primary)',
-        boxShadow: '0 -2px 8px var(--primary-ring)',
       }} />
   </TabsPrimitive.Trigger>
 ));

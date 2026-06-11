@@ -44,10 +44,10 @@ export function MagicLinkRequestPage() {
 
   return (
     <div className="magic-auth">
-      <div className="magic-auth__card">
+      <div className="magic-auth__card animate-stagger stagger-1">
         {sent ? (
           <div
-            className="magic-auth__state"
+            className="magic-auth__state animate-stagger stagger-2"
             role="status"
             aria-live="polite"
             aria-atomic="true"

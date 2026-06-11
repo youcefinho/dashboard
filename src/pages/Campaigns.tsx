@@ -27,6 +27,7 @@ import {
   Switch,
   FilterChip,
   Textarea,
+  PageHero,
   useToast,
 } from '@/components/ui';
 import { Plus, Send, Mail, Clock, Pencil, Trash2, FlaskConical, Trophy, MessageSquare } from 'lucide-react';
@@ -450,22 +451,23 @@ export function CampaignsPage() {
   return (
     <AppLayout title={t('campaign.title')}>
       <div className="p-6">
-        <div className="flex items-start justify-between gap-4 mb-6">
-          <div>
-            <h1 className="t-h1">{t('campaign.title')}</h1>
-            <p className="text-muted">{t('campaign.subtitle')}</p>
-          </div>
-          <Button
-            variant="primary"
-            leftIcon={<Icon as={Plus} size="sm" />}
-            onClick={() => {
-              resetCompose();
-              setComposeOpen(true);
-            }}
-          >
-            {t('campaign.new')}
-          </Button>
-        </div>
+        <PageHero
+          meta={t('campaign.title')}
+          title={t('campaign.title')}
+          description={t('campaign.subtitle')}
+          actions={
+            <Button
+              variant="primary"
+              leftIcon={<Icon as={Plus} size="sm" />}
+              onClick={() => {
+                resetCompose();
+                setComposeOpen(true);
+              }}
+            >
+              {t('campaign.new')}
+            </Button>
+          }
+        />
 
         {/* LOT renforcement — inline error banner (role=alert + retry) */}
         {loadError && !isLoading && (
@@ -509,9 +511,9 @@ export function CampaignsPage() {
             }
           />
         ) : (
-          <div className="flex flex-col gap-3">
-            {history.map((c) => (
-              <Card key={c.id} className="p-4 flex flex-col gap-3">
+          <div className="flex flex-col gap-3 animate-stagger">
+            {history.map((c, idx) => (
+              <Card key={c.id} className={`p-4 flex flex-col gap-3 card-interactive-bump stagger-${Math.min(idx + 1, 8)}`}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="font-semibold truncate">{c.subject}</div>
@@ -545,26 +547,26 @@ export function CampaignsPage() {
                 <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted">
                   <span>
                     {t('campaign.recipients')}:{' '}
-                    <strong>{c.total_recipients}</strong>
+                    <strong className="t-mono-num">{c.total_recipients}</strong>
                   </span>
                   <span>
-                    {t('campaign.sent')}: <strong>{c.sent}</strong>
+                    {t('campaign.sent')}: <strong className="t-mono-num">{c.sent}</strong>
                   </span>
                   <span>
-                    {t('campaign.opened')}: <strong>{c.opened}</strong>{' '}
-                    <span className="text-muted">
+                    {t('campaign.opened')}: <strong className="t-mono-num">{c.opened}</strong>{' '}
+                    <span className="text-muted t-mono-num">
                       ({pct(c.opened, c.sent)})
                     </span>
                   </span>
                   <span>
-                    {t('campaign.clicked')}: <strong>{c.clicked}</strong>{' '}
-                    <span className="text-muted">
+                    {t('campaign.clicked')}: <strong className="t-mono-num">{c.clicked}</strong>{' '}
+                    <span className="text-muted t-mono-num">
                       ({pct(c.clicked, c.sent)})
                     </span>
                   </span>
                   {c.failed > 0 ? (
                     <span style={{ color: 'var(--danger-text)' }}>
-                      {t('campaign.failed')}: {c.failed}
+                      {t('campaign.failed')}: <span className="t-mono-num">{c.failed}</span>
                     </span>
                   ) : null}
                 </div>

@@ -880,9 +880,10 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
           <kbd className="cmd-kbd cmd-kbd--ghost">ESC</kbd>
         </div>
 
-        {/* Résultats */}
+        {/* Résultats + Preview split layout */}
+        <div className="cmd-split-layout">
         <div
-          className="cmd-results max-h-[420px] overflow-y-auto py-1"
+          className="cmd-results overflow-y-auto py-1"
           id="cmd-palette-listbox"
           role="listbox"
           aria-label={t('cmd.results_label')}
@@ -890,10 +891,9 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
           {/* Section "Récents" si query vide et qu'il y en a */}
           {showRecents && (
             <div>
-              <div className="cmd-section-header">
-                <span aria-hidden="true">⚡</span>
-                <span className="cmd-section-header-label">{t('cmd.recents')}</span>
-                <span className="cmd-section-header-line" />
+              <div className="cmd-category-header">
+                <span><span aria-hidden="true">⚡</span> {t('cmd.recents')}</span>
+                <span className="cmd-category-count">{recentIntents.length}</span>
               </div>
               {recentIntents.map((recent, idx) => (
                 <button
@@ -938,10 +938,9 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
           ) : (
             groupsForRender.map(([category, items]) => (
               <div key={category}>
-                <div className="cmd-section-header">
-                  <span aria-hidden="true">{CATEGORY_ICONS[category] || '🔍'}</span>
-                  <span className="cmd-section-header-label">{category}</span>
-                  <span className="cmd-section-header-line" />
+                <div className="cmd-category-header">
+                  <span><span aria-hidden="true">{CATEGORY_ICONS[category] || '🔍'}</span> {category}</span>
+                  <span className="cmd-category-count">{items.length}</span>
                 </div>
                 {items.map((item) => {
                   const itemIndex = flatIndex++;
@@ -992,32 +991,35 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
           )}
         </div>
 
-        {/* Footer */}
-        <div className="cmd-footer">
-          <span className="cmd-footer-hint">
-            <kbd className="cmd-kbd">↑↓</kbd>
-            <span>{t('cmd.footer_nav')}</span>
-          </span>
-          <span className="cmd-footer-hint">
-            <kbd className="cmd-kbd">↵</kbd>
-            <span>{t('cmd.footer_open')}</span>
-          </span>
-          <span className="cmd-footer-hint">
-            <kbd className="cmd-kbd">Esc</kbd>
-            <span>{t('cmd.footer_close')}</span>
-          </span>
-          <span className="cmd-footer-hint">
-            <kbd className="cmd-kbd">⌘K</kbd>
-            <span>{t('cmd.footer_toggle')}</span>
-          </span>
-          <span className="cmd-footer-hint">
-            <kbd className="cmd-kbd">⌘D</kbd>
-            <span>{t('cmd.footer_fav')}</span>
-          </span>
+        {/* Preview panel (Sprint Deep 2B) */}
+        <div className="cmd-preview-panel" aria-live="polite">
+          {combinedItems[selectedIndex] ? (
+            <>
+              <div className="preview-icon" aria-hidden="true">
+                <span style={{ fontSize: 22 }}>{combinedItems[selectedIndex].icon}</span>
+              </div>
+              <div className="preview-title">{combinedItems[selectedIndex].label}</div>
+              <div className="preview-desc">{combinedItems[selectedIndex].description}</div>
+              <div className="preview-kbd">
+                <kbd className="kbd-badge-s10">↵</kbd>
+              </div>
+            </>
+          ) : (
+            <div className="cmd-preview-empty">Sélectionnez un élément pour voir l'aperçu</div>
+          )}
+        </div>
+        </div>{/* fin cmd-split-layout */}
+
+        {/* Footer hints (Sprint Deep 2B) */}
+        <div className="cmd-footer-hints">
+          <span className="hint-group"><kbd className="kbd-badge-s10">↑↓</kbd> {t('cmd.footer_nav')}</span>
+          <span className="hint-group"><kbd className="kbd-badge-s10">↵</kbd> {t('cmd.footer_open')}</span>
+          <span className="hint-group"><kbd className="kbd-badge-s10">esc</kbd> {t('cmd.footer_close')}</span>
+          <span className="hint-group"><kbd className="kbd-badge-s10">⌘K</kbd> {t('cmd.footer_toggle')}</span>
+          <span className="hint-group"><kbd className="kbd-badge-s10">⌘D</kbd> {t('cmd.footer_fav')}</span>
           {intentItems.length > 0 && (
-            <span className="cmd-footer-status">
-              <span aria-hidden="true">🎯</span>
-              {t('cmd.action_ready')}
+            <span className="hint-group" style={{ marginLeft: 'auto' }}>
+              <span aria-hidden="true">🎯</span> {t('cmd.action_ready')}
             </span>
           )}
         </div>

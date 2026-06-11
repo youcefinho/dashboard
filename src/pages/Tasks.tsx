@@ -175,11 +175,12 @@ export function TasksPage() {
   return (
     <AppLayout title={t('tasks.page.title')}>
       <PageHero
+        compact
         meta={t('tasks.page.meta')}
         title={t('tasks.page.title')}
         highlight={t('tasks.page.title')}
         description={t('tasks.page.description')}
-        actions={<Button variant="premium" leftIcon={<Plus size={14} />} onClick={() => setShowAddModal(true)}>{t('tasks.action.new')}</Button>}
+        actions={<Button leftIcon={<Plus size={14} />} onClick={() => setShowAddModal(true)}>{t('tasks.action.new')}</Button>}
       />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
@@ -189,13 +190,13 @@ export function TasksPage() {
           { icon: CalendarDays, v: todayTasks.length, l: t('tasks.kpi.today'), bg: 'var(--warning-soft)', color: 'var(--warning)' },
           { icon: CheckCircle2, v: doneTasks.length, l: t('tasks.kpi.done'), bg: 'var(--success-soft)', color: 'var(--success)' },
         ].map((s, i) => (
-          <div key={s.l} className={`stat-card animate-fade-in-up stagger-${i + 1} flex items-center gap-3`}>
-            <div className="stat-icon-chip" style={{ background: s.bg }}>
+          <div key={s.l} className={`stat-card-s1 animate-stagger stagger-${i + 1} flex items-center gap-3`}>
+            <div className="kpi-icon-chip-s1" style={{ background: s.bg }}>
               <s.icon size={18} style={{ color: s.color }} />
             </div>
             <div>
               <p className="stat-label">{s.l}</p>
-              <p className="stat-value text-xl" style={{ color: s.color }}>{s.v}</p>
+              <p className="stat-value text-xl" style={{ color: s.color, fontVariantNumeric: 'tabular-nums' }}>{s.v}</p>
             </div>
           </div>
         ))}
@@ -204,25 +205,25 @@ export function TasksPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <div className="segmented-premium">
+          <div className="segmented-s1">
             {(['all', 'todo', 'in_progress', 'done'] as const).map(f => (
-              <button key={f} onClick={() => setFilter(f)} className={`segmented-premium-item ${filter === f ? 'active' : ''}`} aria-selected={filter === f}>
+              <button key={f} onClick={() => setFilter(f)} className={filter === f ? 'active' : ''} aria-selected={filter === f}>
                 {f === 'all' ? t('tasks.filter.all') : TASK_STATUS_LABELS[f]}
               </button>
             ))}
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <div className="segmented-premium">
+          <div className="segmented-s1">
             {(['due_date', 'priority', 'status'] as const).map(s => (
-              <button key={s} onClick={() => setSortBy(s)} className={`segmented-premium-item ${sortBy === s ? 'active' : ''}`} aria-selected={sortBy === s}>
+              <button key={s} onClick={() => setSortBy(s)} className={sortBy === s ? 'active' : ''} aria-selected={sortBy === s}>
                 {s === 'due_date' ? t('tasks.sort.date') : s === 'priority' ? t('tasks.sort.priority') : t('tasks.sort.status')}
               </button>
             ))}
           </div>
-          <div className="flex items-center bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-lg p-0.5">
-            <button onClick={() => setViewMode('list')} aria-label={t('tasks.view.list')} aria-pressed={viewMode === 'list'} className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-[var(--primary)] text-white' : 'text-[var(--text-muted)]'}`}><LayoutList size={14} aria-hidden /></button>
-            <button onClick={() => setViewMode('kanban')} aria-label={t('tasks.view.kanban')} aria-pressed={viewMode === 'kanban'} className={`p-1.5 rounded-md transition-all ${viewMode === 'kanban' ? 'bg-[var(--primary)] text-white' : 'text-[var(--text-muted)]'}`}><Kanban size={14} aria-hidden /></button>
+          <div className="segmented-s1">
+            <button onClick={() => setViewMode('list')} aria-label={t('tasks.view.list')} aria-pressed={viewMode === 'list'} className={`flex items-center justify-center p-1.5 ${viewMode === 'list' ? 'active' : ''}`}><LayoutList size={14} aria-hidden /></button>
+            <button onClick={() => setViewMode('kanban')} aria-label={t('tasks.view.kanban')} aria-pressed={viewMode === 'kanban'} className={`flex items-center justify-center p-1.5 ${viewMode === 'kanban' ? 'active' : ''}`}><Kanban size={14} aria-hidden /></button>
           </div>
           <Button size="sm" leftIcon={<Plus size={14} />} onClick={() => setShowAddModal(true)}>{t('tasks.action.add_short')}</Button>
         </div>
@@ -250,7 +251,7 @@ export function TasksPage() {
         viewMode === 'kanban' ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4" aria-busy="true" aria-live="polite">
             {[0, 1, 2].map(i => (
-              <div key={i} className="surface-card p-3 space-y-2">
+              <div key={i} className="stripe-card p-3 space-y-2">
                 <div className="skeleton-shimmer h-4 w-24 mb-2" />
                 <div className="skeleton-shimmer h-16 w-full" />
                 <div className="skeleton-shimmer h-16 w-full" />
@@ -263,9 +264,9 @@ export function TasksPage() {
           </div>
         )
       ) : viewMode === 'kanban' ? (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-stagger stagger-1">
           {(['todo', 'in_progress', 'done'] as const).map(status => (
-            <div key={status} className="surface-card p-3 animate-fade-in-up">
+            <div key={status} className="stripe-card p-3 animate-stagger" style={{ animationDelay: `${(['todo', 'in_progress', 'done'].indexOf(status)) * 80}ms` }}>
               <div className="flex items-center gap-2 mb-3 px-1">
                 <span className="text-sm">{TASK_STATUS_ICONS[status]}</span>
                 <h3 className="text-xs font-bold uppercase tracking-wider">{TASK_STATUS_LABELS[status]}</h3>
@@ -287,13 +288,13 @@ export function TasksPage() {
                     rightThreshold={60}
                   >
                     <div {...longPressProps}>
-                      <Card className={`p-3 cursor-pointer hover:border-[var(--primary)] transition-colors ${task.status === 'done' ? 'opacity-50' : ''} relative z-10`} onClick={() => openDetail(task)}>
+                      <Card className={`p-3 cursor-pointer hover-lift-stripe ${task.status === 'done' ? 'opacity-50' : ''} relative z-10`} onClick={() => openDetail(task)}>
                         <div className="flex items-start gap-2 mb-1">
                           <button onClick={(e) => { e.stopPropagation(); toggleStatus(task); }} className="mt-0.5 text-sm shrink-0">{TASK_STATUS_ICONS[task.status]}</button>
                           <p className={`text-xs font-medium ${task.status === 'done' ? 'line-through text-[var(--text-muted)]' : ''}`}>{task.title}</p>
                         </div>
                         <div className="flex items-center justify-between text-[10px] text-[var(--text-muted)] pl-6">
-                          <span className={isOverdue(task) ? 'text-[var(--danger)] font-semibold' : ''}>{formatDueDate(task.due_date)} {isOverdue(task) && '⚠️'}</span>
+                          <span className={isOverdue(task) ? 'text-[var(--danger)] font-semibold' : ''} style={!isOverdue(task) && Math.ceil((new Date(task.due_date).getTime() - Date.now()) / 86400000) <= 2 && Math.ceil((new Date(task.due_date).getTime() - Date.now()) / 86400000) >= 0 ? { color: 'var(--warning)' } : undefined}>{formatDueDate(task.due_date)} {isOverdue(task) && '⚠️'}</span>
                         </div>
                         <div className="pl-6 pt-1 flex gap-1">
                           <Badge color={TASK_PRIORITY_COLORS[task.priority]} className="text-[9px]">{TASK_PRIORITY_ICONS[task.priority]} {TASK_PRIORITY_LABELS[task.priority]}</Badge>
@@ -309,7 +310,7 @@ export function TasksPage() {
           ))}
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-2 animate-stagger stagger-1">
           {filteredTasks.length === 0 ? (
             <EmptyState icon={<ListTodo size={40}/>} title={t('tasks.empty.title')} description={t('tasks.empty.description')} />
           ) : (
@@ -331,7 +332,7 @@ export function TasksPage() {
                 rightThreshold={110}
               >
                 <div {...longPressProps}>
-                  <Card className={`p-4 flex items-start gap-3 cursor-pointer hover:border-[var(--primary)] transition-all ${task.status === 'done' ? 'opacity-50' : ''} relative z-10`} onClick={() => openDetail(task)}>
+                  <Card className={`p-4 flex items-start gap-3 cursor-pointer hover:bg-[var(--bg-subtle)] transition-colors duration-150 ${task.status === 'done' ? 'opacity-50' : ''} relative z-10`} onClick={() => openDetail(task)}>
                     <button onClick={(e) => { e.stopPropagation(); toggleStatus(task); }} className="mt-0.5 text-lg shrink-0" title={TASK_STATUS_LABELS[task.status]}>{TASK_STATUS_ICONS[task.status]}</button>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-0.5">
@@ -342,7 +343,7 @@ export function TasksPage() {
                       {task.description && <p className="text-xs text-[var(--text-muted)] mb-1 truncate">{task.description}</p>}
                       <div className="flex items-center gap-3 text-[10px] text-[var(--text-muted)]">
                         {task.lead_name && <span className="flex items-center gap-1">👤 {task.lead_name}</span>}
-                        <span className={`flex items-center gap-1 ${isOverdue(task) ? 'text-[var(--danger)] font-semibold' : ''}`}>📅 {formatDueDate(task.due_date)} {isOverdue(task) && '⚠️'}</span>
+                      <span className={`flex items-center gap-1 ${isOverdue(task) ? 'text-[var(--danger)] font-semibold' : ''}`} style={!isOverdue(task) && Math.ceil((new Date(task.due_date).getTime() - Date.now()) / 86400000) <= 2 && Math.ceil((new Date(task.due_date).getTime() - Date.now()) / 86400000) >= 0 ? { color: 'var(--warning)' } : undefined}>📅 {formatDueDate(task.due_date)} {isOverdue(task) && '⚠️'}</span>
                       </div>
                     </div>
                     <button onClick={(e) => { e.stopPropagation(); void handleDelete(task.id); }} aria-label={t('tasks.detail.delete')} className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-[var(--danger-soft)] transition-all shrink-0"><Trash2 size={14} aria-hidden /></button>
@@ -374,7 +375,7 @@ export function TasksPage() {
           </div>
           <div>
             <label className="text-xs font-medium mb-1 block">{t('tasks.modal.desc_label')}</label>
-            <textarea value={newDesc} onChange={e => setNewDesc(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm resize-none" rows={2} />
+            <textarea value={newDesc} onChange={e => setNewDesc(e.target.value)} className="w-full px-3 py-2.5 text-sm bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border)] rounded-lg placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-[3px] focus:ring-[var(--primary-ring)] focus:outline-none resize-none" rows={2} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -456,7 +457,7 @@ export function TasksPage() {
                 ))}
               </div>
               <div className="flex gap-2">
-                <textarea value={newComment} onChange={e => setNewComment(e.target.value)} placeholder={t('tasks.detail.comment_placeholder')} rows={2} className="flex-1 px-3 py-2 border rounded-lg text-xs resize-none" />
+                <textarea value={newComment} onChange={e => setNewComment(e.target.value)} placeholder={t('tasks.detail.comment_placeholder')} rows={2} className="flex-1 px-3 py-2.5 text-sm bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border)] rounded-lg placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-[3px] focus:ring-[var(--primary-ring)] focus:outline-none resize-none" />
                 <Button size="sm" variant="secondary" onClick={handleAddComment} disabled={!newComment} className="self-end">{t('tasks.detail.send')}</Button>
               </div>
             </div>

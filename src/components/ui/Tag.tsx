@@ -153,7 +153,7 @@ export function Tag({
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onRemove(); }}
-          className="inline-flex items-center justify-center w-3 h-3 rounded-full opacity-60 hover:opacity-100 transition-opacity cursor-pointer shrink-0"
+          className="inline-flex items-center justify-center w-4 h-4 rounded-full opacity-60 hover:opacity-100 hover:bg-[var(--danger-soft)] hover:text-[var(--danger)] transition-all duration-150 cursor-pointer shrink-0"
           style={{ marginLeft: 2 }}
           aria-label="Retirer"
         >

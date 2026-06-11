@@ -48,7 +48,7 @@ export function AiNextActionCard({ leadId }: AiNextActionCardProps) {
 
   if (!suggestion) {
     return (
-      <Card className="p-4 border border-dashed border-[var(--primary)]/40 bg-gradient-to-br from-[var(--primary)]/12 to-[var(--accent-orange)]/8">
+      <Card className="card-premium p-4 border border-dashed border-[var(--primary)]/30 bg-[var(--primary-soft)]">
         <div className="flex items-start gap-2 mb-2">
           <UIcon as={Sparkles} size="sm" className="text-[var(--primary)] mt-0.5 shrink-0" />
           <div className="min-w-0">
@@ -68,7 +68,7 @@ export function AiNextActionCard({ leadId }: AiNextActionCardProps) {
   const ActionIcon = meta.icon;
 
   return (
-    <Card className="p-4 bg-gradient-to-br from-[var(--primary)]/12 to-[var(--accent-orange)]/8 border border-[var(--primary)]/30">
+    <Card className="card-premium p-4 bg-[var(--primary-soft)] border border-[var(--primary)]/20">
       <div className="flex items-start gap-2 mb-2">
         <UIcon as={Sparkles} size="xs" className="text-[var(--primary)] mt-1 shrink-0" />
         <div className="flex-1 min-w-0">

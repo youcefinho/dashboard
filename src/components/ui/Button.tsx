@@ -175,6 +175,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           base,
           variants[resolvedVariant],
           resolvedVariant !== 'link' && sizes[size],
+          resolvedVariant !== 'link' && 'press-scale-s4',
           fullWidth && 'w-full',
           className,
         )}

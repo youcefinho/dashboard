@@ -250,7 +250,7 @@ export function InvoicesPage() {
         description={t('invoices.hero.description')}
         actions={
           <div className="flex items-center gap-2">
-            <Button variant="premium" onClick={() => setShowAdd(true)}>{t('invoices.action.new')}</Button>
+            <Button variant="primary" onClick={() => setShowAdd(true)}>{t('invoices.action.new')}</Button>
           </div>
         }
       />
@@ -348,7 +348,7 @@ export function InvoicesPage() {
             action={<Button variant="primary" onClick={() => setShowAdd(true)}>{t('invoices.empty.action')}</Button>}
           />
         ) : (
-          <div className="table-premium-container overflow-x-auto">
+          <div className="table-premium-container overflow-x-auto animate-stagger">
             <table className="table-premium print-data-table">
               <thead>
                 <tr>
@@ -367,7 +367,7 @@ export function InvoicesPage() {
                   const hasBreakdown = inv.subtotal != null && inv.tax_tps != null && inv.tax_tvq != null;
                   return (
                     <Fragment key={inv.id}>
-                      <tr className="list-item-enter" style={{ animationDelay: `${idx * 28}ms` }}>
+                      <tr className="row-premium table-row-hover list-item-enter" style={{ animationDelay: `${idx * 28}ms` }}>
                         <td className="col-frozen">
                           <div className="flex items-center gap-2.5">
                             <button
@@ -397,7 +397,7 @@ export function InvoicesPage() {
                             {inv.description || <span className="text-[var(--text-muted)] italic">{t('invoices.row.no_description')}</span>}
                           </span>
                         </td>
-                        <td className="text-right font-bold t-mono-num text-[13px]">
+                        <td className="table-cell-numeric text-right font-bold t-mono-num text-[13px]">
                           {formatCurrency(invTotal(inv), getLocale(), inv.currency || 'CAD')}
                         </td>
                         <td className="text-[12px] text-[var(--text-secondary)]">
@@ -411,7 +411,7 @@ export function InvoicesPage() {
                           <div className="inline-flex items-center gap-3 justify-end">
                             <button
                               onClick={() => setDetailId(inv.id)}
-                              className="inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--text-secondary)] hover:text-[var(--primary)] hover:underline cursor-pointer"
+                              className="btn-action-ghost-s1 text-[11px]"
                               aria-label={t('invoices.action.view_aria')}
                             >
                               <Eye size={11} /> {t('invoices.action.view')}
@@ -426,7 +426,7 @@ export function InvoicesPage() {
                             )}
                             <button
                               onClick={() => void handleExportInvoicePdf(inv.id)}
-                              className="inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--text-secondary)] hover:text-[var(--primary)] hover:underline cursor-pointer"
+                              className="btn-action-ghost-s1 text-[11px]"
                               aria-label={t('invoices.action.export_aria')}
                             >
                               <Download size={11} /> {t('invoices.action.export')}
@@ -476,8 +476,8 @@ export function InvoicesPage() {
                                       </div>
                                     )}
                                     <div className="flex justify-between gap-4 pt-1 border-t border-[var(--border-subtle)]">
-                                      <span className="font-semibold">{t('invoice.total')}</span>
-                                      <span className="t-mono-num font-bold" style={{ color: 'var(--primary)' }}>
+                                      <span className="font-bold">{t('invoice.total')}</span>
+                                      <span className="t-mono-num" style={{ fontWeight: 700, color: 'var(--primary)' }}>
                                         {formatCurrency(invTotal(inv), getLocale(), inv.currency || 'CAD')}
                                       </span>
                                     </div>

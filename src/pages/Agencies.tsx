@@ -263,11 +263,11 @@ export function AgenciesPage() {
                   <th className="px-4 py-3 font-semibold">{t('agencies.table.created')}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[var(--border-subtle)]">
+              <tbody className="divide-y divide-[var(--border-subtle)] animate-stagger">
                 {subAccounts.map((acc, idx) => (
                   <tr
                     key={acc.id}
-                    className={`row-premium list-item-enter ${acc.id === active ? 'bg-[var(--warning)]/5' : ''}`}
+                    className={`row-premium table-row-hover list-item-enter stagger-${Math.min(idx + 1, 8)} ${acc.id === active ? 'bg-[var(--warning)]/5' : ''}`}
                     style={{ animationDelay: `${idx * 30}ms` }}
                   >
                     <td className="px-4 py-3">
@@ -284,10 +284,10 @@ export function AgenciesPage() {
                     <td className="px-4 py-3 text-[11px] font-mono text-[var(--text-muted)]">
                       {acc.id.substring(0, 8)}...
                     </td>
-                    <td className="px-4 py-3 text-right text-xs text-[var(--text-secondary)]">
+                    <td className="px-4 py-3 text-right text-xs text-[var(--text-secondary)] table-cell-numeric">
                       {t('agencies.kpi.leads_real', { count: acc.leadsCount })}
                     </td>
-                    <td className="px-4 py-3 text-right text-xs text-[var(--text-secondary)]">
+                    <td className="px-4 py-3 text-right text-xs text-[var(--text-secondary)] table-cell-numeric">
                       {t('agencies.kpi.tasks_real', { count: acc.tasksCount })}
                     </td>
                     <td className="px-4 py-3 text-xs text-[var(--text-secondary)]">

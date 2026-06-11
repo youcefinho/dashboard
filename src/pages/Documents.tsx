@@ -167,7 +167,7 @@ export function DocumentsPage() {
         highlight={t('documents.hero.title')}
         description={t('documents.hero.description')}
         actions={!isCreating && (
-          <Button variant="premium" onClick={() => setIsCreating(true)} leftIcon={<Icon as={Plus} size="sm" />}>
+          <Button variant="primary" onClick={() => setIsCreating(true)} leftIcon={<Icon as={Plus} size="sm" />}>
             {t('documents.action.send')}
           </Button>
         )}
@@ -300,7 +300,7 @@ export function DocumentsPage() {
       ) : (
         /* Sprint 31 vague 31-2A — Table premium (frozen first col + expand inline) */
         <Card className="p-0 overflow-hidden">
-          <div className="table-premium-container overflow-x-auto" aria-busy={isLoading}>
+          <div className="table-premium-container overflow-x-auto animate-stagger" aria-busy={isLoading}>
             <table className="table-premium print-data-table">
               <thead>
                 <tr>
@@ -316,7 +316,7 @@ export function DocumentsPage() {
                   const isExpanded = expandedRows.has(doc.id);
                   return (
                     <Fragment key={doc.id}>
-                      <tr className="list-item-enter" style={{ animationDelay: `${idx * 28}ms` }}>
+                      <tr className="row-premium table-row-hover list-item-enter" style={{ animationDelay: `${idx * 28}ms` }}>
                         <td className="col-frozen">
                           <div className="flex items-center gap-2.5">
                             <button
