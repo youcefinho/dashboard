@@ -719,8 +719,8 @@ export function LeadsPage() {
                   {lead.deal_value > 0 && <span className="text-meta-label text-[var(--primary)]">{lead.deal_value.toLocaleString('fr-CA')} $</span>}
                 </div>
                 <div className="flex items-center gap-2 mb-2">
-                  <div className="flex-1 h-1.5 rounded-full bg-[var(--bg-muted)] overflow-hidden">
-                    <div className="h-full rounded-full transition-all" style={{ width: `${lead.score}%`, background: scoreColor }} />
+                  <div className="flex-1 h-2 rounded-full bg-[var(--bg-muted)] overflow-hidden">
+                    <div className="h-full rounded-full transition-all duration-500" style={{ width: `${lead.score}%`, background: scoreColor }} />
                   </div>
                   <span className="text-[10px] font-bold" style={{ color: scoreColor }}>{lead.score}</span>
                   {/* Sprint 13 — badge proba conversion calibrée (best-effort) */}
@@ -767,7 +767,7 @@ export function LeadsPage() {
               </Button>
               <button onClick={() => void handleBatchSummarize()} disabled={isBatchSummarizing}
                 className="inline-flex items-center gap-1.5 px-3 h-8 text-xs font-semibold text-white rounded-[var(--radius-xs)] transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
-                style={{ background: 'linear-gradient(135deg, var(--primary), var(--accent-orange))' }}
+                style={{ background: 'var(--primary)' }}
                 title={t('leads.page.bulk_summarize_title')} aria-label={t('leads.page.bulk_summarize_aria')}>
                 {isBatchSummarizing ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
                 Résumer ({selectedIds.size})
@@ -807,14 +807,14 @@ export function LeadsPage() {
                     <tr key={lead.id}
                       className={`border-b border-[var(--border-subtle)] row-hover-reveal relative ${
                         selectedIds.has(lead.id) ? 'bg-[var(--brand-tint)]' :
-                        isHot ? 'hover:bg-[oklch(0.97_0.04_220/0.4)]' : ''
+                        isHot ? 'hover:bg-[var(--primary-soft)]' : ''
                       }`}
                       style={{
                         animationDelay: `${Math.min(index, 20) * 20}ms`,
                         background: isHot && !selectedIds.has(lead.id)
-                          ? 'linear-gradient(90deg, rgba(0,157,219,0.04) 0%, rgba(217,110,39,0.02) 100%)'
+                          ? 'linear-gradient(90deg, rgba(99,91,255,0.04) 0%, rgba(99,91,255,0.01) 100%)'
                           : undefined,
-                        boxShadow: isHot ? 'inset 3px 0 0 0 rgba(0,157,219,0.6)' : undefined,
+                        boxShadow: isHot ? 'inset 3px 0 0 0 rgba(99,91,255,0.5)' : undefined,
                       }}>
                       <td className="px-4 py-3">
                         <input type="checkbox" checked={selectedIds.has(lead.id)} onChange={() => toggleSelect(lead.id)} className="rounded cursor-pointer accent-[var(--primary)]" />
@@ -827,7 +827,7 @@ export function LeadsPage() {
                               <p className="text-card-title">{lead.name}</p>
                               {isHot && (
                                 <span className="inline-flex items-center px-1.5 h-[16px] rounded-full text-[9px] font-bold text-white tracking-wider"
-                                  style={{ background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)', boxShadow: '0 0 8px rgba(217,110,39,0.4)' }}>
+                                  style={{ background: 'linear-gradient(135deg, var(--primary) 0%, #8B5CF6 100%)', boxShadow: '0 0 8px rgba(99,91,255,0.3)' }}>
                                   HOT
                                 </span>
                               )}
@@ -854,8 +854,8 @@ export function LeadsPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5">
-                          <div className="w-16 h-1.5 rounded-full bg-[var(--bg-muted)] overflow-hidden">
-                            <div className="h-full rounded-full transition-all" style={{ width: `${lead.score}%`, background: scoreColor }} />
+                          <div className="w-16 h-2 rounded-full bg-[var(--bg-muted)] overflow-hidden">
+                            <div className="h-full rounded-full transition-all duration-500" style={{ width: `${lead.score}%`, background: scoreColor }} />
                           </div>
                           <span className="text-meta-label w-5 text-right" style={{ color: scoreColor }}>{lead.score}</span>
                         </div>
