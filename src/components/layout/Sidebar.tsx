@@ -296,7 +296,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                   </div>
                 ) : (
                   <div className="w-9 h-9 rounded-md flex items-center justify-center shrink-0 font-bold text-[15px] text-white"
-                    style={{ background: 'var(--brand-gradient)' }}>
+                    style={{ background: 'linear-gradient(135deg, #635BFF 0%, #8B5CF6 100%)' }}>
                     {hasName ? companyName.charAt(0).toUpperCase() : 'I'}
                   </div>
                 )}

@@ -260,8 +260,8 @@ export function QuickAddFab() {
       onMouseLeave={cancelLongPress}
       className={fabClassName}
       style={{
-        background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
-        boxShadow: '0 6px 22px -2px rgba(0,157,219,0.55), 0 0 0 4px rgba(0,157,219,0.10), 0 0 28px -4px rgba(217,110,39,0.45)',
+        background: 'linear-gradient(135deg, #635BFF 0%, #8B5CF6 100%)',
+        boxShadow: '0 6px 22px -2px rgba(99,91,255,0.50), 0 0 0 4px rgba(99,91,255,0.12), 0 0 28px -4px rgba(139,92,246,0.35)',
       }}
       aria-label={t('fab.title')}
       title={t('fab.title')}
