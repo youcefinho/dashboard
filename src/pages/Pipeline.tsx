@@ -248,7 +248,7 @@ export function PipelinePage() {
         <div className="flex items-stretch gap-2 ml-2">
           {/* KPI Valeur */}
           <div className="stat-card flex items-center gap-2 px-3 py-2 hover-lift cursor-default animate-fade-in-up stagger-1">
-            <div className="stat-icon-chip" style={{ background: 'linear-gradient(135deg, #009DDB 0%, #0086C0 100%)' }}>
+            <div className="stat-icon-chip" style={{ background: 'linear-gradient(135deg, #635BFF 0%, #5851E5 100%)' }}>
               <DollarSign size={15} className="text-white" />
             </div>
             <div>
@@ -274,7 +274,7 @@ export function PipelinePage() {
 
           {/* KPI Dormants */}
           <div className="stat-card flex items-center gap-2 px-3 py-2 hover-lift cursor-default animate-fade-in-up stagger-3">
-            <div className="stat-icon-chip" style={{ background: 'linear-gradient(135deg, #FF9A00 0%, #D96E27 100%)' }}>
+            <div className="stat-icon-chip" style={{ background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)' }}>
               <AlertTriangle size={15} className="text-white" />
             </div>
             <div>
@@ -433,13 +433,13 @@ export function PipelinePage() {
                         } ${draggedId === lead.id ? 'opacity-40 scale-95 rotate-1' : ''}`}
                         style={{
                           borderLeft: isDormant ? '3px solid var(--warning)' : undefined,
-                          borderColor: isHot ? 'rgba(0, 157, 219, 0.55)' : undefined,
+                          borderColor: isHot ? 'rgba(99, 91, 255, 0.55)' : undefined,
                         }}>
 
                         {/* Badge HOT en absolute top-right pour hot leads */}
                         {isHot && (
                           <div className="absolute -top-2 -right-2 status-badge text-[10px] text-white tracking-wider shrink-0 z-10"
-                            style={{ background: 'var(--brand-gradient)', boxShadow: '0 4px 12px rgba(217, 110, 39, 0.45)' }}>
+                            style={{ background: 'linear-gradient(135deg, #635BFF 0%, #8B5CF6 100%)', boxShadow: '0 4px 12px rgba(99, 91, 255, 0.45)' }}>
                             HOT {lead.score}
                           </div>
                         )}
@@ -474,7 +474,7 @@ export function PipelinePage() {
                             {hasDeal && (
                               <span className="text-[12px] font-bold tabular-nums"
                                 style={isHot ? {
-                                  background: 'linear-gradient(135deg, #009DDB 0%, #D96E27 100%)',
+                                  background: 'linear-gradient(135deg, #635BFF 0%, #8B5CF6 100%)',
                                   WebkitBackgroundClip: 'text',
                                   WebkitTextFillColor: 'transparent',
                                   backgroundClip: 'text',
