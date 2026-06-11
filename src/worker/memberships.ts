@@ -754,6 +754,7 @@ export async function handleMemberLessonVideo(
     if (!r2Key) return json({ error: 'Vidéo non trouvée' }, 404);
 
     // Calque EXACT documents.ts:58-67 — env.FILES.get + stream.
+    if (!env.FILES) return json({ error: 'Stockage vidéo non configuré (R2)' }, 503);
     const r2Object = await env.FILES.get(r2Key);
     if (!r2Object) return json({ error: 'Vidéo non trouvée' }, 404);
 

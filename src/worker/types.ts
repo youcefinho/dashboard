@@ -29,7 +29,7 @@ export interface Env {
   USE_MOCKS: string;
   META_APP_ID?: string;
   META_APP_SECRET?: string;
-  FILES: R2Bucket;
+  FILES?: R2Bucket;
   WEBCHAT_ROOMS: DurableObjectNamespace;
   // Sprint 46 M3.4 — Durable Object rooms pour push WebSocket notifications par user.
   // Optionnel : si non bindé dans wrangler, broadcast skip silencieusement.

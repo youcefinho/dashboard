@@ -35,6 +35,7 @@ export async function handleUploadFile(
 
   // Upload vers R2
   const arrayBuffer = await file.arrayBuffer();
+  if (!env.FILES) return json({ error: 'Stockage fichiers non configuré (R2)' }, 503);
   await env.FILES.put(r2Key, arrayBuffer, {
     httpMetadata: { contentType: file.type },
     customMetadata: { originalName: file.name, uploadedBy: auth.userId },
@@ -56,6 +57,7 @@ export async function handleGetFile(
   const file = await env.DB.prepare('SELECT * FROM files WHERE id = ?').bind(fileId).first() as Record<string, unknown> | null;
   if (!file) return json({ error: 'Fichier introuvable' }, 404);
 
+  if (!env.FILES) return json({ error: 'Stockage fichiers non configuré (R2)' }, 503);
   const r2Object = await env.FILES.get(file.r2_key as string);
   if (!r2Object) return json({ error: 'Fichier non trouvé dans le stockage' }, 404);
 
@@ -96,6 +98,7 @@ export async function handleDeleteFile(
   const file = await env.DB.prepare('SELECT r2_key FROM files WHERE id = ?').bind(fileId).first() as { r2_key: string } | null;
   if (!file) return json({ error: 'Fichier introuvable' }, 404);
 
+  if (!env.FILES) return json({ error: 'Stockage fichiers non configuré (R2)' }, 503);
   await env.FILES.delete(file.r2_key);
   await env.DB.prepare('DELETE FROM files WHERE id = ?').bind(fileId).run();
   await audit(env, auth.userId, 'file.delete', 'file', fileId, {});

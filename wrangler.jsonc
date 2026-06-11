@@ -14,12 +14,13 @@
       "database_id": "ee9da52c-0e09-4d03-8819-dfc5b033cd18"
     }
   ],
-  "r2_buckets": [
-    {
-      "binding": "FILES",
-      "bucket_name": "intralys-files"
-    }
-  ],
+  // R2 désactivé temporairement — activer R2 dans le Dashboard Cloudflare puis décommenter
+  // "r2_buckets": [
+  //   {
+  //     "binding": "FILES",
+  //     "bucket_name": "intralys-files"
+  //   }
+  // ],
   "durable_objects": {
     "bindings": [
       {
@@ -31,27 +32,29 @@
   "migrations": [
     {
       "tag": "v1",
-      "new_classes": ["WebchatRoom"]
+      "new_sqlite_classes": ["WebchatRoom"]
     }
   ],
   "vars": {
     "ALLOWED_ORIGINS": "https://crm.intralys.com,https://intralys-dashboard.pages.dev",
     "USE_MOCKS": "true"
   },
-  "queues": {
-    "producers": [
-      { "binding": "BROADCAST_QUEUE", "queue": "intralys-broadcast" },
-      { "binding": "WEBHOOK_QUEUE", "queue": "intralys-webhooks" }
-    ],
-    "consumers": [
-      { "queue": "intralys-broadcast", "max_batch_size": 10, "max_batch_timeout": 30 },
-      { "queue": "intralys-webhooks", "max_batch_size": 5, "max_batch_timeout": 15 }
-    ]
-  },
-  "kv_namespaces": [
-    { "binding": "RATE_LIMITER", "id": "PLACEHOLDER_RATE_LIMITER_ID" },
-    { "binding": "STATE_STORE", "id": "PLACEHOLDER_STATE_STORE_ID" }
-  ],
+  // Queues désactivées temporairement — créer avec `wrangler queues create` puis décommenter
+  // "queues": {
+  //   "producers": [
+  //     { "binding": "BROADCAST_QUEUE", "queue": "intralys-broadcast" },
+  //     { "binding": "WEBHOOK_QUEUE", "queue": "intralys-webhooks" }
+  //   ],
+  //   "consumers": [
+  //     { "queue": "intralys-broadcast", "max_batch_size": 10, "max_batch_timeout": 30 },
+  //     { "queue": "intralys-webhooks", "max_batch_size": 5, "max_batch_timeout": 15 }
+  //   ]
+  // },
+  // KV désactivé temporairement — créer avec `wrangler kv namespace create` puis décommenter
+  // "kv_namespaces": [
+  //   { "binding": "RATE_LIMITER", "id": "PLACEHOLDER_RATE_LIMITER_ID" },
+  //   { "binding": "STATE_STORE", "id": "PLACEHOLDER_STATE_STORE_ID" }
+  // ],
   "triggers": {
     "crons": ["*/5 * * * *"]
   }
