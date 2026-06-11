@@ -44,7 +44,7 @@ interface DashboardActivityProps {
 // ── Composant ────────────────────────────────────────────────
 export function DashboardActivity({ isLoading, activities, onViewAll }: DashboardActivityProps) {
   return (
-    <div className="surface-card p-5 animate-fade-in-up stagger-4">
+    <div className="surface-card p-6 animate-fade-in-up stagger-4">
       {/* En-tête */}
       <div className="flex items-center justify-between mb-5">
         <h3 className="text-section-title tracking-tight">{t('dashboard.activity.title')}</h3>

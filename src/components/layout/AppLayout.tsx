@@ -927,8 +927,8 @@ export function AppLayout({ children, title }: AppLayoutProps) {
         )}
 
         {/* Contenu de la page — Sprint 38 Stripe-clean : canvas bg + consistent padding */}
-        <div id="main-content" tabIndex={-1} className="flex-1 overflow-auto p-4 lg:p-6 focus:outline-none">
-          <div className="animate-fade-in max-w-[1400px]">
+        <div id="main-content" tabIndex={-1} className="flex-1 overflow-auto p-4 lg:p-8 focus:outline-none">
+          <div className="animate-fade-in max-w-[1400px] mx-auto">
             {children}
           </div>
         </div>

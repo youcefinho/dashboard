@@ -33,7 +33,7 @@ export function DashboardHero({
       : t('dashboard.greeting.evening');
 
   return (
-    <div className="surface-card p-6 mb-6 animate-fade-in-up">
+    <div className="surface-card p-6 mb-8 animate-fade-in-up">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <p className="text-meta-label mb-1">

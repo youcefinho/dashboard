@@ -30,7 +30,7 @@ export function DashboardClients({
   if (clients.length === 0) return null;
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6 animate-fade-in-up stagger-2">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8 animate-fade-in-up stagger-2">
       {clients.slice(0, 5).map((client, i) => {
         const leadCount = stats?.leads_by_client?.find(
           c => c.client_name === client.name

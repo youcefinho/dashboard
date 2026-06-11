@@ -76,7 +76,7 @@ export function DashboardWeeklyInsight() {
 
   if (loading) {
     return (
-      <div className="surface-card p-6 mb-6 animate-fade-in-up stagger-2">
+      <div className="surface-card p-6 mb-8 animate-fade-in-up stagger-2">
         <div className="flex items-center justify-between mb-4">
           <div className="skeleton-shimmer h-6 w-48 rounded" />
           <div className="skeleton-shimmer h-8 w-32 rounded" />
@@ -92,7 +92,7 @@ export function DashboardWeeklyInsight() {
   }
 
   return (
-    <div className="surface-card p-5 mb-6 animate-fade-in-up stagger-2">
+    <div className="surface-card p-6 mb-8 animate-fade-in-up stagger-2">
       {/* Header avec bouton Générer */}
       <div
         className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-4"

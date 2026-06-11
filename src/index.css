@@ -14988,7 +14988,7 @@ body.pdf-mode-invoice .credit-note-table th {
 }
 
 .page-content-spacing > * + * {
-  margin-top: var(--space-6, 24px);
+  margin-top: var(--space-8, 32px);
 }
 
 /* ── 11. Empty state premium ───────────────────────────────────────────── */
@@ -15032,7 +15032,7 @@ body.pdf-mode-invoice .credit-note-table th {
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
-  padding: var(--space-5, 20px);
+  padding: var(--space-6, 24px);
   box-shadow: var(--shadow-sm);
   transition: box-shadow 0.22s ease;
 }

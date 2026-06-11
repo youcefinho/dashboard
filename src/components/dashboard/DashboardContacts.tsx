@@ -55,7 +55,7 @@ export function DashboardContacts({
   onLeadClick,
 }: DashboardContactsProps) {
   return (
-    <div className="surface-card animate-fade-in-up stagger-6">
+    <div className="surface-card mb-8 animate-fade-in-up stagger-6">
       {/* En-tête */}
       <div className="surface-section px-4 sm:px-6 py-4 flex items-center justify-between">
         <div>

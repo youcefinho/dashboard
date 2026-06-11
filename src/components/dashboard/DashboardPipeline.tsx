@@ -35,7 +35,7 @@ export function DashboardPipeline({
   showSources,
 }: DashboardPipelineProps) {
   return (
-    <div className="page-grid-2-1 mb-6 animate-fade-in-up stagger-5">
+    <div className="page-grid-2-1 mb-8 animate-fade-in-up stagger-5">
       {/* Donut pipeline */}
       <div className="chart-container">
         <h3 className="text-section-title mb-4">{t('dashboard.pipeline.title')}</h3>
