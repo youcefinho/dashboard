@@ -3,6 +3,7 @@
  * Extrait de Dashboard.tsx (partie activité dans DashboardChartWidget, lignes 418-458)
  * Utilise les classes CSS premium au lieu de styles inline
  */
+import { ArrowRight } from 'lucide-react';
 import { t } from '@/lib/i18n';
 import { ACTIVITY_LABELS, type ActivityLogEntry, type ActivityType } from '@/lib/types';
 import { AVATAR_GRADIENTS } from '@/lib/avatarColors';
@@ -52,7 +53,11 @@ export function DashboardActivity({ isLoading, activities, onViewAll }: Dashboar
             let details: Record<string, string> = {};
             try { details = JSON.parse(activity.details); } catch { /* json invalide */ }
             return (
-              <div key={activity.id} className="flex gap-3 cursor-pointer row-hover-reveal">
+              <div key={activity.id} className="activity-row flex gap-3 cursor-pointer rounded-lg px-3 py-2 -mx-3">
+                {/* Timeline dot */}
+                <div className={`timeline-dot ${i === 0 ? 'timeline-dot--active' : ''}`}
+                  style={{ background: i === 0 ? 'var(--primary)' : 'var(--border-strong)', marginTop: '6px' }} />
+
                 {/* Avatar gradient */}
                 <div
                   className="avatar-gradient avatar-sm flex items-center justify-center text-[10px] font-semibold shrink-0"
@@ -73,6 +78,9 @@ export function DashboardActivity({ isLoading, activities, onViewAll }: Dashboar
                     {timeAgo(activity.created_at)} · {details.name || details.email || details.to || ''}
                   </div>
                 </div>
+
+                {/* Flèche slide-in au hover */}
+                <ArrowRight size={14} className="activity-arrow" />
               </div>
             );
           })
@@ -86,8 +94,7 @@ export function DashboardActivity({ isLoading, activities, onViewAll }: Dashboar
       {/* Bouton voir tout */}
       <button
         onClick={onViewAll}
-        className="w-full mt-5 text-xs font-semibold py-2 rounded-lg transition cursor-pointer hover:bg-[var(--brand-tint)]"
-        style={{ color: 'var(--primary)' }}
+        className="w-full mt-5 text-xs font-semibold py-2.5 rounded-lg transition-all duration-200 cursor-pointer text-[var(--primary)] border border-[var(--border)] hover:border-[var(--primary)] hover:text-[var(--primary)] hover:shadow-sm press-scale"
       >
         {t('dashboard.activity.view_all')}
       </button>

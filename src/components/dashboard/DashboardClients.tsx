@@ -29,7 +29,7 @@ export function DashboardClients({
         return (
           <div
             key={client.id}
-            className="surface-card-interactive p-4 flex items-center gap-3"
+            className="surface-card-interactive p-4 flex items-center gap-3 hover-lift"
             onClick={() => onClientClick(client.id)}
           >
             <div
@@ -40,7 +40,7 @@ export function DashboardClients({
             </div>
             <div className="min-w-0">
               <div className="text-xs font-semibold truncate">{client.name}</div>
-              <div className="text-meta-label" style={{ fontSize: '10px', textTransform: 'none', letterSpacing: 'normal' }}>
+              <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium" style={{ background: 'var(--primary-soft)', color: 'var(--primary)' }}>
                 {leadCount} leads
               </div>
             </div>
@@ -50,12 +50,12 @@ export function DashboardClients({
 
       {/* Bouton ajouter */}
       <div
-        className="surface-card-interactive p-4 flex items-center justify-center"
+        className="group surface-card-interactive p-4 flex items-center justify-center hover:border-[var(--primary)] hover:text-[var(--primary)] transition-all duration-200"
         style={{ borderStyle: 'dashed' }}
         onClick={onAddClient}
       >
         <div className="flex items-center gap-2 text-xs font-medium text-[var(--text-muted)]">
-          <span className="text-lg">+</span>
+          <span className="w-8 h-8 rounded-full border-2 border-dashed border-[var(--border)] flex items-center justify-center text-base transition-colors group-hover:border-[var(--primary)] group-hover:text-[var(--primary)]" style={{ color: 'var(--text-muted)' }}>+</span>
           {t('dashboard.client.add')}
         </div>
       </div>

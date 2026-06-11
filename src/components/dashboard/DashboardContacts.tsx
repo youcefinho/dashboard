@@ -46,9 +46,9 @@ export function DashboardContacts({
   onLeadClick,
 }: DashboardContactsProps) {
   return (
-    <div className="surface-card mb-8 animate-fade-in-up stagger-6">
+    <div className="surface-card mb-8 animate-fade-in-up stagger-6" style={{ borderTop: '3px solid var(--primary)' }}>
       {/* En-tête */}
-      <div className="surface-section px-4 sm:px-6 py-4 flex items-center justify-between">
+      <div className="surface-section px-4 sm:px-6 py-4 flex items-center justify-between border-b border-[var(--border)]">
         <div>
           <h3 className="text-section-title">
             {t('dashboard.contacts.title')}
@@ -60,8 +60,7 @@ export function DashboardContacts({
         <div className="flex items-center gap-2">
           <button
             onClick={onViewAll}
-            className="h-8 px-3 rounded-lg text-xs font-semibold flex items-center gap-1 transition cursor-pointer hover:bg-[var(--brand-tint)]"
-            style={{ color: 'var(--primary)' }}
+            className="h-8 px-4 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all duration-200 cursor-pointer border border-[var(--border)] text-[var(--primary)] hover:border-[var(--primary)] hover:bg-[var(--primary-soft)] hover:shadow-sm press-scale"
           >
             {t('dashboard.contacts.view_all')} <ArrowRight size={14} />
           </button>
@@ -97,6 +96,7 @@ export function DashboardContacts({
                   style={{
                     borderTop:
                       i === 0 ? 'none' : '1px solid var(--border-subtle)',
+                    borderLeft: `3px solid ${scoreColor}`,
                   }}
                   onClick={() => onLeadClick(lead.id)}
                 >
@@ -210,7 +210,7 @@ export function DashboardContacts({
                 return (
                   <tr
                     key={lead.id}
-                    className="row-hover-reveal transition cursor-pointer"
+                    className="row-hover-reveal transition cursor-pointer hover:bg-[var(--bg-subtle)]"
                     style={{ borderTop: '1px solid var(--border-subtle)' }}
                     onClick={() => onLeadClick(lead.id)}
                   >
@@ -277,11 +277,11 @@ export function DashboardContacts({
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <div
-                          className="w-16 h-1.5 rounded-full overflow-hidden"
+                          className="w-16 h-2 rounded-full overflow-hidden"
                           style={{ background: 'var(--bg-muted)' }}
                         >
                           <div
-                            className="h-full rounded-full"
+                            className="h-full rounded-full transition-all duration-500"
                             style={{
                               background: scoreColor,
                               width: `${score}%`,
@@ -290,7 +290,7 @@ export function DashboardContacts({
                         </div>
                         <span
                           className="text-xs font-medium"
-                          style={{ fontVariantNumeric: 'tabular-nums' }}
+                          style={{ fontVariantNumeric: 'tabular-nums', color: scoreColor }}
                         >
                           {score}
                         </span>

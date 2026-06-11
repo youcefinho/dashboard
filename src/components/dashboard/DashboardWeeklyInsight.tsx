@@ -92,7 +92,7 @@ export function DashboardWeeklyInsight() {
   }
 
   return (
-    <div className="surface-card p-6 mb-8 animate-fade-in-up stagger-2">
+    <div className="surface-card p-6 mb-8 animate-fade-in-up stagger-2" style={{ borderTop: '3px solid var(--primary)' }}>
       {/* Header avec bouton Générer */}
       <div
         className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-4"
@@ -115,7 +115,7 @@ export function DashboardWeeklyInsight() {
           className={`h-9 px-4 rounded-lg text-xs font-semibold flex items-center gap-2 transition duration-200 cursor-pointer press-scale ${
             generating
               ? 'opacity-50 cursor-not-allowed bg-[var(--bg-subtle)] text-[var(--text-muted)]'
-              : 'bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)] shadow-sm hover:shadow'
+              : 'bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)] shadow-sm hover:shadow hover:shadow-md'
           }`}
         >
           <RefreshCw size={14} className={generating ? 'animate-spin' : ''} />
@@ -206,10 +206,10 @@ function MetricMini({
   isPositive?: boolean;
 }) {
   return (
-    <div className="surface-inset p-3.5">
+    <div className="surface-inset p-3.5 rounded-xl transition-all duration-200 hover:shadow-sm">
       <div className="text-meta-label mb-1">{label}</div>
       <div className="flex items-baseline gap-2">
-        <span className="text-2xl font-bold text-[var(--text-primary)]">
+        <span className="text-2xl font-bold text-[var(--text-primary)]" style={{ fontVariantNumeric: 'tabular-nums' }}>
           {value}
         </span>
         {delta && (

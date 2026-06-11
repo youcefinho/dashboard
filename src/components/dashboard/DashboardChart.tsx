@@ -70,14 +70,15 @@ export function DashboardChart({ isLoading, leadsData, periodDays }: DashboardCh
               contentStyle={{
                 background: 'var(--bg-surface)',
                 border: '1px solid var(--border)',
-                borderRadius: 'var(--radius-md)',
+                borderRadius: 'var(--radius-lg)',
                 fontSize: '12px',
                 fontWeight: 500,
                 boxShadow: 'var(--shadow-md)',
+                padding: '8px 12px',
               }}
-              cursor={{ fill: 'rgba(0,0,0,0.04)' }}
+              cursor={{ fill: 'rgba(99, 91, 255, 0.06)' }}
             />
-            <Bar dataKey="count" radius={[4, 4, 0, 0]} fill="#009DDB" />
+            <Bar dataKey="count" radius={[6, 6, 0, 0]} fill="var(--primary)" />
           </BarChart>
         </ResponsiveContainer>
       )}

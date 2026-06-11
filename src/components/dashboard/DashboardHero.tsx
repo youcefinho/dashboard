@@ -2,7 +2,7 @@
 // Extrait de Dashboard.tsx. Utilise les nouvelles classes CSS au lieu de
 // styles inline. Animation d'entrée fadeInUp.
 
-import { Download, Settings2 } from 'lucide-react';
+import { Download, Settings2, Sun, Moon, CloudSun } from 'lucide-react';
 import { exportLeadsCsv } from '@/lib/api';
 import { t } from '@/lib/i18n';
 import { useAuth } from '@/lib/auth';
@@ -33,13 +33,21 @@ export function DashboardHero({
       : t('dashboard.greeting.evening');
 
   return (
-    <div className="surface-card p-6 mb-8 animate-fade-in-up">
+    <div className="surface-card p-6 mb-8 animate-fade-in-up" style={{ borderLeft: '3px solid var(--primary)' }}>
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <p className="text-meta-label mb-1">
             {t('dashboard.period.days', { days: periodDays })}
           </p>
           <h2 className="text-page-title">
+            <span className="inline-flex items-center align-middle mr-1.5">
+              {hour < 12
+                ? <Sun size={22} className="text-amber-400 inline-block animate-pulse" />
+                : hour < 18
+                  ? <CloudSun size={22} className="text-orange-400 inline-block" />
+                  : <Moon size={22} className="text-indigo-400 inline-block" />
+              }
+            </span>
             {greeting}{' '}
             <span className="text-[var(--primary)]">
               {user?.name || 'Rochdi'}
@@ -69,7 +77,7 @@ export function DashboardHero({
           {/* Export CSV */}
           <button
             onClick={() => void exportLeadsCsv()}
-            className="h-9 px-3 rounded-[var(--radius-md)] text-sm font-medium flex items-center gap-2 transition hover:bg-[var(--bg-hover)] cursor-pointer border border-[var(--border)] text-[var(--text-secondary)] press-scale"
+            className="h-9 px-4 rounded-[var(--radius-lg)] text-sm font-medium flex items-center gap-2 transition-all duration-200 cursor-pointer border border-[var(--border)] text-[var(--text-secondary)] hover:border-[var(--primary)] hover:text-[var(--primary)] hover:shadow-sm press-scale"
           >
             <Download size={16} />
             {t('dashboard.action.export')}
@@ -78,10 +86,10 @@ export function DashboardHero({
           {/* Config toggle */}
           <button
             onClick={onToggleConfig}
-            className={`h-9 w-9 rounded-[var(--radius-md)] flex items-center justify-center transition cursor-pointer press-scale ${
+            className={`h-9 w-9 rounded-[var(--radius-md)] flex items-center justify-center transition-all duration-200 cursor-pointer press-scale ${
               showConfig
-                ? 'bg-[var(--primary)] text-white'
-                : 'hover:bg-[var(--bg-hover)] border border-[var(--border)] text-[var(--text-secondary)]'
+                ? 'bg-[var(--primary)] text-white hover:shadow-sm'
+                : 'hover:bg-[var(--bg-hover)] hover:shadow-sm border border-[var(--border)] text-[var(--text-secondary)]'
             }`}
             title={t('dashboard.page.config_title')}
             aria-label={t('dashboard.page.config_aria')}

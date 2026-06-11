@@ -63,12 +63,13 @@ export function DashboardPipeline({
                   contentStyle={{
                     background: 'var(--bg-surface)',
                     border: '1px solid var(--border)',
-                    borderRadius: 'var(--radius-md)',
+                    borderRadius: 'var(--radius-lg)',
                     fontSize: '12px',
                     fontWeight: 500,
                     boxShadow: 'var(--shadow-md)',
+                    padding: '8px 12px',
                   }}
-                  cursor={{ fill: 'rgba(0,0,0,0.04)' }}
+                  cursor={{ fill: 'rgba(99, 91, 255, 0.06)' }}
                 />
               </PieChart>
             </ResponsiveContainer>
@@ -119,7 +120,7 @@ export function DashboardPipeline({
                 instagram: t('dashboard.sources.instagram'),
               };
               return (
-                <div key={source}>
+                <div key={source} className="rounded-lg px-3 py-2 -mx-3 transition-colors hover:bg-[var(--bg-subtle)]">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-subtitle">
                       {labels[source] || source}
@@ -140,11 +141,11 @@ export function DashboardPipeline({
                     </div>
                   </div>
                   <div
-                    className="w-full h-1.5 rounded-full overflow-hidden"
+                    className="w-full h-2 rounded-full overflow-hidden"
                     style={{ background: 'var(--bg-muted)' }}
                   >
                     <div
-                      className="h-full rounded-full transition-all"
+                      className="h-full rounded-full transition-all duration-500"
                       style={{
                         width: `${pct}%`,
                         background: 'var(--primary)',
