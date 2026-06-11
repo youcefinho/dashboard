@@ -15121,3 +15121,142 @@ body.pdf-mode-invoice .credit-note-table th {
 }
 
 /* ── Fin Giga Sprint Design Phase 1 ─────────────────────────────────── */
+
+/* ── Sprint Design Vague 1 — Fondation Design System ────────────────────── */
+
+/* Token manquant : shadow-lg entre shadow-md et shadow-overlay */
+:root {
+  --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+}
+
+/* Status badge variants couleur prédéfinies */
+.status-badge--success {
+  background: var(--success-soft);
+  color: var(--success);
+}
+.status-badge--warning {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+.status-badge--danger {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.status-badge--info {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+/* Widget card standardisé — classe unifiée pour tous les widgets dashboard */
+.widget-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6, 24px);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: var(--space-8, 32px);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.widget-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+/* Section gap standard entre blocs */
+.section-gap {
+  margin-top: var(--space-8, 32px);
+}
+
+.section-gap:first-child {
+  margin-top: 0;
+}
+
+/* Dashboard card hover micro-interactions premium */
+.widget-card-interactive {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6, 24px);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: var(--space-8, 32px);
+  transition: box-shadow 0.22s ease, transform 0.22s ease, border-color 0.22s ease;
+  cursor: pointer;
+}
+
+.widget-card-interactive:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+  border-color: var(--border-strong);
+}
+
+.widget-card-interactive:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Score bar gradient premium (danger → warning → success) */
+.score-bar-gradient {
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(90deg, var(--danger) 0%, var(--warning) 50%, var(--success) 100%);
+  overflow: hidden;
+}
+
+.score-bar-gradient .score-bar-fill {
+  height: 100%;
+  background: var(--bg-surface);
+  float: right;
+  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Stat card accent border-left on hover */
+.stat-card-accent:hover {
+  border-left: 3px solid var(--primary);
+  padding-left: calc(var(--space-4, 16px) - 3px);
+}
+
+/* Timeline dot avec pulse sur le dernier élément */
+.timeline-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--primary);
+  flex-shrink: 0;
+}
+
+.timeline-dot--active {
+  box-shadow: 0 0 0 4px var(--primary-soft);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .timeline-dot--active {
+    animation: none;
+  }
+}
+
+/* Activity row slide-in arrow CTA */
+.activity-row {
+  position: relative;
+  transition: background 0.15s ease, padding-right 0.2s ease;
+}
+
+.activity-row:hover {
+  background: var(--bg-subtle);
+  padding-right: var(--space-8, 32px);
+}
+
+.activity-row .activity-arrow {
+  position: absolute;
+  right: var(--space-3, 12px);
+  top: 50%;
+  transform: translateY(-50%) translateX(8px);
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  color: var(--primary);
+}
+
+.activity-row:hover .activity-arrow {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+}

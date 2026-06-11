@@ -2,16 +2,7 @@ import { ArrowRight } from 'lucide-react';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { t } from '@/lib/i18n';
 import { STATUS_LABELS, STATUS_COLORS, type Lead } from '@/lib/types';
-
-// ── Couleurs avatars gradient (multi-couleurs maquette) ──
-const AVATAR_GRADIENTS = [
-  'linear-gradient(135deg, #009DDB 0%, #188BF6 100%)',
-  'linear-gradient(135deg, #D96E27 0%, #FF9A00 100%)',
-  'linear-gradient(135deg, #757BBD 0%, #D6BCFA 100%)',
-  'linear-gradient(135deg, #37CA37 0%, #81E6D9 100%)',
-  'linear-gradient(135deg, #E93D3D 0%, #FBB6CE 100%)',
-  'linear-gradient(135deg, #F6AD55 0%, #FAF089 100%)',
-];
+import { AVATAR_GRADIENTS } from '@/lib/avatarColors';
 
 /** Extrait les initiales d'un nom (max 2 caractères) */
 function getInitials(name: string): string {
