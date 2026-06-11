@@ -404,7 +404,7 @@ export async function handlePreviewPurge(
     'SELECT * FROM privacy_purge_rules WHERE client_id = ?'
   ).bind(cleanClientId).all();
 
-  const rules: PurgeRule[] = ((ruleRows || []) as PurgeRuleRow[]).map((r) => ({
+  const rules: PurgeRule[] = ((ruleRows || []) as unknown as PurgeRuleRow[]).map((r) => ({
     id: r.id,
     client_id: r.client_id,
     inactive_days: r.inactive_days,
@@ -428,7 +428,7 @@ export async function handlePreviewPurge(
      WHERE client_id = ? AND deleted_at IS NULL AND email != ?`
   ).bind(cleanClientId, ANONYMIZED_MARKER).all();
 
-  const leads = (leadRows || []) as LeadForPurge[];
+  const leads = (leadRows || []) as unknown as LeadForPurge[];
   const eligible = identifyPurgeableLeads(leads, rules);
 
   return json({
@@ -476,7 +476,7 @@ export async function handleRunPurge(
     ? await env.DB.prepare(rulesQuery).bind(...rulesParams).all()
     : await env.DB.prepare(rulesQuery).all();
 
-  const rules: PurgeRule[] = ((ruleRows || []) as PurgeRuleRow[]).map((r) => ({
+  const rules: PurgeRule[] = ((ruleRows || []) as unknown as PurgeRuleRow[]).map((r) => ({
     id: r.id,
     client_id: r.client_id,
     inactive_days: r.inactive_days,
@@ -511,7 +511,7 @@ export async function handleRunPurge(
        WHERE client_id = ? AND deleted_at IS NULL AND email != ?`
     ).bind(cid, ANONYMIZED_MARKER).all();
 
-    const leads = (leadRows || []) as LeadForPurge[];
+    const leads = (leadRows || []) as unknown as LeadForPurge[];
     const eligible = identifyPurgeableLeads(leads, clientRules);
 
     if (dryRun) {
@@ -586,7 +586,7 @@ export async function handleScheduledPurge(env: Env): Promise<void> {
     const result = await env.DB.prepare(
       'SELECT * FROM privacy_purge_rules'
     ).all();
-    ruleRows = (result.results || []) as PurgeRuleRow[];
+    ruleRows = (result.results || []) as unknown as PurgeRuleRow[];
   } catch (e) {
     // Table absente — migration pas encore jouée, on skip silencieusement
     const msg = String(e ?? '');
@@ -618,7 +618,7 @@ export async function handleScheduledPurge(env: Env): Promise<void> {
          WHERE client_id = ? AND deleted_at IS NULL AND email != ?`
       ).bind(cid, ANONYMIZED_MARKER).all();
 
-      const leads = (leadRows || []) as LeadForPurge[];
+      const leads = (leadRows || []) as unknown as LeadForPurge[];
       const eligible = identifyPurgeableLeads(leads, clientRules);
 
       if (eligible.length === 0) continue;

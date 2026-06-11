@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, Button, Badge, Skeleton, EmptyState, PageHero, LoadMore, SmartBanner, Select } from '@/components/ui';
+import { Card, Button, Badge, EmptyState, PageHero, LoadMore, SmartBanner, Select } from '@/components/ui';
 import { t } from '@/lib/i18n';
 import { LeadLink } from '@/components/panels/LeadLink';
 import { Modal } from '@/components/ui/Modal';

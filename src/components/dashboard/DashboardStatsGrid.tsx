@@ -3,7 +3,6 @@
 
 import { Users, Target, DollarSign, Zap } from 'lucide-react';
 import { StatCard } from './StatCard';
-import { Skeleton } from '@/components/ui/Skeleton';
 import { t } from '@/lib/i18n';
 import type { DashboardStats } from '@/lib/types';
 

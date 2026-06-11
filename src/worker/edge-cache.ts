@@ -18,7 +18,7 @@
 //
 // ZÉRO dépendance externe. Utilise Cloudflare Cache API native.
 
-import type { Env } from './types';
+
 
 // ── Configuration ────────────────────────────────────────────────────────────
 
@@ -91,7 +91,7 @@ export async function getCachedResponse(
   cacheKey: string,
 ): Promise<Response | null> {
   try {
-    const cache = caches.default;
+    const cache = (caches as any).default;
     const cachedResponse = await cache.match(new Request(cacheKey));
     if (cachedResponse) {
       // Ajouter un header pour indiquer un cache hit
@@ -118,7 +118,7 @@ export async function cacheResponse(
   ttl: number,
 ): Promise<Response> {
   try {
-    const cache = caches.default;
+    const cache = (caches as any).default;
     // Cloner la réponse pour la stocker
     const responseToCache = new Response(response.clone().body, {
       status: response.status,

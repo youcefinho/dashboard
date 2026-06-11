@@ -3,7 +3,6 @@
  * Extrait de Dashboard.tsx (DashboardChartWidget lignes 382-416)
  * Utilise les classes CSS premium au lieu de styles inline
  */
-import { Skeleton } from '@/components/ui/Skeleton';
 import { t } from '@/lib/i18n';
 import {
   XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar,

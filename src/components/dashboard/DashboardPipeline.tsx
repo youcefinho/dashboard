@@ -1,5 +1,4 @@
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
-import { Skeleton } from '@/components/ui/Skeleton';
 import { t } from '@/lib/i18n';
 
 // ── Types pour les données pipeline et sources ──

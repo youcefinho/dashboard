@@ -198,7 +198,7 @@ export async function sendPushToUser(
     const { results } = await env.DB.prepare(
       'SELECT * FROM push_subscriptions WHERE user_id = ?'
     ).bind(userId).all();
-    subscriptions = (results || []) as PushSubscriptionRow[];
+    subscriptions = (results || []) as unknown as PushSubscriptionRow[];
   } catch {
     return 0; // Table absente
   }

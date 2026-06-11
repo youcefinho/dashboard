@@ -42,6 +42,11 @@ export interface Env {
   // Fournie via `wrangler secret put ENCRYPTION_KEY` — JAMAIS hardcodée.
   // Tant qu'absente, chiffrement/blind index sont no-op (champs en clair).
   ENCRYPTION_KEY?: string;
+  // ── Sprint 98 — Rich Push Notifications (VAPID keys) ──────────────────────
+  // Fournies via `wrangler secret put` — JAMAIS hardcodées.
+  // Tant qu'absentes, push-notifications.ts fonctionne en mode MOCK.
+  VAPID_PUBLIC_KEY?: string;
+  VAPID_PRIVATE_KEY?: string;
   GHL_CLIENT_ID?: string;
   GHL_CLIENT_SECRET?: string;
   GHL_REDIRECT_URI?: string;

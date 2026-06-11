@@ -41,13 +41,13 @@ interface SecurityAuditReport {
 // ── Vérifications ────────────────────────────────────────────────────────────
 
 async function checkEncryptionKey(env: Env): Promise<AuditCheck> {
-  const hasKey = Boolean(env.ENCRYPTION_KEY_HEX);
+  const hasKey = Boolean(env.ENCRYPTION_KEY);
   return {
     id: 'encryption-key',
     category: 'encryption',
     label: 'Clé de chiffrement AES-256 configurée',
     status: hasKey ? 'pass' : 'fail',
-    detail: hasKey ? 'ENCRYPTION_KEY_HEX présent' : 'Variable ENCRYPTION_KEY_HEX manquante',
+    detail: hasKey ? 'ENCRYPTION_KEY présent' : 'Variable ENCRYPTION_KEY manquante',
   };
 }
 

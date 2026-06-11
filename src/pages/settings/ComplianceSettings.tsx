@@ -13,7 +13,7 @@ import {
   useToast,
   Icon,
 } from '@/components/ui';
-import { Shield, Ban, Download, Mail, Smartphone, FileCheck, Trash2, Clock, AlertTriangle, Play, Eye } from 'lucide-react';
+import { Shield, Ban, Download, Mail, Smartphone, FileCheck, Trash2, Clock, AlertTriangle, Eye } from 'lucide-react';
 import { ConsentManager } from '@/components/compliance/ConsentManager';
 
 interface Unsubscribe {
@@ -287,13 +287,6 @@ interface PurgeRule {
   action: string;
   created_at: string;
   updated_at: string;
-}
-
-interface PurgePreviewLead {
-  lead_id: string;
-  status: string;
-  inactive_days: number;
-  action: string;
 }
 
 function PurgeSection() {

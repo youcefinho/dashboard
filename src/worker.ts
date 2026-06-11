@@ -250,7 +250,6 @@ import { handlePublicUnsubscribe, handleGetUnsubscribes, handleLogConsent, handl
 import {
   handleGetPurgeRules, handleCreatePurgeRule, handleUpdatePurgeRule,
   handleDeletePurgeRule, handlePreviewPurge, handleRunPurge,
-  handleScheduledPurge,
 } from './worker/privacy-purge';
 import { handleGetSubAccounts, handleCreateSubAccount, handleUpdateSubAccount, handleCreateSnapshot, handleApplySnapshot, handleGetWhitelabel, handleUpdateWhitelabel, handleWidgetScript } from './worker/sub-accounts';
 import { handleListAccountSnapshots, handleCreateAccountSnapshot, handleApplyAccountSnapshot, handleDeleteAccountSnapshot } from './worker/account-snapshots';

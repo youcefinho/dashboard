@@ -95,7 +95,7 @@ export function DashboardPage() {
 
   const navigate = useNavigate();
   const { openPanel } = usePanelStack();
-  const { user } = useAuth();
+  useAuth();
 
   const updateWidgets = useCallback((fn: (prev: WidgetConfig[]) => WidgetConfig[]) => {
     setWidgets(prev => {

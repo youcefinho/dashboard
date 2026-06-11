@@ -4,7 +4,7 @@
  * Utilise les classes CSS premium au lieu de styles inline
  */
 import { t } from '@/lib/i18n';
-import { ACTIVITY_LABELS } from '@/lib/types';
+import { ACTIVITY_LABELS, type ActivityLogEntry, type ActivityType } from '@/lib/types';
 
 // ── Couleurs avatars gradient (copie locale — même array que Dashboard.tsx) ──
 const AVATAR_GRADIENTS = [
@@ -35,18 +35,9 @@ function timeAgo(dateStr: string): string {
   return t('dashboard.time.days_ago', { n: diffD });
 }
 
-// ── Types ────────────────────────────────────────────────────
-interface ActivityItem {
-  id: string;
-  user_name: string;
-  action: string;
-  details: string;
-  created_at: string;
-}
-
 interface DashboardActivityProps {
   isLoading: boolean;
-  activities: Array<ActivityItem>;
+  activities: Array<ActivityLogEntry>;
   onViewAll: () => void;
 }
 
@@ -84,7 +75,7 @@ export function DashboardActivity({ isLoading, activities, onViewAll }: Dashboar
                   <div className="text-xs leading-relaxed">
                     <span className="font-semibold">{activity.user_name || 'Système'}</span>{' '}
                     <span className="text-subtitle">
-                      {ACTIVITY_LABELS[activity.action] || activity.action}
+                      {ACTIVITY_LABELS[activity.action as ActivityType] || activity.action}
                     </span>
                   </div>
                   <div className="text-meta-label mt-0.5" style={{ fontVariantNumeric: 'tabular-nums' }}>

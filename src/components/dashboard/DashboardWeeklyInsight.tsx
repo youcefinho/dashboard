@@ -4,7 +4,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Sparkles, RefreshCw, AlertCircle } from 'lucide-react';
-import { Skeleton } from '@/components/ui/Skeleton';
 import { getWeeklyInsight, generateWeeklyInsight } from '@/lib/api';
 import { t } from '@/lib/i18n';
 import type { WeeklyAiInsight } from '@/lib/types';
